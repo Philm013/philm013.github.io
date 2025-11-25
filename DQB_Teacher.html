@@ -47,29 +47,49 @@
         #items-layer { position:absolute; inset:0; z-index: 2; pointer-events: none; }
         #ghost-layer { position:absolute; inset:0; pointer-events:none; z-index: 3; }
 
-        /* GHOST ITEM */
-        .ghost-item {
-            position: absolute; 
-            background: rgba(99, 102, 241, 0.2);
-            border: 2px dashed var(--accent); 
-            border-radius: 16px;
-            pointer-events: none;
-            z-index: 5000;
-            display: flex; align-items: center; justify-content: center;
-            color: var(--accent); font-weight: 800; font-size: 0.8rem; letter-spacing: 1px;
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
-        }
-
-        /* ITEMS */
+        /* ITEMS - REACTIVE LAYOUT STYLES */
         .item { 
             position: absolute; 
             display: flex; flex-direction: column; 
-            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.1s; 
+            /* Rete-like smoothing: Glide to position unless dragging */
+            transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1), width 0.2s, height 0.2s, box-shadow 0.2s;
             touch-action: none; pointer-events: auto; 
+            will-change: transform, width, height;
         }
-        .item.dragging { transition: none !important; z-index: 9999 !important; opacity: 0.8; pointer-events: none; }
 
-        .jiggle-wrapper { width:100%; height:100%; display:flex; flex-direction:column; background:white; border-radius:16px; box-shadow: var(--shadow); position:relative; overflow:hidden; color: #1e293b; border: 2px solid transparent; }
+        /* DRAGGING STATE - TACTILE FEEDBACK */
+        .item.dragging { 
+            transition: none !important; /* Instant follow */
+            z-index: 9999 !important; 
+            opacity: 0.95; 
+            pointer-events: none; /* Pass events to zones below */
+            filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5));
+        }
+
+        /* ZONE DROP TARGET */
+        .item.zone.drag-over {
+            box-shadow: 0 0 0 4px var(--accent), 0 0 30px rgba(99,102,241,0.2) !important;
+            background: rgba(99,102,241,0.05) !important;
+            border-color: var(--accent) !important;
+        }
+
+        /* GHOST SLOT (Virtual Placeholder) */
+        .ghost-slot {
+            position: absolute;
+            border: 2px dashed rgba(99,102,241,0.5);
+            background: rgba(99,102,241,0.1);
+            border-radius: 12px;
+            pointer-events: none;
+            z-index: 5;
+            transition: all 0.2s ease-out;
+            backdrop-filter: blur(2px);
+        }
+
+        /* SNAP ANIMATION */
+        .snap-anim { animation: snapPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes snapPop { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        .jiggle-wrapper { width:100%; height:100%; display:flex; flex-direction:column; background:white; border-radius:16px; box-shadow: var(--shadow); position:relative; overflow:hidden; color: #1e293b; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
         .item.selected .jiggle-wrapper { box-shadow: 0 0 0 3px var(--accent), 0 20px 25px -5px rgba(0,0,0,0.5) !important; z-index: 50; border-color: var(--accent) !important; }
         @keyframes shake { 0% { transform: rotate(0deg); } 25% { transform: rotate(-5deg) scale(1.05); } 75% { transform: rotate(5deg) scale(1.05); } 100% { transform: rotate(0deg); } }
         .item.jiggling .jiggle-wrapper { animation: shake 0.4s ease-in-out infinite; border-color: #ef4444; z-index: 500; }
@@ -89,6 +109,12 @@
             cursor: pointer; pointer-events: auto;
             animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
+
+        /* HEADER BUTTONS (Toggle/Results) */
+        .btn-toggle { cursor: pointer; font-size: 0.75rem; padding: 4px 8px; border-radius: 10px; margin-left: 8px; border: 1px solid #e2e8f0; background: white; transition: 0.2s; }
+        .btn-toggle.active { background: #dcfce7; color: #166534; border-color: #22c55e; }
+        .btn-toggle.results-btn { background: #e0e7ff; color: #4338ca; border-color: #6366f1; display: none; } /* Hidden by default */
+        .btn-toggle.results-btn.active { display: inline-block; animation: popIn 0.3s; }
 
         /* GLOBAL CONTEXT MENU */
         #context-menu {
@@ -435,46 +461,6 @@
     </div>
 </div>
 
-<!-- MODALS -->
-<div id="modal-host" class="modal-bg">
-    <div class="modal" style="text-align:center">
-        <h2>Join Class</h2>
-        <div id="qr-tgt" style="display:flex; justify-content:center; margin:20px"></div>
-        <div id="host-id" style="font-family:monospace; font-size:2rem; background:#f1f5f9; padding:10px; border-radius:12px; letter-spacing:2px; word-break: break-all; user-select: text;">...</div>
-        <button class="btn-p" style="margin-top:20px" onclick="$('modal-host').style.display='none'">Close</button>
-    </div>
-</div>
-
-<div id="modal-templates" class="modal-bg" onclick="if(event.target===this) this.style.display='none'">
-    <div class="modal">
-        <div style="display:flex; gap:10px; margin-bottom:20px;">
-            <button class="btn-s" onclick="window.UI.renderTplList('system')">System</button>
-            <button class="btn-s" onclick="window.UI.renderTplList('user')">My Templates</button>
-        </div>
-        <div id="tpl-list" style="display:grid; grid-template-columns:1fr 1fr; gap:10px"></div>
-        <button class="btn-p" style="margin-top:20px" onclick="$('modal-templates').style.display='none'">Close</button>
-    </div>
-</div>
-
-<div id="modal-comments" class="modal-bg" onclick="if(event.target===this) this.style.display='none'">
-    <div class="modal" style="width:500px">
-        <h3 style="margin-top:0">Discussion</h3>
-        <div id="cmt-list" style="max-height:300px; overflow-y:auto; margin-bottom:20px"></div>
-        <!-- TEACHER COMMENT INPUT -->
-        <div style="display:flex; gap:8px; padding-top:10px; border-top:1px solid #eee">
-            <input id="cmt-input" class="in-txt" placeholder="Add teacher comment..." style="padding:8px">
-            <button class="btn-p" style="width:auto; min-height:0; padding:8px 16px" onclick="Actions.postComment()">Send</button>
-        </div>
-        <button class="btn-s" onclick="$('modal-comments').style.display='none'">Close</button>
-    </div>
-</div>
-
-<div id="a11y-view" style="position:fixed; inset:0; background:white; z-index:5000; overflow-y:auto; padding:40px; display:none; color:black;">
-    <h1>Board Content (List View)</h1>
-    <button class="btn-s" style="width:auto; margin-bottom:20px" onclick="window.UI.toggleA11y()">Close List View</button>
-    <div id="a11y-content"></div>
-</div>
-
 <script>
 const $ = id => document.getElementById(id);
 const genId = () => Math.random().toString(36).substr(2, 9);
@@ -495,12 +481,14 @@ window.State = {
     items: [], ink: [], selection: [],
     view: { x: 0, y: 0, z: 1 },
     tool: 'select', students: {}, drag: null,
-    currentAct: null, activeSorts: {}, comments: [],
-    activeWidget: null, // Tracks active Polls/Graphs
-    exitTicket: null,   // Tracks active Exit Ticket
+    
+    // NEW: Centralized Activity State
+    // Types: 'LOCKED' | 'OPEN' | 'ZONE_ACT' | 'WIDGET_ACT' | 'EXIT_TICKET'
+    activity: { type: 'LOCKED', targetId: null, payload: null }, 
+    
+    activeSorts: {}, comments: [],
     touch: { dist: 0 },
-    draw: { color: '#ef4444', width: 4 },
-    mode: 'OPEN'
+    draw: { color: '#ef4444', width: 4 }
 };
 
 window.ActionHistory = {
@@ -519,6 +507,156 @@ window.ActionHistory = {
             State.items = s.items; State.ink = s.ink;
             Render.all(); Board.save(true);
             UI.toast("Undo");
+        }
+    }
+};
+
+/* --- DATA MODEL MANAGER --- */
+window.Model = {
+    link: (childId, zoneId, index = -1) => {
+        const zone = State.items.find(i => i.id === zoneId);
+        const child = State.items.find(i => i.id === childId);
+        if (!zone || !child) return;
+
+        if (child.parentZone && child.parentZone !== zoneId) {
+            Model.unlink(childId);
+        }
+
+        if (!zone.children) zone.children = [];
+        if (!zone.children.includes(childId)) {
+            if (index >= 0 && index < zone.children.length) {
+                zone.children.splice(index, 0, childId);
+            } else {
+                zone.children.push(childId);
+            }
+        }
+        child.parentZone = zoneId;
+    },
+
+    unlink: (childId) => {
+        const child = State.items.find(i => i.id === childId);
+        if (!child || !child.parentZone) return;
+
+        const zone = State.items.find(i => i.id === child.parentZone);
+        if (zone && zone.children) {
+            zone.children = zone.children.filter(id => id !== childId);
+            LayoutSystem.update(zone.id); 
+        }
+        delete child.parentZone;
+    },
+
+    delete: (ids) => {
+        if (!Array.isArray(ids)) ids = [ids];
+        ids.forEach(id => {
+            const item = State.items.find(i => i.id === id);
+            if (!item) return;
+            if (item.type === 'zone' && item.children) {
+                [...item.children].forEach(cid => Model.unlink(cid));
+            }
+            if (item.parentZone) {
+                Model.unlink(id);
+            }
+            Network.broadcast({type:'DELETE_NOTE', id: id});
+        });
+        State.items = State.items.filter(i => !ids.includes(i.id));
+        State.selection = State.selection.filter(id => !ids.includes(id));
+        Render.all();
+        ActionHistory.push();
+        Board.save(true);
+    }
+};
+
+/* --- RETE-INSPIRED LAYOUT ENGINE --- */
+window.LayoutSystem = {
+    padding: 20,
+    gap: 15,
+    
+    update: (zoneId, tempDragItem = null, tempIndex = -1) => {
+        const zone = State.items.find(i => i.id === zoneId);
+        if(!zone || !zone.children) return;
+
+        let children = zone.children
+            .map(id => State.items.find(i => i.id === id))
+            .filter(i => i && (tempDragItem ? i.id !== tempDragItem.id : true));
+
+        if (tempDragItem && tempIndex > -1) {
+            children.splice(tempIndex, 0, tempDragItem);
+        }
+
+        let nextHeight = 0;
+        if (zone.zoneType === 'cer') {
+            nextHeight = LayoutSystem.calcColumns(zone, children, 3);
+        } else {
+            nextHeight = LayoutSystem.calcFlow(zone, children);
+        }
+
+        const minH = 300; 
+        const targetH = Math.max(minH, nextHeight + 60);
+        zone.h = targetH;
+        const zoneEl = document.getElementById(zoneId);
+        if(zoneEl) zoneEl.style.height = targetH + 'px';
+    },
+
+    calcFlow: (zone, items) => {
+        let cx = LayoutSystem.padding;
+        let cy = 50; 
+        if(zone.zoneType === 'exit') cy += 40; 
+
+        let rowH = 0;
+        const limitWidth = zone.w - LayoutSystem.padding;
+
+        items.forEach(item => {
+            if (cx + item.w > limitWidth && cx > LayoutSystem.padding) {
+                cx = LayoutSystem.padding;
+                cy += rowH + LayoutSystem.gap;
+                rowH = 0;
+            }
+            LayoutSystem.applyPosition(zone, item, cx, cy);
+            if (item.h > rowH) rowH = item.h;
+            cx += item.w + LayoutSystem.gap;
+        });
+        return cy + rowH + LayoutSystem.padding;
+    },
+
+    calcColumns: (zone, items, colCount) => {
+        const colW = (zone.w - (LayoutSystem.padding * 2)) / colCount;
+        const colY = [0, 0, 0]; 
+
+        items.forEach(item => {
+            let colIdx = 0;
+            if (item._isDragging) {
+                const mouseRelX = (item._dragX - zone.x);
+                colIdx = Math.floor(mouseRelX / colW);
+            } else {
+                const center = (item.x - zone.x) + (item.w / 2);
+                colIdx = Math.floor(center / colW);
+            }
+            if(colIdx < 0) colIdx = 0; if(colIdx >= colCount) colIdx = colCount - 1;
+
+            const tx = LayoutSystem.padding + (colIdx * colW) + (colW/2 - item.w/2);
+            const ty = 60 + colY[colIdx];
+
+            LayoutSystem.applyPosition(zone, item, tx, ty);
+            colY[colIdx] += item.h + LayoutSystem.gap;
+        });
+        return Math.max(...colY) + LayoutSystem.padding;
+    },
+
+    applyPosition: (zone, item, relX, relY) => {
+        const absX = zone.x + relX;
+        const absY = zone.y + relY;
+
+        if (item._isVirtual) {
+            const ghost = document.getElementById('ghost-layer');
+            ghost.innerHTML = `<div class="ghost-slot" style="left:${absX}px; top:${absY}px; width:${item.w}px; height:${item.h}px;"></div>`;
+            return;
+        }
+
+        if (!item._isDragging) {
+            item.x = absX;
+            item.y = absY;
+            const el = document.getElementById(item.id);
+            if (el) el.style.transform = `translate(${absX}px, ${absY}px)`;
         }
     }
 };
@@ -587,8 +725,8 @@ window.UI = {
         const el = document.getElementById(`zr-${id}`);
         if(el) {
             el.classList.toggle('active');
-            if(el.classList.contains('active') && State.currentAct && State.currentAct.id === id) {
-                if(State.currentAct.type === 'discuss') Network.updateDiscussion();
+            if(el.classList.contains('active') && State.activity && State.activity.targetId === id) {
+                if(State.activity.type === 'ZONE_ACT' && State.activity.payload.subType === 'ACT_DISCUSS') Network.updateDiscussion();
                 else Network.updateResults(id);
             }
         }
@@ -714,16 +852,29 @@ window.Render = {
         $('world').style.transform = t;
         $('bg-grid').style.backgroundPosition = `${State.view.x*State.view.z}px ${State.view.y*State.view.z}px`;
 
+        let draggedIds = new Set();
+        if (State.drag && State.drag.mode === 'move') {
+            draggedIds.add(State.drag.id);
+            const draggedItem = State.items.find(i => i.id === State.drag.id);
+            if (draggedItem && draggedItem.type === 'zone' && draggedItem.children) {
+                draggedItem.children.forEach(cid => draggedIds.add(cid));
+            }
+        }
+
         State.items.forEach(i => {
             const el = document.getElementById(i.id);
             if(el) {
-                if (State.drag && State.drag.id === i.id && State.drag.mode === 'move') {
+                const isBeingDragged = draggedIds.has(i.id);
+                if (isBeingDragged) {
                     el.classList.add('dragging');
                 } else {
                     el.classList.remove('dragging');
                 }
 
-                el.style.transform = `translate(${i.x}px, ${i.y}px)`;
+                if (!isBeingDragged) {
+                     el.style.transform = `translate(${i.x}px, ${i.y}px)`;
+                }
+                
                 el.style.width = i.w + 'px'; if(i.h) el.style.height = i.h + 'px';
                 el.classList.toggle('selected', State.selection.includes(i.id));
 
@@ -744,16 +895,21 @@ window.Render = {
     },
     all: () => {
         const layer = $('items-layer');
+        State.items.sort((a,b) => (a.type==='zone' ? -1 : 1));
+
         State.items.forEach(i => {
             let el = document.getElementById(i.id);
             if(!el) { el = Render.createItem(i); layer.appendChild(el); }
-            el.style.transform = `translate(${i.x}px, ${i.y}px)`;
-            el.style.zIndex = i.type==='zone' ? 0 : (i.z || 10);
+            
+            if(!el.style.transform) el.style.transform = `translate(${i.x}px, ${i.y}px)`;
+            
+            const baseZ = i.type === 'zone' ? 1 : (i.z || 10);
+            el.style.zIndex = baseZ;
+            
             if(i.type==='poll') Render.updatePoll(el, i);
             if(i.type==='spin') Render.updateSpin(el, i);
             if(i.type==='graph') Render.updateGraph(el, i);
 
-            // Text sync for notes
             if(i.type === 'note' && !i.src) {
                  const txt = el.querySelector('textarea');
                  if (txt && txt.value !== i.text) txt.value = i.text;
@@ -762,7 +918,6 @@ window.Render = {
         Array.from(layer.children).forEach(c => { if(!State.items.find(i=>i.id===c.id)) c.remove(); });
         Render.ink();
 
-        // Show/Hide Arrange Button
         const arrBtn = $('btn-arrange');
         if(arrBtn) arrBtn.style.display = State.selection.length > 1 ? 'flex' : 'none';
         const mobArr = $('mt-arrange');
@@ -773,7 +928,22 @@ window.Render = {
     },
     createItem: (d) => {
         const el = document.createElement('div'); el.id=d.id; el.className=`item ${d.type}`;
-        let inner = '', btnOpen = '';
+        let inner = '';
+        
+        let isActive = d.isOpen;
+        let btnText = isActive ? "🟢 Open" : "📡 Open";
+        let btnClass = isActive ? "btn-toggle active" : "btn-toggle";
+        let btnAction = `Network.toggleZone('${d.id}')`;
+        
+        if (d.type === 'poll' || d.type === 'graph' || (d.zoneType === 'exit')) {
+             btnText = isActive ? "🔴 Stop" : "📡 Broadcast";
+             if(d.zoneType === 'exit') btnAction = `Network.toggleZone('${d.id}')`;
+             else if(d.type === 'poll') btnAction = `Network.broadcastPoll('${d.id}')`; 
+             else if(d.type === 'graph') btnAction = `Network.broadcastGraph('${d.id}')`;
+        }
+
+        let btnHtml = `<span id="zbtn-${d.id}" class="${btnClass}" onpointerdown="event.stopPropagation()" onclick="${btnAction}">${btnText}</span>`;
+        let resBtn = `<span id="btn-res-${d.id}" class="btn-toggle results-btn" onpointerdown="event.stopPropagation()" onclick="UI.toggleZoneResults('${d.id}')">💬 Results</span>`;
 
         if(d.type === 'note') {
             if(d.src) {
@@ -794,28 +964,27 @@ window.Render = {
             else inner = `<div style="padding:20px;text-align:center;color:#94a3b8;pointer-events:none;display:flex;align-items:center;justify-content:center;height:100%"></div>`;
 
             inner += `<div id="zr-${d.id}" class="zone-res-box"></div>`;
-
-            btnOpen = `<span id="zbtn-${d.id}" style="cursor:pointer;font-size:0.75rem;background:white;padding:4px 8px;border-radius:10px;margin-left:8px;border:1px solid #e2e8f0" onpointerdown="event.stopPropagation()" onclick="Network.openZone('${d.id}')">📡 Open</span>`;
-
-            if(d.zoneType === 'exit') {
-                btnOpen = `<span style="cursor:pointer;font-size:0.75rem;background:#6366f1;color:white;padding:4px 8px;border-radius:10px;margin-left:8px;border:1px solid #6366f1" onpointerdown="event.stopPropagation()" onclick="Network.broadcastExit('${d.id}')">📡 Broadcast</span>`;
-            }
-
-            btnOpen += `<span style="cursor:pointer;font-size:0.75rem;background:white;padding:4px 8px;border-radius:10px;margin-left:4px;border:1px solid #e2e8f0" onpointerdown="event.stopPropagation()" onclick="UI.toggleZoneResults('${d.id}')">💬 Results</span>`;
             el.innerHTML = `<div class="zone-label">${d.title}</div>` + el.innerHTML;
         } else {
-             if(d.type === 'poll') { inner = `<div class="poll-q" style="padding:8px;font-weight:bold">${d.q}</div><div class="poll-opts"></div>`; btnOpen = `<span style="cursor:pointer;font-size:0.75rem;background:white;padding:4px 8px;border-radius:10px;margin-left:8px;border:1px solid #e2e8f0" onpointerdown="event.stopPropagation()" onclick="Network.broadcastPoll('${d.id}')">📡 Broadcast</span>`; }
-             else if(d.type === 'graph') { inner = `<div class="graph-bars" style="display:flex;align-items:flex-end;height:100%;padding:10px;gap:5px"></div>`; btnOpen = `<span style="cursor:pointer;font-size:0.75rem;background:white;padding:4px 8px;border-radius:10px;margin-left:8px;border:1px solid #e2e8f0" onpointerdown="event.stopPropagation()" onclick="Network.broadcastGraph('${d.id}')">📡 Data</span>`; }
+             if(d.type === 'poll') { inner = `<div class="poll-q" style="padding:8px;font-weight:bold">${d.q}</div><div class="poll-opts"></div>`; }
+             else if(d.type === 'graph') { inner = `<div class="graph-bars" style="display:flex;align-items:flex-end;height:100%;padding:10px;gap:5px"></div>`; }
              else if(d.type === 'spin') inner = `<div style="padding:10px; display:flex; flex-direction:column; align-items:center"><svg class="spin-svg" viewBox="0 0 100 100" width="120" height="120"></svg><button class="btn-s" style="margin-top:8px; padding:4px 8px; font-size:0.8rem" onpointerdown="event.stopPropagation()" onclick="Actions.spin('${d.id}')">SPIN</button></div>`;
         }
 
         const head = TYPES[d.sub] || TYPES.meta;
         const title = d.type==='zone' ? (d.zoneType==='cer'?'CER Builder':(d.zoneType==='consensus'?'Consensus Model':(d.zoneType==='exit'?'Exit Ticket':'Zone'))) : (d.type==='poll'?'Poll':(d.type==='spin'?'Spinner':(d.type==='graph'?'Live Graph':(d.author || head.lbl))));
+        
+        if(d.type === 'note' || d.type === 'spin') { btnHtml = ''; resBtn = ''; }
 
         el.innerHTML += `
             <div class="jiggle-wrapper">
                 <div class="i-head">
-                    <div style="display:flex;gap:5px;align-items:center"><span class="icon-span">${d.type==='note'?head.icon:(d.type==='poll'?'📊':(d.type==='spin'?'🎡':(d.type==='graph'?'📈':'')))}</span><span class="auth-span">${title}</span>${btnOpen}</div>
+                    <div style="display:flex;gap:5px;align-items:center">
+                        <span class="icon-span">${d.type==='note'?head.icon:(d.type==='poll'?'📊':(d.type==='spin'?'🎡':(d.type==='graph'?'📈':'')))}</span>
+                        <span class="auth-span">${title}</span>
+                        ${btnHtml}
+                        ${resBtn}
+                    </div>
                     <div class="menu-trigger" onpointerdown="event.stopPropagation()" onclick="Actions.showContextMenu(event, '${d.id}')">⋮</div>
                 </div>
                 <div class="i-body">${inner}</div>
@@ -949,7 +1118,6 @@ window.Actions = {
             </div>
             <div class="ctx-row"><button class="ctx-btn" onclick="Actions.rename('${id}')">Rename</button></div>
             <div class="ctx-row">
-                <button class="ctx-btn" onclick="Network.closeZone('${id}')">🚫 Close</button>
                 <button class="ctx-btn btn-del" onclick="Actions.delete('${id}')">Delete</button>
             </div>`;
         } else if(item.type === 'poll') {
@@ -976,24 +1144,39 @@ window.Actions = {
         if(sel.length === 0) return;
         let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
         sel.forEach(i => { minX = Math.min(minX, i.x); minY = Math.min(minY, i.y); maxX = Math.max(maxX, i.x+i.w); maxY = Math.max(maxY, i.y+i.h); });
-        const z = { id: genId(), type: 'zone', title: 'Group', x: minX - 20, y: minY - 50, w: (maxX - minX) + 40, h: (maxY - minY) + 70, children: sel.map(i => i.id), snap: true };
+        
+        const z = { 
+            id: genId(), type: 'zone', title: 'Group', 
+            x: minX - 20, y: minY - 50, 
+            w: (maxX - minX) + 40, h: (maxY - minY) + 70, 
+            children: sel.map(i => i.id), snap: true 
+        };
+        
         sel.forEach(i => i.parentZone = z.id);
-        State.items.push(z); Actions.layoutZone(z.id); Actions.sel(z.id); UI.closeAllMenus(); Render.all(); ActionHistory.push(); Board.save(true);
+        State.items.push(z);
+        
+        sel.forEach(i => Model.link(i.id, z.id));
+        LayoutSystem.update(z.id);
+        
+        Actions.sel(z.id); UI.closeAllMenus(); Render.all(); ActionHistory.push(); Board.save(true);
+        setTimeout(() => { sel.forEach(i => { const el = $(i.id); if(el) el.classList.add('snap-anim'); }); }, 50);
     },
     setType: (id, sub) => { const i = State.items.find(x=>x.id===id); if(i && i.type==='note') { i.sub = sub; const oldEl = document.getElementById(id); if(oldEl) oldEl.remove(); Render.all(); UI.closeAllMenus(); Board.save(true); Network.broadcast({type:'NOTE_UPDATE', note:i}); } },
     delete: (id) => {
-        const tgt = id ? [id] : State.selection;
-        tgt.forEach(tid => Network.broadcast({type:'DELETE_NOTE', id:tid}));
-        State.items = State.items.filter(i => !tgt.includes(i.id));
-        State.selection=[]; Render.all(); UI.closeAllMenus(); ActionHistory.push(); Board.save(true);
+        const targets = id ? [id] : State.selection;
+        if (targets.length === 0) return;
+        Model.delete(targets);
+        UI.closeAllMenus();
     },
     sel: (id) => { 
         State.selection=[id]; 
         const i = State.items.find(x=>x.id===id);
         if(i && i.type==='zone') {
-            Tab(1);
-            $('act-results').innerHTML = `<div style="padding:10px;font-weight:bold;color:#6366f1">Zone: ${i.title}</div><div id="zone-res-${i.id}">Loading results...</div>`;
-            Network.updateResults(i.id); 
+            if(State.activeSorts[i.id] || State.activity && State.activity.targetId === i.id) {
+                 Tab(1);
+                 $('act-results').innerHTML = `<div style="padding:10px;font-weight:bold;color:#6366f1">Zone: ${i.title}</div><div id="zone-res-${i.id}">Loading results...</div>`;
+                 Network.updateResults(i.id);
+            }
         }
         Render.sync(); 
     },
@@ -1024,74 +1207,11 @@ window.Actions = {
         Render.all(); 
     },
     toggleLock: (id) => { const i = State.items.find(x=>x.id===id); if(i) { i.locked = !i.locked; Render.all(); UI.closeAllMenus(); Board.save(true); } },
-    layoutZone: (zoneId, dryRunList) => {
-        const z = State.items.find(x=>x.id===zoneId); if(!z) return;
-        const itemsToLayout = dryRunList || (z.children || []);
-        const PAD = 20; const GAP = 10; let ghostCoords = null; let newZoneHeight = 0;
-
-        if(z.zoneType === 'cer') {
-            const colW = (z.w - 40) / 3; let colHeights = [0, 0, 0];
-            itemsToLayout.forEach(childId => {
-                let child, isGhost = false;
-                if (childId === 'GHOST_TARGET') {
-                    const dragItem = State.items.find(i => i.id === State.drag.id);
-                    child = { id: 'GHOST_TARGET', w: dragItem.w, h: dragItem.h }; isGhost = true;
-                } else { child = State.items.find(x=>x.id===childId); }
-
-                if(child) {
-                    let colIndex = 0;
-                    if(isGhost && State.drag) {
-                        const worldMouseX = (State.drag.sx / State.view.z) - State.view.x;
-                        const relX = worldMouseX - z.x;
-                        if(relX < z.w/3) colIndex = 0; else if(relX < (z.w/3)*2) colIndex = 1; else colIndex = 2;
-                    } else {
-                        const center = (child.x + child.w/2) - z.x;
-                        if(center < z.w/3) colIndex = 0; else if(center < (z.w/3)*2) colIndex = 1; else colIndex = 2;
-                    }
-                    const tx = z.x + (colW * colIndex) + (colW/2 - child.w/2) + (colIndex === 0 ? 10 : (colIndex===1 ? 20 : 30)); 
-                    const ty = z.y + 50 + colHeights[colIndex];
-                    if(isGhost) ghostCoords = { x: tx, y: ty };
-                    else if(dryRunList) { const el = document.getElementById(child.id); if(el) el.style.transform = `translate(${tx}px, ${ty}px)`; }
-                    else { child.x = tx; child.y = ty; }
-                    colHeights[colIndex] += child.h + GAP;
-                }
-            });
-            newZoneHeight = Math.max(...colHeights) + 70;
-        } else {
-            let cx = z.x + PAD; let cy = z.y + 50; 
-            if(z.zoneType === 'exit') cy += 30; 
-
-            let rowH = 0;
-            itemsToLayout.forEach(childId => {
-                let child, isGhost = false;
-                if (childId === 'GHOST_TARGET') {
-                    const dragItem = State.items.find(i => i.id === State.drag.id);
-                    child = { id: 'GHOST_TARGET', w: dragItem.w, h: dragItem.h }; isGhost = true;
-                } else { child = State.items.find(x=>x.id===childId); }
-
-                if(child) {
-                    if(cx + child.w > z.x + z.w - PAD) { cx = z.x + PAD; cy += rowH + GAP; rowH = 0; }
-                    if(isGhost) ghostCoords = { x: cx, y: cy };
-                    else if(dryRunList) { const el = document.getElementById(child.id); if(el) el.style.transform = `translate(${cx}px, ${cy}px)`; }
-                    else { child.x = cx; child.y = cy; }
-                    if(child.h > rowH) rowH = child.h;
-                    cx += child.w + GAP;
-                }
-            });
-            newZoneHeight = (cy - z.y) + rowH + PAD;
-        }
-        if(dryRunList) {
-             const zEl = document.getElementById(z.id); if(zEl && newZoneHeight > z.h) zEl.style.height = newZoneHeight + 'px';
-             return { ghost: ghostCoords };
-        } else { if(newZoneHeight > z.h) z.h = newZoneHeight; Render.sync(); }
-    },
+    layoutZone: (zoneId) => { LayoutSystem.update(zoneId); },
     addToZone: (zoneId, noteId) => {
-        const z = State.items.find(x=>x.id===zoneId); const n = State.items.find(x=>x.id===noteId);
-        if(!z || !n) return;
-        n.parentZone = zoneId; 
-        if(!z.children) z.children = [];
-        if(!z.children.includes(noteId)) z.children.push(noteId);
-        Actions.layoutZone(zoneId); Render.all();
+        Model.link(noteId, zoneId);
+        LayoutSystem.update(zoneId); 
+        Render.all();
     },
     align: (mode) => {
         if(State.selection.length < 2) return;
@@ -1192,88 +1312,160 @@ window.Modes = {
         down: (e, id) => {
             const item = State.items.find(i=>i.id===id); if(item.locked) return; 
             const r = $('viewport').getBoundingClientRect();
-            const x = (e.clientX - r.left)/State.view.z - State.view.x;
-            const y = (e.clientY - r.top)/State.view.z - State.view.y;
-            State.drag = { mode:'move', id:id, ox:x-item.x, oy:y-item.y, sx:e.clientX, sy:e.clientY, hasMoved:false };
-            Render.sync(); Render.all(); 
-        },
-        move: (e) => {
-            const r = $('viewport').getBoundingClientRect();
-            const x = (e.clientX - r.left)/State.view.z - State.view.x;
-            const y = (e.clientY - r.top)/State.view.z - State.view.y;
-            const d = State.drag;
-            if(!d.hasMoved) { if(Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 5) d.hasMoved = true; else return; }
+            const wx = (e.clientX - r.left)/State.view.z - State.view.x;
+            const wy = (e.clientY - r.top)/State.view.z - State.view.y;
+            
+            State.drag = { 
+                mode:'move', 
+                id:id, 
+                lastX: wx,
+                lastY: wy,
+                hoverZoneId: null 
+            };
+            
+            const el = document.getElementById(id);
+            if(el) {
+                el.classList.add('dragging');
+                el.style.zIndex = 9990;
+                el.style.transform = `translate(${item.x}px, ${item.y}px) scale(1.05)`;
+            }
 
-            const zone = State.items.find(z => z.type==='zone' && x > z.x && x < z.x+z.w && y > z.y && y < z.y+z.h);
-            const ghostEl = $('ghost-layer');
-
-            if(zone && zone.children) {
-                let insertIdx = zone.children.length; let minDist = Infinity;
-                if (zone.zoneType !== 'cer') {
-                    for(let i=0; i<zone.children.length; i++) {
-                        const child = State.items.find(c=>c.id===zone.children[i]);
-                        if(child && child.id !== d.id) {
-                            const dist = Math.hypot(x - (child.x+child.w/2), y - (child.y+child.h/2));
-                            if(dist < minDist && dist < 150) {
-                                minDist = dist;
-                                if(x < child.x + child.w/2) insertIdx = i; else insertIdx = i+1;
-                            }
-                        }
+            if(item.type === 'zone' && item.children) {
+                item.children.forEach(cid => {
+                    const child = State.items.find(c => c.id === cid);
+                    const childEl = document.getElementById(cid);
+                    if(childEl && child) {
+                        childEl.classList.add('dragging'); 
+                        childEl.style.zIndex = 9999; 
+                        childEl.style.transform = `translate(${child.x}px, ${child.y}px) scale(1.05)`;
                     }
-                    const currentIdx = zone.children.indexOf(d.id);
-                    if(currentIdx > -1) { const child = State.items.find(c=>c.id===d.id); if (child && Math.hypot(x - (child.x+child.w/2), y - (child.y+child.h/2)) < 50) insertIdx = currentIdx; }
-                }
-                State.drag.targetZone = zone.id; State.drag.targetIndex = insertIdx;
-                let dryRunIds = zone.children.filter(id => id !== d.id); 
-                if(insertIdx >= dryRunIds.length) dryRunIds.push('GHOST_TARGET'); else dryRunIds.splice(insertIdx, 0, 'GHOST_TARGET');
-                const layoutRes = Actions.layoutZone(zone.id, dryRunIds); 
-                if(layoutRes && layoutRes.ghost) {
-                    const item = State.items.find(i=>i.id===d.id);
-                    ghostEl.innerHTML = `<div class="ghost-item" style="left:${layoutRes.ghost.x}px; top:${layoutRes.ghost.y}px; width:${item.w}px; height:${item.h}px;">DROP HERE</div>`;
-                }
-            } else {
-                State.drag.targetZone = null; ghostEl.innerHTML = '';
-                State.items.filter(i=>i.type==='zone').forEach(z => {
-                    const el = document.getElementById(z.id); if(el) { el.style.height = z.h + 'px'; if(z.children) z.children.forEach(cid => { if(cid !== d.id) { const c = State.items.find(ci=>ci.id===cid); const cEl = document.getElementById(cid); if(cEl && c) cEl.style.transform = `translate(${c.x}px, ${c.y}px)`; } }); }
                 });
             }
-            const edgeThresh = 50;
-            if(e.clientX < edgeThresh) State.view.x += 10/State.view.z; if(e.clientX > window.innerWidth - edgeThresh) State.view.x -= 10/State.view.z;
-            if(e.clientY < edgeThresh) State.view.y += 10/State.view.z; if(e.clientY > window.innerHeight - edgeThresh) State.view.y -= 10/State.view.z;
-            Render.sync(); 
-            const i = State.items.find(x=>x.id===d.id);
-            if(i) {
-                const dx = (x - d.ox) - i.x; const dy = (y - d.oy) - i.y;
-                State.selection.forEach(selId => { 
-                    const it = State.items.find(x=>x.id===selId); 
-                    if(it && !it.locked) { 
-                        it.x += dx; it.y += dy; 
-                        if(it.type==='zone' && it.children) { it.children.forEach(cid => { const child = State.items.find(c=>c.id===cid); if(child) { child.x += dx; child.y += dy; } }); }
-                    } 
+        },
+        move: (e) => {
+            const d = State.drag;
+            const item = State.items.find(i=>i.id===d.id);
+            if(!item) return;
+
+            const r = $('viewport').getBoundingClientRect();
+            const wx = (e.clientX - r.left)/State.view.z - State.view.x;
+            const wy = (e.clientY - r.top)/State.view.z - State.view.y;
+
+            const dx = wx - d.lastX;
+            const dy = wy - d.lastY;
+            
+            d.lastX = wx;
+            d.lastY = wy;
+
+            item.x += dx;
+            item.y += dy;
+            const el = document.getElementById(d.id);
+            if(el) el.style.transform = `translate(${item.x}px, ${item.y}px) scale(1.05)`;
+
+            if(item.type === 'zone' && item.children) {
+                item.children.forEach(childId => {
+                    const child = State.items.find(c => c.id === childId);
+                    if(child) {
+                        child.x += dx;
+                        child.y += dy;
+                        const childEl = document.getElementById(child.id);
+                        if(childEl) {
+                            childEl.style.transform = `translate(${child.x}px, ${child.y}px) scale(1.05)`;
+                        }
+                    }
                 });
+            }
+
+            if (item.type !== 'zone') {
+                const hitZone = State.items.find(z => 
+                    z.type === 'zone' && 
+                    z.id !== item.id && 
+                    wx > z.x && wx < z.x + z.w && 
+                    wy > z.y && wy < z.y + z.h
+                );
+
+                if (d.hoverZoneId && (!hitZone || hitZone.id !== d.hoverZoneId)) {
+                    document.getElementById(d.hoverZoneId)?.classList.remove('drag-over');
+                    LayoutSystem.update(d.hoverZoneId); 
+                    d.hoverZoneId = null;
+                    $('ghost-layer').innerHTML = '';
+                }
+
+                if (hitZone) {
+                    d.hoverZoneId = hitZone.id;
+                    document.getElementById(hitZone.id).classList.add('drag-over');
+
+                    let insertIdx = (hitZone.children || []).length;
+                    if (hitZone.children && hitZone.children.length > 0) {
+                        let minD = Infinity;
+                        const kids = hitZone.children.map(kidId => State.items.find(k=>k.id===kidId)).filter(k=>k && k.id!==item.id);
+                        
+                        kids.forEach((kid, idx) => {
+                            const dist = Math.hypot((item.x+item.w/2) - (kid.x+kid.w/2), (item.y+item.h/2) - (kid.y+kid.h/2));
+                            if(dist < minD && dist < 200) {
+                                minD = dist;
+                                if (item.y < kid.y + kid.h/2) {
+                                    if (item.x < kid.x + kid.w/2) insertIdx = idx;
+                                }
+                            }
+                        });
+                    }
+
+                    const virtualItem = { ...item, _isVirtual: true, _isDragging: true, _dragX: item.x };
+                    LayoutSystem.update(hitZone.id, virtualItem, insertIdx);
+                    d.targetIndex = insertIdx;
+                }
+            }
+            
+            const edge = 50;
+            if(e.clientX < edge) State.view.x += 10/State.view.z; 
+            if(e.clientX > window.innerWidth - edge) State.view.x -= 10/State.view.z;
+            if(e.clientY < edge) State.view.y += 10/State.view.z; 
+            if(e.clientY > window.innerHeight - edge) State.view.y -= 10/State.view.z;
+            if(e.clientX < edge || e.clientX > window.innerWidth-edge || e.clientY<edge || e.clientY>window.innerHeight-edge) {
+                Render.sync();
             }
         },
         up: (e) => {
-             $('ghost-layer').innerHTML = '';
-             if(!State.drag.hasMoved) { State.drag = null; return; }
-             const item = State.items.find(i=>i.id===State.drag.id);
-             if(item && item.type==='note') {
-                if(item.parentZone && item.parentZone !== State.drag.targetZone) { 
-                    const oldZ = State.items.find(z=>z.id===item.parentZone); 
-                    if(oldZ && oldZ.children) { oldZ.children = oldZ.children.filter(cid => cid !== item.id); Actions.layoutZone(oldZ.id); }
-                    delete item.parentZone; 
-                }
-                if(State.drag.targetZone) {
-                    const zone = State.items.find(z=>z.id===State.drag.targetZone);
-                    if(zone) {
-                        if(!zone.children) zone.children = []; zone.children = zone.children.filter(id => id !== item.id);
-                        const idx = State.drag.targetIndex !== undefined ? State.drag.targetIndex : zone.children.length;
-                        if(idx >= zone.children.length) zone.children.push(item.id); else zone.children.splice(idx, 0, item.id);
-                        item.parentZone = zone.id; Actions.layoutZone(zone.id);
+            const d = State.drag;
+            if(!d) return; 
+            
+            const item = State.items.find(i=>i.id===d.id);
+            const el = document.getElementById(d.id);
+            
+            if(el) {
+                el.classList.remove('dragging');
+                el.style.zIndex = (item.type === 'zone' ? 1 : (item.z || 10));
+            }
+
+            if(item.type === 'zone' && item.children) {
+                item.children.forEach(cid => {
+                    const childEl = document.getElementById(cid);
+                    const childItem = State.items.find(c=>c.id===cid);
+                    if(childEl) {
+                        childEl.classList.remove('dragging');
+                        childEl.style.zIndex = (childItem.z || 10);
                     }
+                });
+            }
+
+            $('ghost-layer').innerHTML = '';
+            document.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+
+            if (d.hoverZoneId && item.type !== 'zone') {
+                const idx = d.targetIndex !== undefined ? d.targetIndex : -1;
+                Model.link(item.id, d.hoverZoneId, idx);
+                LayoutSystem.update(d.hoverZoneId);
+                if(el) { el.classList.remove('snap-anim'); void el.offsetWidth; el.classList.add('snap-anim'); }
+            } else {
+                if (item.parentZone) {
+                    Model.unlink(item.id);
                 }
             }
-            State.drag = null; ActionHistory.push(); Board.save(true); Render.all(); 
+
+            State.drag = null;
+            ActionHistory.push();
+            Board.save(true);
         }
     },
     Resize: {
@@ -1292,7 +1484,7 @@ window.Modes = {
             const i = State.items.find(x=>x.id===d.id);
             i.w = Math.max(150, d.ow + (x - d.sx)); i.h = Math.max(100, d.oh + (y - d.sy));
         },
-        up: () => { State.drag = null; ActionHistory.push(); Board.save(true); }
+        up: (e) => { State.drag = null; ActionHistory.push(); Board.save(true); }
     },
     Marquee: {
         down: (e) => {
@@ -1315,7 +1507,7 @@ window.Modes = {
             });
             Render.all(); 
         },
-        up: () => { $('marquee').style.display='none'; State.drag = null; }
+        up: (e) => { $('marquee').style.display='none'; State.drag = null; }
     },
     Draw: {
         down: (e) => {
@@ -1436,68 +1628,59 @@ window.InputController = {
 };
 window.addEventListener('keyup', InputController.keyup);
 
-/* --- NETWORK --- */
+/* --- NETWORK & ACTIVITY MANAGER --- */
 window.Network = {
     peer: null,
+    
     host: (existingId) => {
-        // Fix: Don't destroy if we are just reopening the modal
         if (Network.peer && !Network.peer.destroyed && existingId === undefined) {
             $('modal-host').style.display = 'flex';
             return;
         }
-
         if(Network.peer) { Network.peer.destroy(); Network.peer = null; }
-        
-        // If existingId is null (Reset button), pass undefined to generate new.
-        // If existingId is undefined (Host button), pass undefined.
-        // If existingId is string (Reload), pass string.
         const idToUse = existingId === null ? undefined : existingId;
 
         Network.peer = new Peer(idToUse);
         Network.peer.on('open', id => {
             $('host-id').innerText = id; localStorage.setItem('dqb_host_id', id);
-            
-            // Fix: Clear previous QR
             $('qr-tgt').innerHTML = '';
             new QRCode($('qr-tgt'), { text:id, width:180, height:180 });
-            
             if(!existingId) $('modal-host').style.display='flex';
             UI.toast("📡 Network Ready"); setInterval(() => Network.broadcast({type:'HEARTBEAT'}), 3000);
         });
+
         Network.peer.on('connection', c => {
             c.on('open', () => { 
                 const syncNotes = State.items.filter(i => i.type === 'note').map(i => ({id:i.id, text:i.text, sub:i.sub, src:i.src}));
-                SafeSend(c, { type: 'WELCOME', boardId: State.id, mode: State.mode, sync: syncNotes });
+                
+                let welcomeMode = 'LOCKED'; 
+                let actPayload = null;
 
-                // 1. Re-broadcast Active Session (Vote/Sort/Discuss)
-                if(State.currentAct) {
-                    const actId = State.currentAct.id;
-                    const mode = State.currentAct.type;
-                    const targets = State.currentAct.targets.map(tid => State.items.find(i => i.id === tid)).filter(x=>x);
-                    const list = targets.map(n => ({ id:n.id, text:n.text, sub:n.sub }));
-                    SafeSend(c, { type: mode==='vote'?'ACT_VOTE':(mode==='sort'?'ACT_SORT':'ACT_DISCUSS'), actId:actId, items:list });
+                switch(State.activity.type) {
+                    case 'OPEN': 
+                        welcomeMode = 'OPEN'; 
+                        break;
+                    case 'ZONE_ACT':
+                        welcomeMode = State.activity.payload.subType;
+                        actPayload = State.activity.payload;
+                        break;
+                    case 'WIDGET_ACT':
+                        welcomeMode = State.activity.payload.subType; 
+                        actPayload = State.activity.payload;
+                        break;
+                    case 'EXIT_TICKET':
+                        welcomeMode = 'EXIT_TICKET';
+                        actPayload = State.activity.payload;
+                        break;
                 }
 
-                // 2. Re-broadcast Active Widget (Poll/Graph)
-                if(State.activeWidget) {
-                    if(State.activeWidget.type === 'POLL') {
-                        SafeSend(c, { type:'ACT_POLL', actId:State.activeWidget.id, q:State.activeWidget.q, opts:State.activeWidget.opts });
-                    } else if (State.activeWidget.type === 'GRAPH') {
-                        SafeSend(c, { type:'ACT_GRAPH', actId:State.activeWidget.id, title:State.activeWidget.title });
-                    }
-                }
-
-                // 3. Re-broadcast Exit Ticket
-                if(State.exitTicket) {
-                    SafeSend(c, { 
-                        type: 'EXIT_TICKET', 
-                        actId: State.exitTicket.actId, 
-                        mode: State.exitTicket.mode, 
-                        prompt: State.exitTicket.prompt, 
-                        opts: State.exitTicket.opts, 
-                        single: true 
-                    });
-                }
+                SafeSend(c, { 
+                    type: 'WELCOME', 
+                    boardId: State.id, 
+                    mode: welcomeMode, 
+                    payload: actPayload, 
+                    sync: syncNotes 
+                });
 
                 UI.toast(`Student Joined`); 
             });
@@ -1509,35 +1692,176 @@ window.Network = {
             if(err.type === 'unavailable-id') { Network.host(null); } else { console.error(err); }
         });
     },
-    openZone: (id) => { const z = State.items.find(x=>x.id===id); z.isOpen = true; $(`zbtn-${id}`).innerText = "🟢 Open"; Network.broadcast({ type:'OPEN_ZONE', id:id, title:z.title, zoneType:z.zoneType }); UI.toast("Zone Opened"); },
-    closeZone: (id) => { const z = State.items.find(x=>x.id===id); if(z) { z.isOpen = false; $(`zbtn-${id}`).innerText = "📡 Open"; } Network.broadcast({ type:'CLOSE_ZONE', id:id }); Render.all(); },
-    broadcastPoll: (id) => { 
-        const p = State.items.find(x=>x.id===id); 
-        if(p) {
-            State.activeWidget = { type: 'POLL', id: id, q: p.q, opts: p.opts };
-            Network.broadcast({ type:'ACT_POLL', actId:id, q:p.q, opts:p.opts }); 
+
+    transitionTo: (type, targetId = null, payload = null) => {
+        State.items.forEach(i => {
+            i.isOpen = false;
+            const btn = document.getElementById(`zbtn-${i.id}`);
+            if(btn) {
+                btn.classList.remove('active');
+                if(i.type === 'zone' && i.zoneType !== 'exit') btn.innerText = "📡 Open";
+                else if(i.type === 'poll' || i.type === 'graph' || i.zoneType === 'exit') btn.innerText = "📡 Broadcast";
+            }
+        });
+
+        $('act-controls').style.display = 'none';
+        const openCheck = document.querySelector('#tab-roster input[type="checkbox"]');
+        if(openCheck) openCheck.checked = (type === 'OPEN');
+
+        Network.broadcast({ type: 'STOP_ACT' });
+        if (type !== 'OPEN') Network.broadcast({ type: 'MODE', val: 'LOCKED' });
+
+        State.activity = { type, targetId, payload };
+
+        if (type === 'OPEN') {
+            Network.broadcast({ type: 'MODE', val: 'OPEN' });
         }
-        UI.toast("Poll Sent"); 
-    },
-    broadcastGraph: (id) => { 
-        const g = State.items.find(x=>x.id===id); 
-        if(g) {
-            State.activeWidget = { type: 'GRAPH', id: id, title: g.title };
-            Network.broadcast({ type:'ACT_GRAPH', actId:id, title:g.title }); 
+        else if (targetId) {
+            const item = State.items.find(i => i.id === targetId);
+            if(item) {
+                item.isOpen = true;
+                const btn = document.getElementById(`zbtn-${item.id}`);
+                
+                if (type === 'ZONE_ACT') {
+                    if(btn) { btn.innerText = "🟢 Open"; btn.classList.add('active'); }
+                    Network.broadcast(payload); 
+                    
+                    Tab(1); 
+                    $('act-controls').style.display='block'; 
+                    $('act-info').innerText = `Mode: ${payload.subType.replace('ACT_','')} | Items: ${payload.items.length}`;
+                    
+                    const modeLabel = payload.subType === 'ACT_DISCUSS' ? 'Discussion' : 'Results';
+                    const html = `<div style="padding:10px;color:#64748b">Waiting for ${modeLabel}...</div>`;
+                    const zContainer = $(`zr-${targetId}`); 
+                    if(zContainer) { 
+                        zContainer.innerHTML = `<h4 style="margin:0 0 10px 0; color:#475569">${modeLabel}</h4>` + html; 
+                        zContainer.classList.add('active'); 
+                    }
+                    $('act-results').innerHTML = html;
+                } 
+                else if (type === 'WIDGET_ACT') {
+                    if(btn) { btn.innerText = "🔴 Stop"; btn.classList.add('active'); }
+                    Network.broadcast(payload); 
+                }
+                else if (type === 'EXIT_TICKET') {
+                    if(btn) { btn.innerText = "🔴 Stop"; btn.classList.add('active'); }
+                    Network.broadcast(payload); 
+                }
+            }
         }
-        UI.toast("Graph Sent"); 
+        Render.all(); 
+        UI.toast(`Activity: ${type}`);
     },
+
+    toggleOpenMode: (isOn) => { 
+        if(isOn) Network.transitionTo('OPEN');
+        else Network.transitionTo('LOCKED');
+    },
+
+    startActivity: (mode) => {
+        let targets = []; let zoneId = null;
+        State.selection.forEach(id => { 
+            const i = State.items.find(x=>x.id===id); 
+            if(i.type === 'note') targets.push(i); 
+            else if(i.type === 'zone') { 
+                zoneId = i.id; 
+                if(i.children) i.children.forEach(cid => { const n = State.items.find(x=>x.id===cid); if(n) targets.push(n); }); 
+            } 
+        });
+        targets = [...new Set(targets)];
+
+        if(targets.length < 1 && mode==='discuss') return alert("Select notes to discuss.");
+        if(targets.length < 2 && mode!=='discuss') return alert("Select at least 2 notes.");
+
+        if(!zoneId) {
+            let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+            targets.forEach(t => { minX = Math.min(minX, t.x); minY = Math.min(minY, t.y); maxX = Math.max(maxX, t.x+t.w); maxY = Math.max(maxY, t.y+t.h); });
+            zoneId = genId(); const pad = 40;
+            const newZone = { id: zoneId, type: 'zone', title: 'Activity Zone', x: minX - pad, y: minY - pad - 40, w: (maxX - minX) + pad*2, h: (maxY - minY) + pad*2 + 40, children: targets.map(t => t.id) };
+            State.items.push(newZone); Actions.sel(zoneId);
+        } else { Actions.sel(zoneId); }
+
+        State.activeSorts[zoneId] = [];
+        const subType = mode==='vote'?'ACT_VOTE':(mode==='sort'?'ACT_SORT':'ACT_DISCUSS');
+        const itemsList = targets.map(n => ({ id:n.id, text:n.text, sub:n.sub }));
+        
+        Network.transitionTo('ZONE_ACT', zoneId, { 
+            type: subType, 
+            subType: subType, 
+            actId: zoneId, 
+            items: itemsList 
+        });
+    },
+
+    stopActivity: () => { 
+        Network.transitionTo('LOCKED');
+    },
+
+    toggleZone: (id) => {
+        if (State.activity.targetId === id && State.activity.type !== 'LOCKED') {
+            Network.transitionTo('LOCKED');
+            return;
+        }
+        const item = State.items.find(x => x.id === id);
+        if(!item) return;
+
+        if (item.zoneType === 'exit') {
+            Network.broadcastExit(id);
+        } else if (item.type === 'poll') {
+            Network.broadcastPoll(id);
+        } else if (item.type === 'graph') {
+            Network.broadcastGraph(id);
+        } else if (item.type === 'zone') {
+            Network.openZone(id);
+        }
+    },
+
+    openZone: (id) => {
+        const z = State.items.find(x=>x.id===id);
+        Network.transitionTo('ZONE_ACT', id, { 
+            type: 'OPEN_ZONE', 
+            subType: 'OPEN_ZONE',
+            actId: id, 
+            title: z.title, 
+            zoneType: z.zoneType,
+            items: [] 
+        });
+    },
+
+    broadcastPoll: (id) => {
+        const p = State.items.find(x=>x.id===id);
+        Network.transitionTo('WIDGET_ACT', id, {
+            type: 'ACT_POLL',
+            subType: 'ACT_POLL',
+            actId: id,
+            q: p.q,
+            opts: p.opts
+        });
+    },
+
+    broadcastGraph: (id) => {
+        const g = State.items.find(x=>x.id===id);
+        Network.transitionTo('WIDGET_ACT', id, {
+            type: 'ACT_GRAPH',
+            subType: 'ACT_GRAPH',
+            actId: id,
+            title: g.title
+        });
+    },
+
     broadcastExit: (id) => {
         const item = State.items.find(x=>x.id===id);
-        if(!item) return;
-        State.exitTicket = { actId: id, mode: item.exitMode, prompt: item.prompt, opts: item.opts };
-        Network.broadcast({ 
-            type: 'EXIT_TICKET', actId: id, mode: item.exitMode, 
-            prompt: item.prompt, opts: item.opts, single: true 
+        Network.transitionTo('EXIT_TICKET', id, {
+            type: 'EXIT_TICKET',
+            subType: 'EXIT_TICKET',
+            actId: id,
+            mode: item.exitMode,
+            prompt: item.prompt,
+            opts: item.opts,
+            single: true
         });
-        UI.toast("Exit Ticket Broadcasted");
     },
-    toggleOpenMode: (isOn) => { State.mode = isOn ? 'OPEN' : 'LOCKED'; Network.broadcast({ type:'MODE', val: State.mode }); },
+
     handle: (pid, d, conn) => {
         if(d.type === 'JOIN') { State.students[pid] = { name:d.name, avatar:d.avatar, conn:conn }; Roster(); } 
         else if(d.type === 'NOTE') {
@@ -1548,6 +1872,7 @@ window.Network = {
                 i.x = pos.x; i.y = pos.y; State.items.push(i);
                 if(d.zoneId) Actions.addToZone(d.zoneId, i.id); 
             } else { i.text = d.text; i.sub = d.sub; }
+            LayoutSystem.update(d.zoneId); 
             Render.all(); Board.save(true);
         }
         else if(d.type === 'IMG_NOTE') {
@@ -1556,6 +1881,7 @@ window.Network = {
              i.x = pos.x; i.y = pos.y;
              State.items.push(i);
              if(d.zoneId) Actions.addToZone(d.zoneId, i.id); 
+             LayoutSystem.update(d.zoneId);
              Render.all(); Board.save(true);
         }
         else if(d.type === 'DELETE_NOTE') { State.items = State.items.filter(x => x.id !== d.id); Render.all(); Board.save(true); }
@@ -1572,17 +1898,13 @@ window.Network = {
         else if(d.type === 'COMMENT') { State.comments.push(d); Network.updateDiscussion(); Render.all(); }
         else if(d.type === 'JIGGLE_NOTE') { const el = document.getElementById(d.id); if(el) { el.classList.add('jiggling'); setTimeout(() => el.classList.remove('jiggling'), 2000); } }
 
-        // EXIT TICKET SUBMISSION HANDLER
         else if(d.type === 'EXIT_SUBMIT') {
-            // Find the Widget (Zone)
             const zone = State.items.find(x => x.id === d.actId && x.zoneType === 'exit');
             if(zone) {
-                // Format response text based on type
                 let txt = d.val;
                 if(Array.isArray(d.val)) txt = d.val.join(', ');
                 if(typeof d.val === 'object' && d.val.l) txt = `L: ${d.val.l}\nW: ${d.val.w}`;
 
-                // Create Note
                 const noteId = genId();
                 const newNote = {
                     id: noteId, type: 'note', sub: 'notice', text: txt,
@@ -1590,53 +1912,19 @@ window.Network = {
                     w: 200, h: 150, votes: 0,
                     parentZone: zone.id
                 };
-
-                // Add to Board
                 State.items.push(newNote);
-
-                // Add to Zone Children
                 if(!zone.children) zone.children = [];
                 zone.children.push(noteId);
-
-                // Snap Layout
-                Actions.layoutZone(zone.id);
+                LayoutSystem.update(zone.id);
                 Render.all(); Board.save(true);
             }
         }
     },
-    startActivity: (mode) => {
-        let targets = []; let zoneId = null;
-        State.selection.forEach(id => { const i = State.items.find(x=>x.id===id); if(i.type === 'note') targets.push(i); else if(i.type === 'zone') { zoneId = i.id; if(i.children) i.children.forEach(cid => { const n = State.items.find(x=>x.id===cid); if(n) targets.push(n); }); } });
-        targets = [...new Set(targets)];
-        if(targets.length < 1 && mode==='discuss') return alert("Select notes to discuss.");
-        if(targets.length < 2 && mode!=='discuss') return alert("Select at least 2 notes.");
-        if(!zoneId) {
-            let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
-            targets.forEach(t => { minX = Math.min(minX, t.x); minY = Math.min(minY, t.y); maxX = Math.max(maxX, t.x+t.w); maxY = Math.max(maxY, t.y+t.h); });
-            zoneId = genId(); const pad = 40;
-            const newZone = { id: zoneId, type: 'zone', title: 'Activity Zone', x: minX - pad, y: minY - pad - 40, w: (maxX - minX) + pad*2, h: (maxY - minY) + pad*2 + 40, children: targets.map(t => t.id) };
-            State.items.push(newZone); Actions.sel(zoneId);
-        } else { Actions.sel(zoneId); }
-        const actId = zoneId; State.activeSorts[actId] = []; State.currentAct = { id: actId, type: mode, targets: targets.map(x=>x.id) };
-        const list = targets.map(n => ({ id:n.id, text:n.text, sub:n.sub }));
-        Network.broadcast({ type: mode==='vote'?'ACT_VOTE':(mode==='sort'?'ACT_SORT':'ACT_DISCUSS'), actId:actId, items:list });
-        Tab(1); $('act-controls').style.display='block'; $('act-info').innerText = `Mode: ${mode.toUpperCase()} | Items: ${targets.length}`;
-        if(mode==='discuss') { 
-            const html = '<div style="padding:10px;color:#64748b">Waiting for discussion...</div>';
-            const zContainer = $(`zr-${actId}`); if(zContainer) { zContainer.innerHTML = `<h4 style="margin:0 0 10px 0; color:#475569">Discussion</h4>` + html; zContainer.classList.add('active'); }
-            $('act-results').innerHTML = html;
-        }
-        Render.all();
-    },
-    stopActivity: () => { 
-        Network.broadcast({ type:'STOP_ACT' }); 
-        State.currentAct = null; 
-        State.activeWidget = null;
-        State.exitTicket = null;
-        $('act-controls').style.display='none'; 
-        Render.all(); 
-    },
+    
     updateResults: (actId) => {
+        const btn = $(`btn-res-${actId}`);
+        if(btn) { btn.style.display = 'inline-block'; }
+
         const submissions = State.activeSorts[actId] || [];
         const scores = {};
         submissions.forEach(sub => { if(Array.isArray(sub)) sub.forEach((itemId, idx) => { scores[itemId] = (scores[itemId] || 0) + (sub.length - idx); }); else scores[sub] = (scores[sub] || 0) + 1; });
@@ -1646,14 +1934,24 @@ window.Network = {
         const zContainer = $(`zr-${actId}`); if(zContainer) zContainer.innerHTML = `<h4 style="margin:0 0 10px 0; color:#475569">Activity Results</h4>` + html;
         if($('act-results')) $('act-results').innerHTML = html;
     },
+    
     updateDiscussion: () => {
-        if(!State.currentAct || State.currentAct.type !== 'discuss') return;
-        const actId = State.currentAct.id;
-        const relevant = State.comments.filter(c => State.currentAct.targets.includes(c.targetId));
+        if(!State.activity || State.activity.type !== 'ZONE_ACT') return;
+        const actId = State.activity.targetId;
+        const btn = $(`btn-res-${actId}`);
+        if(btn) { btn.style.display = 'inline-block'; }
+
+        const relevant = State.comments.filter(c => {
+             if (c.targetId === actId) return true;
+             if (State.activity.payload.items && State.activity.payload.items.find(i=>i.id===c.targetId)) return true;
+             return false;
+        });
+
         const html = relevant.map(c => { const item = State.items.find(x=>x.id===c.targetId); const txt = item ? item.text.substring(0,20)+'...' : 'Unknown'; return `<div class="disc-item"><div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#94a3b8;margin-bottom:4px"><span>${c.author}</span><span>Ref: ${txt}</span></div><span class="disc-tag dt-${c.tag}">${c.tag.toUpperCase()}</span><div style="color:#334155">${c.text}</div></div>`; }).reverse().join('');
         const zContainer = $(`zr-${actId}`); if(zContainer) zContainer.innerHTML = `<h4 style="margin:0 0 10px 0; color:#475569">Discussion</h4>` + html;
         if($('act-results')) $('act-results').innerHTML = html;
     },
+    
     broadcast: (msg) => Object.values(State.students).forEach(s => { SafeSend(s.conn, msg); })
 };
 
