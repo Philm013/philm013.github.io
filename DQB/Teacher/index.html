@@ -127,7 +127,7 @@
             background: rgba(99,102,241,0.1);
             border-radius: 12px;
             pointer-events: none;
-            z-index: 1;
+            z-index: 3;
             box-sizing: border-box;
         }
         .snap-guide {
@@ -486,6 +486,7 @@
         <button class="tb-btn" id="dt-draw" onclick="window.UI.toggleDrawer('draw')">✏️ Draw</button>
         <div class="sep"></div>
         <button class="tb-btn" id="tb-open-notes" onclick="UI.toggleOpenNotes()">🔓 Open Notes</button>
+        <button class="tb-btn" id="tb-connect" onclick="UI.showSettingsModal()">📡 Connect</button>
         <div class="sep"></div>
         <button class="tb-btn" onclick="window.UI.toggleDrawer('add')">➕ Add</button>
         <button class="tb-btn" id="btn-arrange" style="display:none" onclick="window.UI.toggleDrawer('arrange')">📏 Arrange</button>
@@ -1050,7 +1051,7 @@ window.UI = {
             }
         }
         if (mbtn) {
-            mbtn.innerHTML = isOpen ? '🔒' : '🔓';
+            mbtn.innerHTML = isOpen ? '🔓' : '🔓';
             mbtn.classList.toggle('active', isOpen);
             if (isOpen) {
                 mbtn.style.background = '#c2410c';
