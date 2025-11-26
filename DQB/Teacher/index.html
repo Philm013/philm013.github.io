@@ -905,11 +905,18 @@ window.LayoutSystem = {
     },
 
     // Calculate insertion index based on geometric proximity (Row/Col aware)
-    getIndex: (zone, x, y) => {
-        if(!zone.children || zone.children.length === 0) return 0;
+    // CHANGED: Added excludeId parameter
+    getIndex: (zone, x, y, excludeId = null) => {
+        if(!zone.children) return 0;
         
-        const items = zone.children.map(id => State.items.find(i=>i.id===id)).filter(i=>i);
+        // CHANGED: Filter out the excluded ID before mapping
+        const items = zone.children
+            .filter(id => id !== excludeId)
+            .map(id => State.items.find(i=>i.id===id))
+            .filter(i=>i);
         
+        if (items.length === 0) return 0;
+
         let bestIndex = items.length;
         let minDist = Infinity;
 
@@ -1917,7 +1924,8 @@ window.Modes = {
                 if (hitZone) {
                     d.hoverZoneId = hitZone.id;
                     document.getElementById(hitZone.id).classList.add('drag-over');
-                    const newIndex = LayoutSystem.getIndex(hitZone, cx, cy);
+                    // CHANGED: Pass the primary item's ID to exclude it from index calculation
+                    const newIndex = LayoutSystem.getIndex(hitZone, cx, cy, primaryItem.id);
                     if (d.targetIndex !== newIndex) {
                         d.targetIndex = newIndex;
                         const virt = { ...primaryItem, _isVirtual: true, _dragX: primaryItem.x, _dragY: primaryItem.y };
@@ -2003,14 +2011,24 @@ window.Modes = {
             i.w = Math.max(150, d.ow + (x - d.sx)); 
             i.h = Math.max(150, d.oh + (y - d.sy));
             
-            if(i.type === 'zone') LayoutSystem.update(i.id);
+            // ADDED: Trigger reflow for the parent zone if this item is in one
+            if(i.type === 'zone') {
+                LayoutSystem.update(i.id);
+            } else if (i.parentZone) {
+                LayoutSystem.update(i.parentZone);
+            }
             
             const el = document.getElementById(i.id);
             if(el) { el.style.width = i.w + 'px'; el.style.height = i.h + 'px'; }
         },
-        up: (e) => { 
+        up: (e) => {
+            const i = State.items.find(x=>x.id===State.drag.id);
+            // ADDED: Final reflow update on mouse up
+            if(i && i.parentZone) {
+                LayoutSystem.update(i.parentZone);
+            }
+            
             if(State.isCoHost || Network.peer) {
-                const i = State.items.find(x=>x.id===State.drag.id);
                 Network.broadcast({type:'UPDATE_POS', id:i.id, x:i.x, y:i.y, w:i.w, h:i.h});
             }
             State.drag = null; ActionHistory.push(); Board.save(true); 
