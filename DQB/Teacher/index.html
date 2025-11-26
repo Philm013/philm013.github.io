@@ -190,7 +190,6 @@
                 position: fixed !important; bottom: 20px !important; left: 50% !important; top: auto !important; 
                 transform: translateX(-50%) !important; width: 90% !important; max-width: 400px; 
             }
-            #minimap-container { display: none; } /* Hide minimap on small screens for now */
         }
 
         .ctx-row { display: flex; gap: 5px; width: 100%; margin-bottom: 5px; }
@@ -454,6 +453,7 @@
         </div>
         <!-- Sidebar Actions -->
         <div style="margin-top:auto; padding:15px; border-top:1px solid #374151; display:flex; flex-direction:column; gap:8px;">
+            <button class="sub-btn" onclick="Board.setStartView()">📍 Set Start View</button>
             <button class="sub-btn" onclick="window.UI.saveTemplate()">💾 Save as Template</button>
             <button class="sub-btn" onclick="window.UI.toggleA11y()">♿ Accessibility View</button>
             <button class="sub-btn" onclick="UI.showSettingsModal()">⚙️ Settings & Sharing</button>
@@ -502,6 +502,8 @@
         <button class="dock-btn" id="mt-draw" onclick="window.UI.toggleDrawer('draw')">✏️</button>
         <button class="dock-btn" id="mt-add" onclick="window.UI.toggleDrawer('add')">➕</button>
         <button class="dock-btn" id="mt-arrange" style="display:none" onclick="window.UI.toggleDrawer('arrange')">📏</button>
+        <button class="dock-btn" id="mt-open-notes" onclick="UI.toggleOpenNotes()">🔓</button>
+        <button class="dock-btn" id="mt-share" onclick="UI.showSettingsModal()">📡</button>
         <div class="sep-mobile"></div>
         <button class="dock-btn" onclick="ActionHistory.undo()">↩️</button>
     </div>
@@ -1038,6 +1040,7 @@ window.UI = {
     },
     updateOpenNotesButton: (isOpen) => {
         const btn = $('tb-open-notes');
+        const mbtn = $('mt-open-notes');
         if (btn) {
             btn.innerHTML = isOpen ? '🔒 Lock Board' : '🔓 Open Notes';
             if (isOpen) {
@@ -1046,12 +1049,20 @@ window.UI = {
                 btn.style.background = '';
             }
         }
-        // Could add mobile button update here too
+        if (mbtn) {
+            mbtn.innerHTML = isOpen ? '🔒' : '🔓';
+            mbtn.classList.toggle('active', isOpen);
+            if (isOpen) {
+                mbtn.style.background = '#c2410c';
+            } else {
+                mbtn.style.background = '';
+            }
+        }
     },
     setMinimapPosition: (val) => {
         const cont = $('minimap-container');
         cont.style.top = (val.includes('top')) ? '20px' : 'auto';
-        cont.style.bottom = (val.includes('bottom')) ? '80px' : 'auto';
+        cont.style.bottom = (val.includes('bottom')) ? '100px' : 'auto';
         cont.style.left = (val.includes('left')) ? '20px' : 'auto';
         cont.style.right = (val.includes('right')) ? '20px' : 'auto';
         localStorage.setItem('dqb_minimap_pos', val);
@@ -1104,6 +1115,7 @@ window.Board = {
     },
     create: () => { 
         State.id = genId(); State.items=[]; State.ink=[]; State.name="My Board"; 
+        State.view = { x: 0, y: 0, z: 1 };
         localStorage.setItem('lastBoard', State.id);
         ActionHistory.stack=[]; ActionHistory.index=-1; ActionHistory.push();
         Board.start(); 
@@ -1112,6 +1124,7 @@ window.Board = {
         const b = (await DB.getAll('boards')).find(x => x.id === id); 
         if(b) { 
             State.id=b.id; State.items=b.items; State.ink=b.ink||[]; State.name=b.name; 
+            State.view = b.view || { x: 0, y: 0, z: 1 };
             localStorage.setItem('lastBoard', State.id);
             ActionHistory.stack=[]; ActionHistory.index=-1; ActionHistory.push();
             Board.start(); 
@@ -1121,13 +1134,18 @@ window.Board = {
         $('landing').style.display='none'; $('app').style.display='block'; $('board-name').value=State.name; 
         Render.loop(); Render.all(); 
         UI.loadMinimapSettings();
+        UI.updateOpenNotesButton(State.activity.type === 'OPEN');
         if(!State.isCoHost) {
             const lastPeer = localStorage.getItem('dqb_host_id');
             Network.host(lastPeer);
         }
     },
+    setStartView: () => {
+        Board.save(true);
+        UI.toast("✅ Start view set and saved!");
+    },
     save: async (silent) => { 
-        await DB.save({ id: State.id, name: State.name, items: State.items, ink: State.ink, ts: Date.now() }); 
+        await DB.save({ id: State.id, name: State.name, items: State.items, ink: State.ink, view: State.view, ts: Date.now() }); 
         if(!silent) UI.toast("💾 Board Saved"); 
     },
     exit: () => { localStorage.removeItem('lastBoard'); location.reload(); },
@@ -2585,7 +2603,11 @@ window.Network = {
             SafeSend(conn, {type:'FULL_SYNC', items:State.items, ink:State.ink, activity: State.activity});
         }
         else if(d.type === 'SYNC_REQ') { SafeSend(conn, {type:'FULL_SYNC', items:State.items, ink:State.ink, activity: State.activity}); }
-        else if(d.type === 'FULL_SYNC') { State.items = d.items; State.ink = d.ink; if (d.activity) State.activity = d.activity; Render.all(); UI.updateOpenNotesButton(State.activity.type === 'OPEN'); }
+        else if(d.type === 'FULL_SYNC') { 
+            State.items = d.items; State.ink = d.ink; if (d.activity) State.activity = d.activity; 
+            Render.all(); 
+            UI.updateOpenNotesButton(State.activity.type === 'OPEN');
+        }
         else if(d.type === 'UPDATE_POS') { 
             const i = State.items.find(x=>x.id===d.id); 
             if(i) { i.x=d.x; i.y=d.y; if(d.w) i.w=d.w; if(d.h) i.h=d.h; Render.sync(); } 
