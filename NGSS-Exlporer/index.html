@@ -599,7 +599,7 @@
                 // If we cache hit, we still need the raw 3D elements for the 3D explorer view to render
                 if (!window.allNgss3dElements) {
                      try {
-                         const elRes = await fetch('ngss3DElements.json');
+                         const elRes = await fetch('https://philm013.github.io/JSON/ngss3DElements.json');
                          window.allNgss3dElements = await elRes.json();
                      } catch (e) {
                          console.error("Could not fetch 3D elements for view generation", e);
