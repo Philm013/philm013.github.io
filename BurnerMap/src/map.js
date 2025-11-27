@@ -1,4 +1,3 @@
-
 // Contains all map related functions
 Object.assign(app, {
     initMap: () => {
@@ -8,6 +7,9 @@ Object.assign(app, {
         app.layers.light = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, tileSize: 512, zoomOffset: -1 });
         app.layers.sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, tileSize: 512, zoomOffset: -1 });
         app.layers.dark.addTo(app.map);
+        if (app.isHost) {
+            document.getElementById('host-hint').style.opacity = '1';
+        }
         app.map.on('dblclick', (e) => {
                 if (app.isHost) {
                     app.setRally(e.latlng);
