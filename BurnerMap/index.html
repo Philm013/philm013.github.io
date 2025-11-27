@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>BurnerMap v12</title>
+    <title>BurnerMap v13</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -12,268 +12,185 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
-        /* --- THEME ENGINE --- */
         :root {
-            --bg-color: #050505;
-            --text-main: #ffffff;
-            --text-sub: #94a3b8;
-            --glass-bg: rgba(20, 20, 20, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.15);
-            --input-bg: rgba(255, 255, 255, 0.05);
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.5);
-            --shadow: 0 8px 32px rgba(0,0,0,0.5);
+            --bg-color: #050505; --text: #fff; --glass: rgba(20,20,20,0.85); --border: rgba(255,255,255,0.15);
+            --accent: #3b82f6; --danger: #ef4444; --success: #10b981;
         }
+        body.light { --bg-color: #f1f5f9; --text: #0f172a; --glass: rgba(255,255,255,0.85); --border: rgba(0,0,0,0.1); }
 
-        body.light-mode {
-            --bg-color: #e2e8f0;
-            --text-main: #0f172a;
-            --text-sub: #475569;
-            --glass-bg: rgba(255, 255, 255, 0.85);
-            --glass-border: rgba(0, 0, 0, 0.1);
-            --input-bg: rgba(0, 0, 0, 0.05);
-            --accent: #2563eb;
-            --accent-glow: rgba(37, 99, 235, 0.3);
-            --shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
-
-        /* --- CORE --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-        
         body {
-            margin: 0; padding: 0;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            width: 100vw; height: 100dvh;
-            overflow: hidden; position: fixed;
-            transition: background-color 0.3s ease, color 0.3s ease;
+            margin: 0; background: var(--bg-color); color: var(--text); font-family: 'Inter', sans-serif;
+            width: 100vw; height: 100dvh; overflow: hidden; position: fixed;
+            transition: background 0.3s;
         }
 
-        /* --- UI COMPONENTS --- */
-        .glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            box-shadow: var(--shadow);
-            transition: all 0.3s ease;
-        }
+        /* --- GLASS UI --- */
+        .glass { background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        
+        /* --- MAP & LAYERS --- */
+        #view-map { position: absolute; inset: 0; z-index: 1; visibility: hidden; }
+        #map { width: 100%; height: 100%; background: #000; z-index: 1; }
 
-        .icon-btn {
+        /* OPS STACK (Right Side Controls) */
+        .ops-stack {
+            position: absolute; top: 100px; right: 16px; z-index: 20;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .ops-btn {
             width: 48px; height: 48px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 20px; color: var(--text-main);
-            transition: transform 0.1s;
+            font-size: 18px; color: var(--text); transition: transform 0.1s;
         }
-        .icon-btn:active { transform: scale(0.92); }
+        .ops-btn:active { transform: scale(0.9); }
 
-        /* --- HEADERS --- */
-        .header-left {
-            position: absolute; top: max(env(safe-area-inset-top), 16px); left: 16px;
-            z-index: 50; padding: 8px 16px; border-radius: 99px;
-            display: flex; align-items: center; gap: 12px;
-        }
-        .header-right {
-            position: absolute; top: max(env(safe-area-inset-top), 16px); right: 16px;
-            z-index: 50; display: flex; gap: 10px;
-        }
-
-        /* --- MAP LAYER --- */
-        #view-map { position: absolute; inset: 0; z-index: 1; visibility: hidden; }
-        #map { width: 100%; height: 100%; background: var(--bg-color); transition: background 0.3s; }
-
-        .map-controls {
-            position: absolute; top: 100px; right: 16px;
-            z-index: 10; display: flex; flex-direction: column; gap: 12px;
-        }
-
-        /* --- CHAT LAYER --- */
+        /* --- CHAT SLIDE --- */
         #view-chat {
-            position: absolute; inset: 0; z-index: 20;
-            background: var(--bg-color);
+            position: absolute; inset: 0; z-index: 30; background: var(--bg-color);
+            transform: translate3d(100%, 0, 0); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
             display: flex; flex-direction: column;
-            transform: translate3d(100%, 0, 0); 
-            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-
-        #chat-scroll {
-            flex: 1; overflow-y: auto;
-            padding: 110px 20px 20px 20px;
-            padding-bottom: 200px;
-        }
-
-        .chat-bar {
-            position: absolute; 
-            bottom: calc(max(env(safe-area-inset-bottom), 20px) + 90px);
-            left: 16px; right: 16px;
-            z-index: 30; padding: 8px; border-radius: 24px;
-            display: flex; gap: 10px;
-        }
-        .chat-input {
-            flex: 1; background: var(--input-bg);
-            color: var(--text-main); border: none; outline: none;
-            padding: 0 16px; border-radius: 16px; height: 48px; font-size: 16px;
-        }
-
+        #chat-scroll { flex: 1; overflow-y: auto; padding: 120px 20px 180px 20px; }
+        
         /* --- NAV DOCK --- */
         .nav-dock {
             position: absolute; bottom: max(env(safe-area-inset-bottom), 30px);
-            left: 50%; transform: translateX(-50%);
-            z-index: 40; border-radius: 36px; padding: 8px;
-            display: flex; gap: 8px;
+            left: 50%; transform: translateX(-50%); z-index: 40;
+            border-radius: 36px; padding: 8px; display: flex; gap: 8px;
         }
-        .nav-item {
-            width: 64px; height: 64px; border-radius: 28px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 24px; color: var(--text-sub);
-            transition: all 0.2s;
+        .nav-btn {
+            width: 60px; height: 60px; border-radius: 26px; display: flex; align-items: center; justify-content: center;
+            font-size: 22px; color: #94a3b8; transition: all 0.2s;
         }
-        .nav-item.active { background: var(--input-bg); color: var(--text-main); box-shadow: inset 0 0 10px var(--input-bg); }
+        .nav-btn.active { background: rgba(125,125,125,0.2); color: var(--text); }
+
+        /* --- HEADER --- */
+        .header-left { position: absolute; top: max(env(safe-area-inset-top), 16px); left: 16px; z-index: 50; padding: 8px 16px; border-radius: 99px; display: flex; align-items: center; gap: 12px; }
+        .header-right { position: absolute; top: max(env(safe-area-inset-top), 16px); right: 16px; z-index: 50; display: flex; gap: 10px; }
+        .icon-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+        /* --- STROBE MODE --- */
+        #strobe-overlay {
+            position: fixed; inset: 0; z-index: 9999; background: #fff;
+            display: none; animation: strobe 0.15s infinite;
+        }
+        @keyframes strobe { 0% { opacity: 1; background: #fff; } 50% { opacity: 0; } 100% { opacity: 1; background: #00f; } }
 
         /* --- UTILS --- */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .sonar-wave { position: absolute; border-radius: 50%; border: 4px solid #ef4444; width: 100%; height: 100%; animation: sonar 2s ease-out infinite; opacity: 0; }
-        @keyframes sonar { 0% { transform: scale(0.1); opacity: 1; border-width: 6px; } 100% { transform: scale(4); opacity: 0; border-width: 0; } }
-
-        /* Marker Dashboard */
-        .marker-dash {
-            position: absolute; bottom: -35px; left: 50%; transform: translateX(-50%);
-            background: var(--glass-bg); backdrop-filter: blur(4px);
-            padding: 4px 8px; border-radius: 8px; border: 1px solid var(--glass-border);
-            display: flex; flex-direction: column; align-items: center;
-            white-space: nowrap; pointer-events: none; z-index: 1000;
+        .marker-arrow {
+            width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent;
+            border-bottom: 10px solid #fff; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
         }
     </style>
 </head>
-<body class="dark-mode">
+<body class="dark">
 
-    <!-- HEADER LEFT: Theme Toggle + Status -->
-    <div class="header-left glass">
-        <button onclick="app.toggleTheme()" class="w-8 h-8 rounded-full bg-transparent flex items-center justify-center mr-2 text-yellow-500 hover:scale-110 transition-transform">
-            <i id="theme-icon" class="fa-solid fa-sun"></i>
-        </button>
-        <div class="w-px h-6 bg-gray-500/30 mr-3"></div>
-        <div class="flex flex-col leading-none">
-            <span class="font-black text-xs tracking-wide">BURNER</span>
-            <span id="conn-status" class="text-[9px] opacity-60 font-bold mt-1 tracking-widest uppercase">OFFLINE</span>
+    <!-- STROBE OVERLAY -->
+    <div id="strobe-overlay" onclick="app.toggleStrobe()">
+        <div class="absolute inset-0 flex items-center justify-center">
+            <h1 class="text-black font-black text-4xl bg-white p-4">TAP TO STOP</h1>
         </div>
-        <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_red] ml-2"></div>
     </div>
 
-    <!-- HEADER RIGHT: Tools -->
+    <!-- AUDIO ELEMENTS -->
+    <audio id="sound-msg" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.m4a"></audio>
+    <audio id="sound-alert" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.m4a"></audio>
+
+    <!-- HEADER -->
+    <div class="header-left glass">
+        <button onclick="app.toggleTheme()" class="text-yellow-500 mr-3"><i id="theme-icon" class="fa-solid fa-sun"></i></button>
+        <div class="flex flex-col leading-none">
+            <span class="font-black text-xs tracking-wide">BURNER<span class="text-blue-500">MAP</span></span>
+            <span id="conn-status" class="text-[9px] opacity-60 font-bold mt-1 tracking-widest uppercase">OFFLINE</span>
+        </div>
+        <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_red] ml-3"></div>
+    </div>
+
     <div class="header-right">
+        <button onclick="app.toggleStrobe()" class="icon-btn glass text-white bg-slate-800 border-2 border-white/20"><i class="fa-solid fa-bolt"></i></button>
         <button onclick="app.toggleQR()" class="icon-btn glass"><i class="fa-solid fa-qrcode"></i></button>
-        <button onclick="app.copyLink()" class="icon-btn bg-blue-600 shadow-lg text-white"><i class="fa-solid fa-link"></i></button>
     </div>
 
     <!-- MAP VIEW -->
     <div id="view-map">
         <div id="map"></div>
         
-        <!-- SIDE CONTROLS -->
-        <div class="map-controls">
-            <button onclick="app.toggleSatellite()" class="icon-btn glass text-green-500" title="Sat Mode"><i class="fa-solid fa-layer-group"></i></button>
-            <button onclick="app.sendSonar()" class="icon-btn glass text-red-500" title="Sonar"><i class="fa-solid fa-bullseye"></i></button>
-            <button id="btn-focus" onclick="app.forceFocus()" class="icon-btn glass text-blue-500 hidden" title="Force Focus"><i class="fa-solid fa-magnet"></i></button>
+        <!-- OPS STACK (Controls) -->
+        <div class="ops-stack">
+            <button onclick="app.toggleSatellite()" class="ops-btn glass text-green-400" title="Satellite Mode"><i class="fa-solid fa-layer-group"></i></button>
+            <button onclick="app.sendSonar()" class="ops-btn glass text-red-500" title="Sonar Ping"><i class="fa-solid fa-bullseye"></i></button>
+            <button id="btn-focus" onclick="app.forceFocus()" class="hidden ops-btn bg-blue-600 text-white shadow-lg shadow-blue-500/50" title="Force Group Focus"><i class="fa-solid fa-magnet"></i></button>
         </div>
 
-        <div id="host-hint" class="absolute top-24 left-1/2 -translate-x-1/2 z-[10] glass px-4 py-2 rounded-full text-xs font-bold opacity-0 pointer-events-none transition-opacity">
-            Double-tap to Flag
-        </div>
+        <div id="host-hint" class="absolute top-24 left-1/2 -translate-x-1/2 z-[10] glass px-4 py-2 rounded-full text-xs font-bold opacity-0 pointer-events-none transition-opacity">Host: Double-Tap to Flag</div>
     </div>
 
     <!-- CHAT VIEW -->
     <div id="view-chat">
         <div id="chat-scroll" class="no-scrollbar">
-            <div class="text-center opacity-30 mb-8 mt-4">
-                <i class="fa-solid fa-shield-halved text-4xl mb-3"></i>
-                <p class="text-xs uppercase tracking-widest font-bold">Encrypted Mesh</p>
-            </div>
             <div id="msg-list" class="flex flex-col gap-4"></div>
         </div>
-
-        <div class="chat-bar glass">
-            <input type="text" id="msg-input" placeholder="Message..." autocomplete="off" class="chat-input placeholder-gray-500">
-            <button onclick="app.sendMessage(event)" class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
-                <i class="fa-solid fa-arrow-up"></i>
-            </button>
+        <div class="absolute bottom-[110px] left-4 right-4 z-30 glass p-2 rounded-3xl flex gap-2">
+            <input type="text" id="msg-input" placeholder="Message..." autocomplete="off" class="flex-1 bg-transparent px-4 outline-none text-base">
+            <button onclick="app.sendMessage(event)" class="w-10 h-10 bg-blue-600 rounded-full text-white shadow-lg"><i class="fa-solid fa-arrow-up"></i></button>
         </div>
     </div>
 
     <!-- NAV DOCK -->
     <nav class="nav-dock glass">
-        <button onclick="app.switchTab('map')" id="btn-map" class="nav-item active"><i class="fa-solid fa-map-location-dot"></i></button>
-        <div class="w-px h-8 bg-gray-500/30 my-auto mx-2"></div>
-        <button onclick="app.switchTab('chat')" id="btn-chat" class="nav-item relative">
+        <button onclick="app.switchTab('map')" id="btn-map" class="nav-btn active"><i class="fa-solid fa-map-location-dot"></i></button>
+        <div class="w-px h-8 bg-gray-500/30 my-auto mx-1"></div>
+        <button onclick="app.switchTab('chat')" id="btn-chat" class="nav-btn relative">
             <i class="fa-solid fa-comments"></i>
-            <div id="unread-dot" class="absolute top-4 right-4 w-3 h-3 bg-red-500 rounded-full hidden border-2 border-white"></div>
+            <div id="unread-dot" class="absolute top-4 right-4 w-2.5 h-2.5 bg-red-500 rounded-full hidden border-2 border-white"></div>
         </button>
-        <div class="w-px h-8 bg-gray-500/30 my-auto mx-2"></div>
-        <button onclick="app.burn()" class="nav-item text-red-500 hover:text-red-600"><i class="fa-solid fa-power-off"></i></button>
+        <div class="w-px h-8 bg-gray-500/30 my-auto mx-1"></div>
+        <button onclick="app.burn()" class="nav-btn text-red-500"><i class="fa-solid fa-power-off"></i></button>
     </nav>
 
-    <!-- ONBOARDING MODAL -->
-    <div id="modal-onboarding" class="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 bg-black text-white transition-opacity duration-500">
-        <div class="w-full max-w-sm text-center relative">
-            <div class="w-24 h-24 mx-auto bg-gradient-to-tr from-gray-800 to-gray-900 rounded-3xl flex items-center justify-center shadow-2xl border border-white/10 mb-8">
-                <i class="fa-solid fa-mask text-5xl text-white"></i>
-            </div>
-            <h1 class="text-4xl font-black mb-2 tracking-tighter">BURNER<span class="text-blue-500">MAP</span></h1>
-            <p class="text-gray-500 text-xs uppercase font-bold tracking-[0.2em] mb-10">v12.0 Complete</p>
-            
-            <div class="bg-white/10 p-2 rounded-2xl mb-4 backdrop-blur-md">
-                <input type="text" id="username-input" class="w-full bg-transparent text-white p-4 text-center font-bold text-xl outline-none placeholder-gray-500" placeholder="CODENAME">
-            </div>
-            
-            <button onclick="app.startSession()" class="w-full bg-white text-black py-5 rounded-2xl font-black text-lg tracking-wide active:scale-95 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                ENTER
-            </button>
-            <p id="restore-msg" class="text-blue-500 text-xs mt-8 hidden uppercase font-bold tracking-widest animate-pulse">Session Found</p>
+    <!-- ONBOARDING -->
+    <div id="modal-onboarding" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 transition-opacity duration-500">
+        <div class="w-24 h-24 bg-gradient-to-tr from-gray-800 to-gray-900 rounded-3xl flex items-center justify-center shadow-2xl border border-white/10 mb-8">
+            <i class="fa-solid fa-ghost text-5xl text-white"></i>
         </div>
+        <h1 class="text-4xl font-black text-white mb-2">BURNER<span class="text-blue-500">MAP</span></h1>
+        <p class="text-gray-500 text-xs uppercase font-bold tracking-[0.2em] mb-10">v13 Ops Edition</p>
+        <div class="bg-white/10 p-2 rounded-2xl mb-4 w-full max-w-xs">
+            <input type="text" id="username-input" class="w-full bg-transparent text-white p-4 text-center font-bold text-xl outline-none" placeholder="CODENAME">
+        </div>
+        <button onclick="app.startSession()" class="w-full max-w-xs bg-white text-black py-4 rounded-2xl font-black text-lg active:scale-95 transition-transform">ENTER</button>
     </div>
 
-    <!-- QR MODAL -->
-    <div id="modal-qr" class="fixed inset-0 z-[90] hidden bg-black/95 backdrop-blur flex items-center justify-center p-6" onclick="app.toggleQR()">
-        <div class="bg-white p-8 rounded-[32px] w-full max-w-xs text-center" onclick="event.stopPropagation()">
+    <!-- QR -->
+    <div id="modal-qr" class="fixed inset-0 z-[90] hidden bg-black/95 flex items-center justify-center p-6" onclick="app.toggleQR()">
+        <div class="bg-white p-8 rounded-[32px] text-center" onclick="event.stopPropagation()">
             <div id="qrcode" class="flex justify-center p-2 mb-4"></div>
-            <p class="text-black font-bold text-lg">Scan to Join</p>
+            <p class="text-black font-bold">Scan to Join</p>
         </div>
     </div>
 
     <!-- TOAST -->
-    <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-sm font-bold opacity-0 transition-all pointer-events-none translate-y-4 z-[200]">
-        Notification
-    </div>
+    <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-sm font-bold opacity-0 transition-all pointer-events-none translate-y-4 z-[200]">Notification</div>
 
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         const app = {
-            // State
             peer: null, conn: null, connections: [], myId: null, hostId: null,
-            username: 'Ghost', isHost: false, map: null, markers: {}, trails: {},
-            battery: 100, rallyMarker: null, isLight: false, layerMode: 'dark', layers: {},
+            username: 'Ghost', isHost: false, map: null, markers: {}, rallyMarker: null,
+            battery: 100, isLight: false, layerMode: 'dark', layers: {},
 
             init: () => {
-                // Viewport & Battery
                 const setVh = () => document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
                 window.addEventListener('resize', setVh); setVh();
-                if(navigator.getBattery) navigator.getBattery().then(b => {
-                    app.battery = Math.round(b.level*100);
-                    b.addEventListener('levelchange', () => app.battery = Math.round(b.level*100));
-                });
+                if(navigator.getBattery) navigator.getBattery().then(b => { app.battery = Math.round(b.level*100); b.addEventListener('levelchange', () => app.battery = Math.round(b.level*100)); });
 
-                // Restore
-                const saved = JSON.parse(localStorage.getItem('burner_v12'));
+                const saved = JSON.parse(localStorage.getItem('burner_v13'));
                 const urlParams = new URLSearchParams(window.location.search);
                 const joinId = urlParams.get('join');
-                if (saved && (!joinId || joinId === saved.hostId)) {
-                    app.username = saved.username; app.hostId = saved.hostId;
-                    document.getElementById('username-input').value = app.username;
-                    document.getElementById('restore-msg').classList.remove('hidden');
-                }
+                if (saved && (!joinId || joinId === saved.hostId)) { app.username = saved.username; app.hostId = saved.hostId; document.getElementById('username-input').value = app.username; }
                 if (joinId) app.hostId = joinId;
                 app.isHost = !app.hostId;
                 if(app.isHost) document.getElementById('btn-focus').classList.remove('hidden');
@@ -283,71 +200,49 @@
                 const input = document.getElementById('username-input');
                 if(!input.value.trim()) return input.focus();
                 app.username = input.value.trim();
-                
                 document.getElementById('modal-onboarding').style.opacity = '0';
                 setTimeout(() => document.getElementById('modal-onboarding').style.display = 'none', 500);
-                
                 document.getElementById('view-map').style.visibility = 'visible';
                 app.initMap(); app.initPeer(); app.startLocation();
-                
-                localStorage.setItem('burner_v12', JSON.stringify({ username: app.username, hostId: app.hostId }));
+                localStorage.setItem('burner_v13', JSON.stringify({ username: app.username, hostId: app.hostId }));
             },
 
             initMap: () => {
                 if(app.map) return;
                 app.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([20, 0], 2);
-                
-                // Layers
                 app.layers.dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, tileSize: 512, zoomOffset: -1 });
                 app.layers.light = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, tileSize: 512, zoomOffset: -1 });
                 app.layers.sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, tileSize: 512, zoomOffset: -1 });
-                
-                app.layers.dark.addTo(app.map); // Default
-
+                app.layers.dark.addTo(app.map);
                 if(app.isHost) {
                     document.getElementById('host-hint').style.opacity = '1';
-                    app.map.on('dblclick', (e) => {
-                        app.setRally(e.latlng);
-                        app.send({ type: 'rally', lat: e.latlng.lat, lng: e.latlng.lng });
-                    });
+                    app.map.on('dblclick', (e) => { app.setRally(e.latlng); app.send({ type: 'rally', lat: e.latlng.lat, lng: e.latlng.lng }); });
                 }
             },
 
             toggleTheme: () => {
                 app.isLight = !app.isLight;
-                const body = document.body;
-                const icon = document.getElementById('theme-icon');
-                
-                if(app.isLight) {
-                    body.classList.add('light-mode');
-                    icon.className = "fa-solid fa-moon";
-                    if(app.layerMode === 'dark') {
-                        app.map.removeLayer(app.layers.dark);
-                        app.layers.light.addTo(app.map);
-                        app.layerMode = 'light';
-                    }
-                } else {
-                    body.classList.remove('light-mode');
-                    icon.className = "fa-solid fa-sun";
-                    if(app.layerMode === 'light') {
-                        app.map.removeLayer(app.layers.light);
-                        app.layers.dark.addTo(app.map);
-                        app.layerMode = 'dark';
-                    }
+                document.body.className = app.isLight ? 'light' : 'dark';
+                document.getElementById('theme-icon').className = app.isLight ? "fa-solid fa-moon" : "fa-solid fa-sun";
+                if(app.layerMode !== 'sat') {
+                    if(app.isLight) { app.map.removeLayer(app.layers.dark); app.layers.light.addTo(app.map); app.layerMode = 'light'; }
+                    else { app.map.removeLayer(app.layers.light); app.layers.dark.addTo(app.map); app.layerMode = 'dark'; }
                 }
             },
 
             toggleSatellite: () => {
                 if(app.layerMode === 'sat') {
                     app.map.removeLayer(app.layers.sat);
-                    if(app.isLight) { app.layers.light.addTo(app.map); app.layerMode = 'light'; }
-                    else { app.layers.dark.addTo(app.map); app.layerMode = 'dark'; }
+                    if(app.isLight) { app.layers.light.addTo(app.map); app.layerMode = 'light'; } else { app.layers.dark.addTo(app.map); app.layerMode = 'dark'; }
                 } else {
-                    if(app.layerMode === 'dark') app.map.removeLayer(app.layers.dark);
-                    else app.map.removeLayer(app.layers.light);
-                    app.layers.sat.addTo(app.map);
-                    app.layerMode = 'sat';
+                    if(app.layerMode === 'dark') app.map.removeLayer(app.layers.dark); else app.map.removeLayer(app.layers.light);
+                    app.layers.sat.addTo(app.map); app.layerMode = 'sat';
                 }
+            },
+
+            toggleStrobe: () => {
+                const s = document.getElementById('strobe-overlay');
+                s.style.display = s.style.display === 'block' ? 'none' : 'block';
             },
 
             initPeer: () => {
@@ -381,7 +276,6 @@
             },
 
             broadcast: (data, exclude) => app.connections.forEach(c => { if(c.peer !== exclude && c.open) c.send(data); }),
-            
             send: (data) => {
                 data = { ...data, username: app.username, from: app.myId, battery: app.battery };
                 if(app.isHost) { if(data.type !== 'ping') app.handleData(data); app.broadcast(data); }
@@ -394,22 +288,25 @@
                     case 'chat': app.addChat(data); break;
                     case 'sonar': app.triggerSonar(data); break;
                     case 'rally': app.setRally(data); break;
-                    case 'focus': app.map.flyTo([data.lat, data.lng], 18); app.showToast('Host Forced Focus'); break;
+                    case 'focus': 
+                        app.map.flyTo([data.lat, data.lng], 18); 
+                        app.showToast('Host Forced Focus'); 
+                        app.notify('alert');
+                        break;
                 }
             },
 
             startLocation: () => {
                 navigator.geolocation.watchPosition(pos => {
-                    const { latitude: lat, longitude: lng } = pos.coords;
-                    app.myLocation = { lat, lng };
-                    app.updateMarker({ from: app.myId, lat, lng, username: 'You', isSelf: true, battery: app.battery });
+                    const { latitude: lat, longitude: lng, heading } = pos.coords;
+                    app.myLocation = { lat, lng, heading };
+                    app.updateMarker({ from: app.myId, lat, lng, heading, username: 'You', isSelf: true, battery: app.battery });
                     if(!app.centered) { app.map.setView([lat, lng], 16); app.centered = true; }
-                    app.send({ type: 'loc', lat, lng });
+                    app.send({ type: 'loc', lat, lng, heading });
                 }, null, { enableHighAccuracy: true });
             },
 
             updateMarker: (d) => {
-                // Distance Calc
                 let dist = '';
                 if(app.myLocation && !d.isSelf) {
                     const m = app.map.distance([app.myLocation.lat, app.myLocation.lng], [d.lat, d.lng]);
@@ -418,30 +315,25 @@
 
                 if(app.markers[d.from]) {
                     app.markers[d.from].setLatLng([d.lat, d.lng]);
-                    // Ghost Trail
-                    if(!app.trails[d.from]) app.trails[d.from] = L.polyline([], { color: d.isSelf?'#3b82f6':'#94a3b8', weight: 2, opacity: 0.6 }).addTo(app.map);
-                    app.trails[d.from].addLatLng([d.lat, d.lng]);
-                    // Update Dashboard
+                    // Rotation for heading
+                    if(d.heading) {
+                        const arrow = document.getElementById(`arrow-${d.from}`);
+                        if(arrow) arrow.style.transform = `translateX(-50%) rotate(${d.heading}deg)`;
+                    }
+                    // Update Dash
                     const dash = document.getElementById(`dash-${d.from}`);
-                    if(dash) dash.innerHTML = `
-                        <span class="font-bold text-[10px] uppercase">${d.username}</span>
-                        <div class="flex gap-2 text-[9px] opacity-80">
-                            <span><i class="fa-solid fa-bolt text-yellow-500"></i> ${d.battery || '?'}%</span>
-                            ${dist ? `<span><i class="fa-solid fa-ruler-horizontal text-blue-400"></i> ${dist}</span>` : ''}
-                        </div>
-                    `;
+                    if(dash) dash.innerHTML = `<span class="font-bold text-[10px] uppercase">${d.username}</span><div class="flex gap-2 text-[9px] opacity-80"><span><i class="fa-solid fa-bolt text-yellow-500"></i> ${d.battery||'?'}%</span>${dist?`<span>${dist}</span>`:''}</div>`;
                 } else {
                     const color = d.isSelf ? '#3b82f6' : '#fff';
                     const html = `
                         <div class="relative w-10 h-10 flex flex-col items-center justify-center">
+                            <div class="marker-arrow" id="arrow-${d.from}" style="border-bottom-color:${color}"></div>
                             <div class="w-full h-full rounded-full bg-black border-[3px] shadow-lg relative z-10 flex items-center justify-center font-bold text-xs text-white" style="border-color:${color}; background:${d.isSelf?'#3b82f6':'#000'}">
                                 ${d.username.charAt(0)}
                             </div>
-                            <div id="dash-${d.from}" class="marker-dash text-[var(--text-main)]">
+                            <div id="dash-${d.from}" class="absolute bottom-[-35px] bg-black/80 backdrop-blur px-2 py-1 rounded border border-white/20 text-white flex flex-col items-center whitespace-nowrap z-[1000]">
                                 <span class="font-bold text-[10px] uppercase">${d.username}</span>
-                                <div class="flex gap-2 text-[9px] opacity-80">
-                                    <span><i class="fa-solid fa-bolt text-yellow-500"></i> ${d.battery || '?'}%</span>
-                                </div>
+                                <div class="flex gap-2 text-[9px] opacity-80"><span><i class="fa-solid fa-bolt text-yellow-500"></i> ${d.battery||'?'}%</span></div>
                             </div>
                         </div>`;
                     const icon = L.divIcon({ className: 'bg-transparent', html, iconSize: [40, 40], iconAnchor: [20, 20] });
@@ -457,7 +349,6 @@
                 }
             },
 
-            // Basic Utils
             setRally: (coords) => {
                 if(app.rallyMarker) app.map.removeLayer(app.rallyMarker);
                 const icon = L.divIcon({ html: '<div class="text-4xl filter drop-shadow-lg">🚩</div>', className: 'bg-transparent', iconSize: [40,40], iconAnchor: [20,40] });
@@ -475,10 +366,15 @@
                 const isMe = d.from === app.myId;
                 const div = document.createElement('div');
                 div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
-                div.innerHTML = `<div class="${isMe?'bg-blue-600 text-white':'glass'} px-5 py-3 rounded-2xl max-w-[85%] text-sm font-medium border border-white/10">${d.msg}</div><span class="text-[9px] opacity-50 mt-1 px-2 font-bold uppercase">${d.username}</span>`;
+                div.innerHTML = `<div class="${isMe?'bg-blue-600 text-white':'glass'} px-5 py-3 rounded-2xl max-w-[85%] text-sm font-medium border border-white/10 shadow">${d.msg}</div><span class="text-[9px] opacity-50 mt-1 px-2 font-bold uppercase">${d.username}</span>`;
                 list.appendChild(div);
                 document.getElementById('chat-scroll').scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
-                if(!isMe && document.getElementById('view-chat').style.transform !== 'translate3d(0px, 0px, 0px)') { document.getElementById('unread-dot').classList.remove('hidden'); app.showToast(`Msg: ${d.username}`); }
+                if(!isMe && document.getElementById('view-chat').style.transform !== 'translate3d(0px, 0px, 0px)') { document.getElementById('unread-dot').classList.remove('hidden'); app.showToast(`Msg: ${d.username}`); app.notify('msg'); }
+            },
+
+            notify: (type) => {
+                if(type === 'msg') document.getElementById('sound-msg').play().catch(()=>{});
+                if(type === 'alert') { document.getElementById('sound-alert').play().catch(()=>{}); if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }
             },
             
             switchTab: (tab) => {
@@ -487,16 +383,11 @@
                 else { chat.style.transform = 'translate3d(0, 0, 0)'; document.getElementById('btn-chat').classList.add('active'); document.getElementById('btn-map').classList.remove('active'); document.getElementById('unread-dot').classList.add('hidden'); }
             },
 
-            toggleQR: () => {
-                const modal = document.getElementById('modal-qr');
-                if(modal.classList.contains('hidden')) { modal.classList.remove('hidden'); document.getElementById('qrcode').innerHTML = ""; new QRCode(document.getElementById('qrcode'), { text: window.location.href, width: 220, height: 220 }); }
-                else modal.classList.add('hidden');
-            },
-
+            toggleQR: () => { const m = document.getElementById('modal-qr'); if(m.classList.contains('hidden')) { m.classList.remove('hidden'); document.getElementById('qrcode').innerHTML=""; new QRCode(document.getElementById('qrcode'),{text:window.location.href,width:220,height:220}); } else m.classList.add('hidden'); },
             copyLink: () => { navigator.clipboard.writeText(window.location.href).then(() => app.showToast('Copied')); },
             updateStatus: (type, msg) => { document.getElementById('conn-status').innerText = msg; document.getElementById('status-dot').className = `w-2 h-2 rounded-full shadow-lg ${type=='online'?'bg-emerald-500':type=='wait'?'bg-amber-400':'bg-red-500'}`; },
             showToast: (msg) => { const t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = '1'; t.style.transform = 'translate(-50%, 0)'; setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, 16px)'; }, 2500); },
-            burn: () => { if(confirm('Burn Session?')) { localStorage.removeItem('burner_v12'); window.location.href = window.location.pathname; }}
+            burn: () => { if(confirm('Burn Session?')) { localStorage.removeItem('burner_v13'); window.location.href = window.location.pathname; }}
         };
         window.onload = app.init;
     </script>
