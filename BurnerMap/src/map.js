@@ -17,7 +17,6 @@ Object.assign(app, {
             app.map.on('click', (e) => {
                 if (app.waypointAddMode) {
                     app.addWaypoint(e.latlng);
-                    app.toggleWaypointMode(); // Exit mode after adding
                 }
             });
         }
@@ -37,18 +36,45 @@ Object.assign(app, {
     },
 
     addWaypoint: (latlng) => {
-        const name = prompt("Enter POI Name:", "New POI");
-        if (!name) return;
-        const waypoint = {
-            id: 'wp_' + Date.now(),
-            name: name,
-            lat: latlng.lat,
-            lng: latlng.lng,
-            createdBy: app.myId,
+        const modal = document.getElementById('modal-waypoint-name');
+        const input = document.getElementById('waypoint-name-input');
+        const saveBtn = document.getElementById('waypoint-save-btn');
+        
+        input.value = '';
+        modal.classList.remove('hidden');
+        input.focus();
+
+        saveBtn.onclick = () => {
+            const name = input.value.trim();
+            if (!name) return;
+
+            const waypoint = {
+                id: 'wp_' + Date.now(),
+                name: name,
+                lat: latlng.lat,
+                lng: latlng.lng,
+                createdBy: app.myId,
+            };
+            app.waypoints.push(waypoint);
+            app.drawWaypoint(waypoint);
+            app.send({ type: 'waypoint_new', waypoint: waypoint });
+
+            modal.classList.add('hidden');
+            if (app.waypointAddMode) {
+                app.toggleWaypointMode(); // Exit mode
+            }
         };
-        app.waypoints.push(waypoint);
-        app.drawWaypoint(waypoint);
-        app.send({ type: 'waypoint_new', waypoint: waypoint });
+        // Also handle clicking outside the dialog to cancel
+        const modalClickHandler = (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                if (app.waypointAddMode) {
+                    app.toggleWaypointMode(); // Exit mode
+                }
+                modal.removeEventListener('click', modalClickHandler);
+            }
+        };
+        modal.addEventListener('click', modalClickHandler);
     },
 
     drawWaypoint: (wp) => {
@@ -116,6 +142,22 @@ Object.assign(app, {
     deleteWaypoint: (id) => {
         app.removeWaypoint(id);
         app.send({ type: 'waypoint_delete', id: id });
+    },
+
+    panToEntity: (type, id) => {
+        let marker;
+        if (type === 'rally') {
+            marker = app.rallyMarker;
+        } else {
+            marker = app.markers[id];
+        }
+        
+        if (marker) {
+            app.map.flyTo(marker.getLatLng(), 18);
+            app.switchTab('map');
+        } else {
+            app.showToast('Location not available.');
+        }
     },
     
     toggleSatellite: () => {
@@ -215,6 +257,18 @@ Object.assign(app, {
         const icon = L.divIcon({ html: '<div class="text-4xl filter drop-shadow-lg">🚩</div>', className: 'bg-transparent', iconSize: [40,40], iconAnchor: [20,40] });
         app.rallyMarker = L.marker([coords.lat, coords.lng], { icon }).addTo(app.map);
         app.showToast('Rally Updated');
+        app.rallyMarker.on('click', () => app.showRallyActions());
+    },
+
+    showRallyActions: () => {
+        const content = `<h2 class="text-2xl font-bold">Rally Point</h2>`;
+        const buttons = [
+            { label: 'Chat about Rally', action: () => app.startPrivateChat({ from: 'rally', username: 'Rally Point', isRally: true }), class: 'bg-orange-500 text-white' },
+        ];
+        if (app.isHost) {
+            buttons.push({ label: 'Remove Rally', action: () => { if(app.rallyMarker) { app.map.removeLayer(app.rallyMarker); app.rallyMarker = null; } app.send({type: 'rally_delete'})}, class: 'bg-red-600 text-white' });
+        }
+        app.showActions(content, buttons);
     },
 
     removeMarker: (id) => { if(app.markers[id]) { app.map.removeLayer(app.markers[id]); delete app.markers[id]; } },

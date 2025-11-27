@@ -21,6 +21,7 @@ Object.assign(app, {
 
     handleHostConn: (conn) => {
         app.connections.push(conn);
+        app.users[conn.peer] = { username: conn.metadata.username };
         conn.on('open', () => {
             // Send existing rally point and waypoints to new user
             if(app.rallyMarker) conn.send({ type: 'rally', lat: app.rallyMarker.getLatLng().lat, lng: app.rallyMarker.getLatLng().lng });
@@ -44,7 +45,12 @@ Object.assign(app, {
                 app.broadcast(data, conn.peer); // Host broadcasts to others
             }
         });
-        conn.on('close', () => { app.connections = app.connections.filter(c => c.peer !== conn.peer); app.removeMarker(conn.peer); app.broadcast({ type: 'disconnect', from: conn.peer }); });
+        conn.on('close', () => { 
+            app.connections = app.connections.filter(c => c.peer !== conn.peer); 
+            app.removeMarker(conn.peer); 
+            app.broadcast({ type: 'disconnect', from: conn.peer });
+            delete app.users[conn.peer];
+        });
     },
 
     broadcast: (data, exclude) => app.connections.forEach(c => { if(c.peer !== exclude && c.open) c.send(data); }),
@@ -53,7 +59,7 @@ Object.assign(app, {
         data = { ...data, username: app.username, from: app.myId, battery: app.battery };
         
         // Show own message in UI immediately
-        if (data.type === 'chat' || data.type === 'private_chat') {
+        if (data.type === 'chat' || data.type === 'private_chat' || data.type === 'waypoint_chat' || data.type === 'rally_chat') {
             app.handleData(data);
         }
 
@@ -64,7 +70,7 @@ Object.assign(app, {
                     recipient.send(data);
                 }
             } else { // Broadcast from host
-                if (data.type !== 'ping' && data.type !== 'chat') { // prevent re-displaying own public chat
+                if (data.type !== 'ping' && !data.type.includes('chat')) { // prevent re-displaying own public chat
                     app.handleData(data);
                 }
                 app.broadcast(data);
@@ -75,6 +81,11 @@ Object.assign(app, {
     },
 
     handleData: (data) => {
+        // Keep user list updated
+        if (data.from && data.username) {
+            app.users[data.from] = { username: data.username };
+        }
+
         switch(data.type) {
             case 'loc': app.updateMarker(data); break;
             case 'chat': app.addChat(data); break;
@@ -86,11 +97,16 @@ Object.assign(app, {
                 app.showToast('Host Forced Focus'); 
                 app.notify('alert');
                 break;
-            case 'disconnect': app.removeMarker(data.from); break;
+            case 'disconnect': 
+                app.removeMarker(data.from); 
+                delete app.users[data.from];
+                break;
             case 'waypoint_new': app.drawWaypoint(data.waypoint); if(!app.waypoints.find(w => w.id === data.waypoint.id)) app.waypoints.push(data.waypoint); break;
             case 'waypoint_update': app.updateWaypoint(data.waypoint); break;
             case 'waypoint_delete': app.removeWaypoint(data.id); break;
             case 'waypoint_chat': app.addChat(data); break;
+            case 'rally_chat': app.addChat(data); break;
+            case 'rally_delete': if (app.rallyMarker) { app.map.removeLayer(app.rallyMarker); app.rallyMarker = null; } break;
         }
     },
 
@@ -103,7 +119,9 @@ Object.assign(app, {
 
         let msgType = 'chat';
         if (app.privateChat) {
-            msgType = app.privateChat.isWaypoint ? 'waypoint_chat' : 'private_chat';
+            if (app.privateChat.isWaypoint) msgType = 'waypoint_chat';
+            else if (app.privateChat.isRally) msgType = 'rally_chat';
+            else msgType = 'private_chat';
         }
 
         const msg = {

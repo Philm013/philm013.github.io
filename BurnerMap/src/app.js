@@ -35,8 +35,13 @@ Object.assign(app, {
         return url.href;
     },
 
-    startPrivateChat: (user) => {
-        app.privateChat = { id: user.from, username: user.username, isWaypoint: !!user.isWaypoint };
+    startPrivateChat: (target) => {
+        app.privateChat = { 
+            id: target.from, 
+            username: target.username, 
+            isWaypoint: !!target.isWaypoint,
+            isRally: !!target.isRally,
+        };
         document.getElementById('msg-list').innerHTML = '';
         app.switchTab('chat');
         app.updateChatUI();

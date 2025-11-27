@@ -20,22 +20,21 @@ Object.assign(app, {
         const isMe = d.from === app.myId;
 
         // Message filtering logic
-        if (app.privateChat) { // We are in a private/waypoint chat
+        if (app.privateChat) { // We are in a private/waypoint/rally chat
             if (d.to !== app.privateChat.id) {
-                // This message is not for the current private/waypoint chat
-                // But if it's a new private message, notify user and maybe auto-switch
-                if (d.type === 'private_chat' && !isMe) {
-                    app.showToast(`New private msg from ${d.username}`);
+                // This message is not for the current private chat
+                if ((d.type === 'private_chat' || d.type === 'waypoint_chat' || d.type === 'rally_chat') && !isMe) {
+                    app.showToast(`New msg from ${d.username}`);
                     app.notify('msg');
                 }
                 return; // Don't display
             }
         } else { // We are in public chat
             if (d.type !== 'chat') {
-                // Incoming private/waypoint message while in public chat
+                // Incoming private message while in public chat
                 if (!isMe) {
-                    const chatType = d.type === 'private_chat' ? 'private msg' : 'waypoint msg';
-                    app.showToast(`New ${chatType} from ${d.username}`);
+                    const chatType = d.type.replace('_', ' ');
+                    app.showToast(`New ${chatType}`);
                     app.notify('msg');
                     document.getElementById('unread-dot').classList.remove('hidden');
                 }
@@ -52,9 +51,29 @@ Object.assign(app, {
             indicator = '<span class="font-bold text-red-400 text-[10px]">[PRIVATE] </span>';
         } else if (d.type === 'waypoint_chat') {
             indicator = '<span class="font-bold text-green-400 text-[10px]">[POI] </span>';
+        } else if (d.type === 'rally_chat') {
+            indicator = '<span class="font-bold text-orange-500 text-[10px]">[RALLY] </span>';
+        }
+
+        // Mention parsing and rendering
+        let processedMsg = d.msg;
+        if(d.type === 'chat') { // Only process mentions in public chat
+            const mentions = [];
+            Object.entries(app.users).forEach(([id, user]) => mentions.push({id: id, name: user.username, type: 'user'}));
+            app.waypoints.forEach(wp => mentions.push({id: wp.id, name: wp.name, type: 'waypoint'}));
+            if(app.rallyMarker) mentions.push({id: 'rally', name: 'Rally Point', type: 'rally'});
+            
+            // Sort by name length, descending, to match longer names first
+            mentions.sort((a, b) => b.name.length - a.name.length);
+
+            mentions.forEach(entity => {
+                // Use a regex to avoid replacing parts of words or already processed mentions
+                const regex = new RegExp(`@${entity.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}(?!\\w)`, 'g');
+                processedMsg = processedMsg.replace(regex, `<span class="mention" onclick="app.panToEntity('${entity.type}', '${entity.id}')">@${entity.name}</span>`);
+            });
         }
         
-        div.innerHTML = `<div class="${isMe ? 'bg-blue-600 text-white' : 'glass'} px-5 py-3 rounded-2xl max-w-[85%] text-sm font-medium border border-white/10 shadow">${indicator}${d.msg}</div><span class="text-[9px] opacity-50 mt-1 px-2 font-bold uppercase">${d.username}</span>`;
+        div.innerHTML = `<div class="${isMe ? 'bg-blue-600 text-white' : 'glass'} px-5 py-3 rounded-2xl max-w-[85%] text-sm font-medium border border-white/10 shadow">${indicator}${processedMsg}</div><span class="text-[9px] opacity-50 mt-1 px-2 font-bold uppercase">${d.username}</span>`;
         list.appendChild(div);
         document.getElementById('chat-scroll').scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
 
@@ -111,10 +130,32 @@ Object.assign(app, {
         const header = document.getElementById('chat-header');
         const scroll = document.getElementById('chat-scroll');
         if (app.privateChat) {
-            const title = app.privateChat.isWaypoint ? `Waypoint Chat: ${app.privateChat.username}` : `Private chat with ${app.privateChat.username}`;
+            let title = `Chat`;
+            let panAction = '';
+            let targetEntity = null;
+
+            if (app.privateChat.isRally) {
+                title = `Rally Point Chat`;
+                if (app.rallyMarker) targetEntity = app.rallyMarker;
+            } else if (app.privateChat.isWaypoint) {
+                title = `Waypoint Chat: ${app.privateChat.username}`;
+                targetEntity = app.markers[app.privateChat.id];
+            } else { // private user chat
+                title = `Private chat with ${app.privateChat.username}`;
+                targetEntity = app.markers[app.privateChat.id];
+            }
+
+            if (targetEntity) {
+                const latlng = targetEntity.getLatLng();
+                panAction = `app.map.flyTo([${latlng.lat}, ${latlng.lng}], 18); app.switchTab('map');`;
+            }
+
             header.innerHTML = `
                 <div class="flex items-center justify-between">
-                    <span class="font-bold">${title}</span>
+                    <span class="font-bold ${panAction ? 'cursor-pointer' : ''}" onclick="${panAction || ''}">
+                        ${title} 
+                        ${panAction ? '<i class="fa-solid fa-crosshairs text-xs ml-2"></i>' : ''}
+                    </span>
                     <button onclick="app.exitPrivateChat()" class="text-xs font-bold uppercase">Exit</button>
                 </div>
             `;
