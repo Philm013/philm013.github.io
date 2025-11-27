@@ -48,6 +48,7 @@
         <!-- OPS STACK (Controls) -->
         <div class="ops-stack">
             <button onclick="app.toggleSatellite()" class="ops-btn glass text-green-400" title="Satellite Mode"><i class="fa-solid fa-layer-group"></i></button>
+            <button onclick="app.toggleWaypointMode()" id="btn-poi" class="ops-btn glass text-yellow-500" title="Add POI"><i class="fa-solid fa-map-pin"></i></button>
             <button onclick="app.sendSonar()" class="ops-btn glass text-red-500" title="Sonar Ping"><i class="fa-solid fa-bullseye"></i></button>
             <button id="btn-focus" onclick="app.forceFocus()" class="hidden ops-btn bg-blue-600 text-white shadow-lg shadow-blue-500/50" title="Force Group Focus"><i class="fa-solid fa-magnet"></i></button>
         </div>
@@ -57,6 +58,7 @@
 
     <!-- CHAT VIEW -->
     <div id="view-chat">
+        <div id="chat-header" class="absolute top-0 left-0 right-0 z-30 p-4 glass hidden"></div>
         <div id="chat-scroll" class="no-scrollbar">
             <div id="msg-list" class="flex flex-col gap-4"></div>
         </div>
@@ -78,6 +80,15 @@
         <button onclick="app.burn()" class="nav-btn text-red-500"><i class="fa-solid fa-power-off"></i></button>
     </nav>
 
+    <!-- ACTION SHEET -->
+    <div id="modal-actions" class="fixed inset-0 z-[60] bg-black/60 hidden" onclick="app.hideActions()">
+        <div id="action-sheet" class="action-sheet glass">
+            <div class="w-12 h-1.5 bg-gray-500 rounded-full mx-auto mb-4"></div>
+            <div id="action-content" class="text-center"></div>
+            <div id="action-buttons" class="flex flex-col gap-2 mt-4"></div>
+        </div>
+    </div>
+
     <!-- ONBOARDING -->
     <div id="modal-onboarding" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 transition-opacity duration-500">
         <div class="w-24 h-24 bg-gradient-to-tr from-gray-800 to-gray-900 rounded-3xl flex items-center justify-center shadow-2xl border border-white/10 mb-8">
@@ -92,11 +103,12 @@
     </div>
 
     <!-- QR -->
-    <div id="modal-qr" class="fixed inset-0 z-[90] hidden bg-black/95 flex items-center justify-center p-6" onclick="app.toggleQR()">
+    <div id="modal-qr" class="fixed inset-0 z-[90] hidden bg-black/95 flex flex-col items-center justify-center p-6 gap-4" onclick="app.toggleQR()">
         <div class="bg-white p-8 rounded-[32px] text-center" onclick="event.stopPropagation()">
             <div id="qrcode" class="flex justify-center p-2 mb-4"></div>
             <p class="text-black font-bold">Scan to Join</p>
         </div>
+        <button onclick="app.copyLink(event)" class="bg-white text-black px-6 py-3 rounded-full font-bold text-lg">Copy Link</button>
     </div>
 
     <!-- TOAST -->

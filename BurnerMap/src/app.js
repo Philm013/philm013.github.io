@@ -25,7 +25,28 @@ Object.assign(app, {
         localStorage.setItem('burner_v13', JSON.stringify({ username: app.username, hostId: app.hostId }));
     },
 
-    burn: () => { if(confirm('Burn Session?')) { localStorage.removeItem('burner_v13'); window.location.href = window.location.pathname; }}
+    burn: () => { if(confirm('Burn Session?')) { localStorage.removeItem('burner_v13'); window.location.href = window.location.pathname; }},
+
+    getShareUrl: () => {
+        const joinId = app.isHost ? app.myId : app.hostId;
+        if (!joinId) return null;
+        const url = new URL(window.location.pathname, window.location.origin);
+        url.searchParams.set('join', joinId);
+        return url.href;
+    },
+
+    startPrivateChat: (user) => {
+        app.privateChat = { id: user.from, username: user.username, isWaypoint: !!user.isWaypoint };
+        document.getElementById('msg-list').innerHTML = '';
+        app.switchTab('chat');
+        app.updateChatUI();
+    },
+
+    exitPrivateChat: () => {
+        app.privateChat = null;
+        document.getElementById('msg-list').innerHTML = '';
+        app.updateChatUI();
+    }
 });
 
 window.onload = app.init;
