@@ -1,15 +1,15 @@
 <!-- 
-  BURNERMAP v5.0: Diagnostic Permission Handling
-  - Checks Permission Status API before asking
-  - Requests Location FIRST (on click)
-  - Increased Timeouts
+  BURNERMAP v6.0: The Definitive Rebuild
+  - Core Logic restored from the working v2.0
+  - Advanced features (Persistence, Avatars, etc.) carefully re-integrated
+  - Layout fixes from v3.1 are preserved
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>BurnerMap v5.0</title>
+    <title>BurnerMap v6.0</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,30 +27,24 @@
         :root { --app-height: 100dvh; }
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; height: var(--app-height); width: 100vw; overflow: hidden; overscroll-behavior: none; }
         
-        /* Layout Engine (v3.1 Fixes) */
         #app { height: 100%; width: 100%; position: relative; }
         .view-section { position: absolute; inset: 0; height: 100%; width: 100%; transition: opacity 0.3s ease; }
         .view-active { z-index: 20; opacity: 1; pointer-events: auto; }
         .view-hidden { z-index: 0; opacity: 0; pointer-events: none; }
 
-        /* Map */
         #map { height: 100%; width: 100%; background: #0f172a; }
         
-        /* Safe Areas */
         .pt-safe { padding-top: max(env(safe-area-inset-top), 20px); }
         .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 20px); }
 
-        /* UI Elements */
         .glass-header { background: linear-gradient(to bottom, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0) 100%); }
         .glass-nav { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
 
-        /* Markers */
         .custom-marker { border: 2px solid white; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; }
         .pulse-dot::before { content: ''; position: absolute; width: 100%; height: 100%; background: inherit; border-radius: 50%; z-index: -1; animation: pulse-ring 2s infinite; }
         @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(2.2); opacity: 0; } }
         
-        /* Avatar Selection */
         .avatar-option.selected { border-color: #3b82f6; background-color: rgba(59, 130, 246, 0.2); transform: scale(1.1); }
     </style>
 </head>
@@ -65,7 +59,6 @@
                     <div id="heartbeat-icon" class="text-[10px] text-slate-500"><i class="fa-solid fa-signal"></i></div>
                     <span id="connection-status" class="text-[10px] font-bold tracking-wider text-slate-300 uppercase">OFFLINE</span>
                 </div>
-                <!-- Timer Badge -->
                 <div id="timer-badge" class="hidden bg-red-900/80 backdrop-blur px-3 py-1.5 rounded-full border border-red-500/30 flex items-center gap-2 shadow-lg w-max animate-pulse">
                     <i class="fa-solid fa-clock text-red-200 text-[10px]"></i>
                     <span id="session-timer" class="text-[10px] font-mono font-bold text-red-100">00:00</span>
@@ -95,12 +88,7 @@
                     <p class="text-xs text-slate-400 uppercase tracking-wide">Encrypted P2P Mesh</p>
                 </div>
             </div>
-            <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-                <div class="text-center mt-4 opacity-30">
-                    <i class="fa-solid fa-comments text-4xl mb-2"></i>
-                    <p class="text-xs">Chat History Started</p>
-                </div>
-            </div>
+            <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar"></div>
             <div class="p-3 bg-slate-800 border-t border-white/5 shrink-0 pb-[100px]">
                 <form onsubmit="app.sendMessage(event)" class="flex gap-2">
                     <input type="text" id="msg-input" placeholder="Type message..." autocomplete="off" class="flex-1 bg-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
@@ -132,7 +120,7 @@
                 <div class="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
                     <i class="fa-solid fa-map text-3xl text-white"></i>
                 </div>
-                <h1 class="text-2xl font-bold text-white mb-1">BurnerMap v5.0</h1>
+                <h1 class="text-2xl font-bold text-white mb-1">BurnerMap v6.0</h1>
                 <p class="text-xs text-slate-400 mb-6">Secure • Ephemeral • Real-time</p>
                 
                 <div class="mb-4">
@@ -141,12 +129,10 @@
 
                 <input type="text" id="username-input" class="w-full bg-slate-800 text-white px-4 py-3 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold border border-white/5" placeholder="Enter Alias">
 
-                <!-- Action Button -->
                 <button id="btn-start" onclick="app.startSession()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
                     Start Session
                 </button>
                 
-                <!-- Reset Button -->
                 <button onclick="app.hardReset()" class="mt-6 text-[10px] text-slate-500 hover:text-red-400 underline">
                     App Stuck? Factory Reset
                 </button>
@@ -160,14 +146,6 @@
                     <h2 class="text-lg font-bold text-white">Host Controls</h2>
                     <button onclick="app.toggleSettings()" class="text-slate-400 p-2"><i class="fa-solid fa-xmark text-xl"></i></button>
                 </div>
-                
-                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Session Timer</label>
-                <div class="grid grid-cols-3 gap-2 mb-6">
-                    <button onclick="app.setExpiry(30)" class="bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg text-xs font-bold">30m</button>
-                    <button onclick="app.setExpiry(60)" class="bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg text-xs font-bold">1h</button>
-                    <button onclick="app.setExpiry(240)" class="bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg text-xs font-bold">4h</button>
-                </div>
-                
                 <button onclick="app.resetRallyPoint()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl font-bold text-sm">
                     <i class="fa-solid fa-flag-checkered mr-2"></i> Clear Rally Point
                 </button>
@@ -205,7 +183,6 @@
             avatars: ['fa-user-astronaut', 'fa-ghost', 'fa-robot', 'fa-dragon', 'fa-cat', 'fa-dog', 'fa-frog', 'fa-spider', 'fa-crow', 'fa-mask'],
 
             init: function() {
-                // Viewport Height Fix
                 const setVh = () => document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
                 window.addEventListener('resize', setVh);
                 setVh();
@@ -213,7 +190,6 @@
                 this.renderAvatars();
                 this.initMap();
                 
-                // Persistence Logic
                 const saved = JSON.parse(localStorage.getItem('burner_state'));
                 const urlParams = new URLSearchParams(window.location.search);
                 this.hostId = urlParams.get('join');
@@ -221,9 +197,7 @@
                 if (saved && (!this.hostId || this.hostId === saved.hostId)) {
                     this.username = saved.username;
                     this.avatar = saved.avatar;
-                    this.color = saved.color;
                     this.hostId = saved.hostId;
-                    this.myId = saved.myId;
                     document.getElementById('username-input').value = this.username;
                     this.selectAvatar(this.avatar);
                     document.getElementById('btn-start').innerHTML = `Rejoin Session`;
@@ -240,7 +214,7 @@
                         <i class="fa-solid ${icon}"></i>
                     </div>
                 `).join('');
-                this.selectAvatar(this.avatar);
+                this.selectAvatar(this.avatar || 'fa-user-astronaut');
             },
 
             selectAvatar: function(icon) {
@@ -262,97 +236,52 @@
                 });
             },
 
-            // === THE CRITICAL FIX: Explicit Permission Check + Immediate Request ===
-            startSession: async function() {
+            // === THE REBUILT LOGIC (Based on v2.0) ===
+            startSession: function() {
                 const input = document.getElementById('username-input');
                 if(!input.value.trim()) return input.classList.add('border-red-500');
                 this.username = input.value.trim();
 
-                const btn = document.getElementById('btn-start');
-                
-                // 1. Check Permissions API (Diagnostic)
-                if (navigator.permissions) {
-                    try {
-                        const result = await navigator.permissions.query({ name: 'geolocation' });
-                        if (result.state === 'denied') {
-                            alert("⚠️ PERMISSION BLOCKED\n\nYour browser has blocked location access for this site.\n\nYou must go to your Browser Settings -> Site Settings and 'Reset Permissions' or 'Allow Location' for this page.");
-                            return; // Stop here
-                        }
-                    } catch (e) {
-                        console.log("Permissions API not fully supported, proceeding anyway.");
-                    }
-                }
-
-                // 2. Immediate "Hard" Request
-                // We ask for getCurrentPosition FIRST to force the prompt immediately on click.
-                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Asking Permission...`;
-                
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        // SUCCESS! We have permission. Now we can start everything.
-                        console.log("Initial Location Lock Acquired");
-                        this.launchApp(pos);
-                    },
-                    (err) => {
-                        // ERROR
-                        console.error(err);
-                        btn.innerHTML = `Start Session`;
-                        if(err.code === 1) {
-                            alert("❌ LOCATION DENIED\n\nYou clicked 'Block' or 'Not Now'.\n\nPlease reload the page and click 'Allow' when prompted.");
-                        } else if (err.code === 2) {
-                            alert("❌ GPS UNAVAILABLE\n\nYour device cannot find a signal. Are you indoors?");
-                        } else {
-                            alert("❌ TIMEOUT\n\nLocation request took too long. Please try again.");
-                        }
-                    },
-                    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-                );
-            },
-
-            launchApp: function(initialPos) {
-                // Hide Modal
                 document.getElementById('modal-onboarding').style.opacity = '0';
                 setTimeout(() => document.getElementById('modal-onboarding').style.display = 'none', 300);
 
-                // Start PeerJS
                 this.initPeer();
-                
-                // Start Continuous Tracking
-                this.startTracking();
-                
-                // Use the initial position immediately
-                this.updateMyLocation(initialPos.coords.latitude, initialPos.coords.longitude);
-
-                // Save State
-                this.saveState();
+                this.attemptLocation(); // This is the simple, direct call that works.
             },
 
-            startTracking: function() {
+            attemptLocation: function() {
+                if (!navigator.geolocation) {
+                    this.showToast('GPS not supported on this device');
+                    return;
+                }
+
+                this.showToast("Requesting location...");
                 navigator.geolocation.watchPosition(
                     (pos) => {
-                        this.updateMyLocation(pos.coords.latitude, pos.coords.longitude);
+                        this.hasLocationAccess = true;
+                        const { latitude, longitude } = pos.coords;
+                        this.myLocation = { lat: latitude, lng: longitude };
+                        
+                        this.updateMarker(this.myId, latitude, longitude, 'You', this.avatar, '#10b981', true);
+                        
+                        if (!this.mapCentered) {
+                            this.map.setView([latitude, longitude], 16);
+                            this.mapCentered = true;
+                        }
+                        this.send({ type: 'location', lat: latitude, lng: longitude });
                     },
-                    (err) => console.warn("Watch Error:", err),
+                    (err) => {
+                        console.warn("Location Error:", err);
+                        if(err.code === 1) this.showToast('GPS Permission Denied. Please reset in site settings.'); 
+                    },
                     { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
                 );
-            },
-
-            updateMyLocation: function(lat, lng) {
-                this.hasLocationAccess = true;
-                this.myLocation = { lat, lng };
-                this.updateMarker(this.myId, lat, lng, 'You', this.avatar, this.color, true);
-                
-                if (!this.mapCentered) {
-                    this.map.setView([lat, lng], 16);
-                    this.mapCentered = true;
-                }
-                this.send({ type: 'location', lat, lng });
             },
             // ==========================================
 
             saveState: function() {
                 localStorage.setItem('burner_state', JSON.stringify({
-                    username: this.username, avatar: this.avatar, color: this.color, hostId: this.hostId, myId: this.myId
+                    username: this.username, avatar: this.avatar, hostId: this.hostId, myId: this.myId
                 }));
             },
 
@@ -378,7 +307,7 @@
 
             connectToHost: function() {
                 if(!this.hostId) return;
-                this.conn = this.peer.connect(this.hostId, { metadata: { username: this.username, avatar: this.avatar, color: this.color }});
+                this.conn = this.peer.connect(this.hostId, { metadata: { username: this.username, avatar: this.avatar }});
                 this.conn.on('open', () => {
                     this.updateStatus('online', 'CONNECTED');
                     this.showToast('Connected!');
@@ -401,7 +330,6 @@
                     if(!data.from) data.from = conn.peer;
                     if(!data.username) data.username = conn.metadata.username;
                     if(!data.avatar) data.avatar = conn.metadata.avatar;
-                    if(!data.color) data.color = conn.metadata.color;
                     if(data.type === 'pong') return; 
                     this.handleData(data);
                     this.broadcast(data, conn.peer);
@@ -423,7 +351,7 @@
                     if(data.expiry) this.checkExpiry(data.expiry);
                     return;
                 }
-                if(data.type === 'location') this.updateMarker(data.from, data.lat, data.lng, data.username, data.avatar, data.color);
+                if(data.type === 'location') this.updateMarker(data.from, data.lat, data.lng, data.username, data.avatar, '#3b82f6');
                 else if(data.type === 'chat') {
                     this.addMessage(data.username, data.msg, data.avatar, false);
                     if(this.activeTab !== 'chat') {
@@ -431,10 +359,7 @@
                         this.showToast(`Msg: ${data.username}`);
                     }
                 }
-                else if(data.type === 'rally') {
-                    this.setRallyPoint(data.lat, data.lng);
-                    this.showToast("Rally Point Updated");
-                }
+                else if(data.type === 'rally') this.setRallyPoint(data.lat, data.lng);
                 else if(data.type === 'sync') {
                     if(data.expiry) this.checkExpiry(data.expiry);
                     if(data.rally) this.setRallyPoint(data.rally.lat, data.rally.lng);
@@ -442,7 +367,7 @@
             },
 
             send: function(data) {
-                data.from = this.myId; data.username = this.username; data.avatar = this.avatar; data.color = this.color;
+                data.from = this.myId; data.username = this.username; data.avatar = this.avatar;
                 if(this.isHost) {
                     if(data.type !== 'ping') this.handleData(data);
                     this.broadcast(data);
@@ -462,11 +387,18 @@
             updateMarker: function(id, lat, lng, label, avatar, color, isSelf) {
                 if(this.markers[id]) this.markers[id].setLatLng([lat, lng]);
                 else {
-                    const html = `<div class="${isSelf ? 'custom-marker pulse-dot' : 'custom-marker'}" style="background:${isSelf?'#10b981':color}; width:36px; height:36px;"><i class="fa-solid ${avatar}"></i></div>`;
+                    const html = `<div class="${isSelf ? 'custom-marker pulse-dot' : 'custom-marker'}" style="background:${color}; width:36px; height:36px;"><i class="fa-solid ${avatar}"></i></div>`;
                     const icon = L.divIcon({ className: 'bg-transparent', html: html });
                     const marker = L.marker([lat, lng], { icon: icon, zIndexOffset: isSelf?1000:500 }).addTo(this.map);
                     marker.bindPopup(label, { closeButton: false, offset: [0,-15] });
                     this.markers[id] = marker;
+                }
+            },
+            
+            removeMarker: function(id) {
+                if (this.markers[id]) {
+                    this.map.removeLayer(this.markers[id]);
+                    delete this.markers[id];
                 }
             },
 
@@ -501,7 +433,7 @@
                     <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-300 border border-white/10 shrink-0"><i class="fa-solid ${avatar}"></i></div>
                     <div class="flex flex-col ${isSelf ? 'items-end' : 'items-start'} max-w-[80%]">
                         <span class="text-[10px] text-slate-500 mb-0.5 px-1">${username}</span>
-                        <div class="${isSelf ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-200'} px-3 py-2 rounded-2xl ${isSelf?'rounded-tr-none':'rounded-tl-none'} text-sm shadow-sm break-words">${msg.replace(/</g, "&lt;")}</div>
+                        <div class="${isSelf ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-200'} px-3 py-2 rounded-2xl ${isSelf?'rounded-tr-none':'rounded-tl-none'} text-sm shadow-sm break-words">${this.escapeHtml(msg)}</div>
                     </div>
                 `;
                 container.appendChild(div);
@@ -518,20 +450,14 @@
                 if(tab === 'map') {
                     mapBtn.className = "flex-1 py-3 rounded-xl text-center bg-slate-700 text-white shadow-inner transition-all";
                     chatBtn.className = "flex-1 py-3 rounded-xl text-center text-slate-400 hover:text-white transition-all relative";
-                    
-                    // Z-Index Swap
                     mapView.classList.remove('view-hidden'); mapView.classList.add('view-active');
                     chatView.classList.remove('view-active'); chatView.classList.add('view-hidden');
-                    
                     setTimeout(() => this.map.invalidateSize(), 300);
                 } else {
                     chatBtn.className = "flex-1 py-3 rounded-xl text-center bg-slate-700 text-white shadow-inner transition-all relative";
                     mapBtn.className = "flex-1 py-3 rounded-xl text-center text-slate-400 hover:text-white transition-all";
-                    
-                    // Z-Index Swap
                     chatView.classList.remove('view-hidden'); chatView.classList.add('view-active');
                     mapView.classList.remove('view-active'); mapView.classList.add('view-hidden');
-                    
                     document.getElementById('unread-badge').classList.add('hidden');
                 }
             },
@@ -592,6 +518,12 @@
                     localStorage.removeItem('burner_state');
                     window.location.href = window.location.pathname;
                 }
+            },
+
+            escapeHtml: function(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
             },
             
             hardReset: function() {
