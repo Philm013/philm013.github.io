@@ -2,20 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!-- Prevent Zooming and fixing viewport height -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>BurnerMap v4</title>
+    <title>BurnerMap v5</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <!-- QR Code Lib -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
         :root { --app-height: 100dvh; }
         
-        /* --- LAYOUT ENGINE FIXES --- */
         body { 
             font-family: 'Inter', sans-serif; 
             background-color: #0f172a; 
@@ -23,162 +22,169 @@
             height: var(--app-height); 
             width: 100vw; 
             overflow: hidden; 
-            display: flex;       /* Flex column layout */
+            display: flex;
             flex-direction: column; 
         }
 
-        /* Header takes physical space now */
+        /* HEADER */
         header {
             flex-shrink: 0;
-            background: #0f172a; /* Solid background to prevent overlap transparency */
+            background: #0f172a;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-top: max(env(safe-area-inset-top), 16px); /* Push down from notch */
-            padding-bottom: 10px;
+            padding-top: max(env(safe-area-inset-top), 12px);
+            padding-bottom: 12px;
             padding-left: 16px;
             padding-right: 16px;
             z-index: 50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        /* Main takes remaining space */
+        /* MAIN CONTENT */
         main {
             flex-grow: 1;
-            position: relative; /* Context for absolute map/chat */
+            position: relative;
             overflow: hidden;
+            background: #0f172a;
         }
 
-        /* Footer floats but is safe-area aware */
+        /* MAP VIEW */
+        #view-map {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            /* CRITICAL FIX: Hide map initially so it can't cover modal */
+            visibility: hidden; 
+        }
+
+        #map { height: 100%; width: 100%; background: #0f172a; }
+
+        /* CHAT VIEW */
+        #view-chat {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        /* BOTTOM NAV */
         .bottom-nav-container {
             position: absolute;
             bottom: 20px;
-            left: 0; 
-            right: 0;
+            left: 0; right: 0;
             display: flex;
             justify-content: center;
             z-index: 40;
             padding-bottom: env(safe-area-inset-bottom);
-            pointer-events: none; /* Let clicks pass through around the buttons */
+            pointer-events: none;
         }
-        .bottom-nav-inner { pointer-events: auto; }
+        .bottom-nav-inner { pointer-events: auto; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
 
-        /* Map Fixes */
-        #map { height: 100%; width: 100%; background: #0f172a; }
-        
-        /* Chat View Fixes */
-        #view-chat {
-            background: #0f172a; /* Solid background */
-            z-index: 20;
+        /* MODALS */
+        #modal-onboarding {
+            z-index: 9999; /* NUCLEAR OPTION: Highest possible Z-Index */
+            background-color: #0f172a; /* Solid color, no transparency */
         }
 
-        /* UI Polish */
-        .glass-btn { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1); }
+        /* UTILS */
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .active-tab { color: white; background: #334155; }
+        .inactive-tab { color: #94a3b8; }
         
-        /* Map Sonar Animation */
-        @keyframes sonar { 
-            0% { transform: scale(1); opacity: 1; border-width: 4px; } 
-            100% { transform: scale(4); opacity: 0; border-width: 0px; } 
-        }
-        .sonar-wave {
-            position: absolute; border-radius: 50%; border: 2px solid #ef4444; 
-            background: rgba(239, 68, 68, 0.2); width: 100%; height: 100%; 
-            animation: sonar 2s ease-out infinite; z-index: -1;
-        }
-
-        /* Avatar styling */
-        .custom-marker { transition: all 0.3s ease; }
-        .typing-indicator { font-size: 10px; color: #94a3b8; font-style: italic; height: 16px; }
+        /* ANIMATIONS */
+        @keyframes sonar { 0% { transform: scale(1); opacity: 1; border-width: 4px; } 100% { transform: scale(4); opacity: 0; border-width: 0px; } }
+        .sonar-wave { position: absolute; border-radius: 50%; border: 2px solid #ef4444; background: rgba(239, 68, 68, 0.2); width: 100%; height: 100%; animation: sonar 2s ease-out infinite; z-index: -1; }
     </style>
 </head>
 <body>
 
-    <!-- 1. HEADER (Fixed, Solid, Safe-Area Padded) -->
-    <header class="flex justify-between items-center shadow-lg">
+    <!-- HEADER -->
+    <header>
         <div class="flex flex-col">
             <div class="flex items-center gap-2">
                 <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
                 <h1 class="font-black text-lg tracking-tight text-white">BURNERMAP</h1>
             </div>
             <div class="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
-                <span id="role-badge">CONNECTING...</span>
+                <span id="role-badge">OFFLINE</span>
                 <span id="user-count" class="hidden bg-slate-800 px-1.5 rounded text-slate-300">1</span>
             </div>
         </div>
 
-        <div class="flex gap-2">
-            <!-- QR Button -->
-            <button onclick="app.toggleQR()" class="w-10 h-10 rounded-full bg-slate-800 text-blue-400 hover:bg-slate-700 flex items-center justify-center transition-all active:scale-95">
+        <div class="flex gap-3">
+            <button onclick="app.toggleQR()" class="w-9 h-9 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition-all active:scale-95">
                 <i class="fa-solid fa-qrcode"></i>
             </button>
-            <!-- Copy Link Button -->
-            <button onclick="app.copyLink()" class="w-10 h-10 rounded-full bg-blue-600 text-white hover:bg-blue-500 flex items-center justify-center shadow-lg transition-all active:scale-95">
+            <button onclick="app.copyLink()" class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg transition-all active:scale-95">
                 <i class="fa-solid fa-link"></i>
             </button>
         </div>
     </header>
 
-    <!-- 2. MAIN CONTENT (Fills remaining height) -->
+    <!-- MAIN -->
     <main>
-        
-        <!-- MAP VIEW -->
-        <div id="view-map" class="absolute inset-0 w-full h-full">
+        <!-- MAP -->
+        <div id="view-map">
             <div id="map"></div>
             
-            <!-- Sonar Button (Floating on Map) -->
-            <button onclick="app.sendSonar()" class="absolute top-4 right-4 z-[400] glass-btn text-red-400 w-12 h-12 rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-transform">
+            <!-- Map Overlay Controls -->
+            <button onclick="app.sendSonar()" class="absolute top-4 right-4 z-[500] bg-slate-800/80 backdrop-blur text-red-400 w-12 h-12 rounded-full border border-white/10 shadow-xl flex items-center justify-center active:scale-90 transition-transform">
                 <i class="fa-solid fa-bullseye text-xl"></i>
             </button>
-
-            <!-- Rally Hint -->
-            <div id="rally-hint" class="absolute top-4 left-1/2 -translate-x-1/2 z-[400] bg-black/60 backdrop-blur text-white px-3 py-1.5 rounded-full text-[10px] pointer-events-none opacity-0 transition-opacity whitespace-nowrap">
+            
+            <div id="rally-hint" class="absolute top-4 left-1/2 -translate-x-1/2 z-[500] bg-black/60 backdrop-blur text-white px-3 py-1.5 rounded-full text-[10px] pointer-events-none opacity-0 transition-opacity whitespace-nowrap border border-white/10">
                 Host: Double-tap to set flag
             </div>
         </div>
 
-        <!-- CHAT VIEW (Hidden by default) -->
-        <div id="view-chat" class="absolute inset-0 w-full h-full flex flex-col translate-x-full transition-transform duration-300">
-            
-            <!-- Chat Messages -->
+        <!-- CHAT -->
+        <div id="view-chat">
             <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-3 pb-24 no-scrollbar">
-                <div class="text-center py-6 opacity-30">
-                    <i class="fa-solid fa-lock text-4xl mb-2"></i>
-                    <p class="text-xs uppercase tracking-widest">End-to-End Encrypted</p>
+                <div class="text-center py-10 opacity-30">
+                    <i class="fa-solid fa-shield-halved text-4xl mb-2"></i>
+                    <p class="text-xs uppercase tracking-widest font-bold">Secure Connection</p>
                 </div>
             </div>
 
-            <!-- Typing Indicator -->
-            <div id="typing-bar" class="px-4 pb-1 typing-indicator opacity-0 transition-opacity">
+            <div id="typing-bar" class="px-4 pb-1 text-[10px] text-slate-500 italic opacity-0 transition-opacity h-4">
                 Someone is typing...
             </div>
 
-            <!-- Quick React Bar -->
+            <!-- Quick Reacts -->
             <div class="px-2 pb-2 flex gap-2 overflow-x-auto no-scrollbar bg-slate-900 border-t border-white/5 pt-2">
-                <button onclick="app.sendReact('👍')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg hover:bg-slate-700">👍</button>
-                <button onclick="app.sendReact('📍')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg hover:bg-slate-700">📍</button>
-                <button onclick="app.sendReact('🔥')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg hover:bg-slate-700">🔥</button>
-                <button onclick="app.sendReact('🚩')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg hover:bg-slate-700">🚩</button>
-                <button onclick="app.sendReact('🛑')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg hover:bg-slate-700">🛑</button>
+                <button onclick="app.sendReact('👍')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg">👍</button>
+                <button onclick="app.sendReact('📍')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg">📍</button>
+                <button onclick="app.sendReact('🛑')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg">🛑</button>
+                <button onclick="app.sendReact('🚩')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg">🚩</button>
             </div>
 
-            <!-- Chat Input -->
-            <div class="p-2 bg-slate-900 pb-[calc(env(safe-area-inset-bottom)+80px)]"> <!-- Extra padding for nav overlap -->
+            <!-- Input -->
+            <div class="p-2 bg-slate-900 pb-[calc(env(safe-area-inset-bottom)+80px)]">
                 <form onsubmit="app.sendMessage(event)" class="flex gap-2">
-                    <input type="text" id="msg-input" placeholder="Message..." autocomplete="off"
-                        oninput="app.handleTyping()"
+                    <input type="text" id="msg-input" placeholder="Message..." autocomplete="off" oninput="app.handleTyping()"
                         class="flex-1 bg-slate-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                     <button type="submit" class="bg-blue-600 w-12 rounded-xl flex items-center justify-center text-white"><i class="fa-solid fa-paper-plane"></i></button>
                 </form>
             </div>
         </div>
-
     </main>
 
-    <!-- 3. BOTTOM NAVIGATION (Floating) -->
+    <!-- NAVIGATION -->
     <div class="bottom-nav-container">
-        <nav class="bottom-nav-inner glass w-[90%] max-w-sm rounded-2xl p-1.5 flex gap-1 shadow-2xl">
-            <button onclick="app.switchTab('map')" id="btn-map" class="flex-1 py-3 rounded-xl bg-slate-700 text-white shadow-inner transition-all">
+        <nav class="bottom-nav-inner w-[90%] max-w-sm rounded-2xl p-1.5 flex gap-1 shadow-2xl">
+            <button onclick="app.switchTab('map')" id="btn-map" class="flex-1 py-3 rounded-xl shadow-inner transition-all active-tab">
                 <i class="fa-solid fa-map text-lg mb-0.5 block"></i><span class="text-[10px] font-bold">MAP</span>
             </button>
-            <button onclick="app.switchTab('chat')" id="btn-chat" class="flex-1 py-3 rounded-xl text-slate-400 hover:text-white transition-all relative">
+            <button onclick="app.switchTab('chat')" id="btn-chat" class="flex-1 py-3 rounded-xl transition-all relative inactive-tab">
                 <i class="fa-solid fa-comment-dots text-lg mb-0.5 block"></i>
                 <span id="unread-dot" class="absolute top-2 right-8 w-2.5 h-2.5 bg-red-500 rounded-full hidden border border-slate-900"></span>
                 <span class="text-[10px] font-bold">CHAT</span>
@@ -189,31 +195,20 @@
         </nav>
     </div>
 
-    <!-- MODALS & OVERLAYS -->
-    
-    <!-- QR Modal -->
-    <div id="modal-qr" class="hidden fixed inset-0 z-[60] bg-black/90 backdrop-blur flex items-center justify-center p-6" onclick="app.toggleQR()">
-        <div class="bg-white p-6 rounded-3xl text-center space-y-4" onclick="event.stopPropagation()">
-            <h3 class="text-slate-900 font-bold text-lg">Scan to Join</h3>
-            <div id="qrcode" class="flex justify-center"></div>
-            <p class="text-slate-500 text-xs">Anyone with this code can join.</p>
-            <button onclick="app.toggleQR()" class="w-full py-3 bg-slate-100 rounded-xl text-slate-900 font-bold">Close</button>
-        </div>
-    </div>
-
-    <!-- Onboarding Modal -->
-    <div id="modal-onboarding" class="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 transition-opacity duration-300">
-        <div class="w-full max-w-xs text-center">
-            <div class="mb-8 relative inline-block">
-                <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/50 relative z-10">
-                    <i class="fa-solid fa-mask text-4xl text-white"></i>
+    <!-- ONBOARDING MODAL (High Z-Index) -->
+    <div id="modal-onboarding" class="fixed inset-0 flex flex-col items-center justify-center p-6 transition-opacity duration-300">
+        <div class="w-full max-w-xs text-center z-50">
+            <div class="mb-6 relative inline-block">
+                <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl relative z-10">
+                    <i class="fa-solid fa-user-secret text-4xl text-white"></i>
                 </div>
                 <div class="absolute inset-0 bg-blue-600 blur-xl opacity-50"></div>
             </div>
             
-            <h2 class="text-2xl font-black text-white mb-6">BURNERMAP v4</h2>
+            <h2 class="text-2xl font-black text-white mb-6">BURNERMAP v5</h2>
             
             <div class="space-y-4">
+                <label class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Select Identity</label>
                 <div class="grid grid-cols-5 gap-2 mb-4" id="avatar-grid"></div>
                 
                 <input type="text" id="username-input" class="w-full bg-slate-800 border border-slate-700 text-white px-4 py-4 rounded-xl text-center font-bold outline-none focus:border-blue-500 transition-colors" placeholder="CODENAME">
@@ -223,12 +218,21 @@
                 </button>
             </div>
             
-            <p id="restore-msg" class="text-emerald-400 text-xs mt-6 hidden"><i class="fa-solid fa-rotate-left"></i> Previous session found</p>
+            <p id="restore-msg" class="text-emerald-400 text-xs mt-6 hidden"><i class="fa-solid fa-rotate-left"></i> Session Restored</p>
+        </div>
+    </div>
+
+    <!-- QR MODAL -->
+    <div id="modal-qr" class="hidden fixed inset-0 z-[10000] bg-black/90 backdrop-blur flex items-center justify-center p-6" onclick="app.toggleQR()">
+        <div class="bg-white p-6 rounded-3xl text-center space-y-4 w-full max-w-xs" onclick="event.stopPropagation()">
+            <h3 class="text-slate-900 font-bold text-lg">Scan to Join</h3>
+            <div id="qrcode" class="flex justify-center p-2"></div>
+            <button onclick="app.toggleQR()" class="w-full py-3 bg-slate-100 rounded-xl text-slate-900 font-bold">Close</button>
         </div>
     </div>
 
     <!-- TOAST -->
-    <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-slate-800/90 backdrop-blur border border-white/10 text-white px-4 py-2 rounded-full shadow-2xl z-[200] text-xs font-bold transition-all duration-300 opacity-0 translate-y-[-20px] pointer-events-none">
+    <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-slate-800/90 backdrop-blur border border-white/10 text-white px-4 py-2 rounded-full shadow-2xl z-[10000] text-xs font-bold transition-all duration-300 opacity-0 translate-y-[-20px] pointer-events-none w-max">
         Notification
     </div>
 
@@ -239,20 +243,18 @@
         const app = {
             peer: null, conn: null, connections: [], myId: null, hostId: null,
             isHost: false, username: 'Ghost', avatar: 'fa-user', color: '#3b82f6',
-            map: null, markers: {}, rallyMarker: null, sonarLayer: null,
+            map: null, markers: {}, rallyMarker: null, 
             avatars: ['fa-user', 'fa-ghost', 'fa-robot', 'fa-dragon', 'fa-cat', 'fa-dog', 'fa-skull', 'fa-spider', 'fa-crow', 'fa-mask'],
             typingTimeout: null,
 
             init: () => {
-                // Viewport height fix
                 const setVh = () => document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
                 window.addEventListener('resize', setVh);
                 setVh();
 
                 app.renderAvatars();
                 
-                // Persistence check
-                const saved = JSON.parse(localStorage.getItem('burner_v4'));
+                const saved = JSON.parse(localStorage.getItem('burner_v5'));
                 const urlParams = new URLSearchParams(window.location.search);
                 const joinId = urlParams.get('join');
                 
@@ -260,7 +262,6 @@
                     app.username = saved.username;
                     app.avatar = saved.avatar;
                     app.hostId = saved.hostId;
-                    app.color = saved.color;
                     document.getElementById('username-input').value = app.username;
                     app.selectAvatar(app.avatar);
                     document.getElementById('restore-msg').classList.remove('hidden');
@@ -268,8 +269,6 @@
                 
                 if (joinId) app.hostId = joinId;
                 app.isHost = !app.hostId;
-
-                app.initMap();
             },
 
             renderAvatars: () => {
@@ -290,7 +289,31 @@
                 });
             },
 
+            startSession: () => {
+                const input = document.getElementById('username-input');
+                if(!input.value.trim()) return input.focus();
+                app.username = input.value.trim();
+                
+                // Hide Modal
+                const modal = document.getElementById('modal-onboarding');
+                modal.style.opacity = '0';
+                
+                // Reveal Map (Fixing the overlap issue)
+                document.getElementById('view-map').style.visibility = 'visible';
+                app.initMap(); // Init map only after revealing to prevent rendering glitches
+                
+                setTimeout(() => modal.style.display = 'none', 300);
+                
+                app.initPeer();
+                app.startLocation();
+                
+                localStorage.setItem('burner_v5', JSON.stringify({
+                    username: app.username, avatar: app.avatar, hostId: app.hostId
+                }));
+            },
+
             initMap: () => {
+                if(app.map) return;
                 app.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([20, 0], 2);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(app.map);
                 
@@ -303,36 +326,20 @@
                 }
             },
 
-            startSession: () => {
-                const input = document.getElementById('username-input');
-                if(!input.value.trim()) return input.focus();
-                app.username = input.value.trim();
-                
-                document.getElementById('modal-onboarding').style.opacity = '0';
-                setTimeout(() => document.getElementById('modal-onboarding').style.display = 'none', 300);
-                
-                app.initPeer();
-                app.startLocation();
-                localStorage.setItem('burner_v4', JSON.stringify({
-                    username: app.username, avatar: app.avatar, color: app.color, hostId: app.hostId
-                }));
-            },
-
             initPeer: () => {
-                app.updateStatus('init', 'Net Init...');
+                app.updateStatus('init', 'Init...');
                 app.peer = new Peer(null, { debug: 0 });
                 
                 app.peer.on('open', (id) => {
                     app.myId = id;
                     if(app.isHost) {
-                        app.updateStatus('online', 'HOSTING');
+                        app.updateStatus('online', 'HOST');
                         app.peer.on('connection', app.handleHostConn);
                     } else {
                         app.connectToHost();
                     }
                 });
-
-                app.peer.on('error', () => app.updateStatus('error', 'Net Error'));
+                app.peer.on('error', () => app.updateStatus('error', 'Error'));
             },
 
             connectToHost: () => {
@@ -340,31 +347,28 @@
                 app.conn = app.peer.connect(app.hostId, { metadata: app.getMeta() });
                 
                 app.conn.on('open', () => {
-                    app.updateStatus('online', 'CONNECTED');
+                    app.updateStatus('online', 'LINKED');
                     app.showToast('Secure Channel Joined');
                     if(app.myLocation) app.send({ type: 'loc', lat: app.myLocation.lat, lng: app.myLocation.lng });
                 });
 
                 app.conn.on('data', app.handleData);
-                app.conn.on('close', () => app.updateStatus('error', 'Disconnected'));
+                app.conn.on('close', () => app.updateStatus('error', 'Lost Host'));
             },
 
             handleHostConn: (conn) => {
                 app.connections.push(conn);
                 app.updateUserCount();
-                
                 conn.on('open', () => {
-                    // Sync initial state
                     if(app.rallyMarker) conn.send({ type: 'rally', lat: app.rallyMarker.getLatLng().lat, lng: app.rallyMarker.getLatLng().lng });
-                    conn.send({ type: 'chat', msg: 'Welcome to the mesh.', username: 'SYSTEM', isSys: true });
                 });
-
                 conn.on('data', (data) => {
-                    app.enrichData(data, conn);
+                    if(!data.from) data.from = conn.peer;
+                    if(!data.username) data.username = conn.metadata.username;
+                    if(!data.avatar) data.avatar = conn.metadata.avatar;
                     app.handleData(data);
-                    app.broadcast(data, conn.peer); // Relay
+                    app.broadcast(data, conn.peer);
                 });
-
                 conn.on('close', () => {
                     app.connections = app.connections.filter(c => c.peer !== conn.peer);
                     app.removeMarker(conn.peer);
@@ -372,18 +376,8 @@
                 });
             },
 
-            getMeta: () => ({ username: app.username, avatar: app.avatar, color: app.color }),
-            
-            enrichData: (data, conn) => {
-                if(!data.from) data.from = conn.peer;
-                if(!data.username) data.username = conn.metadata.username;
-                if(!data.avatar) data.avatar = conn.metadata.avatar;
-            },
-
-            broadcast: (data, exclude) => {
-                app.connections.forEach(c => { if(c.peer !== exclude && c.open) c.send(data); });
-            },
-
+            getMeta: () => ({ username: app.username, avatar: app.avatar }),
+            broadcast: (data, exclude) => app.connections.forEach(c => { if(c.peer !== exclude && c.open) c.send(data); }),
             send: (data) => {
                 data = { ...data, ...app.getMeta(), from: app.myId };
                 if(app.isHost) {
@@ -405,12 +399,10 @@
                 }
             },
 
-            // --- FEATURES ---
-
             sendSonar: () => {
-                if(!app.myLocation) return app.showToast('No Location Data');
+                if(!app.myLocation) return app.showToast('No Location');
                 app.send({ type: 'sonar', lat: app.myLocation.lat, lng: app.myLocation.lng });
-                app.triggerSonar({ lat: app.myLocation.lat, lng: app.myLocation.lng }); // Local
+                app.triggerSonar({ lat: app.myLocation.lat, lng: app.myLocation.lng });
             },
 
             triggerSonar: (data) => {
@@ -422,7 +414,7 @@
             handleTyping: () => {
                 if(app.typingTimeout) clearTimeout(app.typingTimeout);
                 app.send({ type: 'typing' });
-                app.typingTimeout = setTimeout(() => {}, 2000); // Throttling
+                app.typingTimeout = setTimeout(() => {}, 2000);
             },
 
             showTyping: (name) => {
@@ -432,19 +424,15 @@
                 setTimeout(() => el.style.opacity = '0', 2000);
             },
 
-            sendReact: (emoji) => {
-                app.send({ type: 'chat', msg: emoji });
-            },
+            sendReact: (emoji) => app.send({ type: 'chat', msg: emoji }),
 
             setRally: (coords) => {
                 if(app.rallyMarker) app.map.removeLayer(app.rallyMarker);
                 const icon = L.divIcon({ html: '<div class="text-3xl filter drop-shadow-lg">🚩</div>', className: 'bg-transparent', iconSize: [30,30] });
                 app.rallyMarker = L.marker([coords.lat, coords.lng], { icon }).addTo(app.map);
-                app.showToast('Rally Point Updated');
+                app.showToast('Rally Updated');
             },
 
-            // --- MAP & MARKERS ---
-            
             startLocation: () => {
                 navigator.geolocation.watchPosition(pos => {
                     const { latitude: lat, longitude: lng } = pos.coords;
@@ -459,20 +447,16 @@
                 if(app.markers[d.from]) {
                     app.markers[d.from].setLatLng([d.lat, d.lng]);
                 } else {
-                    const color = d.isSelf ? '#10b981' : (d.color || '#3b82f6');
+                    const color = d.isSelf ? '#10b981' : '#3b82f6';
                     const html = `<div class="w-8 h-8 rounded-full bg-slate-900 border-2 flex items-center justify-center text-white shadow-lg" style="border-color:${color}"><i class="fa-solid ${d.avatar}"></i></div>`;
                     const icon = L.divIcon({ className: 'bg-transparent', html });
                     const m = L.marker([d.lat, d.lng], { icon, zIndexOffset: d.isSelf ? 1000 : 0 }).addTo(app.map);
-                    m.bindPopup(`<b class="text-slate-900">${d.username}</b>`, { closeButton: false });
+                    m.bindPopup(`<b class="text-slate-900">${d.username}</b>`, { closeButton: false, offset: [0,-10] });
                     app.markers[d.from] = m;
                 }
             },
 
-            removeMarker: (id) => {
-                if(app.markers[id]) { app.map.removeLayer(app.markers[id]); delete app.markers[id]; }
-            },
-
-            // --- CHAT & UI ---
+            removeMarker: (id) => { if(app.markers[id]) { app.map.removeLayer(app.markers[id]); delete app.markers[id]; } },
 
             sendMessage: (e) => {
                 e.preventDefault();
@@ -487,30 +471,22 @@
             addChat: (d) => {
                 const box = document.getElementById('chat-container');
                 const isMe = d.from === app.myId;
-                const isSys = d.isSys;
-                
                 const div = document.createElement('div');
-                if(isSys) {
-                    div.className = 'text-center text-[10px] text-slate-500 my-2 uppercase tracking-wider';
-                    div.innerText = d.msg;
-                } else {
-                    div.className = `flex gap-2 ${isMe ? 'flex-row-reverse' : ''} animate-pulse-once`;
-                    div.innerHTML = `
-                        <div class="w-6 h-6 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-[10px] text-slate-400 shrink-0">
-                            <i class="fa-solid ${d.avatar}"></i>
+                div.className = `flex gap-2 ${isMe ? 'flex-row-reverse' : ''}`;
+                div.innerHTML = `
+                    <div class="w-6 h-6 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-[10px] text-slate-400 shrink-0">
+                        <i class="fa-solid ${d.avatar}"></i>
+                    </div>
+                    <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[80%]">
+                        <span class="text-[9px] text-slate-500 px-1 mb-0.5">${d.username}</span>
+                        <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-200'} px-3 py-2 rounded-2xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'} text-sm shadow-md break-words">
+                            ${d.msg}
                         </div>
-                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[80%]">
-                            <span class="text-[9px] text-slate-500 px-1 mb-0.5">${d.username}</span>
-                            <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-200'} px-3 py-2 rounded-2xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'} text-sm shadow-md break-words">
-                                ${d.msg}
-                            </div>
-                        </div>
-                    `;
-                    
-                    if(!isMe && document.getElementById('view-chat').style.transform !== 'translateX(0px)') {
-                        document.getElementById('unread-dot').classList.remove('hidden');
-                        app.showToast(`Message from ${d.username}`);
-                    }
+                    </div>
+                `;
+                if(!isMe && document.getElementById('view-chat').style.transform !== 'translateX(0px)') {
+                    document.getElementById('unread-dot').classList.remove('hidden');
+                    app.showToast(`Msg: ${d.username}`);
                 }
                 box.appendChild(div);
                 box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
@@ -520,30 +496,26 @@
                 const chatView = document.getElementById('view-chat');
                 const btnMap = document.getElementById('btn-map');
                 const btnChat = document.getElementById('btn-chat');
-                
                 if(tab === 'map') {
                     chatView.style.transform = 'translateX(100%)';
-                    btnMap.className = "flex-1 py-3 rounded-xl bg-slate-700 text-white shadow-inner transition-all";
-                    btnChat.className = "flex-1 py-3 rounded-xl text-slate-400 hover:text-white transition-all";
+                    btnMap.className = "flex-1 py-3 rounded-xl shadow-inner transition-all active-tab";
+                    btnChat.className = "flex-1 py-3 rounded-xl transition-all relative inactive-tab";
                 } else {
                     chatView.style.transform = 'translateX(0px)';
-                    btnChat.className = "flex-1 py-3 rounded-xl bg-slate-700 text-white shadow-inner transition-all";
-                    btnMap.className = "flex-1 py-3 rounded-xl text-slate-400 hover:text-white transition-all";
+                    btnChat.className = "flex-1 py-3 rounded-xl shadow-inner transition-all active-tab";
+                    btnMap.className = "flex-1 py-3 rounded-xl transition-all inactive-tab";
                     document.getElementById('unread-dot').classList.add('hidden');
                 }
             },
 
             toggleQR: () => {
                 const el = document.getElementById('modal-qr');
-                const isHidden = el.classList.contains('hidden');
-                if(isHidden) {
+                if(el.classList.contains('hidden')) {
                     el.classList.remove('hidden');
                     const link = `${window.location.origin}${window.location.pathname}?join=${app.isHost ? app.myId : app.hostId}`;
                     document.getElementById('qrcode').innerHTML = "";
                     new QRCode(document.getElementById('qrcode'), { text: link, width: 200, height: 200 });
-                } else {
-                    el.classList.add('hidden');
-                }
+                } else el.classList.add('hidden');
             },
 
             copyLink: () => {
@@ -553,10 +525,8 @@
             },
 
             updateStatus: (type, msg) => {
-                const dot = document.getElementById('status-dot');
-                const txt = document.getElementById('role-badge');
-                txt.innerText = msg;
-                dot.className = `w-2 h-2 rounded-full ${type === 'online' ? 'bg-emerald-400 shadow-[0_0_10px_#34d399]' : type === 'warn' ? 'bg-amber-400 animate-pulse' : 'bg-red-500'}`;
+                document.getElementById('role-badge').innerText = msg;
+                document.getElementById('status-dot').className = `w-2 h-2 rounded-full ${type === 'online' ? 'bg-emerald-400' : type === 'warn' ? 'bg-amber-400 animate-pulse' : 'bg-red-500'}`;
             },
             
             updateUserCount: () => {
@@ -575,7 +545,7 @@
             
             burn: () => {
                 if(confirm('BURN EVERYTHING?')) {
-                    localStorage.removeItem('burner_v4');
+                    localStorage.removeItem('burner_v5');
                     window.location.href = window.location.pathname;
                 }
             }
