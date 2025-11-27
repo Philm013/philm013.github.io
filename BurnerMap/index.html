@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- STRICT MOBILE VIEWPORT -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>BurnerMap v11</title>
+    <title>BurnerMap v12</title>
     
-    <!-- External Libs -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,294 +12,271 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
-        /* --- CORE ENGINE --- */
-        :root { --app-height: 100dvh; }
-        
-        * { 
-            box-sizing: border-box; 
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
+        /* --- THEME ENGINE --- */
+        :root {
+            --bg-color: #050505;
+            --text-main: #ffffff;
+            --text-sub: #94a3b8;
+            --glass-bg: rgba(20, 20, 20, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --input-bg: rgba(255, 255, 255, 0.05);
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --shadow: 0 8px 32px rgba(0,0,0,0.5);
         }
 
+        body.light-mode {
+            --bg-color: #e2e8f0;
+            --text-main: #0f172a;
+            --text-sub: #475569;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --input-bg: rgba(0, 0, 0, 0.05);
+            --accent: #2563eb;
+            --accent-glow: rgba(37, 99, 235, 0.3);
+            --shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        /* --- CORE --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        
         body {
             margin: 0; padding: 0;
-            background-color: #050505;
-            color: #fff;
-            font-family: 'Inter', system-ui, sans-serif;
-            width: 100vw; height: var(--app-height);
-            overflow: hidden;
-            position: fixed;
-            font-size: 16px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            width: 100vw; height: 100dvh;
+            overflow: hidden; position: fixed;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* --- LAYOUT LAYERS (Z-Index Hierarchy) --- */
-        /* 0: Background */
-        /* 1: Map */
-        /* 10: Map Controls */
-        /* 20: Chat Slide-over */
-        /* 30: Chat Input */
-        /* 40: Navigation Dock */
-        /* 50: Floating Headers */
-        /* 100: Modals/Overlays */
-        /* 200: Toasts */
-
-        /* --- GLASS UI --- */
+        /* --- UI COMPONENTS --- */
         .glass {
-            background: rgba(20, 20, 20, 0.75);
+            background: var(--glass-bg);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-        }
-        .glass-btn {
-            background: rgba(30, 30, 30, 0.8);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            color: #e2e8f0;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
         }
 
-        /* --- FLOATING HEADERS --- */
-        .header-island {
-            position: absolute; top: max(env(safe-area-inset-top), 16px);
-            z-index: 50; padding: 8px 16px; border-radius: 99px;
-            display: flex; align-items: center; gap: 10px;
-        }
-        .header-left { left: 16px; }
-        .header-right { right: 16px; padding: 0; background: transparent; border: none; backdrop-filter: none; box-shadow: none; }
-
-        .circle-btn {
+        .icon-btn {
             width: 48px; height: 48px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 18px; transition: transform 0.1s;
+            font-size: 20px; color: var(--text-main);
+            transition: transform 0.1s;
         }
-        .circle-btn:active { transform: scale(0.92); }
+        .icon-btn:active { transform: scale(0.92); }
 
-        /* --- MAP VIEW --- */
-        #view-map { position: absolute; inset: 0; z-index: 1; visibility: hidden; } /* Hidden until onboarding done */
-        #map { width: 100%; height: 100%; background: #050505; }
+        /* --- HEADERS --- */
+        .header-left {
+            position: absolute; top: max(env(safe-area-inset-top), 16px); left: 16px;
+            z-index: 50; padding: 8px 16px; border-radius: 99px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .header-right {
+            position: absolute; top: max(env(safe-area-inset-top), 16px); right: 16px;
+            z-index: 50; display: flex; gap: 10px;
+        }
 
-        /* Map Controls (Floating) */
-        .map-control-stack {
+        /* --- MAP LAYER --- */
+        #view-map { position: absolute; inset: 0; z-index: 1; visibility: hidden; }
+        #map { width: 100%; height: 100%; background: var(--bg-color); transition: background 0.3s; }
+
+        .map-controls {
             position: absolute; top: 100px; right: 16px;
             z-index: 10; display: flex; flex-direction: column; gap: 12px;
         }
 
-        /* --- CHAT VIEW --- */
+        /* --- CHAT LAYER --- */
         #view-chat {
             position: absolute; inset: 0; z-index: 20;
-            background: #050505;
+            background: var(--bg-color);
             display: flex; flex-direction: column;
             transform: translate3d(100%, 0, 0); 
-            transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         #chat-scroll {
             flex: 1; overflow-y: auto;
-            padding: 120px 20px 20px 20px;
-            padding-bottom: 180px; /* Space for Nav */
+            padding: 110px 20px 20px 20px;
+            padding-bottom: 200px;
         }
 
-        .chat-input-island {
-            position: absolute; bottom: calc(max(env(safe-area-inset-bottom), 20px) + 85px);
-            left: 16px; right: 16px; z-index: 30;
-            padding: 8px; border-radius: 24px; display: flex; gap: 10px;
+        .chat-bar {
+            position: absolute; 
+            bottom: calc(max(env(safe-area-inset-bottom), 20px) + 90px);
+            left: 16px; right: 16px;
+            z-index: 30; padding: 8px; border-radius: 24px;
+            display: flex; gap: 10px;
+        }
+        .chat-input {
+            flex: 1; background: var(--input-bg);
+            color: var(--text-main); border: none; outline: none;
+            padding: 0 16px; border-radius: 16px; height: 48px; font-size: 16px;
         }
 
         /* --- NAV DOCK --- */
         .nav-dock {
-            position: absolute; bottom: max(env(safe-area-inset-bottom), 24px);
+            position: absolute; bottom: max(env(safe-area-inset-bottom), 30px);
             left: 50%; transform: translateX(-50%);
-            z-index: 40; border-radius: 32px; padding: 6px;
-            display: flex; gap: 6px;
+            z-index: 40; border-radius: 36px; padding: 8px;
+            display: flex; gap: 8px;
         }
-        
         .nav-item {
-            width: 58px; height: 58px; border-radius: 26px;
+            width: 64px; height: 64px; border-radius: 28px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 22px; color: #64748b; transition: all 0.2s;
+            font-size: 24px; color: var(--text-sub);
+            transition: all 0.2s;
         }
-        .nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+        .nav-item.active { background: var(--input-bg); color: var(--text-main); box-shadow: inset 0 0 10px var(--input-bg); }
 
-        /* --- MODALS --- */
-        .modal-overlay {
-            position: fixed; inset: 0; z-index: 100;
-            background: rgba(0,0,0,0.95); backdrop-filter: blur(5px);
-            display: flex; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s;
-        }
-        .modal-overlay.active { opacity: 1; pointer-events: auto; }
-
-        /* --- ANIMATIONS & UTILS --- */
+        /* --- UTILS --- */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        .sonar-wave {
-            position: absolute; border-radius: 50%; 
-            border: 4px solid #ef4444; width: 100%; height: 100%; 
-            animation: sonar 2s ease-out infinite; opacity: 0;
-        }
+        .sonar-wave { position: absolute; border-radius: 50%; border: 4px solid #ef4444; width: 100%; height: 100%; animation: sonar 2s ease-out infinite; opacity: 0; }
         @keyframes sonar { 0% { transform: scale(0.1); opacity: 1; border-width: 6px; } 100% { transform: scale(4); opacity: 0; border-width: 0; } }
-        
-        .leaflet-div-icon { background: transparent; border: none; }
+
+        /* Marker Dashboard */
+        .marker-dash {
+            position: absolute; bottom: -35px; left: 50%; transform: translateX(-50%);
+            background: var(--glass-bg); backdrop-filter: blur(4px);
+            padding: 4px 8px; border-radius: 8px; border: 1px solid var(--glass-border);
+            display: flex; flex-direction: column; align-items: center;
+            white-space: nowrap; pointer-events: none; z-index: 1000;
+        }
     </style>
 </head>
-<body>
+<body class="dark-mode">
 
-    <!-- 1. HEADERS -->
-    <div class="header-island header-left glass">
-        <div id="status-dot" class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_red]"></div>
+    <!-- HEADER LEFT: Theme Toggle + Status -->
+    <div class="header-left glass">
+        <button onclick="app.toggleTheme()" class="w-8 h-8 rounded-full bg-transparent flex items-center justify-center mr-2 text-yellow-500 hover:scale-110 transition-transform">
+            <i id="theme-icon" class="fa-solid fa-sun"></i>
+        </button>
+        <div class="w-px h-6 bg-gray-500/30 mr-3"></div>
         <div class="flex flex-col leading-none">
-            <span class="font-black text-xs tracking-wide text-gray-200">BURNER<span class="text-blue-500">MAP</span></span>
-            <div class="flex items-center gap-1 mt-1">
-                <span id="conn-status" class="text-[9px] text-gray-400 font-bold tracking-widest uppercase">OFFLINE</span>
-                <span id="role-badge" class="hidden text-[8px] bg-blue-900 text-blue-200 px-1 rounded font-bold">HOST</span>
-            </div>
+            <span class="font-black text-xs tracking-wide">BURNER</span>
+            <span id="conn-status" class="text-[9px] opacity-60 font-bold mt-1 tracking-widest uppercase">OFFLINE</span>
         </div>
+        <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_red] ml-2"></div>
     </div>
 
-    <div class="header-right header-island">
-        <button onclick="app.toggleQR()" class="circle-btn glass-btn"><i class="fa-solid fa-qrcode"></i></button>
-        <button onclick="app.copyLink()" class="circle-btn bg-blue-600 shadow-xl text-white"><i class="fa-solid fa-link"></i></button>
+    <!-- HEADER RIGHT: Tools -->
+    <div class="header-right">
+        <button onclick="app.toggleQR()" class="icon-btn glass"><i class="fa-solid fa-qrcode"></i></button>
+        <button onclick="app.copyLink()" class="icon-btn bg-blue-600 shadow-lg text-white"><i class="fa-solid fa-link"></i></button>
     </div>
 
-    <!-- 2. MAP VIEW -->
+    <!-- MAP VIEW -->
     <div id="view-map">
         <div id="map"></div>
         
-        <!-- Map Controls -->
-        <div class="map-control-stack">
-            <!-- Satellite Toggle -->
-            <button onclick="app.toggleLayer()" class="circle-btn glass-btn text-yellow-400 shadow-lg" title="Switch Map Mode">
-                <i class="fa-solid fa-layer-group"></i>
-            </button>
-            <!-- Sonar Trigger -->
-            <button onclick="app.sendSonar()" class="circle-btn glass-btn text-red-500 shadow-lg border-red-500/30" title="Send Ping">
-                <i class="fa-solid fa-bullseye"></i>
-            </button>
-            <!-- Host: Force Focus -->
-            <button id="btn-force-focus" onclick="app.forceFocus()" class="hidden circle-btn glass-btn text-blue-400 shadow-lg" title="Force Focus">
-                <i class="fa-solid fa-magnet"></i>
-            </button>
+        <!-- SIDE CONTROLS -->
+        <div class="map-controls">
+            <button onclick="app.toggleSatellite()" class="icon-btn glass text-green-500" title="Sat Mode"><i class="fa-solid fa-layer-group"></i></button>
+            <button onclick="app.sendSonar()" class="icon-btn glass text-red-500" title="Sonar"><i class="fa-solid fa-bullseye"></i></button>
+            <button id="btn-focus" onclick="app.forceFocus()" class="icon-btn glass text-blue-500 hidden" title="Force Focus"><i class="fa-solid fa-magnet"></i></button>
         </div>
 
-        <div id="host-hint" class="absolute top-28 left-1/2 -translate-x-1/2 z-[10] glass px-4 py-2 rounded-full text-xs font-bold text-gray-300 opacity-0 pointer-events-none transition-opacity">
-            Double-tap map to Flag
+        <div id="host-hint" class="absolute top-24 left-1/2 -translate-x-1/2 z-[10] glass px-4 py-2 rounded-full text-xs font-bold opacity-0 pointer-events-none transition-opacity">
+            Double-tap to Flag
         </div>
     </div>
 
-    <!-- 3. CHAT VIEW -->
+    <!-- CHAT VIEW -->
     <div id="view-chat">
         <div id="chat-scroll" class="no-scrollbar">
             <div class="text-center opacity-30 mb-8 mt-4">
-                <i class="fa-solid fa-shield-cat text-4xl mb-3"></i>
+                <i class="fa-solid fa-shield-halved text-4xl mb-3"></i>
                 <p class="text-xs uppercase tracking-widest font-bold">Encrypted Mesh</p>
             </div>
             <div id="msg-list" class="flex flex-col gap-4"></div>
         </div>
 
-        <div class="chat-input-island glass">
-            <input type="text" id="msg-input" placeholder="Message..." autocomplete="off" class="flex-1 bg-transparent text-white px-3 text-base font-medium focus:outline-none placeholder-gray-500">
+        <div class="chat-bar glass">
+            <input type="text" id="msg-input" placeholder="Message..." autocomplete="off" class="chat-input placeholder-gray-500">
             <button onclick="app.sendMessage(event)" class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
                 <i class="fa-solid fa-arrow-up"></i>
             </button>
         </div>
     </div>
 
-    <!-- 4. NAV DOCK -->
+    <!-- NAV DOCK -->
     <nav class="nav-dock glass">
-        <button onclick="app.switchTab('map')" id="btn-map" class="nav-item active">
-            <i class="fa-solid fa-map"></i>
-        </button>
-        <div class="w-px h-8 bg-white/10 my-auto mx-2"></div>
+        <button onclick="app.switchTab('map')" id="btn-map" class="nav-item active"><i class="fa-solid fa-map-location-dot"></i></button>
+        <div class="w-px h-8 bg-gray-500/30 my-auto mx-2"></div>
         <button onclick="app.switchTab('chat')" id="btn-chat" class="nav-item relative">
-            <i class="fa-solid fa-comment-dots"></i>
-            <div id="unread-dot" class="absolute top-3 right-3 w-3 h-3 bg-blue-500 rounded-full hidden border-2 border-[#222]"></div>
+            <i class="fa-solid fa-comments"></i>
+            <div id="unread-dot" class="absolute top-4 right-4 w-3 h-3 bg-red-500 rounded-full hidden border-2 border-white"></div>
         </button>
-        <div class="w-px h-8 bg-white/10 my-auto mx-2"></div>
-        <button onclick="app.burn()" class="nav-item text-red-500 hover:text-red-400">
-            <i class="fa-solid fa-power-off"></i>
-        </button>
+        <div class="w-px h-8 bg-gray-500/30 my-auto mx-2"></div>
+        <button onclick="app.burn()" class="nav-item text-red-500 hover:text-red-600"><i class="fa-solid fa-power-off"></i></button>
     </nav>
 
-    <!-- 5. OVERLAYS -->
-    
-    <!-- Onboarding -->
-    <div id="modal-onboarding" class="modal-overlay active" style="background: #050505;">
-        <div class="w-full max-w-sm text-center p-6">
-            <div class="w-20 h-20 mx-auto bg-gradient-to-tr from-gray-800 to-gray-900 rounded-2xl flex items-center justify-center shadow-2xl border border-white/10 mb-6">
-                <i class="fa-solid fa-mask text-4xl text-white"></i>
+    <!-- ONBOARDING MODAL -->
+    <div id="modal-onboarding" class="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 bg-black text-white transition-opacity duration-500">
+        <div class="w-full max-w-sm text-center relative">
+            <div class="w-24 h-24 mx-auto bg-gradient-to-tr from-gray-800 to-gray-900 rounded-3xl flex items-center justify-center shadow-2xl border border-white/10 mb-8">
+                <i class="fa-solid fa-mask text-5xl text-white"></i>
             </div>
-            <h1 class="text-4xl font-black text-white mb-2 tracking-tighter">BURNER<span class="text-blue-500">MAP</span></h1>
-            <p class="text-gray-500 text-xs uppercase font-bold tracking-[0.2em] mb-8">v11.0 Ultimate</p>
+            <h1 class="text-4xl font-black mb-2 tracking-tighter">BURNER<span class="text-blue-500">MAP</span></h1>
+            <p class="text-gray-500 text-xs uppercase font-bold tracking-[0.2em] mb-10">v12.0 Complete</p>
             
-            <div class="glass p-2 rounded-2xl mb-4">
-                <input type="text" id="username-input" class="w-full bg-transparent text-white p-4 text-center font-bold text-xl outline-none placeholder-gray-700" placeholder="CODENAME">
+            <div class="bg-white/10 p-2 rounded-2xl mb-4 backdrop-blur-md">
+                <input type="text" id="username-input" class="w-full bg-transparent text-white p-4 text-center font-bold text-xl outline-none placeholder-gray-500" placeholder="CODENAME">
             </div>
             
-            <button onclick="app.startSession()" class="w-full bg-white text-black py-5 rounded-2xl font-black text-base tracking-wide active:scale-95 transition-transform">
-                JOIN MESH
+            <button onclick="app.startSession()" class="w-full bg-white text-black py-5 rounded-2xl font-black text-lg tracking-wide active:scale-95 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                ENTER
             </button>
-            <p id="restore-msg" class="text-blue-500 text-xs mt-6 hidden uppercase font-bold tracking-widest animate-pulse">Session Found</p>
+            <p id="restore-msg" class="text-blue-500 text-xs mt-8 hidden uppercase font-bold tracking-widest animate-pulse">Session Found</p>
         </div>
     </div>
 
-    <!-- QR -->
-    <div id="modal-qr" class="modal-overlay" onclick="app.toggleQR()">
+    <!-- QR MODAL -->
+    <div id="modal-qr" class="fixed inset-0 z-[90] hidden bg-black/95 backdrop-blur flex items-center justify-center p-6" onclick="app.toggleQR()">
         <div class="bg-white p-8 rounded-[32px] w-full max-w-xs text-center" onclick="event.stopPropagation()">
             <div id="qrcode" class="flex justify-center p-2 mb-4"></div>
             <p class="text-black font-bold text-lg">Scan to Join</p>
         </div>
     </div>
 
-    <!-- Toast -->
-    <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-sm font-bold text-white opacity-0 transition-all pointer-events-none translate-y-4 z-[200]">
+    <!-- TOAST -->
+    <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-sm font-bold opacity-0 transition-all pointer-events-none translate-y-4 z-[200]">
         Notification
     </div>
 
-    <!-- LOGIC -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         const app = {
-            // Core State
+            // State
             peer: null, conn: null, connections: [], myId: null, hostId: null,
-            username: 'Ghost', avatar: 'fa-user', isHost: false, 
-            map: null, markers: {}, trails: {}, rallyMarker: null,
-            
-            // Feature State
-            layerMode: 'dark', // 'dark' or 'sat'
-            battery: null,
-            myLocation: null,
-            centered: false,
+            username: 'Ghost', isHost: false, map: null, markers: {}, trails: {},
+            battery: 100, rallyMarker: null, isLight: false, layerMode: 'dark', layers: {},
 
             init: () => {
-                // Viewport Fix
+                // Viewport & Battery
                 const setVh = () => document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
                 window.addEventListener('resize', setVh); setVh();
-
-                // Battery Monitor
-                if(navigator.getBattery) {
-                    navigator.getBattery().then(b => {
-                        app.battery = Math.round(b.level * 100);
-                        b.addEventListener('levelchange', () => { app.battery = Math.round(b.level * 100); });
-                    });
-                }
+                if(navigator.getBattery) navigator.getBattery().then(b => {
+                    app.battery = Math.round(b.level*100);
+                    b.addEventListener('levelchange', () => app.battery = Math.round(b.level*100));
+                });
 
                 // Restore
-                const saved = JSON.parse(localStorage.getItem('burner_v11'));
+                const saved = JSON.parse(localStorage.getItem('burner_v12'));
                 const urlParams = new URLSearchParams(window.location.search);
                 const joinId = urlParams.get('join');
-                
                 if (saved && (!joinId || joinId === saved.hostId)) {
-                    app.username = saved.username;
-                    app.hostId = saved.hostId;
+                    app.username = saved.username; app.hostId = saved.hostId;
                     document.getElementById('username-input').value = app.username;
                     document.getElementById('restore-msg').classList.remove('hidden');
                 }
                 if (joinId) app.hostId = joinId;
                 app.isHost = !app.hostId;
-
-                if(app.isHost) document.getElementById('btn-force-focus').classList.remove('hidden');
+                if(app.isHost) document.getElementById('btn-focus').classList.remove('hidden');
             },
 
             startSession: () => {
@@ -309,34 +284,69 @@
                 if(!input.value.trim()) return input.focus();
                 app.username = input.value.trim();
                 
-                document.getElementById('modal-onboarding').classList.remove('active');
-                document.getElementById('view-map').style.visibility = 'visible'; // Show Map
+                document.getElementById('modal-onboarding').style.opacity = '0';
+                setTimeout(() => document.getElementById('modal-onboarding').style.display = 'none', 500);
                 
-                app.initMap();
-                app.initPeer();
-                app.startLocation();
+                document.getElementById('view-map').style.visibility = 'visible';
+                app.initMap(); app.initPeer(); app.startLocation();
                 
-                localStorage.setItem('burner_v11', JSON.stringify({ username: app.username, hostId: app.hostId }));
+                localStorage.setItem('burner_v12', JSON.stringify({ username: app.username, hostId: app.hostId }));
             },
 
             initMap: () => {
                 if(app.map) return;
                 app.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([20, 0], 2);
                 
-                // Feature 4: Layer Toggling
-                app.layers = {
-                    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, tileSize: 512, zoomOffset: -1 }),
-                    sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, tileSize: 512, zoomOffset: -1 })
-                };
-                app.layers.dark.addTo(app.map);
+                // Layers
+                app.layers.dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, tileSize: 512, zoomOffset: -1 });
+                app.layers.light = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, tileSize: 512, zoomOffset: -1 });
+                app.layers.sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, tileSize: 512, zoomOffset: -1 });
+                
+                app.layers.dark.addTo(app.map); // Default
 
                 if(app.isHost) {
                     document.getElementById('host-hint').style.opacity = '1';
-                    document.getElementById('role-badge').classList.remove('hidden');
                     app.map.on('dblclick', (e) => {
                         app.setRally(e.latlng);
                         app.send({ type: 'rally', lat: e.latlng.lat, lng: e.latlng.lng });
                     });
+                }
+            },
+
+            toggleTheme: () => {
+                app.isLight = !app.isLight;
+                const body = document.body;
+                const icon = document.getElementById('theme-icon');
+                
+                if(app.isLight) {
+                    body.classList.add('light-mode');
+                    icon.className = "fa-solid fa-moon";
+                    if(app.layerMode === 'dark') {
+                        app.map.removeLayer(app.layers.dark);
+                        app.layers.light.addTo(app.map);
+                        app.layerMode = 'light';
+                    }
+                } else {
+                    body.classList.remove('light-mode');
+                    icon.className = "fa-solid fa-sun";
+                    if(app.layerMode === 'light') {
+                        app.map.removeLayer(app.layers.light);
+                        app.layers.dark.addTo(app.map);
+                        app.layerMode = 'dark';
+                    }
+                }
+            },
+
+            toggleSatellite: () => {
+                if(app.layerMode === 'sat') {
+                    app.map.removeLayer(app.layers.sat);
+                    if(app.isLight) { app.layers.light.addTo(app.map); app.layerMode = 'light'; }
+                    else { app.layers.dark.addTo(app.map); app.layerMode = 'dark'; }
+                } else {
+                    if(app.layerMode === 'dark') app.map.removeLayer(app.layers.dark);
+                    else app.map.removeLayer(app.layers.light);
+                    app.layers.sat.addTo(app.map);
+                    app.layerMode = 'sat';
                 }
             },
 
@@ -345,54 +355,37 @@
                 app.peer = new Peer(null, { debug: 0 });
                 app.peer.on('open', (id) => {
                     app.myId = id;
-                    if(app.isHost) {
-                        app.updateStatus('online', 'HOSTING');
-                        app.peer.on('connection', app.handleHostConn);
-                    } else {
-                        app.connectToHost();
-                    }
+                    if(app.isHost) { app.updateStatus('online', 'HOST'); app.peer.on('connection', app.handleHostConn); }
+                    else app.connectToHost();
                 });
             },
 
             connectToHost: () => {
                 app.updateStatus('wait', 'JOINING...');
                 app.conn = app.peer.connect(app.hostId, { metadata: { username: app.username } });
-                app.conn.on('open', () => {
-                    app.updateStatus('online', 'CONNECTED');
-                    app.showToast('Secure Channel Active');
-                });
+                app.conn.on('open', () => { app.updateStatus('online', 'LINKED'); app.showToast('Secure Channel Active'); });
                 app.conn.on('data', app.handleData);
                 app.conn.on('close', () => app.updateStatus('error', 'LOST HOST'));
             },
 
             handleHostConn: (conn) => {
                 app.connections.push(conn);
-                conn.on('open', () => {
-                    if(app.rallyMarker) conn.send({ type: 'rally', lat: app.rallyMarker.getLatLng().lat, lng: app.rallyMarker.getLatLng().lng });
-                });
+                conn.on('open', () => { if(app.rallyMarker) conn.send({ type: 'rally', lat: app.rallyMarker.getLatLng().lat, lng: app.rallyMarker.getLatLng().lng }); });
                 conn.on('data', (data) => {
                     if(!data.username) data.username = conn.metadata.username;
                     if(!data.from) data.from = conn.peer;
                     app.handleData(data);
                     app.broadcast(data, conn.peer);
                 });
-                conn.on('close', () => {
-                    app.connections = app.connections.filter(c => c.peer !== conn.peer);
-                    app.removeMarker(conn.peer);
-                });
+                conn.on('close', () => { app.connections = app.connections.filter(c => c.peer !== conn.peer); app.removeMarker(conn.peer); });
             },
 
             broadcast: (data, exclude) => app.connections.forEach(c => { if(c.peer !== exclude && c.open) c.send(data); }),
-
+            
             send: (data) => {
                 data = { ...data, username: app.username, from: app.myId, battery: app.battery };
-                if(app.isHost) {
-                    if(data.type !== 'ping') app.handleData(data);
-                    app.broadcast(data);
-                } else if (app.conn?.open) {
-                    app.conn.send(data);
-                    if(data.type === 'chat') app.handleData(data);
-                }
+                if(app.isHost) { if(data.type !== 'ping') app.handleData(data); app.broadcast(data); }
+                else if (app.conn?.open) { app.conn.send(data); if(data.type === 'chat') app.handleData(data); }
             },
 
             handleData: (data) => {
@@ -401,7 +394,7 @@
                     case 'chat': app.addChat(data); break;
                     case 'sonar': app.triggerSonar(data); break;
                     case 'rally': app.setRally(data); break;
-                    case 'focus': if(data.lat) app.map.flyTo([data.lat, data.lng], 18); break; // Feature 5
+                    case 'focus': app.map.flyTo([data.lat, data.lng], 18); app.showToast('Host Forced Focus'); break;
                 }
             },
 
@@ -415,169 +408,95 @@
                 }, null, { enableHighAccuracy: true });
             },
 
-            // --- MARKERS & FEATURES ---
-
             updateMarker: (d) => {
-                // Feature 2: Distance Calc
-                let distLabel = '';
+                // Distance Calc
+                let dist = '';
                 if(app.myLocation && !d.isSelf) {
-                    const dist = app.map.distance([app.myLocation.lat, app.myLocation.lng], [d.lat, d.lng]);
-                    distLabel = dist > 1000 ? `${(dist/1000).toFixed(1)}km` : `${Math.round(dist)}m`;
+                    const m = app.map.distance([app.myLocation.lat, app.myLocation.lng], [d.lat, d.lng]);
+                    dist = m > 1000 ? (m/1000).toFixed(1)+'km' : Math.round(m)+'m';
                 }
-
-                // Feature 3: Battery
-                const battIcon = d.battery ? `<span class="text-[9px] ml-1 ${d.battery < 20 ? 'text-red-500' : 'text-green-400'}"><i class="fa-solid fa-battery-full"></i> ${d.battery}%</span>` : '';
 
                 if(app.markers[d.from]) {
                     app.markers[d.from].setLatLng([d.lat, d.lng]);
-                    
-                    // Feature 1: Ghost Trails
-                    if(!app.trails[d.from]) app.trails[d.from] = L.polyline([], {color: d.isSelf ? '#3b82f6' : '#94a3b8', weight: 2, opacity: 0.5}).addTo(app.map);
+                    // Ghost Trail
+                    if(!app.trails[d.from]) app.trails[d.from] = L.polyline([], { color: d.isSelf?'#3b82f6':'#94a3b8', weight: 2, opacity: 0.6 }).addTo(app.map);
                     app.trails[d.from].addLatLng([d.lat, d.lng]);
-                    if(app.trails[d.from].getLatLngs().length > 50) app.trails[d.from].setLatLngs(app.trails[d.from].getLatLngs().slice(1));
-
+                    // Update Dashboard
+                    const dash = document.getElementById(`dash-${d.from}`);
+                    if(dash) dash.innerHTML = `
+                        <span class="font-bold text-[10px] uppercase">${d.username}</span>
+                        <div class="flex gap-2 text-[9px] opacity-80">
+                            <span><i class="fa-solid fa-bolt text-yellow-500"></i> ${d.battery || '?'}%</span>
+                            ${dist ? `<span><i class="fa-solid fa-ruler-horizontal text-blue-400"></i> ${dist}</span>` : ''}
+                        </div>
+                    `;
                 } else {
                     const color = d.isSelf ? '#3b82f6' : '#fff';
                     const html = `
-                        <div class="relative w-8 h-8">
-                            ${d.isSelf ? '<div class="absolute w-full h-full rounded-full border-2 border-white animate-ping opacity-50"></div>' : ''}
-                            <div class="w-full h-full rounded-full bg-black border-[3px] shadow-lg relative z-10 flex items-center justify-center text-[10px] font-bold" style="border-color:${color}; color:${color}">
+                        <div class="relative w-10 h-10 flex flex-col items-center justify-center">
+                            <div class="w-full h-full rounded-full bg-black border-[3px] shadow-lg relative z-10 flex items-center justify-center font-bold text-xs text-white" style="border-color:${color}; background:${d.isSelf?'#3b82f6':'#000'}">
                                 ${d.username.charAt(0)}
                             </div>
-                            <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/50 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-white border border-white/10">
-                                ${d.username} ${battIcon} <br> <span class="text-blue-300">${distLabel}</span>
+                            <div id="dash-${d.from}" class="marker-dash text-[var(--text-main)]">
+                                <span class="font-bold text-[10px] uppercase">${d.username}</span>
+                                <div class="flex gap-2 text-[9px] opacity-80">
+                                    <span><i class="fa-solid fa-bolt text-yellow-500"></i> ${d.battery || '?'}%</span>
+                                </div>
                             </div>
                         </div>`;
-                    const icon = L.divIcon({ className: 'bg-transparent', html, iconSize: [32, 32], iconAnchor: [16, 16] });
-                    const m = L.marker([d.lat, d.lng], { icon, zIndexOffset: d.isSelf?1000:0 }).addTo(app.map);
-                    app.markers[d.from] = m;
+                    const icon = L.divIcon({ className: 'bg-transparent', html, iconSize: [40, 40], iconAnchor: [20, 20] });
+                    app.markers[d.from] = L.marker([d.lat, d.lng], { icon, zIndexOffset: d.isSelf?1000:0 }).addTo(app.map);
                 }
             },
 
-            // Feature 4: Toggle Layer
-            toggleLayer: () => {
-                if(app.map.hasLayer(app.layers.dark)) {
-                    app.map.removeLayer(app.layers.dark);
-                    app.layers.sat.addTo(app.map);
-                    app.layerMode = 'sat';
-                } else {
-                    app.map.removeLayer(app.layers.sat);
-                    app.layers.dark.addTo(app.map);
-                    app.layerMode = 'dark';
-                }
-            },
-
-            // Feature 5: Force Focus
             forceFocus: () => {
                 if(app.myLocation) {
                     app.send({ type: 'focus', lat: app.myLocation.lat, lng: app.myLocation.lng });
                     app.map.flyTo([app.myLocation.lat, app.myLocation.lng], 18);
-                    app.showToast('Forced Group Focus');
+                    app.showToast('Focusing Group...');
                 }
             },
 
-            // Fix Sonar Bug
-            sendSonar: () => {
-                if(!app.myLocation) return app.showToast('Waiting for GPS...');
-                // Send coordinates explicitly
-                const payload = { type: 'sonar', lat: app.myLocation.lat, lng: app.myLocation.lng };
-                app.send(payload);
-                app.triggerSonar(payload);
-            },
-
-            triggerSonar: (d) => {
-                if(!d.lat || !d.lng) return;
-                const icon = L.divIcon({ className: 'sonar-wave', iconSize: [100,100], iconAnchor: [50,50] });
-                const m = L.marker([d.lat, d.lng], { icon, zIndexOffset: -100 }).addTo(app.map);
-                setTimeout(() => app.map.removeLayer(m), 2000);
-            },
-
+            // Basic Utils
             setRally: (coords) => {
                 if(app.rallyMarker) app.map.removeLayer(app.rallyMarker);
                 const icon = L.divIcon({ html: '<div class="text-4xl filter drop-shadow-lg">🚩</div>', className: 'bg-transparent', iconSize: [40,40], iconAnchor: [20,40] });
                 app.rallyMarker = L.marker([coords.lat, coords.lng], { icon }).addTo(app.map);
-                app.showToast('Rally Point Updated');
+                app.showToast('Rally Updated');
             },
-
-            removeMarker: (id) => { 
-                if(app.markers[id]) { app.map.removeLayer(app.markers[id]); delete app.markers[id]; }
-                if(app.trails[id]) { app.map.removeLayer(app.trails[id]); delete app.trails[id]; }
-            },
-
-            // Chat & UI
-            sendMessage: (e) => {
-                e.preventDefault();
-                const input = document.getElementById('msg-input');
-                const msg = input.value.trim();
-                if(!msg) return;
-                app.send({ type: 'chat', msg });
-                input.value = '';
-            },
-
+            
+            removeMarker: (id) => { if(app.markers[id]) { app.map.removeLayer(app.markers[id]); delete app.markers[id]; } },
+            sendSonar: () => { if(app.myLocation) { app.send({ type: 'sonar', lat: app.myLocation.lat, lng: app.myLocation.lng }); app.triggerSonar(app.myLocation); } },
+            triggerSonar: (d) => { const m = L.marker([d.lat, d.lng], { icon: L.divIcon({ className: 'sonar-wave', iconSize: [100,100], iconAnchor: [50,50] }), zIndexOffset: -100 }).addTo(app.map); setTimeout(() => app.map.removeLayer(m), 2000); },
+            
+            sendMessage: (e) => { e.preventDefault(); const i = document.getElementById('msg-input'); if(i.value.trim()){ app.send({ type: 'chat', msg: i.value.trim() }); i.value = ''; } },
             addChat: (d) => {
                 const list = document.getElementById('msg-list');
                 const isMe = d.from === app.myId;
                 const div = document.createElement('div');
                 div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
-                div.innerHTML = `
-                    <div class="${isMe ? 'bg-blue-600 text-white' : 'glass text-gray-200'} px-5 py-3 rounded-2xl max-w-[85%] text-base font-medium break-words border border-white/10 shadow-lg">
-                        ${d.msg}
-                    </div>
-                    <span class="text-[10px] text-gray-500 mt-1 px-2 font-bold uppercase tracking-wide">${d.username}</span>
-                `;
+                div.innerHTML = `<div class="${isMe?'bg-blue-600 text-white':'glass'} px-5 py-3 rounded-2xl max-w-[85%] text-sm font-medium border border-white/10">${d.msg}</div><span class="text-[9px] opacity-50 mt-1 px-2 font-bold uppercase">${d.username}</span>`;
                 list.appendChild(div);
                 document.getElementById('chat-scroll').scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
-                if(!isMe && document.getElementById('view-chat').style.transform !== 'translate3d(0px, 0px, 0px)') {
-                    document.getElementById('unread-dot').classList.remove('hidden');
-                    app.showToast(`Msg: ${d.username}`);
-                }
-            },
-
-            switchTab: (tab) => {
-                const chat = document.getElementById('view-chat');
-                if(tab === 'map') {
-                    chat.style.transform = 'translate3d(100%, 0, 0)';
-                    document.getElementById('btn-map').classList.add('active');
-                    document.getElementById('btn-chat').classList.remove('active');
-                } else {
-                    chat.style.transform = 'translate3d(0, 0, 0)';
-                    document.getElementById('btn-map').classList.remove('active');
-                    document.getElementById('btn-chat').classList.add('active');
-                    document.getElementById('unread-dot').classList.add('hidden');
-                }
-            },
-
-            // Fix QR Bug: Ensure class toggling works
-            toggleQR: () => {
-                const modal = document.getElementById('modal-qr');
-                if(!modal.classList.contains('active')) {
-                    modal.classList.add('active');
-                    const url = `${window.location.origin}${window.location.pathname}?join=${app.isHost ? app.myId : app.hostId}`;
-                    document.getElementById('qrcode').innerHTML = "";
-                    new QRCode(document.getElementById('qrcode'), { text: url, width: 220, height: 220 });
-                } else {
-                    modal.classList.remove('active');
-                }
-            },
-
-            copyLink: () => {
-                const url = `${window.location.origin}${window.location.pathname}?join=${app.isHost ? app.myId : app.hostId}`;
-                if(navigator.share) navigator.share({ url }).catch(()=>{});
-                else navigator.clipboard.writeText(url).then(() => app.showToast('Copied'));
-            },
-
-            updateStatus: (type, msg) => {
-                document.getElementById('conn-status').innerText = msg;
-                document.getElementById('status-dot').className = `w-3 h-3 rounded-full shadow-[0_0_10px_${type=='online'?'#10b981':type=='wait'?'#fbbf24':'#ef4444'}] ${type=='online'?'bg-emerald-500':type=='wait'?'bg-amber-400':'bg-red-500'}`;
-            },
-
-            showToast: (msg) => {
-                const t = document.getElementById('toast');
-                t.innerText = msg; t.style.opacity = '1'; t.style.transform = 'translate(-50%, 0)';
-                setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, 16px)'; }, 2500);
+                if(!isMe && document.getElementById('view-chat').style.transform !== 'translate3d(0px, 0px, 0px)') { document.getElementById('unread-dot').classList.remove('hidden'); app.showToast(`Msg: ${d.username}`); }
             },
             
-            burn: () => { if(confirm('Burn Session?')) { localStorage.removeItem('burner_v11'); window.location.href = window.location.pathname; }}
+            switchTab: (tab) => {
+                const chat = document.getElementById('view-chat');
+                if(tab === 'map') { chat.style.transform = 'translate3d(100%, 0, 0)'; document.getElementById('btn-map').classList.add('active'); document.getElementById('btn-chat').classList.remove('active'); }
+                else { chat.style.transform = 'translate3d(0, 0, 0)'; document.getElementById('btn-chat').classList.add('active'); document.getElementById('btn-map').classList.remove('active'); document.getElementById('unread-dot').classList.add('hidden'); }
+            },
+
+            toggleQR: () => {
+                const modal = document.getElementById('modal-qr');
+                if(modal.classList.contains('hidden')) { modal.classList.remove('hidden'); document.getElementById('qrcode').innerHTML = ""; new QRCode(document.getElementById('qrcode'), { text: window.location.href, width: 220, height: 220 }); }
+                else modal.classList.add('hidden');
+            },
+
+            copyLink: () => { navigator.clipboard.writeText(window.location.href).then(() => app.showToast('Copied')); },
+            updateStatus: (type, msg) => { document.getElementById('conn-status').innerText = msg; document.getElementById('status-dot').className = `w-2 h-2 rounded-full shadow-lg ${type=='online'?'bg-emerald-500':type=='wait'?'bg-amber-400':'bg-red-500'}`; },
+            showToast: (msg) => { const t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = '1'; t.style.transform = 'translate(-50%, 0)'; setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, 16px)'; }, 2500); },
+            burn: () => { if(confirm('Burn Session?')) { localStorage.removeItem('burner_v12'); window.location.href = window.location.pathname; }}
         };
         window.onload = app.init;
     </script>
