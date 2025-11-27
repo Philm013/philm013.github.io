@@ -1,7 +1,3 @@
-<!-- 
-  BURNERMAP v4.0: Layout Fixes, Members Panel, Map Pings, Typing Indicators
-  Single File Implementation
--->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,302 +6,582 @@
     <title>BurnerMap v4</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- QR Code Lib -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
         :root { --app-height: 100dvh; }
-        @keyframes subtle-gradient { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; height: var(--app-height); width: 100vw; overflow: hidden; overscroll-behavior: none; }
         
-        #app { height: 100%; width: 100%; position: relative; }
-        #map { height: 100%; width: 100%; z-index: 0; background-color: #020617; background-image: linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e293b 100%); background-size: 400% 400%; animation: subtle-gradient 15s ease infinite; }
-        
-        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
-        .pt-safe { padding-top: env(safe-area-inset-top, 16px); }
-        
-        /* Map Markers */
-        .leaflet-control-attribution, .leaflet-popup-tip { display: none; }
-        .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .custom-marker { border: 2px solid white; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; }
-        .emoji-ping { font-size: 24px; text-shadow: 0 2px 5px rgba(0,0,0,0.5); animation: fade-in 0.3s ease, fade-out 0.5s ease 29.5s forwards; }
+        /* --- LAYOUT ENGINE FIXES --- */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0f172a; 
+            color: #e2e8f0; 
+            height: var(--app-height); 
+            width: 100vw; 
+            overflow: hidden; 
+            display: flex;       /* Flex column layout */
+            flex-direction: column; 
+        }
 
-        /* Animations */
-        @keyframes fade-in { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
-        @keyframes fade-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.5); } }
-        @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .toast-active { transform: translate(-50%, 20px) !important; }
+        /* Header takes physical space now */
+        header {
+            flex-shrink: 0;
+            background: #0f172a; /* Solid background to prevent overlap transparency */
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-top: max(env(safe-area-inset-top), 16px); /* Push down from notch */
+            padding-bottom: 10px;
+            padding-left: 16px;
+            padding-right: 16px;
+            z-index: 50;
+        }
 
-        /* Panel Transition */
-        #members-panel { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        #members-panel.open { transform: translateX(0) !important; }
+        /* Main takes remaining space */
+        main {
+            flex-grow: 1;
+            position: relative; /* Context for absolute map/chat */
+            overflow: hidden;
+        }
+
+        /* Footer floats but is safe-area aware */
+        .bottom-nav-container {
+            position: absolute;
+            bottom: 20px;
+            left: 0; 
+            right: 0;
+            display: flex;
+            justify-content: center;
+            z-index: 40;
+            padding-bottom: env(safe-area-inset-bottom);
+            pointer-events: none; /* Let clicks pass through around the buttons */
+        }
+        .bottom-nav-inner { pointer-events: auto; }
+
+        /* Map Fixes */
+        #map { height: 100%; width: 100%; background: #0f172a; }
+        
+        /* Chat View Fixes */
+        #view-chat {
+            background: #0f172a; /* Solid background */
+            z-index: 20;
+        }
+
+        /* UI Polish */
+        .glass-btn { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Map Sonar Animation */
+        @keyframes sonar { 
+            0% { transform: scale(1); opacity: 1; border-width: 4px; } 
+            100% { transform: scale(4); opacity: 0; border-width: 0px; } 
+        }
+        .sonar-wave {
+            position: absolute; border-radius: 50%; border: 2px solid #ef4444; 
+            background: rgba(239, 68, 68, 0.2); width: 100%; height: 100%; 
+            animation: sonar 2s ease-out infinite; z-index: -1;
+        }
+
+        /* Avatar styling */
+        .custom-marker { transition: all 0.3s ease; }
+        .typing-indicator { font-size: 10px; color: #94a3b8; font-style: italic; height: 16px; }
     </style>
 </head>
 <body>
-    <div id="app">
-        <!-- Z-INDEX FIX: Header is now z-40, above chat view -->
-        <header class="absolute top-0 left-0 right-0 z-40 pt-safe px-4 pointer-events-none flex justify-between items-start">
-            <div class="pointer-events-auto mt-2 flex flex-col gap-2">
-                <div class="bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg">
-                    <div id="heartbeat-icon" class="text-[10px] text-slate-500"><i class="fa-solid fa-signal"></i></div>
-                    <span id="connection-status" class="text-[10px] font-bold tracking-wider uppercase">OFFLINE</span>
-                </div>
-                <div id="timer-badge" class="hidden bg-red-900/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-red-500/30 flex items-center gap-2 shadow-lg">
-                    <i class="fa-solid fa-hourglass-half text-red-400 text-xs"></i>
-                    <span id="session-timer" class="text-[10px] font-mono font-bold text-red-100">00:00</span>
-                </div>
-            </div>
-            <div class="flex items-center gap-2 mt-2">
-                <button onclick="app.copyLink()" class="pointer-events-auto bg-blue-600 w-10 h-10 rounded-full shadow-lg flex items-center justify-center"><i class="fa-solid fa-link"></i></button>
-                <button id="btn-settings" onclick="app.toggleSettings()" class="hidden pointer-events-auto bg-slate-700 w-10 h-10 rounded-full shadow-lg flex items-center justify-center"><i class="fa-solid fa-gear"></i></button>
-            </div>
-        </header>
 
-        <!-- MAIN VIEWPORT -->
-        <main class="flex-1 relative w-full h-full overflow-hidden">
-            <div id="view-map" class="absolute inset-0 z-0"><div id="map"></div></div>
-
-            <!-- Z-INDEX FIX: Chat view is z-10, with padding-top to avoid overlap -->
-            <div id="view-chat" class="absolute inset-0 bg-slate-900 flex flex-col opacity-0 pointer-events-none z-10 pt-24 pt-safe">
-                <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
-                <div class="p-3 bg-slate-800/80 backdrop-blur-sm border-t border-white/5 pb-[calc(env(safe-area-inset-bottom)+80px)]">
-                    <div id="typing-indicator" class="h-4 text-xs text-slate-400 italic px-2 mb-1"></div>
-                    <form onsubmit="app.sendMessage(event)" class="flex gap-2">
-                        <input type="text" id="msg-input" placeholder="Type message..." autocomplete="off" class="flex-1 bg-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                        <button type="submit" class="bg-blue-600 text-white w-12 rounded-xl font-bold"><i class="fa-solid fa-paper-plane"></i></button>
-                    </form>
-                </div>
+    <!-- 1. HEADER (Fixed, Solid, Safe-Area Padded) -->
+    <header class="flex justify-between items-center shadow-lg">
+        <div class="flex flex-col">
+            <div class="flex items-center gap-2">
+                <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
+                <h1 class="font-black text-lg tracking-tight text-white">BURNERMAP</h1>
             </div>
-        </main>
-
-        <!-- BOTTOM NAV -->
-        <div class="absolute bottom-4 left-0 right-0 z-50 flex justify-center pointer-events-none pb-safe">
-            <nav class="glass pointer-events-auto rounded-2xl p-1.5 flex gap-1 shadow-2xl w-[95%] max-w-sm">
-                <button onclick="app.switchTab('map')" id="btn-map" class="nav-btn flex-1 py-3 rounded-xl bg-slate-700 text-white"><i class="fa-solid fa-map-location-dot"></i><span class="block text-[10px] font-bold uppercase mt-1">Map</span></button>
-                <button onclick="app.switchTab('members')" id="btn-members" class="nav-btn flex-1 py-3 rounded-xl text-slate-400 relative"><i class="fa-solid fa-users"></i><span id="members-count" class="absolute top-2 right-6 text-[10px] bg-sky-500 text-white font-bold w-4 h-4 rounded-full flex items-center justify-center">1</span><span class="block text-[10px] font-bold uppercase mt-1">Members</span></button>
-                <button onclick="app.switchTab('chat')" id="btn-chat" class="nav-btn flex-1 py-3 rounded-xl text-slate-400 relative"><i class="fa-solid fa-comments"></i><span id="unread-badge" class="absolute top-2 right-8 w-2.5 h-2.5 bg-red-500 rounded-full hidden border-2 border-slate-800"></span><span class="block text-[10px] font-bold uppercase mt-1">Chat</span></button>
-                <button onclick="app.burn()" class="flex-1 py-3 rounded-xl text-red-400"><i class="fa-solid fa-fire"></i><span class="block text-[10px] font-bold uppercase mt-1">Burn</span></button>
-            </nav>
+            <div class="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                <span id="role-badge">CONNECTING...</span>
+                <span id="user-count" class="hidden bg-slate-800 px-1.5 rounded text-slate-300">1</span>
+            </div>
         </div>
 
-        <!-- MEMBERS PANEL -->
-        <div id="members-panel" class="absolute inset-0 bg-slate-900/50 backdrop-blur-md z-20 transform translate-x-full pt-24 pt-safe flex flex-col">
-            <h2 class="text-lg font-bold text-white px-4 mb-4">Connected Members</h2>
-            <div id="members-list" class="flex-1 overflow-y-auto px-4 space-y-3"></div>
+        <div class="flex gap-2">
+            <!-- QR Button -->
+            <button onclick="app.toggleQR()" class="w-10 h-10 rounded-full bg-slate-800 text-blue-400 hover:bg-slate-700 flex items-center justify-center transition-all active:scale-95">
+                <i class="fa-solid fa-qrcode"></i>
+            </button>
+            <!-- Copy Link Button -->
+            <button onclick="app.copyLink()" class="w-10 h-10 rounded-full bg-blue-600 text-white hover:bg-blue-500 flex items-center justify-center shadow-lg transition-all active:scale-95">
+                <i class="fa-solid fa-link"></i>
+            </button>
         </div>
+    </header>
+
+    <!-- 2. MAIN CONTENT (Fills remaining height) -->
+    <main>
         
-        <!-- ONBOARDING, SETTINGS, etc. modals -->
-        <!-- All modals are structured similarly -->
-        <div id="modal-onboarding" class="absolute inset-0 z-50 bg-slate-900 flex items-end sm:items-center justify-center p-4 transition-opacity duration-300">
-             <div class="bg-slate-800 w-full max-w-sm rounded-t-2xl sm:rounded-2xl border border-white/10 p-6 shadow-2xl animate-slide-up">
-                <!-- Onboarding content here -->
-             </div>
+        <!-- MAP VIEW -->
+        <div id="view-map" class="absolute inset-0 w-full h-full">
+            <div id="map"></div>
+            
+            <!-- Sonar Button (Floating on Map) -->
+            <button onclick="app.sendSonar()" class="absolute top-4 right-4 z-[400] glass-btn text-red-400 w-12 h-12 rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-transform">
+                <i class="fa-solid fa-bullseye text-xl"></i>
+            </button>
+
+            <!-- Rally Hint -->
+            <div id="rally-hint" class="absolute top-4 left-1/2 -translate-x-1/2 z-[400] bg-black/60 backdrop-blur text-white px-3 py-1.5 rounded-full text-[10px] pointer-events-none opacity-0 transition-opacity whitespace-nowrap">
+                Host: Double-tap to set flag
+            </div>
         </div>
-        <!-- Other modals (settings, expired) would follow the same pattern -->
+
+        <!-- CHAT VIEW (Hidden by default) -->
+        <div id="view-chat" class="absolute inset-0 w-full h-full flex flex-col translate-x-full transition-transform duration-300">
+            
+            <!-- Chat Messages -->
+            <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-3 pb-24 no-scrollbar">
+                <div class="text-center py-6 opacity-30">
+                    <i class="fa-solid fa-lock text-4xl mb-2"></i>
+                    <p class="text-xs uppercase tracking-widest">End-to-End Encrypted</p>
+                </div>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div id="typing-bar" class="px-4 pb-1 typing-indicator opacity-0 transition-opacity">
+                Someone is typing...
+            </div>
+
+            <!-- Quick React Bar -->
+            <div class="px-2 pb-2 flex gap-2 overflow-x-auto no-scrollbar bg-slate-900 border-t border-white/5 pt-2">
+                <button onclick="app.sendReact('👍')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg hover:bg-slate-700">👍</button>
+                <button onclick="app.sendReact('📍')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg hover:bg-slate-700">📍</button>
+                <button onclick="app.sendReact('🔥')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg hover:bg-slate-700">🔥</button>
+                <button onclick="app.sendReact('🚩')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg hover:bg-slate-700">🚩</button>
+                <button onclick="app.sendReact('🛑')" class="bg-slate-800 text-lg px-3 py-1 rounded-lg hover:bg-slate-700">🛑</button>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="p-2 bg-slate-900 pb-[calc(env(safe-area-inset-bottom)+80px)]"> <!-- Extra padding for nav overlap -->
+                <form onsubmit="app.sendMessage(event)" class="flex gap-2">
+                    <input type="text" id="msg-input" placeholder="Message..." autocomplete="off"
+                        oninput="app.handleTyping()"
+                        class="flex-1 bg-slate-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <button type="submit" class="bg-blue-600 w-12 rounded-xl flex items-center justify-center text-white"><i class="fa-solid fa-paper-plane"></i></button>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 3. BOTTOM NAVIGATION (Floating) -->
+    <div class="bottom-nav-container">
+        <nav class="bottom-nav-inner glass w-[90%] max-w-sm rounded-2xl p-1.5 flex gap-1 shadow-2xl">
+            <button onclick="app.switchTab('map')" id="btn-map" class="flex-1 py-3 rounded-xl bg-slate-700 text-white shadow-inner transition-all">
+                <i class="fa-solid fa-map text-lg mb-0.5 block"></i><span class="text-[10px] font-bold">MAP</span>
+            </button>
+            <button onclick="app.switchTab('chat')" id="btn-chat" class="flex-1 py-3 rounded-xl text-slate-400 hover:text-white transition-all relative">
+                <i class="fa-solid fa-comment-dots text-lg mb-0.5 block"></i>
+                <span id="unread-dot" class="absolute top-2 right-8 w-2.5 h-2.5 bg-red-500 rounded-full hidden border border-slate-900"></span>
+                <span class="text-[10px] font-bold">CHAT</span>
+            </button>
+            <button onclick="app.burn()" class="flex-1 py-3 rounded-xl text-red-400 hover:bg-red-900/20 transition-all">
+                <i class="fa-solid fa-fire text-lg mb-0.5 block"></i><span class="text-[10px] font-bold">BURN</span>
+            </button>
+        </nav>
     </div>
 
-    <!-- LIBS -->
+    <!-- MODALS & OVERLAYS -->
+    
+    <!-- QR Modal -->
+    <div id="modal-qr" class="hidden fixed inset-0 z-[60] bg-black/90 backdrop-blur flex items-center justify-center p-6" onclick="app.toggleQR()">
+        <div class="bg-white p-6 rounded-3xl text-center space-y-4" onclick="event.stopPropagation()">
+            <h3 class="text-slate-900 font-bold text-lg">Scan to Join</h3>
+            <div id="qrcode" class="flex justify-center"></div>
+            <p class="text-slate-500 text-xs">Anyone with this code can join.</p>
+            <button onclick="app.toggleQR()" class="w-full py-3 bg-slate-100 rounded-xl text-slate-900 font-bold">Close</button>
+        </div>
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div id="modal-onboarding" class="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 transition-opacity duration-300">
+        <div class="w-full max-w-xs text-center">
+            <div class="mb-8 relative inline-block">
+                <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/50 relative z-10">
+                    <i class="fa-solid fa-mask text-4xl text-white"></i>
+                </div>
+                <div class="absolute inset-0 bg-blue-600 blur-xl opacity-50"></div>
+            </div>
+            
+            <h2 class="text-2xl font-black text-white mb-6">BURNERMAP v4</h2>
+            
+            <div class="space-y-4">
+                <div class="grid grid-cols-5 gap-2 mb-4" id="avatar-grid"></div>
+                
+                <input type="text" id="username-input" class="w-full bg-slate-800 border border-slate-700 text-white px-4 py-4 rounded-xl text-center font-bold outline-none focus:border-blue-500 transition-colors" placeholder="CODENAME">
+                
+                <button onclick="app.startSession()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition-transform">
+                    ENTER MESH
+                </button>
+            </div>
+            
+            <p id="restore-msg" class="text-emerald-400 text-xs mt-6 hidden"><i class="fa-solid fa-rotate-left"></i> Previous session found</p>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-slate-800/90 backdrop-blur border border-white/10 text-white px-4 py-2 rounded-full shadow-2xl z-[200] text-xs font-bold transition-all duration-300 opacity-0 translate-y-[-20px] pointer-events-none">
+        Notification
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <script>
-        // Main 'app' object with all logic goes here.
-        // Due to length limitations, the full JS object from v3.0 should be inserted,
-        // then modified with the logic below.
-        
         const app = {
-            // ... All properties from v3.0
-            members: {},
-            typingUsers: {},
-            isTyping: false,
+            peer: null, conn: null, connections: [], myId: null, hostId: null,
+            isHost: false, username: 'Ghost', avatar: 'fa-user', color: '#3b82f6',
+            map: null, markers: {}, rallyMarker: null, sonarLayer: null,
+            avatars: ['fa-user', 'fa-ghost', 'fa-robot', 'fa-dragon', 'fa-cat', 'fa-dog', 'fa-skull', 'fa-spider', 'fa-crow', 'fa-mask'],
             typingTimeout: null,
 
-            // --- NEW & MODIFIED FUNCTIONS FOR V4.0 ---
+            init: () => {
+                // Viewport height fix
+                const setVh = () => document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+                window.addEventListener('resize', setVh);
+                setVh();
 
-            // MODIFIED: init()
-            init: function() {
-                // ... same as before
-                this.members[this.myId] = { username: this.username, avatar: this.avatar }; // Add self to members list
-                this.updateMembersUI();
-            },
-
-            // MODIFIED: initMap()
-            initMap: function() {
-                // ... same map setup
+                app.renderAvatars();
                 
-                // NEW: Long-press for map pings
-                let pressTimer;
-                this.map.on('mousedown', (e) => {
-                    pressTimer = setTimeout(() => this.showPingSelector(e.latlng), 800);
-                });
-                this.map.on('mouseup', () => clearTimeout(pressTimer));
-                this.map.on('contextmenu', (e) => {
-                    e.originalEvent.preventDefault();
-                    this.showPingSelector(e.latlng);
-                });
-            },
-
-            // NEW: Show Emoji Ping Selector
-            showPingSelector: function(latlng) {
-                const emojis = ['🍕', '🍻', '⚠️', '❓', ' parking'];
-                const popupContent = emojis.map(e => 
-                    `<button class="text-2xl p-2 hover:scale-125 transition-transform" onclick="app.sendPing('${e}', ${latlng.lat}, ${latlng.lng})">${e}</button>`
-                ).join('');
-                L.popup()
-                    .setLatLng(latlng)
-                    .setContent(`<div class="flex gap-2">${popupContent}</div>`)
-                    .openOn(this.map);
-            },
-            
-            // NEW: Send and handle map pings
-            sendPing: function(emoji, lat, lng) {
-                this.map.closePopup();
-                this.send({ type: 'map_ping', emoji, lat, lng });
-            },
-
-            // MODIFIED: handleData()
-            handleData: function(data) {
-                // ... existing cases for chat, location, sync, etc.
+                // Persistence check
+                const saved = JSON.parse(localStorage.getItem('burner_v4'));
+                const urlParams = new URLSearchParams(window.location.search);
+                const joinId = urlParams.get('join');
                 
-                switch(data.type) {
-                    // ... other cases
-                    case 'map_ping':
-                        const pingIcon = L.divIcon({ className: 'bg-transparent', html: `<div class="emoji-ping">${data.emoji}</div>`});
-                        const pingMarker = L.marker([data.lat, data.lng], { icon: pingIcon }).addTo(this.map);
-                        setTimeout(() => this.map.removeLayer(pingMarker), 30000);
-                        break;
-                    case 'typing_start':
-                        this.typingUsers[data.from] = data.username;
-                        this.updateTypingIndicator();
-                        break;
-                    case 'typing_stop':
-                        delete this.typingUsers[data.from];
-                        this.updateTypingIndicator();
-                        break;
-                    case 'kick':
-                        this.showToast('You were kicked by the host.');
-                        setTimeout(() => this.burn(true), 2000); // Force burn
-                        break;
+                if (saved && (!joinId || joinId === saved.hostId)) {
+                    app.username = saved.username;
+                    app.avatar = saved.avatar;
+                    app.hostId = saved.hostId;
+                    app.color = saved.color;
+                    document.getElementById('username-input').value = app.username;
+                    app.selectAvatar(app.avatar);
+                    document.getElementById('restore-msg').classList.remove('hidden');
                 }
-            },
-
-            // MODIFIED: updateMarker() - To add distance
-            updateMarker: function(id, lat, lng, label, avatar, color, isSelf = false) {
-                // ... same marker creation logic
                 
-                // NEW: Distance calculation
-                const distance = this.myLocation ? this.calculateDistance(this.myLocation.lat, this.myLocation.lng, lat, lng) : 0;
-                const distanceStr = distance > 0 ? `<br><span class="text-xs text-slate-400">${distance.toFixed(2)} km away</span>` : '';
-                const popupContent = `<div class="text-slate-900 font-bold flex items-center gap-2"><i class="fa-solid ${avatar}"></i> ${label}</div>${distanceStr}`;
-                
-                if (this.markers[id]) {
-                    this.markers[id].setLatLng([lat, lng]);
-                    this.markers[id].setPopupContent(popupContent);
-                } else {
-                    // ... create new marker
-                    const marker = L.marker(...);
-                    marker.bindPopup(popupContent);
-                    this.markers[id] = marker;
-                }
+                if (joinId) app.hostId = joinId;
+                app.isHost = !app.hostId;
+
+                app.initMap();
             },
 
-            // NEW: Haversine formula for distance
-            calculateDistance: function(lat1, lon1, lat2, lon2) {
-                const R = 6371; // Radius of the Earth in km
-                const dLat = (lat2 - lat1) * Math.PI / 180;
-                const dLon = (lon2 - lon1) * Math.PI / 180;
-                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                          Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c;
-            },
-
-            // MODIFIED: sendMessage() - to handle typing indicator
-            sendMessage: function(e) {
-                // ... same as before
-                clearTimeout(this.typingTimeout);
-                this.isTyping = false;
-                this.send({ type: 'typing_stop' });
-            },
-
-            // NEW: Typing Indicator Logic
-            handleTyping: function() {
-                if (!this.isTyping) {
-                    this.isTyping = true;
-                    this.send({ type: 'typing_start' });
-                }
-                clearTimeout(this.typingTimeout);
-                this.typingTimeout = setTimeout(() => {
-                    this.isTyping = false;
-                    this.send({ type: 'typing_stop' });
-                }, 3000);
-            },
-
-            updateTypingIndicator: function() {
-                const indicator = document.getElementById('typing-indicator');
-                const users = Object.values(this.typingUsers);
-                if (users.length === 0) {
-                    indicator.textContent = '';
-                } else if (users.length === 1) {
-                    indicator.textContent = `${users[0]} is typing...`;
-                } else {
-                    indicator.textContent = `${users.join(', ')} are typing...`;
-                }
-            },
-
-            // NEW: Members Panel Logic
-            updateMembersUI: function() {
-                const list = document.getElementById('members-list');
-                document.getElementById('members-count').textContent = Object.keys(this.members).length;
-                list.innerHTML = Object.entries(this.members).map(([id, user]) => `
-                    <div class="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center"><i class="fa-solid ${user.avatar}"></i></div>
-                            <span class="font-bold text-sm">${user.username} ${id === this.myId ? '(You)' : ''}</span>
-                        </div>
-                        ${(this.isHost && id !== this.myId) ? `<button onclick="app.kickUser('${id}')" class="text-red-500 text-xs font-bold">KICK</button>` : ''}
+            renderAvatars: () => {
+                const grid = document.getElementById('avatar-grid');
+                grid.innerHTML = app.avatars.map(icon => `
+                    <div onclick="app.selectAvatar('${icon}')" class="avatar-opt h-10 w-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 cursor-pointer hover:bg-slate-700 hover:text-white transition-all">
+                        <i class="fa-solid ${icon}"></i>
                     </div>
                 `).join('');
+                app.selectAvatar(app.avatar);
             },
 
-            kickUser: function(peerId) {
-                const connToKick = this.connections.find(c => c.peer === peerId);
-                if (connToKick) {
-                    connToKick.send({ type: 'kick' });
-                    setTimeout(() => connToKick.close(), 500); // Give msg time to send
-                    this.showToast('User kicked.');
+            selectAvatar: (icon) => {
+                app.avatar = icon;
+                document.querySelectorAll('.avatar-opt').forEach(el => {
+                    el.classList.remove('bg-blue-600', 'text-white', 'border-transparent');
+                    if(el.innerHTML.includes(icon)) el.classList.add('bg-blue-600', 'text-white', 'border-transparent');
+                });
+            },
+
+            initMap: () => {
+                app.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([20, 0], 2);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(app.map);
+                
+                if(app.isHost) {
+                    document.getElementById('rally-hint').style.opacity = '1';
+                    app.map.on('dblclick', (e) => {
+                        app.setRally(e.latlng);
+                        app.send({ type: 'rally', lat: e.latlng.lat, lng: e.latlng.lng });
+                    });
                 }
+            },
+
+            startSession: () => {
+                const input = document.getElementById('username-input');
+                if(!input.value.trim()) return input.focus();
+                app.username = input.value.trim();
+                
+                document.getElementById('modal-onboarding').style.opacity = '0';
+                setTimeout(() => document.getElementById('modal-onboarding').style.display = 'none', 300);
+                
+                app.initPeer();
+                app.startLocation();
+                localStorage.setItem('burner_v4', JSON.stringify({
+                    username: app.username, avatar: app.avatar, color: app.color, hostId: app.hostId
+                }));
+            },
+
+            initPeer: () => {
+                app.updateStatus('init', 'Net Init...');
+                app.peer = new Peer(null, { debug: 0 });
+                
+                app.peer.on('open', (id) => {
+                    app.myId = id;
+                    if(app.isHost) {
+                        app.updateStatus('online', 'HOSTING');
+                        app.peer.on('connection', app.handleHostConn);
+                    } else {
+                        app.connectToHost();
+                    }
+                });
+
+                app.peer.on('error', () => app.updateStatus('error', 'Net Error'));
+            },
+
+            connectToHost: () => {
+                app.updateStatus('warn', 'Connecting...');
+                app.conn = app.peer.connect(app.hostId, { metadata: app.getMeta() });
+                
+                app.conn.on('open', () => {
+                    app.updateStatus('online', 'CONNECTED');
+                    app.showToast('Secure Channel Joined');
+                    if(app.myLocation) app.send({ type: 'loc', lat: app.myLocation.lat, lng: app.myLocation.lng });
+                });
+
+                app.conn.on('data', app.handleData);
+                app.conn.on('close', () => app.updateStatus('error', 'Disconnected'));
+            },
+
+            handleHostConn: (conn) => {
+                app.connections.push(conn);
+                app.updateUserCount();
+                
+                conn.on('open', () => {
+                    // Sync initial state
+                    if(app.rallyMarker) conn.send({ type: 'rally', lat: app.rallyMarker.getLatLng().lat, lng: app.rallyMarker.getLatLng().lng });
+                    conn.send({ type: 'chat', msg: 'Welcome to the mesh.', username: 'SYSTEM', isSys: true });
+                });
+
+                conn.on('data', (data) => {
+                    app.enrichData(data, conn);
+                    app.handleData(data);
+                    app.broadcast(data, conn.peer); // Relay
+                });
+
+                conn.on('close', () => {
+                    app.connections = app.connections.filter(c => c.peer !== conn.peer);
+                    app.removeMarker(conn.peer);
+                    app.updateUserCount();
+                });
+            },
+
+            getMeta: () => ({ username: app.username, avatar: app.avatar, color: app.color }),
+            
+            enrichData: (data, conn) => {
+                if(!data.from) data.from = conn.peer;
+                if(!data.username) data.username = conn.metadata.username;
+                if(!data.avatar) data.avatar = conn.metadata.avatar;
+            },
+
+            broadcast: (data, exclude) => {
+                app.connections.forEach(c => { if(c.peer !== exclude && c.open) c.send(data); });
+            },
+
+            send: (data) => {
+                data = { ...data, ...app.getMeta(), from: app.myId };
+                if(app.isHost) {
+                    if(data.type !== 'ping') app.handleData(data);
+                    app.broadcast(data);
+                } else if (app.conn?.open) {
+                    app.conn.send(data);
+                    if(data.type === 'chat') app.handleData(data);
+                }
+            },
+
+            handleData: (data) => {
+                switch(data.type) {
+                    case 'loc': app.updateMarker(data); break;
+                    case 'chat': app.addChat(data); break;
+                    case 'rally': app.setRally(data); break;
+                    case 'sonar': app.triggerSonar(data); break;
+                    case 'typing': app.showTyping(data.username); break;
+                }
+            },
+
+            // --- FEATURES ---
+
+            sendSonar: () => {
+                if(!app.myLocation) return app.showToast('No Location Data');
+                app.send({ type: 'sonar', lat: app.myLocation.lat, lng: app.myLocation.lng });
+                app.triggerSonar({ lat: app.myLocation.lat, lng: app.myLocation.lng }); // Local
+            },
+
+            triggerSonar: (data) => {
+                const icon = L.divIcon({ className: 'sonar-wave', iconSize: [50,50] });
+                const marker = L.marker([data.lat, data.lng], { icon: icon, zIndexOffset: -100 }).addTo(app.map);
+                setTimeout(() => app.map.removeLayer(marker), 2000);
+            },
+
+            handleTyping: () => {
+                if(app.typingTimeout) clearTimeout(app.typingTimeout);
+                app.send({ type: 'typing' });
+                app.typingTimeout = setTimeout(() => {}, 2000); // Throttling
+            },
+
+            showTyping: (name) => {
+                const el = document.getElementById('typing-bar');
+                el.innerText = `${name} is typing...`;
+                el.style.opacity = '1';
+                setTimeout(() => el.style.opacity = '0', 2000);
+            },
+
+            sendReact: (emoji) => {
+                app.send({ type: 'chat', msg: emoji });
+            },
+
+            setRally: (coords) => {
+                if(app.rallyMarker) app.map.removeLayer(app.rallyMarker);
+                const icon = L.divIcon({ html: '<div class="text-3xl filter drop-shadow-lg">🚩</div>', className: 'bg-transparent', iconSize: [30,30] });
+                app.rallyMarker = L.marker([coords.lat, coords.lng], { icon }).addTo(app.map);
+                app.showToast('Rally Point Updated');
+            },
+
+            // --- MAP & MARKERS ---
+            
+            startLocation: () => {
+                navigator.geolocation.watchPosition(pos => {
+                    const { latitude: lat, longitude: lng } = pos.coords;
+                    app.myLocation = { lat, lng };
+                    app.updateMarker({ from: app.myId, lat, lng, username: 'You', avatar: app.avatar, isSelf: true });
+                    if(!app.centered) { app.map.setView([lat, lng], 15); app.centered = true; }
+                    app.send({ type: 'loc', lat, lng });
+                }, err => console.error(err), { enableHighAccuracy: true });
+            },
+
+            updateMarker: (d) => {
+                if(app.markers[d.from]) {
+                    app.markers[d.from].setLatLng([d.lat, d.lng]);
+                } else {
+                    const color = d.isSelf ? '#10b981' : (d.color || '#3b82f6');
+                    const html = `<div class="w-8 h-8 rounded-full bg-slate-900 border-2 flex items-center justify-center text-white shadow-lg" style="border-color:${color}"><i class="fa-solid ${d.avatar}"></i></div>`;
+                    const icon = L.divIcon({ className: 'bg-transparent', html });
+                    const m = L.marker([d.lat, d.lng], { icon, zIndexOffset: d.isSelf ? 1000 : 0 }).addTo(app.map);
+                    m.bindPopup(`<b class="text-slate-900">${d.username}</b>`, { closeButton: false });
+                    app.markers[d.from] = m;
+                }
+            },
+
+            removeMarker: (id) => {
+                if(app.markers[id]) { app.map.removeLayer(app.markers[id]); delete app.markers[id]; }
+            },
+
+            // --- CHAT & UI ---
+
+            sendMessage: (e) => {
+                e.preventDefault();
+                const input = document.getElementById('msg-input');
+                const msg = input.value.trim();
+                if(!msg) return;
+                app.send({ type: 'chat', msg });
+                input.value = '';
+                input.focus();
+            },
+
+            addChat: (d) => {
+                const box = document.getElementById('chat-container');
+                const isMe = d.from === app.myId;
+                const isSys = d.isSys;
+                
+                const div = document.createElement('div');
+                if(isSys) {
+                    div.className = 'text-center text-[10px] text-slate-500 my-2 uppercase tracking-wider';
+                    div.innerText = d.msg;
+                } else {
+                    div.className = `flex gap-2 ${isMe ? 'flex-row-reverse' : ''} animate-pulse-once`;
+                    div.innerHTML = `
+                        <div class="w-6 h-6 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-[10px] text-slate-400 shrink-0">
+                            <i class="fa-solid ${d.avatar}"></i>
+                        </div>
+                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[80%]">
+                            <span class="text-[9px] text-slate-500 px-1 mb-0.5">${d.username}</span>
+                            <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-200'} px-3 py-2 rounded-2xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'} text-sm shadow-md break-words">
+                                ${d.msg}
+                            </div>
+                        </div>
+                    `;
+                    
+                    if(!isMe && document.getElementById('view-chat').style.transform !== 'translateX(0px)') {
+                        document.getElementById('unread-dot').classList.remove('hidden');
+                        app.showToast(`Message from ${d.username}`);
+                    }
+                }
+                box.appendChild(div);
+                box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
+            },
+
+            switchTab: (tab) => {
+                const chatView = document.getElementById('view-chat');
+                const btnMap = document.getElementById('btn-map');
+                const btnChat = document.getElementById('btn-chat');
+                
+                if(tab === 'map') {
+                    chatView.style.transform = 'translateX(100%)';
+                    btnMap.className = "flex-1 py-3 rounded-xl bg-slate-700 text-white shadow-inner transition-all";
+                    btnChat.className = "flex-1 py-3 rounded-xl text-slate-400 hover:text-white transition-all";
+                } else {
+                    chatView.style.transform = 'translateX(0px)';
+                    btnChat.className = "flex-1 py-3 rounded-xl bg-slate-700 text-white shadow-inner transition-all";
+                    btnMap.className = "flex-1 py-3 rounded-xl text-slate-400 hover:text-white transition-all";
+                    document.getElementById('unread-dot').classList.add('hidden');
+                }
+            },
+
+            toggleQR: () => {
+                const el = document.getElementById('modal-qr');
+                const isHidden = el.classList.contains('hidden');
+                if(isHidden) {
+                    el.classList.remove('hidden');
+                    const link = `${window.location.origin}${window.location.pathname}?join=${app.isHost ? app.myId : app.hostId}`;
+                    document.getElementById('qrcode').innerHTML = "";
+                    new QRCode(document.getElementById('qrcode'), { text: link, width: 200, height: 200 });
+                } else {
+                    el.classList.add('hidden');
+                }
+            },
+
+            copyLink: () => {
+                const url = `${window.location.origin}${window.location.pathname}?join=${app.isHost ? app.myId : app.hostId}`;
+                if(navigator.share) navigator.share({ url }).catch(()=>{});
+                else navigator.clipboard.writeText(url).then(() => app.showToast('Link Copied'));
+            },
+
+            updateStatus: (type, msg) => {
+                const dot = document.getElementById('status-dot');
+                const txt = document.getElementById('role-badge');
+                txt.innerText = msg;
+                dot.className = `w-2 h-2 rounded-full ${type === 'online' ? 'bg-emerald-400 shadow-[0_0_10px_#34d399]' : type === 'warn' ? 'bg-amber-400 animate-pulse' : 'bg-red-500'}`;
             },
             
-            // MODIFIED: switchTab() to include members panel
-            switchTab: function(tab) {
-                // ... same logic but add 'members' as a case
-                const membersPanel = document.getElementById('members-panel');
-                if (tab === 'members') {
-                    membersPanel.classList.add('open');
-                } else {
-                    membersPanel.classList.remove('open');
-                }
-                // ... handle button active states
+            updateUserCount: () => {
+                const el = document.getElementById('user-count');
+                el.innerText = app.connections.length + 1;
+                el.classList.remove('hidden');
             },
-
-            // MODIFIED: burn() to accept a force parameter
-            burn: function(force = false) {
-                if (force || confirm("...")) {
-                    localStorage.removeItem('burner_state');
+            
+            showToast: (msg) => {
+                const t = document.getElementById('toast');
+                t.innerText = msg;
+                t.style.opacity = '1';
+                t.style.transform = 'translate(-50%, 0px)';
+                setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translate(-50%, -20px)'; }, 3000);
+            },
+            
+            burn: () => {
+                if(confirm('BURN EVERYTHING?')) {
+                    localStorage.removeItem('burner_v4');
                     window.location.href = window.location.pathname;
                 }
             }
         };
 
-        // Add event listener for typing
-        document.getElementById('msg-input').addEventListener('input', () => app.handleTyping());
-        window.addEventListener('DOMContentLoaded', () => app.init());
-
+        window.onload = app.init;
     </script>
 </body>
 </html>
