@@ -19,7 +19,6 @@ Object.assign(app, {
                     app.addWaypoint(e.latlng);
                 }
             });
-        }
     },
 
     toggleWaypointMode: () => {
