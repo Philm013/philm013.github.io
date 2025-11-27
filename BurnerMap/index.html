@@ -1,5 +1,5 @@
 <!-- 
-  BURNERMAP v3.1: Layout Fixes & Z-Index Swapping
+  BURNERMAP v3.2: Robust Permission Handling & Manual Fallback
   Single File Implementation
 -->
 <!DOCTYPE html>
@@ -7,7 +7,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>BurnerMap v3.1</title>
+    <title>BurnerMap v3.2</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,8 +27,6 @@
         
         /* Layout */
         #app { height: 100%; width: 100%; position: relative; }
-        
-        /* Views */
         .view-section { position: absolute; inset: 0; height: 100%; width: 100%; transition: opacity 0.3s ease; }
         .view-active { z-index: 20; opacity: 1; pointer-events: auto; }
         .view-hidden { z-index: 0; opacity: 0; pointer-events: none; }
@@ -58,100 +56,75 @@
 
     <div id="app">
         
-        <!-- === TOP HEADER (Fixed Z-Index 50) === -->
+        <!-- === TOP HEADER === -->
         <header class="absolute top-0 left-0 right-0 z-50 pt-safe px-4 pb-6 glass-header pointer-events-none flex justify-between items-start">
-            
-            <!-- LEFT: Status & Timer -->
+            <!-- Status -->
             <div class="pointer-events-auto flex flex-col gap-2 mt-1">
-                <!-- Status Badge -->
                 <div class="bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg w-max">
                     <div id="heartbeat-icon" class="text-[10px] text-slate-500"><i class="fa-solid fa-signal"></i></div>
                     <span id="connection-status" class="text-[10px] font-bold tracking-wider text-slate-300 uppercase">OFFLINE</span>
                 </div>
-                <!-- Timer Badge (Hidden initially) -->
-                <div id="timer-badge" class="hidden bg-red-900/80 backdrop-blur px-3 py-1.5 rounded-full border border-red-500/30 flex items-center gap-2 shadow-lg w-max animate-pulse">
-                    <i class="fa-solid fa-clock text-red-200 text-[10px]"></i>
-                    <span id="session-timer" class="text-[10px] font-mono font-bold text-red-100">00:00</span>
+                <!-- Manual Mode Indicator -->
+                <div id="manual-mode-badge" class="hidden bg-amber-900/80 backdrop-blur px-3 py-1.5 rounded-full border border-amber-500/30 flex items-center gap-2 shadow-lg w-max">
+                    <i class="fa-solid fa-hand-pointer text-amber-400 text-[10px]"></i>
+                    <span class="text-[10px] font-bold text-amber-100 uppercase">Manual Loc</span>
                 </div>
             </div>
 
-            <!-- RIGHT: Actions -->
+            <!-- Actions -->
             <div class="pointer-events-auto flex gap-3 mt-1">
-                <!-- Settings (Host Only) -->
                 <button id="btn-settings" onclick="app.toggleSettings()" class="hidden bg-slate-800 hover:bg-slate-700 text-white w-10 h-10 rounded-full shadow-lg border border-white/10 flex items-center justify-center transition-all active:scale-95">
                     <i class="fa-solid fa-gear"></i>
                 </button>
-                <!-- Share Link -->
                 <button onclick="app.copyLink()" class="bg-blue-600 hover:bg-blue-500 text-white w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95">
                     <i class="fa-solid fa-link"></i>
                 </button>
             </div>
         </header>
 
-
-        <!-- === VIEW: MAP (Default) === -->
+        <!-- === MAP VIEW === -->
         <div id="view-map" class="view-section view-active">
             <div id="map"></div>
-            <!-- Rally Hint -->
-            <div id="rally-hint" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/60 text-white px-4 py-2 rounded-lg text-xs pointer-events-none opacity-0 transition-opacity z-[1000]">
-                Rally Point Set!
-            </div>
         </div>
 
-
-        <!-- === VIEW: CHAT === -->
+        <!-- === CHAT VIEW === -->
         <div id="view-chat" class="view-section view-hidden bg-slate-900 flex flex-col">
-            <!-- Chat Header Spacer (To clear the top fixed header) -->
             <div class="pt-safe pb-4 px-4 bg-slate-900 border-b border-white/5 shrink-0 min-h-[100px] flex items-end">
                 <div>
                     <h2 class="text-xl font-bold text-white">Live Chat</h2>
                     <p class="text-xs text-slate-400 uppercase tracking-wide">Encrypted P2P Mesh</p>
                 </div>
             </div>
-            
-            <!-- Messages List -->
             <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-                <!-- Messages injected here -->
                 <div class="text-center mt-4 opacity-30">
                     <i class="fa-solid fa-comments text-4xl mb-2"></i>
                     <p class="text-xs">Chat History Started</p>
                 </div>
             </div>
-
-            <!-- Chat Input (Fixed above nav) -->
-            <div class="p-3 bg-slate-800 border-t border-white/5 shrink-0 pb-[100px]"> <!-- Extra padding for bottom nav -->
+            <div class="p-3 bg-slate-800 border-t border-white/5 shrink-0 pb-[100px]">
                 <form onsubmit="app.sendMessage(event)" class="flex gap-2">
                     <input type="text" id="msg-input" placeholder="Type message..." autocomplete="off" class="flex-1 bg-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                    <button type="submit" class="bg-blue-600 text-white px-4 rounded-xl font-bold active:scale-95 transition-transform">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 rounded-xl font-bold active:scale-95 transition-transform"><i class="fa-solid fa-paper-plane"></i></button>
                 </form>
             </div>
         </div>
 
-
-        <!-- === BOTTOM NAVIGATION (Fixed Z-Index 50) === -->
+        <!-- === BOTTOM NAV === -->
         <div class="absolute bottom-6 left-0 right-0 z-50 flex justify-center pb-safe pointer-events-none">
             <nav class="glass-nav pointer-events-auto rounded-2xl p-1.5 flex gap-1 shadow-2xl w-[90%] max-w-sm">
-                
                 <button onclick="app.switchTab('map')" id="btn-map" class="flex-1 py-3 rounded-xl text-center bg-slate-700 text-white shadow-inner transition-all">
-                    <i class="fa-solid fa-map-location-dot text-lg mb-0.5 block"></i>
-                    <span class="text-[10px] font-bold uppercase">Map</span>
+                    <i class="fa-solid fa-map-location-dot text-lg mb-0.5 block"></i><span class="text-[10px] font-bold uppercase">Map</span>
                 </button>
-                
                 <button onclick="app.switchTab('chat')" id="btn-chat" class="flex-1 py-3 rounded-xl text-center text-slate-400 hover:text-white transition-all relative">
                     <i class="fa-solid fa-comments text-lg mb-0.5 block"></i>
                     <span id="unread-badge" class="absolute top-2 right-8 w-3 h-3 bg-red-500 rounded-full hidden border border-slate-900"></span>
                     <span class="text-[10px] font-bold uppercase">Chat</span>
                 </button>
-                
                 <button onclick="app.burn()" class="flex-1 py-3 rounded-xl text-center text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all">
-                    <i class="fa-solid fa-fire text-lg mb-0.5 block"></i>
-                    <span class="text-[10px] font-bold uppercase">Burn</span>
+                    <i class="fa-solid fa-fire text-lg mb-0.5 block"></i><span class="text-[10px] font-bold uppercase">Burn</span>
                 </button>
             </nav>
         </div>
-
 
         <!-- === ONBOARDING MODAL === -->
         <div id="modal-onboarding" class="absolute inset-0 z-[60] bg-slate-900 flex flex-col items-center justify-center p-6 transition-opacity duration-300">
@@ -159,63 +132,60 @@
                 <div class="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
                     <i class="fa-solid fa-map text-3xl text-white"></i>
                 </div>
-                <h1 class="text-2xl font-bold text-white mb-1">BurnerMap v3.1</h1>
+                <h1 class="text-2xl font-bold text-white mb-1">BurnerMap v3.2</h1>
                 <p class="text-xs text-slate-400 mb-6">Secure • Ephemeral • Real-time</p>
                 
-                <!-- Avatar Grid -->
-                <div class="mb-6">
-                    <label class="text-xs font-bold text-slate-500 uppercase mb-3 block">Identity</label>
+                <!-- HTTPS Warning -->
+                <div id="https-warning" class="hidden mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-left">
+                    <p class="text-[10px] text-red-300 leading-relaxed">
+                        <i class="fa-solid fa-lock-open mr-1"></i> 
+                        <b>Insecure Connection:</b> Browsers block GPS on "http" or "file". Please use "https" or "localhost".
+                    </p>
+                </div>
+
+                <div class="mb-4">
                     <div class="grid grid-cols-5 gap-3" id="avatar-grid"></div>
                 </div>
 
                 <input type="text" id="username-input" class="w-full bg-slate-800 text-white px-4 py-3 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold border border-white/5" placeholder="Enter Alias">
 
-                <button onclick="app.startSession()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-lg transition-all active:scale-95">
-                    <span id="btn-start-text">Start Session</span>
+                <!-- Action Button -->
+                <button id="btn-start" onclick="app.requestLocationAndStart()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-location-crosshairs"></i> Enable GPS & Start
                 </button>
                 
-                <div id="rejoin-hint" class="hidden mt-4 text-xs text-emerald-400 bg-emerald-500/10 py-2 px-4 rounded-lg">
-                    <i class="fa-solid fa-rotate-left mr-1"></i> Found previous session
-                </div>
+                <button onclick="app.startManualMode()" class="mt-4 text-xs text-slate-500 hover:text-white underline">
+                    GPS Broken? Use Manual Mode
+                </button>
             </div>
         </div>
 
+        <!-- === MANUAL MODE MODAL === -->
+        <div id="modal-manual" class="hidden absolute inset-0 z-[70] bg-slate-900/90 flex items-center justify-center p-6 text-center">
+            <div class="bg-slate-800 p-6 rounded-2xl border border-white/10 max-w-xs w-full">
+                <i class="fa-solid fa-hand-pointer text-4xl text-amber-500 mb-4"></i>
+                <h2 class="text-lg font-bold text-white mb-2">Tap Your Location</h2>
+                <p class="text-xs text-slate-400 mb-4">Since GPS is disabled, tap the map where you are right now.</p>
+                <button onclick="document.getElementById('modal-manual').classList.add('hidden')" class="bg-amber-600 text-white px-6 py-2 rounded-xl font-bold w-full">Okay</button>
+            </div>
+        </div>
 
         <!-- === SETTINGS MODAL === -->
         <div id="modal-settings" class="hidden absolute inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center">
-            <div class="bg-slate-800 w-full max-w-sm rounded-t-2xl sm:rounded-2xl border border-white/10 p-6 shadow-2xl animate-slide-up pb-safe">
+            <div class="bg-slate-800 w-full max-w-sm rounded-t-2xl sm:rounded-2xl border border-white/10 p-6 shadow-2xl pb-safe">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-lg font-bold text-white">Host Controls</h2>
                     <button onclick="app.toggleSettings()" class="text-slate-400 p-2"><i class="fa-solid fa-xmark text-xl"></i></button>
                 </div>
-                
-                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Session Timer</label>
-                <div class="grid grid-cols-3 gap-2 mb-6">
-                    <button onclick="app.setExpiry(30)" class="bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg text-xs font-bold">30m</button>
-                    <button onclick="app.setExpiry(60)" class="bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg text-xs font-bold">1h</button>
-                    <button onclick="app.setExpiry(240)" class="bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg text-xs font-bold">4h</button>
-                </div>
-                
                 <button onclick="app.resetRallyPoint()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl font-bold text-sm">
                     <i class="fa-solid fa-flag-checkered mr-2"></i> Clear Rally Point
                 </button>
             </div>
         </div>
 
-        <!-- === EXPIRED OVERLAY === -->
-        <div id="modal-expired" class="hidden absolute inset-0 z-[80] bg-red-950 flex items-center justify-center p-6 text-center">
-            <div>
-                <i class="fa-solid fa-skull text-6xl text-red-500 mb-4"></i>
-                <h1 class="text-3xl font-bold text-white mb-2">BURNED</h1>
-                <p class="text-red-200 mb-6">Session time expired.</p>
-                <button onclick="app.burn()" class="bg-white text-red-900 px-8 py-3 rounded-xl font-bold">Reset</button>
-            </div>
-        </div>
-
         <!-- === TOAST === -->
         <div id="toast" class="absolute top-24 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-full shadow-xl border border-white/10 z-[90] flex items-center gap-2 text-xs transition-opacity duration-300 opacity-0 pointer-events-none w-max max-w-[80%]">
-            <i class="fa-solid fa-info-circle text-blue-400"></i>
-            <span id="toast-msg">Notification</span>
+            <i class="fa-solid fa-info-circle text-blue-400"></i><span id="toast-msg">Notification</span>
         </div>
 
     </div>
@@ -230,23 +200,28 @@
             myId: null, hostId: null, isHost: false,
             username: 'Anon', avatar: 'fa-user', color: '#3b82f6',
             map: null, markers: {}, rallyMarker: null, myLocation: null,
-            expiryTime: null, activeTab: 'map',
+            manualMode: false, activeTab: 'map',
             avatars: ['fa-user-astronaut', 'fa-ghost', 'fa-robot', 'fa-dragon', 'fa-cat', 'fa-dog', 'fa-frog', 'fa-spider', 'fa-crow', 'fa-mask'],
 
             init: function() {
-                // Viewport height fix
                 const setVh = () => document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
                 window.addEventListener('resize', setVh);
                 setVh();
 
+                // Check Secure Context
+                if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+                    document.getElementById('https-warning').classList.remove('hidden');
+                }
+
                 this.renderAvatars();
+                this.initMap();
                 
-                // Persistence Check
+                // Check persistence
                 const saved = JSON.parse(localStorage.getItem('burner_state'));
                 const urlParams = new URLSearchParams(window.location.search);
-                const joinParam = urlParams.get('join');
-
-                if (saved && (!joinParam || joinParam === saved.hostId)) {
+                this.hostId = urlParams.get('join');
+                
+                if (saved && (!this.hostId || this.hostId === saved.hostId)) {
                     this.username = saved.username;
                     this.avatar = saved.avatar;
                     this.color = saved.color;
@@ -254,16 +229,11 @@
                     this.myId = saved.myId;
                     document.getElementById('username-input').value = this.username;
                     this.selectAvatar(this.avatar);
-                    document.getElementById('rejoin-hint').classList.remove('hidden');
-                    document.getElementById('btn-start-text').innerText = "Rejoin";
-                } else {
-                    this.hostId = joinParam;
+                    document.getElementById('btn-start').innerHTML = `<i class="fa-solid fa-rotate-left"></i> Rejoin Session`;
                 }
-                
+
                 this.isHost = !this.hostId;
                 if(this.isHost) document.getElementById('btn-settings').classList.remove('hidden');
-                
-                this.initMap();
             },
 
             renderAvatars: function() {
@@ -286,25 +256,92 @@
             initMap: function() {
                 this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([20,0], 2);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(this.map);
+                
+                this.map.on('click', (e) => {
+                    if (this.manualMode) {
+                        this.updateMyLocation(e.latlng.lat, e.latlng.lng);
+                        this.showToast("Location Updated");
+                    }
+                });
+
                 this.map.on('dblclick', (e) => {
-                    if(this.isHost) {
+                    if(this.isHost && !this.manualMode) {
                         this.setRallyPoint(e.latlng.lat, e.latlng.lng);
                         this.send({ type: 'rally', lat: e.latlng.lat, lng: e.latlng.lng });
                     }
                 });
             },
 
-            startSession: function() {
+            requestLocationAndStart: function() {
+                const input = document.getElementById('username-input');
+                if(!input.value.trim()) return input.classList.add('border-red-500');
+                this.username = input.value.trim();
+
+                // Explicitly request location NOW
+                if (!navigator.geolocation) {
+                    alert("GPS not supported. Switching to manual mode.");
+                    this.startManualMode();
+                    return;
+                }
+
+                const btn = document.getElementById('btn-start');
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Locating...`;
+
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        // Success!
+                        this.finishOnboarding();
+                        this.startTracking(true); // Start watcher
+                    },
+                    (err) => {
+                        // Error
+                        console.warn(err);
+                        if(err.code === 1) alert("Location Denied. Please enable permissions or use Manual Mode.");
+                        else if (err.code === 2) alert("GPS Signal Unavailable. Try Manual Mode.");
+                        else alert("GPS Timeout. Try Manual Mode.");
+                        
+                        btn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> Try Again`;
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            },
+
+            startManualMode: function() {
                 const input = document.getElementById('username-input');
                 if(!input.value.trim()) return input.classList.add('border-red-500');
                 this.username = input.value.trim();
                 
+                this.manualMode = true;
+                document.getElementById('manual-mode-badge').classList.remove('hidden');
+                this.finishOnboarding();
+                document.getElementById('modal-manual').classList.remove('hidden');
+            },
+
+            finishOnboarding: function() {
                 document.getElementById('modal-onboarding').style.opacity = '0';
                 setTimeout(() => document.getElementById('modal-onboarding').style.display = 'none', 300);
-                
                 this.initPeer();
-                this.startLocation();
                 this.saveState();
+            },
+
+            startTracking: function(watch) {
+                if(watch) {
+                    navigator.geolocation.watchPosition(
+                        (pos) => this.updateMyLocation(pos.coords.latitude, pos.coords.longitude),
+                        (err) => console.warn(err),
+                        { enableHighAccuracy: true }
+                    );
+                }
+            },
+
+            updateMyLocation: function(lat, lng) {
+                this.myLocation = { lat, lng };
+                this.updateMarker(this.myId, lat, lng, 'You', this.avatar, this.color, true);
+                if (!this.mapCentered) { 
+                    this.map.setView([lat, lng], 16); 
+                    this.mapCentered = true; 
+                }
+                this.send({ type: 'location', lat, lng });
             },
 
             saveState: function() {
@@ -313,15 +350,13 @@
                 }));
             },
 
+            // --- PEER JS & NETWORKING (Same as v3.1) ---
             initPeer: function() {
                 this.updateStatus('connecting', 'INIT...');
-                // Always new ID if client to avoid conflicts, try reuse if host
                 this.peer = new Peer(null, { debug: 0 }); 
-                
                 this.peer.on('open', (id) => {
                     this.myId = id;
                     this.saveState(); 
-
                     if (this.isHost) {
                         this.updateStatus('online', 'HOSTING');
                         this.peer.on('connection', (conn) => this.handleHostConnection(conn));
@@ -330,9 +365,7 @@
                         this.connectToHost();
                     }
                 });
-                
                 this.peer.on('error', (err) => {
-                    console.error(err);
                     this.updateStatus('error', 'NET ERR');
                     setTimeout(() => this.initPeer(), 3000);
                 });
@@ -341,13 +374,11 @@
             connectToHost: function() {
                 if(!this.hostId) return;
                 this.conn = this.peer.connect(this.hostId, { metadata: { username: this.username, avatar: this.avatar, color: this.color }});
-                
                 this.conn.on('open', () => {
                     this.updateStatus('online', 'CONNECTED');
                     this.showToast('Connected!');
                     if(this.myLocation) this.send({ type: 'location', lat: this.myLocation.lat, lng: this.myLocation.lng });
                 });
-                
                 this.conn.on('data', (data) => this.handleData(data));
                 this.conn.on('close', () => {
                     this.updateStatus('error', 'LOST HOST');
@@ -359,16 +390,14 @@
                 this.connections.push(conn);
                 conn.on('open', () => {
                     this.showToast(`${conn.metadata.username} joined`);
-                    conn.send({ type: 'sync', expiry: this.expiryTime, rally: this.rallyMarker ? this.rallyMarker.getLatLng() : null });
+                    conn.send({ type: 'sync', rally: this.rallyMarker ? this.rallyMarker.getLatLng() : null });
                 });
                 conn.on('data', (data) => {
                     if(!data.from) data.from = conn.peer;
                     if(!data.username) data.username = conn.metadata.username;
                     if(!data.avatar) data.avatar = conn.metadata.avatar;
                     if(!data.color) data.color = conn.metadata.color;
-                    
-                    if(data.type === 'pong') return; // Heartbeat return
-                    
+                    if(data.type === 'pong') return; 
                     this.handleData(data);
                     this.broadcast(data, conn.peer);
                 });
@@ -386,7 +415,6 @@
             handleData: function(data) {
                 if(data.type === 'ping') {
                     if(this.conn) this.conn.send({ type: 'pong' });
-                    if(data.expiry) this.checkExpiry(data.expiry);
                     return;
                 }
                 if(data.type === 'location') this.updateMarker(data.from, data.lat, data.lng, data.username, data.avatar, data.color);
@@ -402,7 +430,6 @@
                     this.showToast("Rally Point Updated");
                 }
                 else if(data.type === 'sync') {
-                    if(data.expiry) this.checkExpiry(data.expiry);
                     if(data.rally) this.setRallyPoint(data.rally.lat, data.rally.lng);
                 }
             },
@@ -420,20 +447,8 @@
 
             startHeartbeat: function() {
                 setInterval(() => {
-                    this.broadcast({ type: 'ping', expiry: this.expiryTime });
-                    if(this.expiryTime && Date.now() > this.expiryTime) this.triggerExpiry();
+                    this.broadcast({ type: 'ping' });
                 }, 3000);
-            },
-
-            startLocation: function() {
-                if(!navigator.geolocation) return;
-                navigator.geolocation.watchPosition(pos => {
-                    const { latitude, longitude } = pos.coords;
-                    this.myLocation = { lat: latitude, lng: longitude };
-                    this.updateMarker(this.myId, latitude, longitude, 'You', this.avatar, this.color, true);
-                    if(!this.mapCentered) { this.map.setView([latitude, longitude], 16); this.mapCentered = true; }
-                    this.send({ type: 'location', lat: latitude, lng: longitude });
-                }, err => console.warn(err), { enableHighAccuracy: true });
             },
 
             updateMarker: function(id, lat, lng, label, avatar, color, isSelf) {
@@ -451,11 +466,6 @@
                 if(this.rallyMarker) this.map.removeLayer(this.rallyMarker);
                 const icon = L.divIcon({ className: 'bg-transparent', html: '<div style="font-size:30px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">🚩</div>' });
                 this.rallyMarker = L.marker([lat, lng], { icon: icon }).addTo(this.map);
-                
-                // Show hint
-                const hint = document.getElementById('rally-hint');
-                hint.style.opacity = '1';
-                setTimeout(() => hint.style.opacity = '0', 2000);
             },
 
             resetRallyPoint: function() {
@@ -500,67 +510,25 @@
                 if(tab === 'map') {
                     mapBtn.className = "flex-1 py-3 rounded-xl text-center bg-slate-700 text-white shadow-inner transition-all";
                     chatBtn.className = "flex-1 py-3 rounded-xl text-center text-slate-400 hover:text-white transition-all relative";
-                    
-                    mapView.classList.remove('view-hidden');
-                    mapView.classList.add('view-active');
-                    
-                    chatView.classList.remove('view-active');
-                    chatView.classList.add('view-hidden');
-                    
+                    mapView.classList.remove('view-hidden'); mapView.classList.add('view-active');
+                    chatView.classList.remove('view-active'); chatView.classList.add('view-hidden');
                     setTimeout(() => this.map.invalidateSize(), 300);
                 } else {
                     chatBtn.className = "flex-1 py-3 rounded-xl text-center bg-slate-700 text-white shadow-inner transition-all relative";
                     mapBtn.className = "flex-1 py-3 rounded-xl text-center text-slate-400 hover:text-white transition-all";
-                    
-                    chatView.classList.remove('view-hidden');
-                    chatView.classList.add('view-active');
-                    
-                    mapView.classList.remove('view-active');
-                    mapView.classList.add('view-hidden');
-                    
+                    chatView.classList.remove('view-hidden'); chatView.classList.add('view-active');
+                    mapView.classList.remove('view-active'); mapView.classList.add('view-hidden');
                     document.getElementById('unread-badge').classList.add('hidden');
                 }
             },
 
-            toggleSettings: function() {
-                const modal = document.getElementById('modal-settings');
-                modal.classList.toggle('hidden');
-            },
-
+            toggleSettings: function() { document.getElementById('modal-settings').classList.toggle('hidden'); },
+            
             updateStatus: function(type, text) {
                 document.getElementById('connection-status').innerText = text;
                 const icon = document.getElementById('heartbeat-icon');
                 if(type === 'online') icon.className = 'text-[10px] text-emerald-400 animate-pulse';
                 else icon.className = 'text-[10px] text-red-500';
-            },
-
-            setExpiry: function(min) {
-                this.expiryTime = Date.now() + (min * 60000);
-                this.checkExpiry(this.expiryTime);
-                this.send({ type: 'sync', expiry: this.expiryTime });
-                this.toggleSettings();
-                this.showToast(`Timer: ${min}m`);
-            },
-
-            checkExpiry: function(time) {
-                this.expiryTime = time;
-                document.getElementById('timer-badge').classList.remove('hidden');
-                if(this.timerLoop) clearInterval(this.timerLoop);
-                this.timerLoop = setInterval(() => {
-                    const diff = this.expiryTime - Date.now();
-                    if(diff <= 0) { this.triggerExpiry(); clearInterval(this.timerLoop); }
-                    else {
-                        const m = Math.floor(diff/60000);
-                        const s = Math.floor((diff%60000)/1000);
-                        document.getElementById('session-timer').innerText = `${m}:${s<10?'0'+s:s}`;
-                    }
-                }, 1000);
-            },
-
-            triggerExpiry: function() {
-                document.getElementById('modal-expired').classList.remove('hidden');
-                if(this.peer) this.peer.destroy();
-                localStorage.removeItem('burner_state');
             },
 
             copyLink: function() {
