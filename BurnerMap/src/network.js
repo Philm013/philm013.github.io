@@ -15,7 +15,9 @@ Object.assign(app, {
             app.updateStatus('error', err.type);
         });
         app.peer.on('disconnected', () => {
-            app.updateStatus('error', 'Disconnected from server');
+            app.updateStatus('error', 'Reconnecting...');
+            console.log('PeerJS disconnected. Attempting to reconnect...');
+            app.peer.reconnect();
         });
     },
 

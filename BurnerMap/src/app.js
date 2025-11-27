@@ -5,12 +5,30 @@ Object.assign(app, {
         window.addEventListener('resize', setVh); setVh();
         if(navigator.getBattery) navigator.getBattery().then(b => { app.battery = Math.round(b.level*100); b.addEventListener('levelchange', () => app.battery = Math.round(b.level*100)); });
 
-        const saved = JSON.parse(localStorage.getItem('meetup_v1'));
         const urlParams = new URLSearchParams(window.location.search);
         const joinId = urlParams.get('join');
-        if (saved && (!joinId || joinId === saved.hostId)) { app.username = saved.username; app.hostId = saved.hostId; document.getElementById('username-input').value = app.username; }
-        if (joinId) app.hostId = joinId;
-        app.isHost = !app.hostId;
+        const saved = JSON.parse(localStorage.getItem('meetup_v1'));
+
+        if (joinId) {
+            // User is explicitly joining. They are a CLIENT.
+            app.hostId = joinId;
+            app.isHost = false;
+            // Load their saved username for convenience
+            if (saved) {
+                app.username = saved.username;
+                document.getElementById('username-input').value = app.username;
+            }
+        } else {
+            // User is NOT joining. They are a new HOST.
+            app.hostId = null;
+            app.isHost = true;
+            // Load their saved username for convenience, but ignore any old hostId
+            if (saved) {
+                app.username = saved.username;
+                document.getElementById('username-input').value = app.username;
+            }
+        }
+
         if(app.isHost) document.getElementById('btn-focus').classList.remove('hidden');
     },
 
