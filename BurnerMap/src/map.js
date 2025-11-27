@@ -160,6 +160,15 @@ Object.assign(app, {
             app.showToast('Location not available.');
         }
     },
+
+    locateMe: () => {
+        if (app.myLocation) {
+            app.map.flyTo([app.myLocation.lat, app.myLocation.lng], 18);
+            app.showToast('Centering on your location...');
+        } else {
+            app.showToast('Your location is not available yet.');
+        }
+    },
     
     toggleSatellite: () => {
         if(app.layerMode === 'sat') {
@@ -176,7 +185,10 @@ Object.assign(app, {
             const { latitude: lat, longitude: lng, heading } = pos.coords;
             app.myLocation = { lat, lng, heading };
             app.updateMarker({ from: app.myId, lat, lng, heading, username: 'You', isSelf: true, battery: app.battery });
-            if(!app.centered) { app.map.setView([lat, lng], 16); app.centered = true; }
+            if(!app.centered) { 
+                app.map.flyTo([lat, lng], 16); 
+                app.centered = true; 
+            }
             app.send({ type: 'loc', lat, lng, heading });
         }, null, { enableHighAccuracy: true });
     },

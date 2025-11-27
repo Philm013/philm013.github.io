@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>BurnerMap v13</title>
+    <title>Meet.Up</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -23,7 +23,7 @@
     <div class="header-left glass">
         <button onclick="app.toggleTheme()" class="text-yellow-500 mr-3"><i id="theme-icon" class="fa-solid fa-moon"></i></button>
         <div class="flex flex-col leading-none">
-            <span class="font-black text-xs tracking-wide">BURNER<span class="text-blue-500">MAP</span></span>
+            <span class="font-black text-xs tracking-wide">MEET<span class="text-blue-500">.UP</span></span>
             <span id="conn-status" class="text-[9px] opacity-60 font-bold mt-1 tracking-widest uppercase">OFFLINE</span>
         </div>
         <div id="status-dot" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_red] ml-3"></div>
@@ -39,6 +39,7 @@
         
         <!-- OPS STACK (Controls) -->
         <div class="ops-stack">
+            <button onclick="app.locateMe()" class="ops-btn glass text-blue-500" title="Locate Me"><i class="fa-solid fa-location-crosshairs"></i></button>
             <button onclick="app.toggleSatellite()" class="ops-btn glass text-green-400" title="Satellite Mode"><i class="fa-solid fa-layer-group"></i></button>
             <button onclick="app.toggleWaypointMode()" id="btn-poi" class="ops-btn glass text-yellow-500" title="Add POI"><i class="fa-solid fa-map-pin"></i></button>
             <button onclick="app.sendSonar()" class="ops-btn glass text-red-500" title="Sonar Ping"><i class="fa-solid fa-bullseye"></i></button>
@@ -61,6 +62,11 @@
         </div>
     </div>
 
+    <!-- ROSTER VIEW -->
+    <div id="view-roster">
+        <div id="roster-list" class="flex flex-col gap-2 p-4"></div>
+    </div>
+
     <!-- NAV DOCK -->
     <nav class="nav-dock glass">
         <button onclick="app.switchTab('map')" id="btn-map" class="nav-btn active"><i class="fa-solid fa-map-location-dot"></i></button>
@@ -69,6 +75,8 @@
             <i class="fa-solid fa-comments"></i>
             <div id="unread-dot" class="absolute top-4 right-4 w-2.5 h-2.5 bg-red-500 rounded-full hidden border-2 border-white"></div>
         </button>
+        <div class="w-px h-8 bg-gray-500/30 my-auto mx-1"></div>
+        <button onclick="app.switchTab('roster')" id="btn-roster" class="nav-btn"><i class="fa-solid fa-users"></i></button>
         <div class="w-px h-8 bg-gray-500/30 my-auto mx-1"></div>
         <button onclick="app.burn()" class="nav-btn text-red-500"><i class="fa-solid fa-power-off"></i></button>
     </nav>
@@ -96,10 +104,10 @@
     <!-- ONBOARDING -->
     <div id="modal-onboarding" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 transition-opacity duration-500">
         <div class="w-24 h-24 bg-gradient-to-tr from-gray-800 to-gray-900 rounded-3xl flex items-center justify-center shadow-2xl border border-white/10 mb-8">
-            <i class="fa-solid fa-ghost text-5xl text-white"></i>
+            <i class="fa-solid fa-users text-5xl text-white"></i>
         </div>
-        <h1 class="text-4xl font-black text-white mb-2">BURNER<span class="text-blue-500">MAP</span></h1>
-        <p class="text-gray-500 text-xs uppercase font-bold tracking-[0.2em] mb-10">v13 Ops Edition</p>
+        <h1 class="text-4xl font-black text-white mb-2">MEET<span class="text-blue-500">.UP</span></h1>
+        <p class="text-gray-500 text-xs uppercase font-bold tracking-[0.2em] mb-10">Social Exploration</p>
         <div class="bg-white/10 p-2 rounded-2xl mb-4 w-full max-w-xs">
             <input type="text" id="username-input" class="w-full bg-transparent text-white p-4 text-center font-bold text-xl outline-none" placeholder="CODENAME">
         </div>

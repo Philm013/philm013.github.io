@@ -162,17 +162,44 @@ Object.assign(app, {
         if(type === 'alert') { document.getElementById('sound-alert').play().catch(()=>{}); if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }
     },
 
+    renderRoster: () => {
+        const list = document.getElementById('roster-list');
+        list.innerHTML = '';
+
+        // Add self to the top
+        const selfHtml = `<div class="glass p-4 rounded-lg flex items-center justify-between">
+            <span class="font-bold">${app.username} (You)</span>
+            <button class="text-blue-500" onclick="app.locateMe()"><i class="fa-solid fa-location-crosshairs"></i></button>
+        </div>`;
+        list.insertAdjacentHTML('beforeend', selfHtml);
+
+        // Add other users
+        Object.entries(app.users).forEach(([id, user]) => {
+            if (id === app.myId) return;
+            const userHtml = `<div class="glass p-4 rounded-lg flex items-center justify-between">
+                <span class="font-bold">${user.username}</span>
+                <button class="text-blue-500" onclick="app.panToEntity('user', '${id}')"><i class="fa-solid fa-crosshairs"></i></button>
+            </div>`;
+            list.insertAdjacentHTML('beforeend', userHtml);
+        });
+    },
+
     switchTab: (tab) => {
-        const chat = document.getElementById('view-chat');
-        if(tab === 'map') { 
-            chat.style.transform = 'translate3d(100%, 0, 0)'; 
-            document.getElementById('btn-map').classList.add('active'); 
-            document.getElementById('btn-chat').classList.remove('active'); 
-        }
-        else { 
-            chat.style.transform = 'translate3d(0, 0, 0)'; 
-            document.getElementById('btn-chat').classList.add('active'); 
-            document.getElementById('btn-map').classList.remove('active'); 
+        const chatView = document.getElementById('view-chat');
+        const rosterView = document.getElementById('view-roster');
+        
+        // Reset all views and buttons
+        chatView.style.transform = 'translate3d(100%, 0, 0)';
+        rosterView.style.transform = 'translate3d(-100%, 0, 0)';
+        document.getElementById('btn-map').classList.remove('active');
+        document.getElementById('btn-chat').classList.remove('active');
+        document.getElementById('btn-roster').classList.remove('active');
+
+        if (tab === 'map') {
+            document.getElementById('btn-map').classList.add('active');
+        } else if (tab === 'chat') {
+            chatView.style.transform = 'translate3d(0, 0, 0)';
+            document.getElementById('btn-chat').classList.add('active');
             document.getElementById('unread-dot').classList.add('hidden');
             // Render the correct chat when switching to the tab
             if (app.privateChat) {
@@ -180,6 +207,10 @@ Object.assign(app, {
             } else {
                 app.renderChat('public');
             }
+        } else if (tab === 'roster') {
+            rosterView.style.transform = 'translate3d(0, 0, 0)';
+            document.getElementById('btn-roster').classList.add('active');
+            app.renderRoster();
         }
     },
 
