@@ -32,6 +32,7 @@
     <!-- HEADER -->
     <div class="header-left glass">
         <button onclick="app.toggleTheme()" class="text-yellow-500 mr-3"><i id="theme-icon" class="fa-solid fa-moon"></i></button>
+        <button onclick="app.toggleChatList()" class="text-blue-500 mr-3"><i class="fa-solid fa-comments"></i></button>
         <div class="flex flex-col leading-none">
             <span class="font-black text-xs tracking-wide">SNAP<span class="text-blue-500">MEET</span></span>
             <span id="conn-status" class="text-[9px] opacity-60 font-bold mt-1 tracking-widest uppercase">OFFLINE</span>
@@ -46,6 +47,30 @@
     <!-- MAP VIEW -->
     <div id="view-map">
         <div id="map"></div>
+        <div class="search-bar glass">
+            <input type="text" id="search-input" placeholder="Search location..." class="flex-1 bg-transparent px-4 outline-none text-base">
+            <button onclick="app.searchLocation()" class="w-10 h-10 bg-blue-600 rounded-full text-white shadow-lg"><i class="fa-solid fa-search"></i></button>
+        </div>
+        <button onclick="app.togglePoiPanel()" class="poi-toggle-btn glass"><i class="fa-solid fa-list"></i></button>
+
+        <div id="poi-panel" class="poi-panel glass hidden">
+            <div class="poi-panel-header">
+                <h3>Points of Interest</h3>
+                <button onclick="app.togglePoiPanel()" class="close-btn"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="poi-panel-tabs">
+                <button class="poi-tab-btn active" data-tab="pois">POIs</button>
+                <button class="poi-tab-btn" data-tab="rally">Rally</button>
+                <button class="poi-tab-btn" data-tab="search">Search</button>
+            </div>
+            <div id="poi-list" class="poi-panel-content">
+                <div id="pois-content" class="tab-content active"></div>
+                <div id="rally-content" class="tab-content"></div>
+                <div id="search-content" class="tab-content"></div>
+            </div>
+        </div>
+
+
         
         <!-- OPS STACK (Controls) -->
         <div class="ops-stack">
@@ -57,6 +82,24 @@
         </div>
 
         <div id="host-hint" class="absolute top-24 left-1/2 -translate-x-1/2 z-[10] glass px-4 py-2 rounded-full text-xs font-bold opacity-0 pointer-events-none transition-opacity">Host: Double-Tap to Flag</div>
+
+        <div id="call-container" class="hidden absolute inset-0 z-[60] bg-black/90 flex flex-col items-center justify-center">
+            <video id="remote-video" class="w-full h-full object-cover" autoplay></video>
+            <video id="local-video" class="absolute w-32 h-48 bottom-4 right-4 border-2 border-white rounded-lg object-cover" autoplay muted></video>
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4">
+                <button id="mute-btn" class="call-btn bg-gray-500"><i class="fa-solid fa-microphone-slash"></i></button>
+                <button id="end-call-btn" class="call-btn bg-red-500"><i class="fa-solid fa-phone-slash"></i></button>
+                <button id="switch-camera-btn" class="call-btn bg-gray-500"><i class="fa-solid fa-camera-rotate"></i></button>
+            </div>
+        </div>
+
+        <div id="chat-list-panel" class="chat-list-panel glass hidden">
+            <div class="chat-list-header">
+                <h3>Chats</h3>
+                <button onclick="app.toggleChatList()" class="close-btn"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div id="chat-list" class="chat-list-content"></div>
+        </div>
     </div>
 
     <!-- CHAT VIEW -->
@@ -77,6 +120,23 @@
         <div id="roster-list" class="flex flex-col gap-2 p-4"></div>
     </div>
 
+    <!-- BOARDS VIEW -->
+    <div id="view-boards" class="hidden absolute inset-0 z-30 bg-black/90 flex flex-col items-center justify-center p-6">
+        <h2 class="text-3xl font-bold text-white mb-6">Planning Boards</h2>
+        <div class="glass p-6 rounded-2xl w-full max-w-xs text-center mb-6">
+            <h3 class="text-xl font-bold mb-4">Create New Board</h3>
+            <div class="bg-white/10 p-2 rounded-xl mb-4">
+                <input type="text" id="new-board-name-input" class="w-full bg-transparent text-white p-2 text-center font-bold text-lg outline-none" placeholder="Board Name">
+            </div>
+            <button onclick="app.createNewBoard()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold text-lg">CREATE BOARD</button>
+        </div>
+
+        <div class="glass p-6 rounded-2xl w-full max-w-xs text-center">
+            <h3 class="text-xl font-bold mb-4">Load Existing Board</h3>
+            <div id="boards-list" class="flex flex-col gap-2"></div>
+        </div>
+    </div>
+
     <!-- NAV DOCK -->
     <nav class="nav-dock glass">
         <button onclick="app.switchTab('map')" id="btn-map" class="nav-btn active"><i class="fa-solid fa-map-location-dot"></i></button>
@@ -87,6 +147,8 @@
         </button>
         <div class="w-px h-8 bg-gray-500/30 my-auto mx-1"></div>
         <button onclick="app.switchTab('roster')" id="btn-roster" class="nav-btn"><i class="fa-solid fa-users"></i></button>
+        <div class="w-px h-8 bg-gray-500/30 my-auto mx-1"></div>
+        <button onclick="app.switchTab('boards')" id="btn-boards" class="nav-btn"><i class="fa-solid fa-clipboard-list"></i></button>
         <div class="w-px h-8 bg-gray-500/30 my-auto mx-1"></div>
         <button onclick="app.burn()" class="nav-btn text-red-500"><i class="fa-solid fa-power-off"></i></button>
     </nav>
@@ -108,6 +170,27 @@
             <div class="w-12 h-1.5 bg-gray-500 rounded-full mx-auto mb-4"></div>
             <div id="action-content" class="text-center"></div>
             <div id="action-buttons" class="flex flex-col gap-2 mt-4"></div>
+        </div>
+    </div>
+
+    <!-- GROUP CHAT MODAL -->
+    <div id="modal-group-chat" class="fixed inset-0 z-[100] bg-black/80 hidden flex flex-col items-center justify-center p-6" onclick="if(event.target === this) this.classList.add('hidden');">
+        <div class="glass p-6 rounded-2xl w-full max-w-xs text-center">
+            <h3 class="text-xl font-bold mb-4">Create Group Chat</h3>
+            <div class="bg-white/10 p-2 rounded-xl mb-4">
+                <input type="text" id="group-name-input" class="w-full bg-transparent text-white p-2 text-center font-bold text-lg outline-none" placeholder="Group Name">
+            </div>
+            <div id="group-chat-participants" class="text-left mb-4"></div>
+            <button onclick="app.createGroupChat()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-lg">CREATE</button>
+        </div>
+    </div>
+
+    <!-- ICON PICKER MODAL -->
+    <div id="modal-icon-picker" class="fixed inset-0 z-[100] bg-black/80 hidden flex flex-col items-center justify-center p-6" onclick="if(event.target === this) this.classList.add('hidden');">
+        <div class="glass p-6 rounded-2xl w-full max-w-xs text-center">
+            <h3 class="text-xl font-bold mb-4">Choose an Icon</h3>
+            <div id="icon-grid" class="grid grid-cols-4 gap-4 mb-4"></div>
+            <button onclick="document.getElementById('modal-icon-picker').classList.add('hidden')" class="w-full bg-gray-500 text-white py-3 rounded-xl font-bold text-lg">CANCEL</button>
         </div>
     </div>
 

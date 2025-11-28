@@ -117,6 +117,8 @@ Object.assign(app, {
             indicator = '<span class="font-bold text-green-400 text-[10px]">[POI] </span>';
         } else if (d.type === 'rally_chat') {
             indicator = '<span class="font-bold text-orange-500 text-[10px]">[RALLY] </span>';
+        } else if (d.type === 'group_chat_message') {
+            indicator = '<span class="font-bold text-purple-400 text-[10px]">[GROUP] </span>';
         }
 
         let processedMsg = d.msg;
@@ -166,6 +168,11 @@ Object.assign(app, {
         const list = document.getElementById('roster-list');
         list.innerHTML = '';
 
+        const createGroupBtn = `<div class="p-4 text-center">
+            <button class="bg-blue-600 text-white py-2 px-4 rounded-full font-bold" onclick="app.showGroupChatModal()">Create Group Chat</button>
+        </div>`;
+        list.insertAdjacentHTML('beforeend', createGroupBtn);
+
         // Add self to the top
         const selfHtml = `<div class="glass p-4 rounded-lg flex items-center justify-between">
             <span class="font-bold">${app.username} (You)</span>
@@ -187,13 +194,16 @@ Object.assign(app, {
     switchTab: (tab) => {
         const chatView = document.getElementById('view-chat');
         const rosterView = document.getElementById('view-roster');
+        const boardsView = document.getElementById('view-boards');
         
         // Reset all views and buttons
         chatView.style.transform = 'translate3d(100%, 0, 0)';
         rosterView.style.transform = 'translate3d(-100%, 0, 0)';
+        boardsView.classList.add('hidden');
         document.getElementById('btn-map').classList.remove('active');
         document.getElementById('btn-chat').classList.remove('active');
         document.getElementById('btn-roster').classList.remove('active');
+        document.getElementById('btn-boards').classList.remove('active');
 
         if (tab === 'map') {
             document.getElementById('btn-map').classList.add('active');
@@ -211,6 +221,10 @@ Object.assign(app, {
             rosterView.style.transform = 'translate3d(0, 0, 0)';
             document.getElementById('btn-roster').classList.add('active');
             app.renderRoster();
+        } else if (tab === 'boards') {
+            boardsView.classList.remove('hidden');
+            document.getElementById('btn-boards').classList.add('active');
+            app.renderBoardsList();
         }
     },
 
@@ -258,6 +272,8 @@ Object.assign(app, {
             } else if (app.privateChat.isWaypoint) {
                 title = `Waypoint Chat: ${app.privateChat.username}`;
                 targetEntity = app.markers[app.privateChat.id];
+            } else if (app.privateChat.isGroup) {
+                title = `Group Chat: ${app.privateChat.groupName}`;
             } else { // private user chat
                 title = `Private chat with ${app.privateChat.username}`;
                 targetEntity = app.markers[app.privateChat.id];
@@ -268,13 +284,21 @@ Object.assign(app, {
                 panAction = `app.map.flyTo([${latlng.lat}, ${latlng.lng}], 18); app.switchTab('map');`;
             }
 
+            let callButton = '';
+            if (!app.privateChat.isWaypoint && !app.privateChat.isRally && !app.privateChat.isGroup) {
+                callButton = `<button onclick="app.initiateCall()" class="text-xs font-bold uppercase text-green-500">Call</button>`;
+            }
+
             header.innerHTML = `
                 <div class="flex items-center justify-between">
                     <span class="font-bold ${panAction ? 'cursor-pointer' : ''}" onclick="${panAction || ''}">
                         ${title} 
                         ${panAction ? '<i class="fa-solid fa-crosshairs text-xs ml-2"></i>' : ''}
                     </span>
-                    <button onclick="app.exitPrivateChat()" class="text-xs font-bold uppercase">Exit</button>
+                    <div>
+                        ${callButton}
+                        <button onclick="app.exitPrivateChat()" class="text-xs font-bold uppercase ml-4">Exit</button>
+                    </div>
                 </div>
             `;
             header.classList.remove('hidden');
@@ -310,4 +334,190 @@ Object.assign(app, {
         modal.classList.remove('show');
         setTimeout(() => modal.classList.add('hidden'), 300);
     },
+
+    togglePoiPanel: () => {
+        app.poiPanelOpen = !app.poiPanelOpen;
+        const panel = document.getElementById('poi-panel');
+        if (app.poiPanelOpen) {
+            panel.classList.remove('hidden');
+        } else {
+            panel.classList.add('hidden');
+        }
+    },
+
+    searchLocation: async () => {
+        const query = document.getElementById('search-input').value;
+        if (!query) return;
+
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+        const results = await response.json();
+
+        const resultsContainer = document.getElementById('search-content');
+        resultsContainer.innerHTML = '';
+
+        if (results.length === 0) {
+            resultsContainer.innerHTML = '<p>No results found.</p>';
+            return;
+        }
+
+        results.forEach(result => {
+            const div = document.createElement('div');
+            div.className = 'search-result';
+            div.innerHTML = `
+                <p>${result.display_name}</p>
+                <button class="add-poi-btn" onclick="app.addSearchResultAsPoi(${result.lat}, ${result.lon}, '${result.display_name}')">Add as POI</button>
+            `;
+            resultsContainer.appendChild(div);
+        });
+
+        app.switchPoiTab('search');
+    },
+
+    switchPoiTab: (tab) => {
+        document.querySelectorAll('.poi-tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.poi-tab-btn[data-tab=${tab}]`).classList.add('active');
+
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`${tab}-content`).classList.add('active');
+    },
+
+    renderPoiList: () => {
+        const poisContainer = document.getElementById('pois-content');
+        poisContainer.innerHTML = '';
+        app.waypoints.forEach(wp => {
+            const div = document.createElement('div');
+            div.className = 'poi-list-item';
+            div.innerHTML = `
+                <span>${wp.name}</span>
+                <div>
+                    <button onclick="app.showIconPicker('${wp.id}')"><i class="fa-solid fa-image"></i></button>
+                    <button onclick="app.panToWaypoint({lat: ${wp.lat}, lng: ${wp.lng}})"><i class="fa-solid fa-crosshairs"></i></button>
+                </div>
+            `;
+            poisContainer.appendChild(div);
+        });
+
+        const rallyContainer = document.getElementById('rally-content');
+        rallyContainer.innerHTML = '';
+        if (app.rallyMarker) {
+            const div = document.createElement('div');
+            div.className = 'poi-list-item';
+            const latlng = app.rallyMarker.getLatLng();
+            div.innerHTML = `
+                <span>Rally Point</span>
+                <button onclick="app.panToEntity('rally', 'rally')"><i class="fa-solid fa-crosshairs"></i></button>
+            `;
+            rallyContainer.appendChild(div);
+        }
+    },
+
+    showIconPicker: (wpId) => {
+        const icons = ['📍', '🚩', '⛺️', '🚗', '🚲', '🍔', '🍺', '🎵', '🚻', '❤️', '⭐️', '⚠️'];
+        const iconGrid = document.getElementById('icon-grid');
+        iconGrid.innerHTML = '';
+        icons.forEach(icon => {
+            const button = document.createElement('button');
+            button.className = 'icon-picker-btn';
+            button.innerHTML = icon;
+            button.onclick = () => app.selectIcon(wpId, icon);
+            iconGrid.appendChild(button);
+        });
+        document.getElementById('modal-icon-picker').classList.remove('hidden');
+    },
+
+    selectIcon: (wpId, icon) => {
+        const waypoint = app.waypoints.find(wp => wp.id === wpId);
+        if (waypoint) {
+            waypoint.icon = icon;
+            app.updateWaypoint(waypoint);
+            app.send({ type: 'waypoint_update', waypoint: waypoint });
+        }
+        document.getElementById('modal-icon-picker').classList.add('hidden');
+    },
+
+    showGroupChatModal: () => {
+        const participantsContainer = document.getElementById('group-chat-participants');
+        participantsContainer.innerHTML = '';
+        Object.entries(app.users).forEach(([id, user]) => {
+            if (id === app.myId) return;
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <label>
+                    <input type="checkbox" class="group-participant-checkbox" value="${id}">
+                    ${user.username}
+                </label>
+            `;
+            participantsContainer.appendChild(div);
+        });
+        document.getElementById('modal-group-chat').classList.remove('hidden');
+    },
+
+    createGroupChat: () => {
+        const groupName = document.getElementById('group-name-input').value.trim();
+        if (!groupName) return alert('Please enter a group name.');
+
+        const selectedParticipants = Array.from(document.querySelectorAll('.group-participant-checkbox:checked')).map(cb => cb.value);
+        if (selectedParticipants.length === 0) return alert('Please select at least one participant.');
+
+        const groupId = 'group_' + Date.now();
+        const participants = [app.myId, ...selectedParticipants];
+
+        app.send({
+            type: 'group_chat_create',
+            groupId: groupId,
+            groupName: groupName,
+            participants: participants
+        });
+
+        document.getElementById('modal-group-chat').classList.add('hidden');
+    },
+
+    toggleChatList: () => {
+        app.chatListOpen = !app.chatListOpen;
+        const panel = document.getElementById('chat-list-panel');
+        if (app.chatListOpen) {
+            panel.classList.remove('hidden');
+            app.renderChatList();
+        } else {
+            panel.classList.add('hidden');
+        }
+    },
+
+    renderChatList: () => {
+        const chatListContainer = document.getElementById('chat-list');
+        chatListContainer.innerHTML = '';
+
+        // Public Chat
+        const publicChatHtml = `<div class="chat-list-item" onclick="app.startPublicChat()">
+            <span>Public Chat</span>
+        </div>`;
+        chatListContainer.insertAdjacentHTML('beforeend', publicChatHtml);
+
+        // Private Chats (from known users in chatHistory)
+        Object.keys(app.chatHistory).forEach(chatId => {
+            if (chatId === 'public' || chatId.startsWith('group_')) return; // Skip public and group chats
+
+            const user = app.users[chatId];
+            if (user) {
+                const privateChatHtml = `<div class="chat-list-item" onclick="app.startPrivateChat({ from: '${chatId}', username: '${user.username}'})">
+                    <span>Private with ${user.username}</span>
+                </div>`;
+                chatListContainer.insertAdjacentHTML('beforeend', privateChatHtml);
+            }
+        });
+
+        // Group Chats
+        Object.entries(app.groupChats).forEach(([groupId, group]) => {
+            const groupChatHtml = `<div class="chat-list-item" onclick="app.startGroupChat('${groupId}')">
+                <span>Group: ${group.name}</span>
+            </div>`;
+            chatListContainer.insertAdjacentHTML('beforeend', groupChatHtml);
+        });
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.poi-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => app.switchPoiTab(btn.dataset.tab));
+    });
 });

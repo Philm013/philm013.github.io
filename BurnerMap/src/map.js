@@ -41,7 +41,35 @@ Object.assign(app, {
         }
     },
 
-    addWaypoint: (latlng) => {
+    addWaypoint: (latlng, name = null) => {
+        if (app.currentBoard) {
+            const addToBoard = confirm('Do you want to add this point to the current planning board or as a regular POI? (OK for Board, Cancel for POI)');
+            if (addToBoard) {
+                const spotName = name || prompt('Enter a name for this board spot:', 'New Spot');
+                if (spotName) {
+                    app.addBoardSpot(latlng, spotName);
+                    if (app.waypointAddMode) {
+                        app.toggleWaypointMode();
+                    }
+                }
+                return;
+            }
+        }
+
+        if (name) {
+            const waypoint = {
+                id: 'wp_' + Date.now(),
+                name: name,
+                lat: latlng.lat,
+                lng: latlng.lng,
+                createdBy: app.myId,
+            };
+            app.waypoints.push(waypoint);
+            app.drawWaypoint(waypoint);
+            app.send({ type: 'waypoint_new', waypoint: waypoint });
+            return;
+        }
+
         const modal = document.getElementById('modal-waypoint-name');
         const input = document.getElementById('waypoint-name-input');
         const saveBtn = document.getElementById('waypoint-save-btn');
@@ -51,12 +79,12 @@ Object.assign(app, {
         input.focus();
 
         saveBtn.onclick = () => {
-            const name = input.value.trim();
-            if (!name) return;
+            const newName = input.value.trim();
+            if (!newName) return;
 
             const waypoint = {
                 id: 'wp_' + Date.now(),
-                name: name,
+                name: newName,
                 lat: latlng.lat,
                 lng: latlng.lng,
                 createdBy: app.myId,
@@ -84,27 +112,32 @@ Object.assign(app, {
     },
 
     drawWaypoint: (wp) => {
-        const icon = L.divIcon({
-            html: `<div class="flex flex-col items-center">
-                    <div class="text-3xl">📍</div>
+        const iconHtml = `<div class="flex flex-col items-center">
+                    <div class="text-3xl">${wp.icon || '📍'}</div>
                     <div class="bg-black/70 text-white text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap">${wp.name}</div>
-                   </div>`,
+                   </div>`;
+        const icon = L.divIcon({
+            html: iconHtml,
             className: 'bg-transparent',
             iconSize: [30, 40],
             iconAnchor: [15, 40]
         });
-        const marker = L.marker([wp.lat, wp.lng], { icon, draggable: true }).addTo(app.map);
+        const marker = L.marker([wp.lat, wp.lng], { icon, draggable: !wp.isBoardSpot }).addTo(app.map);
         marker.wp_id = wp.id;
 
-        marker.on('dragend', (e) => {
-            const newLatLng = e.target.getLatLng();
-            wp.lat = newLatLng.lat;
-            wp.lng = newLatLng.lng;
-            app.send({ type: 'waypoint_update', waypoint: wp });
-        });
-
-        marker.on('click', () => app.showWaypointActions(wp));
+        if (!wp.isBoardSpot) {
+            marker.on('dragend', (e) => {
+                const newLatLng = e.target.getLatLng();
+                wp.lat = newLatLng.lat;
+                wp.lng = newLatLng.lng;
+                app.send({ type: 'waypoint_update', waypoint: wp });
+            });
+            marker.on('click', () => app.showWaypointActions(wp));
+        } else {
+            marker.on('click', () => app.showBoardSpotActions(wp));
+        }
         app.markers[wp.id] = marker;
+        app.renderPoiList();
     },
 
     updateWaypoint: (wp) => {
@@ -127,6 +160,7 @@ Object.assign(app, {
             app.map.removeLayer(app.markers[id]);
             delete app.markers[id];
         }
+        app.renderPoiList();
     },
 
     showWaypointActions: (wp) => {
@@ -276,6 +310,7 @@ Object.assign(app, {
         app.rallyMarker = L.marker([coords.lat, coords.lng], { icon }).addTo(app.map);
         app.showToast('Rally Updated');
         app.rallyMarker.on('click', () => app.showRallyActions());
+        app.renderPoiList();
     },
 
     showRallyActions: () => {
@@ -284,7 +319,7 @@ Object.assign(app, {
             { label: 'Chat about Rally', action: () => app.startPrivateChat({ from: 'rally', username: 'Rally Point', isRally: true }), class: 'bg-orange-500 text-white' },
         ];
         if (app.isHost) {
-            buttons.push({ label: 'Remove Rally', action: () => { if(app.rallyMarker) { app.map.removeLayer(app.rallyMarker); app.rallyMarker = null; } app.send({type: 'rally_delete'})}, class: 'bg-red-600 text-white' });
+            buttons.push({ label: 'Remove Rally', action: () => { if(app.rallyMarker) { app.map.removeLayer(app.rallyMarker); app.rallyMarker = null; app.renderPoiList(); } app.send({type: 'rally_delete'})}, class: 'bg-red-600 text-white' });
         }
         app.showActions(content, buttons);
     },
@@ -292,4 +327,9 @@ Object.assign(app, {
     removeMarker: (id) => { if(app.markers[id]) { app.map.removeLayer(app.markers[id]); delete app.markers[id]; } },
 
     triggerSonar: (d) => { const m = L.marker([d.lat, d.lng], { icon: L.divIcon({ className: 'sonar-wave', iconSize: [100,100], iconAnchor: [50,50] }), zIndexOffset: -100 }).addTo(app.map); setTimeout(() => app.map.removeLayer(m), 2000); },
+
+    addSearchResultAsPoi: (lat, lon, name) => {
+        const latlng = { lat, lng: lon };
+        app.addWaypoint(latlng, name);
+    },
 });

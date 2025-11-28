@@ -9,5 +9,14 @@ const app = {
     users: {},
     chatHistory: {},
     wakeLock: null,
-    isWakeLockActive: false
+    isWakeLockActive: false,
+    poiPanelOpen: false,
+    localStream: null,
+    remoteStream: null,
+    currentCall: null,
+    inCall: false,
+    groupChats: {},
+    chatListOpen: false,
+    boards: {},
+    currentBoard: null
 };
