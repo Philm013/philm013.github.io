@@ -591,6 +591,7 @@ window.Board = {
     },
     start: () => { 
         $('landing').style.display='none'; $('app').style.display='block'; $('board-name').value=State.name; 
+        Board.resetView(); // Call resetView here
         Render.loop(); Render.all();
         setTool(State.tool);
         UI.loadMinimapSettings();
@@ -615,8 +616,25 @@ window.Board = {
         r.onload = e => { const d = JSON.parse(e.target.result); State.id=genId(); State.items=d.items||[]; State.ink=d.ink||[]; State.name=d.name||"Imported"; Board.start(); };
         r.readAsText(f);
     },
-    // Collision-Aware Placement Algorithm
-    getFreeSpace: (x, y, w, h) => {
+    resetView: () => {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // If on mobile (less than 769px, as per CSS media queries)
+        if (viewportWidth <= 768) {
+            // Adjust initial zoom for mobile to fit an 'ideal' desktop width of 800px
+            State.view.z = Math.min(1, viewportWidth / 800); 
+            // Center horizontally and vertically by translating based on the new zoom
+            State.view.x = (viewportWidth / State.view.z - viewportWidth) / 2;
+            State.view.y = (viewportHeight / State.view.z - viewportHeight) / 2;
+        } else {
+            // Default desktop view
+            State.view.z = 1;
+            State.view.x = 0;
+            State.view.y = 0;
+        }
+        Render.sync(); // Apply the new view settings
+    },
         let attempts = 0;
         let nx = x, ny = y;
         
@@ -1507,6 +1525,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(!e.target.matches('input, textarea')) Actions.delete();
         }
     });
+
+    window.addEventListener('resize', Board.resetView); // Add this line
 });
 
 function Tab(n) {
