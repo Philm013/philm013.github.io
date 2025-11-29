@@ -1,4 +1,3 @@
-
 // Contains all UI related functions
 Object.assign(app, {
     initUI: () => {
@@ -396,14 +395,25 @@ Object.assign(app, {
         resultsContainer.innerHTML = '<p class="text-center opacity-50 py-4"><i class="fa-solid fa-spinner fa-spin"></i> Searching...</p>';
 
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+            // Build URL with viewbox prioritization
+            let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&extratags=1&limit=20`;
+            
+            if (app.map) {
+                const bounds = app.map.getBounds();
+                // Nominatim viewbox: left,top,right,bottom -> west,north,east,south
+                const viewbox = `${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}`;
+                // 'bounded=1' restricts results to the viewbox area on the screen
+                url += `&viewbox=${viewbox}&bounded=1`;
+            }
+
+            const response = await fetch(url);
             if (!response.ok) throw new Error("Network error");
             const results = await response.json();
 
             resultsContainer.innerHTML = '';
 
             if (results.length === 0) {
-                resultsContainer.innerHTML = '<p class="text-center opacity-50 py-4">No results found.</p>';
+                resultsContainer.innerHTML = '<p class="text-center opacity-50 py-4">No results found in this area.</p>';
                 return;
             }
 
@@ -415,9 +425,20 @@ Object.assign(app, {
                 const rawName = result.name || result.display_name.split(',')[0] || 'Unknown';
                 const safeName = rawName.replace(/'/g, "\\'");
                 
+                // Formatting type info (e.g. "Restaurant (Italian)")
+                let typeInfo = (result.type ? result.type.charAt(0).toUpperCase() + result.type.slice(1) : 'Place'); 
+                if (result.extratags && result.extratags.cuisine) {
+                    typeInfo += ` • ${result.extratags.cuisine.charAt(0).toUpperCase() + result.extratags.cuisine.slice(1)}`;
+                } else if (result.address && result.address.city) {
+                    typeInfo += ` • ${result.address.city}`;
+                }
+
                 div.innerHTML = `
-                    <p class="text-sm font-bold text-left">${result.display_name}</p>
-                    <button class="add-poi-btn shrink-0" onclick="app.addSearchResultAsPoi(${result.lat}, ${result.lon}, '${safeName}')">Add POI</button>
+                    <div class="flex flex-col overflow-hidden mr-2">
+                        <p class="text-sm font-bold text-left truncate">${rawName}</p>
+                        <p class="text-[10px] opacity-70 text-left truncate">${typeInfo}</p>
+                    </div>
+                    <button class="add-poi-btn shrink-0 bg-blue-600/20 hover:bg-blue-600/40 text-blue-500 px-3 py-1 rounded text-xs font-bold transition-colors" onclick="app.addSearchResultAsPoi(${result.lat}, ${result.lon}, '${safeName}')">ADD</button>
                 `;
                 resultsContainer.appendChild(div);
             });
