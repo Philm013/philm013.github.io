@@ -431,7 +431,58 @@
     
     <script type="module">
        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+// --- SERVICE WORKER REGISTRATION (Cache JSON files) ---
+    if ('serviceWorker' in navigator) {
+        const swCode = `
+            const CACHE_NAME = 'ngss-json-cache-v1';
+            const URLS_TO_CACHE = [
+                'https://philm013.github.io/JSON/ngss3DElements.json',
+                'https://philm013.github.io/JSON/ngssK5.json',
+                'https://philm013.github.io/JSON/ngss68.json',
+                'https://philm013.github.io/JSON/ngss912.json'
+            ];
 
+            self.addEventListener('install', event => {
+                self.skipWaiting();
+                event.waitUntil(
+                    caches.open(CACHE_NAME).then(cache => {
+                        // Optional: Pre-fetch. We rely on runtime caching mostly.
+                        // return cache.addAll(URLS_TO_CACHE); 
+                    })
+                );
+            });
+
+            self.addEventListener('fetch', event => {
+                const url = new URL(event.request.url);
+                // Only intercept requests for the specific JSON files
+                if (URLS_TO_CACHE.includes(url.href)) {
+                    event.respondWith(
+                        caches.match(event.request).then(cachedResponse => {
+                            if (cachedResponse) {
+                                return cachedResponse;
+                            }
+                            return fetch(event.request).then(response => {
+                                // Clone response to put one in cache and return one
+                                const responseClone = response.clone();
+                                caches.open(CACHE_NAME).then(cache => {
+                                    cache.put(event.request, responseClone);
+                                });
+                                return response;
+                            });
+                        })
+                    );
+                }
+            });
+        `;
+
+        // Create a blob from the SW code
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+
+        navigator.serviceWorker.register(swUrl)
+            .then(reg => console.log('Service Worker registered for JSON caching'))
+            .catch(err => console.error('Service Worker registration failed', err));
+    }
     document.addEventListener('DOMContentLoaded', () => {
         // --- 1. DOM ELEMENT REFERENCES ---
         const navPeExplorer = document.getElementById('nav-pe-explorer');
@@ -581,6 +632,7 @@
             const cache = await loadDataFromDB();
             
             if (cache && cache.version === CACHE_VERSION) {
+                console.log("Loading data from Cache...");
                 // Cache hit! Restore maps and variables
                 peMap = new Map(cache.peMap);
                 peMap.forEach(pe => {
@@ -596,19 +648,16 @@
                 allTopics = cache.allTopics;
                 sortedGradeLabels = cache.sortedGradeLabels;
                 
-                // If we cache hit, we still need the raw 3D elements for the 3D explorer view to render
-                if (!window.allNgss3dElements) {
-                     try {
-                         const elRes = await fetch('https://philm013.github.io/JSON/ngss3DElements.json');
-                         window.allNgss3dElements = await elRes.json();
-                     } catch (e) {
-                         console.error("Could not fetch 3D elements for view generation", e);
-                     }
+                // --- FIX: Restore raw data from cache so we don't fetch it again ---
+                if (cache.allNgss3dElements && cache.allNgssData) {
+                    window.allNgss3dElements = cache.allNgss3dElements;
+                    window.allNgssData = cache.allNgssData;
+                    return; // Completely skip network requests
                 }
-                return;
             }
 
             // 2. Cache Miss: Fetch JSON files from server
+            console.log("Fetching fresh data from server...");
             await fetchRawData();
 
             // 3. Process the raw data
@@ -633,6 +682,10 @@
             // 5. Save to Cache
             const dataToCache = {
                 version: CACHE_VERSION,
+                // --- FIX: Save the raw data structures to cache ---
+                allNgss3dElements: window.allNgss3dElements,
+                allNgssData: window.allNgssData,
+                // ------------------------------------------------
                 peMap: [...peMap].map(([id, pe]) => [id, { ...pe,
                     associatedComponentCodes: [...pe.associatedComponentCodes],
                     associatedSpecificCodes: [...pe.associatedSpecificCodes]
@@ -652,6 +705,8 @@
                 saveDataToDB(dataToCache);
             } catch (e) {
                 console.error("Error caching data:", e);
+                // If quota exceeded, we might want to clear cache and try again, 
+                // but for now just logging is safer.
             }
         };
 
