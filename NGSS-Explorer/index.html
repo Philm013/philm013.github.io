@@ -431,58 +431,7 @@
     
     <script type="module">
        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
-// --- SERVICE WORKER REGISTRATION (Cache JSON files) ---
-    if ('serviceWorker' in navigator) {
-        const swCode = `
-            const CACHE_NAME = 'ngss-json-cache-v1';
-            const URLS_TO_CACHE = [
-                'https://philm013.github.io/JSON/ngss3DElements.json',
-                'https://philm013.github.io/JSON/ngssK5.json',
-                'https://philm013.github.io/JSON/ngss68.json',
-                'https://philm013.github.io/JSON/ngss912.json'
-            ];
 
-            self.addEventListener('install', event => {
-                self.skipWaiting();
-                event.waitUntil(
-                    caches.open(CACHE_NAME).then(cache => {
-                        // Optional: Pre-fetch. We rely on runtime caching mostly.
-                        // return cache.addAll(URLS_TO_CACHE); 
-                    })
-                );
-            });
-
-            self.addEventListener('fetch', event => {
-                const url = new URL(event.request.url);
-                // Only intercept requests for the specific JSON files
-                if (URLS_TO_CACHE.includes(url.href)) {
-                    event.respondWith(
-                        caches.match(event.request).then(cachedResponse => {
-                            if (cachedResponse) {
-                                return cachedResponse;
-                            }
-                            return fetch(event.request).then(response => {
-                                // Clone response to put one in cache and return one
-                                const responseClone = response.clone();
-                                caches.open(CACHE_NAME).then(cache => {
-                                    cache.put(event.request, responseClone);
-                                });
-                                return response;
-                            });
-                        })
-                    );
-                }
-            });
-        `;
-
-        // Create a blob from the SW code
-        const blob = new Blob([swCode], { type: 'application/javascript' });
-        const swUrl = URL.createObjectURL(blob);
-
-        navigator.serviceWorker.register(swUrl)
-            .then(reg => console.log('Service Worker registered for JSON caching'))
-            .catch(err => console.error('Service Worker registration failed', err));
-    }
     document.addEventListener('DOMContentLoaded', () => {
         // --- 1. DOM ELEMENT REFERENCES ---
         const navPeExplorer = document.getElementById('nav-pe-explorer');
@@ -546,7 +495,7 @@
         const handleEnd = document.getElementById('resize-handle-end');
 
         // --- 2. STATE MANAGEMENT ---
-        const CACHE_VERSION = '1.3'; // Updated cache version for new data structure
+        const CACHE_VERSION = '1.4'; // Updated cache version for new data structure
         let currentView = 'pe';
         let activePeFilter = null;
         let peMap = new Map();
@@ -631,9 +580,12 @@
             // 1. Try to load processed data from IndexedDB Cache
             const cache = await loadDataFromDB();
             
+            // We bump the version to 1.4 to force a re-cache of the new structure
+            // If you change this, change CACHE_VERSION at the top of your script to '1.4' as well
             if (cache && cache.version === CACHE_VERSION) {
-                console.log("Loading data from Cache...");
-                // Cache hit! Restore maps and variables
+                // --- CACHE HIT: RESTORE DATA ---
+                console.log("Restoring data from browser cache...");
+                
                 peMap = new Map(cache.peMap);
                 peMap.forEach(pe => {
                     pe.associatedComponentCodes = new Set(pe.associatedComponentCodes);
@@ -648,16 +600,16 @@
                 allTopics = cache.allTopics;
                 sortedGradeLabels = cache.sortedGradeLabels;
                 
-                // --- FIX: Restore raw data from cache so we don't fetch it again ---
+                // IMPORTANT: Restore the raw data so we don't need to fetch it
                 if (cache.allNgss3dElements && cache.allNgssData) {
                     window.allNgss3dElements = cache.allNgss3dElements;
                     window.allNgssData = cache.allNgssData;
-                    return; // Completely skip network requests
+                    return; // STOP HERE. Do not fetch from network.
                 }
             }
 
             // 2. Cache Miss: Fetch JSON files from server
-            console.log("Fetching fresh data from server...");
+            console.log("Cache empty or stale. Downloading data...");
             await fetchRawData();
 
             // 3. Process the raw data
@@ -679,13 +631,13 @@
                 return (iA === -1 && iB === -1) ? a.localeCompare(b) : (iA === -1 ? 1 : (iB === -1 ? -1 : iA - iB));
             });
 
-            // 5. Save to Cache
+            // 5. Save to Cache (IndexedDB)
             const dataToCache = {
                 version: CACHE_VERSION,
-                // --- FIX: Save the raw data structures to cache ---
+                // --- CRITICAL FIX: Save the raw data here ---
                 allNgss3dElements: window.allNgss3dElements,
                 allNgssData: window.allNgssData,
-                // ------------------------------------------------
+                // -------------------------------------------
                 peMap: [...peMap].map(([id, pe]) => [id, { ...pe,
                     associatedComponentCodes: [...pe.associatedComponentCodes],
                     associatedSpecificCodes: [...pe.associatedSpecificCodes]
@@ -703,10 +655,9 @@
 
             try {
                 saveDataToDB(dataToCache);
+                console.log("Data saved to cache.");
             } catch (e) {
                 console.error("Error caching data:", e);
-                // If quota exceeded, we might want to clear cache and try again, 
-                // but for now just logging is safer.
             }
         };
 
