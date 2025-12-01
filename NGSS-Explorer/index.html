@@ -664,7 +664,22 @@
         const buildMatrixDataMap = () => { elementToGradePeMap.clear(); for (const pe of peMap.values()) for (const code of pe.associatedComponentCodes) { if (!elementToGradePeMap.has(code)) elementToGradePeMap.set(code, new Map()); const gradeMap = elementToGradePeMap.get(code); if (!gradeMap.has(pe.gradeLabel)) gradeMap.set(pe.gradeLabel, new Set()); gradeMap.get(pe.gradeLabel).add(pe.id); } };
         
         // --- 4. UI RENDERING & NAVIGATION ---
-        const populatePeTable = () => { peTableBody.innerHTML = [...peMap.values()].map(pe => `<tr class="pe-main-row" data-pe-id="${pe.id}" data-grade="${pe.gradeLabel}"><td><input type="checkbox" class="pe-bundle-checkbox" data-pe-id="${pe.id}" ${peBundle.has(pe.id) ? 'checked' : ''}></td><td><span class="pe-id copyable" title="${pe.description.replace(/"/g, '&quot;')}">${pe.id}</span></td><td><span class="copyable" title="${pe.description.replace(/"/g, '&quot;')}">${pe.description}</span></td><td><span class="copyable">${pe.gradeLabel}</span></td><td><span class="copyable">${pe.topicTitle}</span></td></tr><tr class="pe-details-row" data-pe-id="${pe.id}"><td colspan="5">${createPeDetailsHtml(pe)}</td></tr>`).join(''); };
+        const populatePeTable = () => {
+            peTableBody.innerHTML = [...peMap.values()].map(pe => `
+                <tr class="pe-main-row" data-pe-id="${pe.id}" data-grade="${pe.gradeLabel}">
+                    <td><input type="checkbox" class="pe-bundle-checkbox" data-pe-id="${pe.id}" ${peBundle.has(pe.id) ? 'checked' : ''}></td>
+                    <td><span class="pe-id copyable" title="${pe.description.replace(/"/g, '&quot;')}">${pe.id}</span></td>
+                    <td><span class="copyable" title="${pe.description.replace(/"/g, '&quot;')}">${pe.description}</span></td>
+                    <td><span class="copyable">${pe.gradeLabel}</span></td>
+                    <td><span class="copyable">${pe.topicTitle}</span></td>
+                </tr>
+                <tr class="pe-details-row" data-pe-id="${pe.id}">
+                    <td colspan="5">
+                        <!-- CONTENT IS NOW LAZY LOADED -->
+                    </td>
+                </tr>`
+            ).join('');
+        };
         const processAndLinkPeText = (text, peId) => { const pe = peMap.get(peId); if (!pe) return text; return text.split('\n').map(line => { if (!line.trim()) return line; const code = findBestMatchingSpecificElement(line, pe.gradeLabel); if (code) { const el = specificElementMap.get(code); if (el) return `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; } return line; }).join('<br>'); };
         const createPeDetailsHtml = (pe, inBundle = false) => { const linkPeCodes = (text, currentPe) => { if (!text) return 'N/A'; text = text.replace(/\(([A-Z0-9-]+)\)/g, (match, id) => { const p = peMap.get(id); if (p && id !== currentPe.id) return `<span class="pe-nav-link" data-pe-id="${id}" title="${`PE: ${id}\n${p.description}`.replace(/"/g, '&quot;')}">${match}</span>`; return match; }); return text.replace(/\b(?:[K\d]|MS|HS)(?:-\d)?\.([A-Z]{2,4}\d?(?:\.[A-Z])?)\b/g, (match, code) => { const el = elementMap.get(code); if (el) return `<span class="clickable-element-link" data-pe-id="${currentPe.id}" data-component-code="${code}" title="${`Dimension Element: ${el.name}`.replace(/"/g, '&quot;')}">${match}</span>`; return match; }); }; const createCol = (dim, title) => { const items = pe.details[dim] || []; if (!items.length) return ''; return `<div class="pe-details-column"><h4>${title}</h4><ul>${items.map(item => { const code = nameToCodeMap.get(item.id.replace(' (secondary)', '').trim()); const el = code ? elementMap.get(code) : null; return `<li><span class="clickable-element-link" ${code ? `data-component-code="${code}" data-pe-id="${pe.id}"` : ''} ${el ? `title="${el.name.replace(/"/g, '&quot;')}"` : ''}><strong class="copyable">${item.id}</strong></span><div class="copyable" style="padding-left:1rem;">${processAndLinkPeText(item.text, pe.id)}</div></li>`; }).join('')}</ul></div>`; }; const createConns = (conns, currentPe) => { if (!conns) return ''; const filterStr = text => { if (!text) return 'N/A'; const relevant = text.split(';').map(s => s.trim()).filter(Boolean).filter(e => e.includes(`(${currentPe.id})`)); return relevant.length ? linkPeCodes(relevant.join('; '), currentPe) : 'N/A'; }; const filterArr = items => items ? items.filter(i => i.text && i.text.includes(`(${currentPe.id})`)) : []; const ela = filterArr(conns.commonCoreStateStandards?.elaLiteracy).map(i => `<li class="copyable"><strong>${i.id}:</strong> ${linkPeCodes(i.text, currentPe)}</li>`).join(''); const math = filterArr(conns.commonCoreStateStandards?.mathematics).map(i => `<li class="copyable"><strong>${i.id}:</strong> ${linkPeCodes(i.text, currentPe)}</li>`).join(''); return `<div class="pe-details-connections"><h3>Connections</h3><div class="pe-connections-grid"><div class="pe-connections-section"><h4>Connections to other DCIs in this grade-level</h4><p class="copyable">${filterStr(conns.connectionsToOtherDcisInGradeLevel)}</p></div><div class="pe-connections-section"><h4>Articulation of DCIs across grade levels</h4><p class="copyable">${filterStr(conns.articulationOfDcisAcrossGradeLevels)}</p></div><div class="pe-connections-section"><h4>Connections to Common Core (ELA)</h4><ul>${ela || '<li>N/A</li>'}</ul></div><div class="pe-connections-section"><h4>Connections to Common Core (Math)</h4><ul>${math || '<li>N/A</li>'}</ul></div></div></div>`; }; const savedDesc = savedAnalyses[pe.id]?.description || pe.description; const clarification = pe.details.clarificationStatement ? `<div class="pe-details-info-box"><h4>Clarification Statement</h4><p class="copyable">${pe.details.clarificationStatement}</p></div>` : ''; const boundary = pe.details.assessmentBoundary ? `<div class="pe-details-info-box"><h4>Assessment Boundary</h4><p class="copyable">${pe.details.assessmentBoundary}</p></div>` : ''; const esBtn = (pe.details.evidenceStatements && pe.details.evidenceStatements.length) ? `<button class="filter-btn view-evidence-btn" data-pe-id="${pe.id}">View Evidence Statements</button>` : ''; const analyzeBtn = inBundle ? '' : `<div class="ai-controls"><button class="filter-btn active analyze-pe-desc-btn" data-pe-id="${pe.id}">Analyze with Full Context</button><button class="filter-btn reset-btn reset-analysis-btn">Reset</button></div>`; return `<div class="pe-details-wrapper"><div class="pe-description-header"><h3 class="copyable">${inBundle ? '' : pe.id + ':'}</h3>${analyzeBtn}</div><div class="pe-description-text ai-editable-content copyable" data-pe-id="${pe.id}" data-part="description">${savedDesc}</div><div style="margin-top:1.5rem;">${clarification}${boundary}</div><div class="pe-details-container" style="margin-top:1rem;">${createCol('sep', 'SEP')}${createCol('dci', 'DCI')}${createCol('ccc', 'CCC')}</div><div class="pe-details-actions">${esBtn}<button class="filter-btn active view-related-3d-btn" data-pe-id="${pe.id}">Show All Related in 3D View</button></div>${createConns(pe.connections, pe)}</div>`; };
         const populate3dTable = () => { threedTableBody.innerHTML = window.allNgss3dElements.map(dim => { let html = `<tr class="dimension-header header-row" data-dimension-code="${dim.code}"><td colspan="5">${dim.dimension}</td></tr>`; const items = dim.elements || dim.core_ideas?.flatMap(c => c.components) || []; const progHtml = p => ['primary', 'elementary', 'middle', 'high'].map(k => `<td>${(p[k] || []).map(i => `<div class="item" data-code="${i.code}" title="${i.text.replace(/"/g, '&quot;')}\n\n(Click to see related PEs)"><strong>${i.code}</strong> ${i.text}</div>`).join('')}</td>`).join(''); if (dim.elements) html += dim.elements.map(el => `<tr class="data-row" data-dimension-code="${dim.code}" data-component-code="${el.name.split(':')[0].trim()}"><td class="element-header">${el.name}</td>${progHtml(el.progressions)}</tr>`).join(''); else if (dim.core_ideas) html += dim.core_ideas.map(core => `<tr class="dci-major-header header-row" data-dimension-code="${dim.code}" data-component-code="${core.name.split(':')[0].trim()}"><td colspan="5">${core.name}</td></tr>` + core.components.map(comp => `<tr class="data-row" data-dimension-code="${dim.code}" data-component-code="${comp.name.split(':')[0].trim()}"><td class="dci-minor-header">${comp.name}</td>${progHtml(comp.progressions)}</tr>`).join('')).join(''); return html; }).join(''); };
@@ -1031,17 +1046,53 @@ The JSON object must contain:
             peTableBody.addEventListener('click', e => {
                 const link = e.target.closest('.pe-nav-link');
                 if (link) { e.stopPropagation(); navigateToPe(link.dataset.peId); return; }
+                
                 const cb = e.target.closest('.pe-bundle-checkbox');
-                if (cb) { if (cb.checked) peBundle.add(cb.dataset.peId); else peBundle.delete(cb.dataset.peId); updateBundleControls(); updateSelectAllCheckboxState(); return; }
+                if (cb) { 
+                    if (cb.checked) peBundle.add(cb.dataset.peId); 
+                    else peBundle.delete(cb.dataset.peId); 
+                    updateBundleControls(); 
+                    updateSelectAllCheckboxState(); 
+                    return; 
+                }
+                
                 handle3dLinkClick(e);
+                
                 const row = e.target.closest('.pe-main-row');
+                // Ensure we aren't clicking a button inside the row
                 if (row && !e.target.closest('.clickable-element-link, .view-related-3d-btn, .view-evidence-btn, .analyze-pe-desc-btn, .reset-analysis-btn')) {
                     const wasExp = row.classList.contains('expanded');
+                    const detailsRow = row.nextElementSibling;
+                    const peId = row.dataset.peId;
+
+                    // Close all other rows
                     peTableBody.querySelectorAll('.expanded, .is-visible').forEach(r => r.classList.remove('expanded', 'is-visible'));
+                    
                     if (!wasExp) {
+                        // --- LAZY LOADING LOGIC START ---
+                        const detailsCell = detailsRow.querySelector('td');
+                        if (!detailsCell.innerHTML.trim()) {
+                            // If the cell is empty, generate the HTML now (just for this one PE)
+                            const pe = peMap.get(peId);
+                            if (pe) {
+                                detailsCell.innerHTML = createPeDetailsHtml(pe);
+                                // Re-run the bundle check to analyze button visibility if needed
+                                if (currentView === 'bundle') {
+                                    // simpler render for bundle view usually handled elsewhere, 
+                                    // but this ensures consistency in main view
+                                }
+                            }
+                        }
+                        // --- LAZY LOADING LOGIC END ---
+
                         row.classList.add('expanded');
-                        row.nextElementSibling.classList.add('is-visible');
-                        setTimeout(() => { const cont = peExplorerView.querySelector('.table-container'); const head = document.querySelector('#pe-explorer-table thead'); if (cont && head) cont.scrollTo({ top: row.offsetTop - head.offsetHeight, behavior: 'smooth' }); }, 50);
+                        detailsRow.classList.add('is-visible');
+                        
+                        setTimeout(() => { 
+                            const cont = peExplorerView.querySelector('.table-container'); 
+                            const head = document.querySelector('#pe-explorer-table thead'); 
+                            if (cont && head) cont.scrollTo({ top: row.offsetTop - head.offsetHeight, behavior: 'smooth' }); 
+                        }, 50);
                     }
                     updateUrlFromState();
                 }
