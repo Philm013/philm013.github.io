@@ -542,6 +542,19 @@
         const deleteAnalysisFromDB = (peId, part) => { if (!db) return; db.transaction(AI_STORE_NAME, 'readwrite').objectStore(AI_STORE_NAME).delete(`${peId}-${part}`); };
         const clearAllAnalyses = () => new Promise((resolve, reject) => { if (!db) { resolve(); return; } const r = db.transaction(AI_STORE_NAME, 'readwrite').objectStore(AI_STORE_NAME).clear(); r.onsuccess = () => { savedAnalyses = {}; resolve(); }; r.onerror = e => reject(e.target.errorCode); });
         const updateUrlFromState = () => { if (isNavigatingHistory) return; const p = new URLSearchParams(); p.set('view', currentView); const q = searchInput.value.trim(); if (q) p.set('q', q); if (currentView === 'pe') { const g = gradeFilters.querySelector('.active')?.dataset.filter; if (g && g !== 'all') p.set('grade', g); const t = [...document.querySelectorAll('#topic-filters .filter-btn.active')].map(b => b.dataset.filter); if (t.length > 0 && !t.includes('all')) p.set('topic', t.join(',')); if (activeElementFilters.size > 0) p.set('elements', [...activeElementFilters].join(',')); if (activeBundleFilter) p.set('bundleFilter', activeBundleFilter); const e = peTableBody.querySelector('.pe-main-row.expanded')?.dataset.peId; if (e) p.set('expanded', e); } else if (['3d', 'matrix'].includes(currentView)) { if (activePeFilter) p.set('highlight', activePeFilter); if (isolatedColumn && currentView === '3d') p.set('isolate', isolatedColumn); const d = dimensionFilters.querySelector('.active')?.dataset.filter; if (d) p.set('dim', d); const s = [...subDimensionFilters.querySelectorAll('.active')].map(b => b.dataset.filter); if (s.length > 0) p.set('subDim', s.join(',')); const m = [...dciMinorFilters.querySelectorAll('.active')].map(b => b.dataset.filter); if (m.length > 0) p.set('minorDim', m.join(',')); } else if (currentView === 'bundle' && peBundle.size > 0) p.set('bundlePEs', [...peBundle].join(',')); if (currentView === 'matrix' && matrixRowElements.size > 0) { const a = new Set(); window.allNgss3dElements.forEach(d => (d.elements || d.core_ideas?.flatMap(c => c.components) || []).forEach(i => a.add(i.name.split(':')[0].trim()))); if (matrixRowElements.size !== a.size) p.set('matrixRows', [...matrixRowElements].join(',')); } const u = `${window.location.pathname}?${p.toString()}`; history.replaceState(null, '', u); };
+        
+        // --- HELPER FUNCTION: Standardized Scroll To PE Row ---
+        const scrollToPeRow = (row) => {
+            const cont = peExplorerView.querySelector('.table-container');
+            const head = document.querySelector('#pe-explorer-table thead');
+            if (cont && head && row) {
+                cont.scrollTo({
+                    top: row.offsetTop - head.offsetHeight,
+                    behavior: 'smooth'
+                });
+            }
+        };
+
         const applyStateFromUrl = () => { 
             isNavigatingHistory = true; 
             const p = new URLSearchParams(window.location.search); 
@@ -589,7 +602,7 @@
                         }
                         row.classList.add('expanded'); 
                         row.nextElementSibling.classList.add('is-visible'); 
-                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        scrollToPeRow(row); // Use standardized scroll
                     } 
                 }, 100); 
             } 
@@ -794,7 +807,9 @@
                     
                     row.classList.add('expanded'); 
                     row.nextElementSibling.classList.add('is-visible'); 
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+                    
+                    scrollToPeRow(row); // Use standardized scroll to top
+                    
                     row.classList.add('scroll-target'); 
                     setTimeout(() => row.classList.remove('scroll-target'), 1500); 
                 } 
@@ -1181,7 +1196,8 @@ The JSON object must contain:
                         
                         row.classList.add('expanded');
                         detailsRow.classList.add('is-visible');
-                        setTimeout(() => { const cont = peExplorerView.querySelector('.table-container'); const head = document.querySelector('#pe-explorer-table thead'); if (cont && head) cont.scrollTo({ top: row.offsetTop - head.offsetHeight, behavior: 'smooth' }); }, 50);
+                        
+                        scrollToPeRow(row); // Standardized scroll
                     }
                     updateUrlFromState();
                 }
