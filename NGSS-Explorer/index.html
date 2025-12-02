@@ -233,24 +233,63 @@
             color: #424e2d; /* Dark text for contrast */
         }
 
-        /* Column Content */
-        .pe-details-column ul {
-            padding: 1rem 1.5rem;
-            margin: 0;
-            list-style: none;
-        }
-        .pe-details-column li {
-            margin-bottom: 1rem;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            color: #2c3e50;
-        }
-        .pe-details-column li strong {
-            display: block;
-            margin-bottom: 0.25rem;
-            color: #000;
-            font-weight: 600;
-        }
+		/* Column Content - IMPROVED FORMATTING */
+		.pe-details-column ul {
+			padding: 1rem 1.5rem;
+			margin: 0;
+			list-style: none;
+		}
+
+		.pe-details-column li {
+			margin-bottom: 1.5rem; /* Increased spacing between items */
+			font-size: 0.95rem;
+			color: #2c3e50;
+		}
+		
+		/* --- IMPROVED PARAGRAPH STYLING --- */
+
+		/* Base style for ALL paragraphs (Spacing only) */
+		.pe-details-paragraph {
+			margin-top: 0;
+			margin-bottom: 0.8rem;
+			position: relative;
+			line-height: 1.5;
+		}
+
+		/* Specific style ONLY for Bullet Points (Hanging Indent) */
+		.pe-details-paragraph.is-bullet {
+			padding-left: 1.2rem;  /* Push the whole block right */
+			text-indent: -1.2rem;  /* Pull just the bullet back to the left */
+		}
+
+		/* Remove margin from the very last paragraph so it fits the container */
+		.pe-details-paragraph:last-child {
+			margin-bottom: 0;
+		}
+
+		/* The ID/Header (e.g., "Asking Questions...") */
+		.pe-details-column li strong {
+			display: block;
+			margin-bottom: 0.5rem;
+			color: #000;
+			font-weight: 700;
+			font-size: 1em;
+		}
+
+		/* The Description Text (Indented and formatted) */
+		.pe-details-column li > div {
+			margin-left: 0.75rem;       /* Indents the text */
+			padding-left: 1rem;         /* Adds space between border and text */
+			border-left: 3px solid;     /* Adds the colored guide line */
+			border-color: rgba(0,0,0,0.1); /* Default gray border */
+			line-height: 1.6;           /* Improves reading ease */
+			color: #444;
+		}
+
+		/* Dynamic Border Colors based on Column Type */
+		.pe-col-sep li > div { border-color: #b8cce4; } /* Blue line for SEPs */
+		.pe-col-dci li > div { border-color: #fbd4b4; } /* Orange line for DCIs */
+		.pe-col-ccc li > div { border-color: #d6e3bc; } /* Green line for CCCs */
 
         /* Button Styling */
         .ai-controls button, .pe-details-actions button {
@@ -338,7 +377,7 @@
             line-height: 1.4;
         }
 
-        .clickable-element-link { color: var(--dimension-header-bg); font-weight: 600; cursor: pointer; }
+        .clickable-element-link { color: var(--dimension-header-bg); font-weight: 400; cursor: pointer; }
         .clickable-element-link:hover { text-decoration: underline; }
         .pe-nav-link { color: var(--dimension-header-bg); font-weight: 600; cursor: pointer; text-decoration: none; }
         .pe-nav-link:hover { text-decoration: underline; }
@@ -480,13 +519,13 @@
         
         /* Tour Customization */
         /* Z-index must be higher than app modals (2000) */
-        .shepherd-element { z-index: 3000 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .shepherd-has-title .shepherd-content .shepherd-header { background: #f7f7f7; padding: 1rem;}
-        .shepherd-text { font-size: 0.95rem; line-height: 1.5; color: #2c3e50; }
-        .shepherd-button { background-color: #004488; color: white; border-radius: 4px; padding: 0.5rem 1rem; transition: background 0.2s; }
-        .shepherd-button:hover { background-color: #003366; }
-        .shepherd-button-secondary { background-color: #f3f4f6; color: #333; }
-        .shepherd-button-secondary:hover { background-color: #e5e7eb; }
+    .shepherd-element { z-index: 9999 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .shepherd-has-title .shepherd-content .shepherd-header { background: #f7f7f7; padding: 1rem;}
+    .shepherd-text { font-size: 0.95rem; line-height: 1.5; color: #2c3e50; }
+    .shepherd-button { background-color: #004488; color: white; border-radius: 4px; padding: 0.5rem 1rem; transition: background 0.2s; }
+    .shepherd-button:hover { background-color: #003366; }
+    .shepherd-button-secondary { background-color: #f3f4f6; color: #333; }
+    .shepherd-button-secondary:hover { background-color: #e5e7eb; }
 
         @media (max-width: 992px) {
             .app-layout { overflow-y: auto; }
@@ -983,8 +1022,34 @@
                 </tr>`
             ).join(''); 
         };
-        const processAndLinkPeText = (text, peId) => { const pe = peMap.get(peId); if (!pe) return text; return text.split('\n').map(line => { if (!line.trim()) return line; const code = findBestMatchingSpecificElement(line, pe.gradeLabel); if (code) { const el = specificElementMap.get(code); if (el) return `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; } return line; }).join('<br>'); };
-        const createPeDetailsHtml = (pe, inBundle = false) => {
+        const processAndLinkPeText = (text, peId) => { 
+            const pe = peMap.get(peId); 
+            if (!pe) return text; 
+            
+            return text.split('\n').map(line => { 
+                const cleanLine = line.trim();
+                if (!cleanLine) return ''; // Skip empty lines
+                
+                let processedLine = line;
+                const code = findBestMatchingSpecificElement(line, pe.gradeLabel); 
+                
+                if (code) { 
+                    const el = specificElementMap.get(code); 
+                    if (el) {
+                        processedLine = `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; 
+                    }
+                } 
+                
+                // DETECT BULLET POINTS
+                // If it starts with a bullet, add the 'is-bullet' class for hanging indent.
+                // Otherwise, use standard paragraph formatting.
+                const isBullet = cleanLine.startsWith('•') || cleanLine.startsWith('*') || cleanLine.startsWith('-');
+                const className = isBullet ? 'pe-details-paragraph is-bullet' : 'pe-details-paragraph';
+                
+                return `<p class="${className}">${processedLine}</p>`; 
+            }).join(''); 
+        };
+		const createPeDetailsHtml = (pe, inBundle = false) => {
             // Helper to link codes
             const linkPeCodes = (text, currentPe) => {
                 if (!text) return 'N/A';
@@ -1981,7 +2046,7 @@ The JSON object must contain:
                 id: 'ai-features',
                 title: 'AI Features',
                 text: 'Use <strong>Deconstruct</strong> to break this down into learning facets, or <strong>Analyze</strong> for context.',
-                attachTo: { element: '.ai-controls', on: 'top' },
+                attachTo: { element: '.modal-footer .ai-controls', on: 'top' },
                 buttons: [{ 
                     text: 'Finish', 
                     action() { closeAllModals(); tour.complete(); } 
