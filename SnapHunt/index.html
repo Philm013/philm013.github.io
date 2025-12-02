@@ -70,7 +70,7 @@
         <div id="modal-qr-scanner" class="modal-container"><div class="flex flex-col items-center justify-center"><p class="text-2xl font-bold mb-4">Scanning QR Code...</p><div class="w-64 h-64 border-4 border-white rounded-lg relative overflow-hidden"><div class="absolute top-0 w-full h-1 bg-green-400 animate-ping"></div></div><button id="btn-close-scanner" class="absolute top-6 left-6 text-white text-3xl bg-black/30 w-12 h-12 rounded-full"><i class="fa-solid fa-times"></i></button></div></div>
         <div id="modal-qr-share" class="modal-container"><div class="bg-white p-8 rounded-[32px] text-center" onclick="event.stopPropagation()"><div id="qrcode-display" class="flex justify-center p-2 mb-4"></div><p class="text-black font-bold text-lg">Scan to Join Hunt</p><p id="qr-code" class="text-gray-600 font-mono text-2xl tracking-widest my-2"></p></div><button id="btn-copy-link" class="mt-4 bg-white text-black px-6 py-3 rounded-full font-bold text-lg">Copy Invite Link</button></div>
         <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-sm font-bold opacity-0 transition-all pointer-events-none -translate-y-4 z-[200]"></div>
-        <div id="loader-overlay" class="modal-container hidden"><div class="loader"></div></div>
+        <div id="loader-overlay" class="modal-container"><div class="loader"></div></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -109,6 +109,7 @@
             document.getElementById('btn-import-hunt').addEventListener('click', () => this.hostManager.promptImport());
             document.getElementById('btn-clear-data').addEventListener('click', () => this.clearData());
             document.getElementById('btn-submit-join').addEventListener('click', () => this.joinHunt());
+            document.getElementById('btn-close-memento').addEventListener('click', () => this.showOnboarding());
 
             this.eventBus.on('HUNT_STARTED', (data) => this.participantManager.handleHuntStart(data));
             this.eventBus.on('HUNT_ENDED', () => this.participantManager.handleHuntEnd());
@@ -149,7 +150,7 @@
             if(this.state.huntData) {
                 this.state.huntData.participants[name] = { name, score: 0 };
                 this.toast(`${name} has joined!`);
-                if(this.viewManager.currentView === 'participant-lobby') {
+                if(this.viewManager.currentView === 'participant' && document.getElementById('participant-lobby').offsetParent !== null) {
                     this.viewManager.renderParticipantList(Object.values(this.state.huntData.participants));
                 }
             }
@@ -161,6 +162,10 @@
             this.toast('Saved data cleared.');
             location.reload();
         }
+
+        showOnboarding() {
+            location.reload();
+        }
         
         toast(message, isPowerup = false) {
             const el = document.getElementById('toast');
@@ -170,6 +175,15 @@
             el.classList.remove('opacity-0', '-translate-y-4');
             setTimeout(() => el.classList.add('opacity-0', '-translate-y-4'), 3000);
         }
+
+        // *** FIX: Moved state-related methods here ***
+        createEmptyHunt() {
+            return { id: 'SNAP' + Math.random().toString(36).substr(2, 4).toUpperCase(), name: "My New Hunt", gameMode: 'linear', checkpoints: [], participants: {}, submissions: {} };
+        }
+
+        resetPlayerState() {
+            this.state.playerState = { score: 0, powerups: [], completedCheckpoints: [], scoreMultiplier: 1, activeCheckpointIndex: -1 };
+        }
     }
 
     class ViewManager {
@@ -177,6 +191,17 @@
             this.app = app;
             this.currentView = null;
             this.modals = document.querySelectorAll('.modal-container');
+            this.bindModalClosers();
+        }
+
+        bindModalClosers() {
+            this.modals.forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        this.hideModal(modal.id);
+                    }
+                });
+            });
         }
 
         show(viewId) {
@@ -195,19 +220,8 @@
             }
         }
 
-        showModal(modalId) {
-            const el = document.getElementById(modalId);
-            el.classList.add('visible');
-            SoundManager.play('sound-click');
-            if (modalId === 'modal-leaderboard') {
-                this.renderLeaderboard(Object.values(this.app.state.huntData.participants));
-            }
-        }
-
-        hideModal(modalId) {
-            document.getElementById(modalId).classList.remove('visible');
-        }
-
+        showModal(modalId) { const el = document.getElementById(modalId); el.classList.add('visible'); SoundManager.play('sound-click'); if (modalId === 'modal-leaderboard') { this.renderLeaderboard(Object.values(this.app.state.huntData.participants)); } }
+        hideModal(modalId) { document.getElementById(modalId).classList.remove('visible'); }
         renderCheckpointList(checkpoints) { const listEl = document.getElementById('checkpoint-list'); document.getElementById('checkpoint-count').innerText = checkpoints.length; if (checkpoints.length === 0) { listEl.innerHTML = `<div class="text-center p-4 text-gray-400">Tap the map or search to add a checkpoint.</div>`; return; } listEl.innerHTML = checkpoints.map((cp, index) => `<div class="flex items-center p-3 bg-white/5 rounded-lg cursor-pointer" onclick="app.hostManager.editCheckpoint(${index})"><div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold mr-3">${index + 1}</div><div class="flex-1 text-sm truncate">${cp.clue || 'Untitled Checkpoint'}</div><i class="fa-solid fa-${cp.unlockMethod === 'geo' ? 'location-dot' : cp.unlockMethod === 'photo' ? 'camera' : 'qrcode'} text-gray-400"></i></div>`).join(''); }
         renderParticipantList(participants) { const listEl = document.getElementById('participant-list'); if (participants.length === 0) { listEl.innerHTML = `<div class="text-gray-400">You're the first one here!</div>`; return; } listEl.innerHTML = participants.map(p => `<div class="glass p-3 rounded-lg font-bold">${p.name}</div>`).join(''); }
         renderLeaderboard(participants) { const content = document.getElementById('leaderboard-content'); const sorted = participants.sort((a,b) => b.score - a.score); content.innerHTML = sorted.map((p, i) => `<div class="flex items-center p-2 bg-white/5 rounded-lg"><span class="font-bold w-8">${i+1}</span><span>${p.name}</span><span class="ml-auto font-bold">${p.score}</span></div>`).join(''); }
@@ -217,74 +231,19 @@
     }
     
     class MapManager {
-        constructor(app) {
-            this.app = app;
-            this.maps = {};
-            this.playerMarker = null;
-            this.geolocationWatcher = null;
-        }
-
-        createAllMaps() {
-            this.maps['map-editor'] = this._createMap('map-editor');
-            this.maps['map-game'] = this._createMap('map-game');
-            this.maps['map-live-host'] = this._createMap('map-live-host');
-        }
-
-        _createMap(id) {
-            const map = L.map(id, { zoomControl: false }).setView([29.89, -81.31], 14);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CartoDB'}).addTo(map);
-            if (id === 'map-editor') {
-                map.on('click', (e) => this.app.hostManager.addCheckpoint(e.latlng));
-            }
-            return map;
-        }
-
+        constructor(app) { this.app = app; this.maps = {}; this.playerMarker = null; this.geolocationWatcher = null; }
+        createAllMaps() { this.maps['map-editor'] = this._createMap('map-editor'); this.maps['map-game'] = this._createMap('map-game'); this.maps['map-live-host'] = this._createMap('map-live-host'); }
+        _createMap(id) { const map = L.map(id, { zoomControl: false }).setView([29.89, -81.31], 14); L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CartoDB'}).addTo(map); if (id === 'map-editor') { map.on('click', (e) => this.app.hostManager.addCheckpoint(e.latlng)); } return map; }
         renderMarkers(mapId) { const map = this.maps[mapId]; if(!map) return; map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); }); this.app.state.huntData.checkpoints.forEach((cp, index) => { const isCompleted = this.app.state.playerState.completedCheckpoints?.includes(index); const isNext = this.app.state.playerState.activeCheckpointIndex === index; if (mapId === 'map-game' && this.app.state.huntData.gameMode === 'linear' && !isNext && !isCompleted) return; const marker = L.marker([cp.lat, cp.lng], { opacity: isCompleted ? 0.5 : 1 }).addTo(map); if (mapId === 'map-editor') marker.on('click', () => this.app.hostManager.editCheckpoint(index)); }); }
         startGeo() { if(navigator.geolocation) { this.geolocationWatcher = navigator.geolocation.watchPosition(pos => { const latlng = [pos.coords.latitude, pos.coords.longitude]; if(this.playerMarker) { this.playerMarker.setLatLng(latlng); } else { this.playerMarker = L.circle(latlng, { radius: 20, color: 'var(--blue)', fillOpacity: 0.8 }).addTo(this.maps.game); } this.maps.game.panTo(latlng); }); } }
-        stopGeo() { if(this.geolocationWatcher) navigator.geolocation.clearWatch(this.geolocationWatcher); }
+        stopGeo() { if(this.geolocationWatcher) navigator.geolocation.clearWatch(this.geolocationWatcher); this.playerMarker = null; }
         activateCompass() { this.app.toast('Compass Activated!'); document.getElementById('compass-container').classList.remove('opacity-0'); setTimeout(() => document.getElementById('compass-container').classList.add('opacity-0'), 10000); }
     }
 
     class HostManager {
-        constructor(app) {
-            this.app = app;
-            this.editingCheckpointIndex = -1;
-            this.bindListeners();
-        }
-
-        bindListeners() {
-            document.getElementById('btn-host-back').addEventListener('click', () => location.reload());
-            document.getElementById('btn-host-settings').addEventListener('click', () => this.app.viewManager.showModal('modal-settings'));
-            document.getElementById('btn-host-share').addEventListener('click', () => this.shareHunt());
-            document.getElementById('btn-launch-hunt').addEventListener('click', () => this.startHunt());
-            document.getElementById('btn-host-search').addEventListener('click', () => this.searchLocation());
-            document.getElementById('btn-end-hunt').addEventListener('click', () => this.endHunt());
-            document.getElementById('btn-start-voting').addEventListener('click', () => this.startVoting());
-            document.getElementById('btn-generate-memento').addEventListener('click', () => this.generateMemento());
-            document.getElementById('btn-save-settings').addEventListener('click', () => this.saveSettings());
-            document.getElementById('btn-export-hunt').addEventListener('click', () => this.exportHunt());
-            document.getElementById('btn-save-checkpoint').addEventListener('click', () => this.saveCheckpoint());
-            document.getElementById('btn-delete-checkpoint').addEventListener('click', () => this.deleteCheckpoint());
-            document.getElementById('unlock-method-selector').addEventListener('click', (e) => {
-                const button = e.target.closest('.unlock-btn');
-                if (button) {
-                    document.querySelectorAll('.unlock-btn').forEach(b => b.classList.remove('active'));
-                    button.classList.add('active');
-                    document.getElementById('photo-prompt-container').classList.toggle('hidden', button.dataset.method !== 'photo');
-                }
-            });
-        }
-        
-        start() {
-            this.app.state.huntData = JSON.parse(localStorage.getItem('snapHuntData')) || this.app.state.createEmptyHunt();
-            this.app.viewManager.show('host');
-            document.getElementById('host-creator').classList.remove('hidden');
-            document.getElementById('host-dashboard').classList.add('hidden');
-            document.getElementById('host-results').classList.add('hidden');
-            this.updateUI();
-            this.app.mapManager.renderMarkers('map-editor');
-        }
-
+        constructor(app) { this.app = app; this.editingCheckpointIndex = -1; this.bindListeners(); }
+        bindListeners() { document.getElementById('btn-host-back').addEventListener('click', () => this.app.showOnboarding()); document.getElementById('btn-host-settings').addEventListener('click', () => this.app.viewManager.showModal('modal-settings')); document.getElementById('btn-host-share').addEventListener('click', () => this.shareHunt()); document.getElementById('btn-launch-hunt').addEventListener('click', () => this.startHunt()); document.getElementById('btn-host-search').addEventListener('click', () => this.searchLocation()); document.getElementById('btn-end-hunt').addEventListener('click', () => this.endHunt()); document.getElementById('btn-start-voting').addEventListener('click', () => this.startVoting()); document.getElementById('btn-generate-memento').addEventListener('click', () => this.generateMemento()); document.getElementById('btn-save-settings').addEventListener('click', () => this.saveSettings()); document.getElementById('btn-export-hunt').addEventListener('click', () => this.exportHunt()); document.getElementById('btn-save-checkpoint').addEventListener('click', () => this.saveCheckpoint()); document.getElementById('btn-delete-checkpoint').addEventListener('click', () => this.deleteCheckpoint()); document.getElementById('unlock-method-selector').addEventListener('click', (e) => { const button = e.target.closest('.unlock-btn'); if (button) { document.querySelectorAll('.unlock-btn').forEach(b => b.classList.remove('active')); button.classList.add('active'); document.getElementById('photo-prompt-container').classList.toggle('hidden', button.dataset.method !== 'photo'); } }); }
+        start() { this.app.state.huntData = JSON.parse(localStorage.getItem('snapHuntData')) || this.app.createEmptyHunt(); this.app.viewManager.show('host'); document.getElementById('host-creator').classList.remove('hidden'); document.getElementById('host-dashboard').classList.add('hidden'); document.getElementById('host-results').classList.add('hidden'); this.updateUI(); this.app.mapManager.renderMarkers('map-editor'); }
         updateUI() { document.getElementById('hunt-name-input').value = this.app.state.huntData.name; this.app.viewManager.renderCheckpointList(this.app.state.huntData.checkpoints); document.querySelector(`input[name="gameMode"][value="${this.app.state.huntData.gameMode}"]`).checked = true; }
         addCheckpoint(latlng) { this.app.state.huntData.checkpoints.push({lat: latlng.lat, lng: latlng.lng, clue:'', unlockMethod:'geo', photoPrompt:''}); this.editCheckpoint(this.app.state.huntData.checkpoints.length-1); this.app.mapManager.renderMarkers('map-editor'); }
         editCheckpoint(index) { this.editingCheckpointIndex = index; const cp = this.app.state.huntData.checkpoints[index]; document.getElementById('clue-input').value = cp.clue; document.getElementById('photo-prompt-input').value = cp.photoPrompt; document.querySelectorAll('.unlock-btn').forEach(btn => { btn.classList.toggle('active', btn.dataset.method === cp.unlockMethod); }); document.getElementById('photo-prompt-container').classList.toggle('hidden', cp.unlockMethod !== 'photo'); this.app.viewManager.showModal('modal-checkpoint-editor'); }
@@ -304,35 +263,9 @@
     }
     
     class ParticipantManager {
-        constructor(app) {
-            this.app = app;
-            this.bindListeners();
-        }
-
-        bindListeners() {
-            document.getElementById('btn-participant-leaderboard').addEventListener('click', () => this.app.viewManager.showModal('modal-leaderboard'));
-            document.getElementById('btn-toggle-chat').addEventListener('click', () => this.app.viewManager.toggleChat());
-            document.getElementById('btn-close-chat').addEventListener('click', () => this.app.viewManager.toggleChat());
-            document.getElementById('btn-send-message').addEventListener('click', () => this.sendMessage());
-            document.getElementById('action-button').addEventListener('click', () => this.performAction());
-            document.getElementById('btn-take-photo').addEventListener('click', () => this.takePhoto());
-            document.getElementById('btn-close-camera').addEventListener('click', () => this.app.viewManager.hideModal('modal-camera'));
-            document.getElementById('btn-close-scanner').addEventListener('click', () => this.app.viewManager.hideModal('modal-qr-scanner'));
-        }
-        
-        start(huntData) {
-            this.app.state.huntData = huntData;
-            this.app.state.resetPlayerState();
-            this.app.state.huntData.participants[this.app.state.currentUser] = { name: this.app.state.currentUser, score: 0 };
-            this.app.viewManager.show('participant');
-            document.getElementById('participant-lobby').classList.remove('hidden');
-            document.getElementById('participant-game').classList.add('hidden');
-            document.getElementById('participant-postgame').classList.add('hidden');
-            this.app.viewManager.updateText('lobby-hunt-name', this.app.state.huntData.name);
-            this.app.viewManager.renderParticipantList(Object.values(this.app.state.huntData.participants));
-            this.app.eventBus.emit('PLAYER_JOINED', this.app.state.currentUser);
-        }
-
+        constructor(app) { this.app = app; this.bindListeners(); }
+        bindListeners() { document.getElementById('btn-participant-leaderboard').addEventListener('click', () => this.app.viewManager.showModal('modal-leaderboard')); document.getElementById('btn-toggle-chat').addEventListener('click', () => this.app.viewManager.toggleChat()); document.getElementById('btn-close-chat').addEventListener('click', () => this.app.viewManager.toggleChat()); document.getElementById('btn-send-message').addEventListener('click', () => this.sendMessage()); document.getElementById('action-button').addEventListener('click', () => this.performAction()); document.getElementById('btn-take-photo').addEventListener('click', () => this.takePhoto()); document.getElementById('btn-close-camera').addEventListener('click', () => this.app.viewManager.hideModal('modal-camera')); document.getElementById('btn-close-scanner').addEventListener('click', () => this.app.viewManager.hideModal('modal-qr-scanner')); }
+        start(huntData) { this.app.state.huntData = huntData; this.app.resetPlayerState(); this.app.state.huntData.participants[this.app.state.currentUser] = { name: this.app.state.currentUser, score: 0 }; this.app.viewManager.show('participant'); document.getElementById('participant-lobby').classList.remove('hidden'); document.getElementById('participant-game').classList.add('hidden'); document.getElementById('participant-postgame').classList.add('hidden'); this.app.viewManager.updateText('lobby-hunt-name', this.app.state.huntData.name); this.app.viewManager.renderParticipantList(Object.values(this.app.state.huntData.participants)); this.app.eventBus.emit('PLAYER_JOINED', this.app.state.currentUser); }
         handleHuntStart() { SoundManager.play('sound-start'); document.getElementById('participant-lobby').classList.add('hidden'); document.getElementById('participant-game').classList.remove('hidden'); this.app.viewManager.show('participant'); this.app.mapManager.startGeo(); this.loadNextCheckpoint(); }
         loadNextCheckpoint() { const playerState = this.app.state.playerState; if (this.app.state.huntData.gameMode === 'linear') { playerState.activeCheckpointIndex = playerState.completedCheckpoints.length; } else { playerState.activeCheckpointIndex = this.app.state.huntData.checkpoints.findIndex((c,i) => !playerState.completedCheckpoints.includes(i)); } if(playerState.activeCheckpointIndex === -1) { this.handleHuntEnd(); return; } const cp = this.app.state.huntData.checkpoints[playerState.activeCheckpointIndex]; this.app.viewManager.updateText('clue-text', cp.clue); const actionIcon = document.getElementById('action-icon').classList; actionIcon.remove('fa-location-arrow', 'fa-camera', 'fa-qrcode'); if (cp.unlockMethod === 'geo') actionIcon.add('fa-location-arrow'); if (cp.unlockMethod === 'photo') actionIcon.add('fa-camera'); if (cp.unlockMethod === 'qr') actionIcon.add('fa-qrcode'); this.app.mapManager.renderMarkers('map-game'); setTimeout(() => { document.getElementById('action-button').disabled = false; document.getElementById('action-button').classList.add('pulse-once'); }, 4000); }
         performAction() { Utils.vibrate(100); const cp = this.app.state.huntData.checkpoints[this.app.state.playerState.activeCheckpointIndex]; if (cp.unlockMethod === 'photo') { this.app.viewManager.updateText('photo-prompt-overlay', cp.photoPrompt); this.app.viewManager.showModal('modal-camera'); } else if (cp.unlockMethod === 'qr') { this.app.viewManager.showModal('modal-qr-scanner'); setTimeout(() => { this.app.viewManager.hideModal('modal-qr-scanner'); this.completeCheckpoint(); }, 2000); } else { this.completeCheckpoint(); } }
