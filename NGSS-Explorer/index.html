@@ -644,7 +644,7 @@
                     </div>
                     <div class="table-container">
                         <table id="pe-explorer-table">
-                            <thead><tr><th style="width: 2em;"><input type="checkbox" id="pe-bundle-select-all" title="Select/Deselect all visible"></th><th>PE ID</th><th>Description</th><th>Grade</th><th>Topic</th></tr></thead>
+                            <thead><tr><th style="width: 2em;"><input type="checkbox" id="pe-bundle-select-all" title="Select/Deselect all visible"></th><th style="min-width: 80px;">PE ID</th><th>Description</th><th>Grade</th><th>Topic</th></tr></thead>
                             <tbody id="pe-table-body"></tbody>
                         </table>
                     </div>
@@ -915,7 +915,7 @@
                 const hsData = await hsRes.json();
 
                 // Combine grade levels into the structure the app expects
-                window.allNgssData = [k5Data, msData, hsData].flat();
+                window.allNgssData = [...k5Data, msData, ...hsData].flat();
                 
             } catch (error) {
                 console.error("Error fetching NGSS JSON data:", error);
