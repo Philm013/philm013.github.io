@@ -1,9 +1,11 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NGSS 3D + PE Explorer</title>
+	<!-- Shepherd.js for Guided Tour -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/css/shepherd.css"/>
+<script src="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/js/shepherd.min.js"></script>
     <style>
         :root {
             --header-bg: #f7f7f7; --border-color: #e5e7eb; --row-hover-bg: #f0f5fa; --highlight-bg: #fff3bf;
@@ -22,8 +24,8 @@
         .header-title-wrapper { display: flex; align-items: center; gap: 0.75rem; }
         .header-actions { display: flex; align-items: center; gap: 0.75rem; }
         h1 { padding: 0; margin: 0; background-color: transparent; border: none; font-size: 1.4rem; font-weight: 600; }
-        #reset-app-btn, #settings-btn { padding: 0.3em 0.8em; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--button-bg); cursor: pointer; font-size: 0.9em; font-weight: 500; }
-        #reset-app-btn:hover, #settings-btn:hover { background-color: var(--button-hover-bg); }
+        #reset-app-btn, #settings-btn, #start-tour-btn { padding: 0.3em 0.8em; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--button-bg); cursor: pointer; font-size: 0.9em; font-weight: 500; }
+        #reset-app-btn:hover, #settings-btn:hover, #start-tour-btn:hover { background-color: var(--button-hover-bg); }
         .page-container { display: flex; gap: 1rem; padding: 1rem; flex-grow: 1; min-height: 0; }
         #sidebar { width: 320px; flex-shrink: 0; background-color: var(--sidebar-bg); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color); display: flex; flex-direction: column; }
         #main-content { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; }
@@ -83,33 +85,303 @@
         #threed-explorer-table.isolate-col-5 th:nth-child(5), #threed-explorer-table.isolate-col-5 td:nth-child(5) { display: table-cell; width: 75% !important; }
         #pe-explorer-table .pe-main-row { cursor: pointer; scroll-margin-top: 45px; }
         #pe-explorer-table .pe-main-row.expanded { background-color: var(--element-header-bg); font-weight: 600;}
+        
         .pe-details-row { display: none; }
         .pe-details-row.is-visible { display: table-row; }
         .pe-details-row > td { background-color: #fdfdfd; padding: 0 !important; }
-        .pe-details-wrapper { padding: 1rem 1.5rem; border-top: 2px solid var(--dimension-header-bg); }
-        .pe-description-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
-        .pe-description-header h3 { margin: 0; font-size: 1.1em; color: var(--dimension-header-bg); flex-grow: 1; }
-        .ai-controls { display: flex; gap: 0.5rem; }
-        .pe-description-text { font-size: 1.05em; line-height: 1.6; }
-        .pe-details-info-box { background-color: #f9f9f9; border-left: 4px solid #ccc; padding: 0.75rem 1.5rem; margin-bottom: 1rem; }
-        .pe-details-info-box h4 { margin: 0 0 0.25rem; font-size: 1em; color: #555; }
-        .pe-details-info-box p { margin: 0; }
-        .pe-details-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
-        .pe-details-column h4 { margin: 0 0 0.5rem; font-size: 1em; color: #333; border-bottom: 2px solid var(--dimension-header-bg); padding-bottom: 0.25rem; }
-        .pe-details-column ul { margin: 0; padding-left: 0; list-style: none; }
-        .pe-details-column li { margin-bottom: 0.75rem; font-size: 0.95em; }
-        .clickable-element-link { color: var(--dimension-header-bg); font-weight: 600; cursor: pointer; }
+
+        /* --- IMPROVED PE DETAILS STYLING --- */
+
+        /* Wrapper for the whole section */
+        .pe-details-wrapper {
+            padding: 2rem;
+            background-color: #fff;
+            border-radius: 0 0 8px 8px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        /* The Header Container */
+        .pe-description-header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start; /* Aligns buttons to top */
+            gap: 2rem;
+        }
+
+/* Container for ID and Text */
+        .pe-header-content {
+            display: flex;
+            align-items: baseline; /* Aligns the ID with the first line of text */
+            gap: 0.75rem;
+            flex-grow: 1;
+            flex-wrap: nowrap; /* Forces them to stay on the same row */
+            min-width: 0; /* Required for text truncation/wrapping to work in Flexbox */
+        }
+
+        .pe-header-content h3 {
+            font-size: 1rem;
+            color: #004488;
+            margin: 0;
+            white-space: nowrap; /* Keeps ID on one line */
+            flex-shrink: 0; /* Prevents ID from getting squished */
+            line-height: 1.5; /* Matches description line-height */
+        }
+
+        .pe-description-text {
+            font-size: 1rem;
+            color: #2c3e50;
+            line-height: 1.5;
+            margin: 0;
+            flex-grow: 1;
+            min-width: 0; /* Allows text to wrap naturally INSIDE this column */
+        }
+
+        .ai-controls { 
+            display: flex; 
+            gap: 0.5rem; 
+            flex-shrink: 0; /* Prevents buttons from squishing */
+            margin-top: 5px; /* Visual alignment with text */
+        }
+
+        /* Clarification & Boundary Boxes */
+        .pe-details-info-box {
+            padding: .25rem .55rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        /* Clarification: Soft Yellow/Gold Tone */
+        .pe-details-info-box.clarification {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+        }
+		.pe-details-info-box.clarification p, .pe-details-info-box.boundary p {
+		margin-bottom: .1rem;
+		}
+		
+        /* Boundary: Soft Red/Gray Tone */
+        .pe-details-info-box.boundary {
+            background-color: #f3f4f6;
+            border-left: 4px solid #6b7280;
+        }
+        .pe-details-info-box h4 {
+            color: #444;
+            text-transform: uppercase;
+            font-size: 0.75em;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+			margin-top: 0.1rem;
+        }
+
+        /* 3D Columns Container */
+        .pe-details-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        /* Individual Column Styling */
+        .pe-details-column {
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid; /* Border color defined per column below */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* General Header Styling */
+        .pe-details-column h4 {
+            margin: 0;
+            padding: 0.75rem 1rem;
+            font-size: 1.1em;
+            font-weight: 700;
+            text-align: center;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        /* --- SPECIFIC DIMENSION COLORS --- */
+
+        /* SEP: Blue-Grey Theme */
+        .pe-col-sep {
+            background-color: #eef4fa; /* Lighter version of #b8cce4 */
+            border-color: #b8cce4;
+        }
+        .pe-col-sep h4 {
+            background-color: #b8cce4;
+            color: #20354b; /* Dark text for contrast */
+        }
+
+        /* DCI: Peach/Orange Theme */
+        .pe-col-dci {
+            background-color: #fff6ee; /* Lighter version of #fbd4b4 */
+            border-color: #fbd4b4;
+        }
+        .pe-col-dci h4 {
+            background-color: #fbd4b4;
+            color: #5c3b1e; /* Dark text for contrast */
+        }
+
+        /* CCC: Pale Green Theme */
+        .pe-col-ccc {
+            background-color: #f5f9ef; /* Lighter version of #d6e3bc */
+            border-color: #d6e3bc;
+        }
+        .pe-col-ccc h4 {
+            background-color: #d6e3bc;
+            color: #424e2d; /* Dark text for contrast */
+        }
+
+		/* Column Content - IMPROVED FORMATTING */
+		.pe-details-column ul {
+			padding: 1rem 1.5rem;
+			margin: 0;
+			list-style: none;
+		}
+
+		.pe-details-column li {
+			margin-bottom: 1.5rem; /* Increased spacing between items */
+			font-size: 0.95rem;
+			color: #2c3e50;
+		}
+		
+		/* --- IMPROVED PARAGRAPH STYLING --- */
+
+		/* Base style for ALL paragraphs (Spacing only) */
+		.pe-details-paragraph {
+			margin-top: 0;
+			margin-bottom: 0.8rem;
+			position: relative;
+			line-height: 1.5;
+		}
+
+		/* Specific style ONLY for Bullet Points (Hanging Indent) */
+		.pe-details-paragraph.is-bullet {
+			padding-left: 1.2rem;  /* Push the whole block right */
+			text-indent: -1.2rem;  /* Pull just the bullet back to the left */
+		}
+
+		/* Remove margin from the very last paragraph so it fits the container */
+		.pe-details-paragraph:last-child {
+			margin-bottom: 0;
+		}
+
+		/* The ID/Header (e.g., "Asking Questions...") */
+		.pe-details-column li strong {
+			
+			margin-bottom: 0.5rem;
+			color: #000;
+			font-weight: 700;
+			font-size: 1em;
+		}
+
+		/* The Description Text (Indented and formatted) */
+		.pe-details-column li > div {
+			margin-left: 0.75rem;       /* Indents the text */
+			padding-left: 1rem;         /* Adds space between border and text */
+			border-left: 3px solid;     /* Adds the colored guide line */
+			border-color: rgba(0,0,0,0.1); /* Default gray border */
+			line-height: 1.6;           /* Improves reading ease */
+			color: #444;
+		}
+
+		/* Dynamic Border Colors based on Column Type */
+		.pe-col-sep li > div { border-color: #b8cce4; } /* Blue line for SEPs */
+		.pe-col-dci li > div { border-color: #fbd4b4; } /* Orange line for DCIs */
+		.pe-col-ccc li > div { border-color: #d6e3bc; } /* Green line for CCCs */
+
+        /* Button Styling */
+        .ai-controls button, .pe-details-actions button {
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .analyze-pe-desc-btn {
+            background-color: #004488;
+            color: white;
+            border: 1px solid #003366;
+        }
+        .analyze-pe-desc-btn:hover { background-color: #003366; }
+        .reset-analysis-btn {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            color: #555;
+        }
+        .pe-details-actions {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+        .view-evidence-btn {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            color: #333;
+        }
+
+
+        /* Connections Section */
+        .pe-details-connections {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eee;
+        }
+        .pe-details-connections h3 {
+            color: #2c3e50;
+            font-size: 1.2em;
+            margin-bottom: 1rem;
+        }
+        .pe-connections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+        .pe-connections-section {
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+        .pe-connections-section h4 {
+            margin: 0 0 0.5rem;
+            font-size: 0.95em;
+            color: #004488;
+            font-weight: 700;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+        }
+        .pe-connections-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .pe-connections-section li {
+            font-size: 0.9em;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+        .pe-connections-section li strong {
+            color: #333;
+        }
+        .pe-connections-section p {
+            font-size: 0.9em;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .clickable-element-link { color: var(--dimension-header-bg); font-weight: 400; cursor: pointer; }
         .clickable-element-link:hover { text-decoration: underline; }
         .pe-nav-link { color: var(--dimension-header-bg); font-weight: 600; cursor: pointer; text-decoration: none; }
         .pe-nav-link:hover { text-decoration: underline; }
-        .pe-details-actions { margin-top: 1rem; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end; }
-        .pe-details-connections { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
-        .pe-connections-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1rem 2rem; }
-        .pe-connections-section h4 { margin: 0 0 0.5rem; font-size: 1em; color: var(--dimension-header-bg); border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem; }
-        .pe-connections-section ul { list-style: none; padding: 0; margin: 0; }
-        .pe-connections-section li { font-size: 0.9em; margin-bottom: 0.5rem; line-height: 1.4; }
-        .pe-connections-section li strong { color: #333; }
-        .pe-connections-section p { font-size: 0.9em; margin: 0; line-height: 1.4; }
+
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay-bg); z-index: 2000; display: none; justify-content: center; align-items: center; }
         .modal-overlay.is-visible { display: flex; }
         .modal-content { background: var(--sidebar-bg); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 800px; display: flex; flex-direction: column; max-height: 90vh; }
@@ -245,6 +517,22 @@
         #matrix-row-select-modal label:hover { background-color: var(--row-hover-bg); }
         #matrix-row-select-modal input { margin-right: 0.5rem; }
         
+        /* Tour Customization */
+        /* Z-index must be higher than app modals (2000) */
+    .shepherd-element { z-index: 9999 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .shepherd-has-title .shepherd-content .shepherd-header { background: #f7f7f7; padding: 1rem;}
+    .shepherd-text { font-size: 0.95rem; line-height: 1.5; color: #2c3e50; }
+    .shepherd-button { background-color: #004488; color: white; border-radius: 4px; padding: 0.5rem 1rem; transition: background 0.2s; }
+    .shepherd-button:hover { background-color: #003366; }
+    .shepherd-button-secondary { background-color: #f3f4f6; color: #333; }
+    .shepherd-button-secondary:hover { background-color: #e5e7eb; }
+       
+        /* --- EVIDENCE STATEMENTS, FACETS & AI STYLES --- */
+        body.ai-disabled .ai-controls,
+        body.ai-disabled #refresh-facets-btn,
+        body.ai-disabled #ai-edit-toolbar {
+            display: none !important;
+        }
         @media (max-width: 992px) {
             .app-layout { overflow-y: auto; }
             .page-container { flex-direction: column; }
@@ -294,6 +582,7 @@
             <div class="header-actions">
                 <button id="settings-btn" title="AI Settings">Settings</button>
                 <button id="reset-app-btn" title="Reset all filters and views">Reset</button>
+				<button id="start-tour-btn" title="Start Guided Tour">❓</button>
             </div>
         </header>
         <button id="sidebar-toggle" aria-label="Toggle filters menu">&#9776;</button>
@@ -361,7 +650,7 @@
                     </div>
                     <div class="table-container">
                         <table id="pe-explorer-table">
-                            <thead><tr><th style="width: 2em;"><input type="checkbox" id="pe-bundle-select-all" title="Select/Deselect all visible"></th><th>PE ID</th><th>Description</th><th>Grade</th><th>Topic</th></tr></thead>
+                            <thead><tr><th style="width: 2em;"><input type="checkbox" id="pe-bundle-select-all" title="Select/Deselect all visible"></th><th style="min-width: 80px;">PE ID</th><th>Description</th><th>Grade</th><th>Topic</th></tr></thead>
                             <tbody id="pe-table-body"></tbody>
                         </table>
                     </div>
@@ -526,6 +815,11 @@
         let isResizing = false;
         let activeHandle = null;
 
+        const updateAiFeatureVisibility = () => {
+            const hasApiKey = !!localStorage.getItem('geminiApiKey');
+            document.body.classList.toggle('ai-disabled', !hasApiKey);
+        };
+
         // --- 3. CORE LOGIC & DATA PROCESSING ---
 
         const DB_NAME = 'NGSS_Explorer_Cache';
@@ -608,8 +902,36 @@
             } 
             isNavigatingHistory = false; 
         };
-        const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const normalizeText = t => t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim(); const getGradeBandKey = l => { if (!l) return null; const lc = l.toLowerCase(); if (['kindergarten', 'first', 'second', 'k-2'].some(k => lc.includes(k))) return 'primary'; if (['third', 'fourth', 'fifth', '3-5'].some(k => lc.includes(k))) return 'elementary'; if (lc.includes('middle')) return 'middle'; if (lc.includes('high')) return 'high'; return null; }; const findBestMatchingSpecificElement = (text, grade) => { const clean = text.trim().replace(/^[\*•]\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim(); if (clean.length < 15) return null; const cacheKey = `${grade}|${clean}`; if (fuzzyMatchCache.has(cacheKey)) return fuzzyMatchCache.get(cacheKey); const normText = normalizeText(clean); const words = normText.split(' ').filter(w => w.length > 1); if (words.length === 0) return null; const threshold = words.length < 10 ? 0.75 : 0.80; const gradeKey = getGradeBandKey(grade); let best = { code: null, score: 0, base: 0, len: Infinity }; for (const [offText, code] of textToSpecificCodeMap.entries()) { const normOffText = normalizeText(offText); const found = words.reduce((count, word) => { const rgx = new RegExp(`\\b${escapeRegExp(word)}\\b`); if (rgx.test(normOffText)) return count + 1; const singular = word.endsWith('s') ? word.slice(0, -1) : null; if (singular && singular.length > 2 && new RegExp(`\\b${escapeRegExp(singular)}\\b`).test(normOffText)) return count + 1; const plural = !word.endsWith('s') ? word + 's' : null; if (plural && new RegExp(`\\b${escapeRegExp(plural)}\\b`).test(normOffText)) return count + 1; return count; }, 0); const baseScore = found / words.length; let weightedScore = baseScore; const el = specificElementMap.get(code); if (gradeKey && el && el.gradeBandKey === gradeKey) weightedScore += 1.0; if (weightedScore > best.score || (weightedScore === best.score && offText.length < best.len)) { best = { code, score: weightedScore, base: baseScore, len: offText.length }; } } const result = best.base >= threshold ? best.code : null; fuzzyMatchCache.set(cacheKey, result); return result; };
-        const processAllData = () => { window.allNgss3dElements.forEach(dim => (dim.elements || dim.core_ideas?.flatMap(c => c.components) || []).forEach(item => { const name = item.name.trim(); const parts = name.split(':'); const code = parts[0].trim(); if (!code) return; const nameOnly = parts.length > 1 ? parts.slice(1).join(':').trim() : name; if (!elementMap.has(code)) elementMap.set(code, { ...item, code, dimensionCode: dim.code, dimensionName: dim.dimension }); nameToCodeMap.set(name, code); nameToCodeMap.set(nameOnly, code); nameToCodeMap.set(code, code); Object.entries(item.progressions).forEach(([gradeKey, progs]) => (progs || []).forEach(prog => { if (!specificElementMap.has(prog.code)) specificElementMap.set(prog.code, { ...prog, parentCode: code, parentName: item.name, gradeBandKey: gradeKey, relatedPes: new Set() }); textToSpecificCodeMap.set(prog.text.trim(), prog.code); })); })); window.allNgssData.forEach(gradeData => gradeData.topics.forEach(topic => topic.performanceExpectations.forEach(pe => { const compCodes = new Set(); const specCodes = new Set(); ['sep', 'dci', 'ccc'].forEach(key => (pe.details[key] || []).forEach(ref => { let lineMatched = false; ref.text.split('\n').forEach(line => { if (!line.trim()) return; const specCode = findBestMatchingSpecificElement(line, gradeData.gradeLabel); if (specCode) { specCodes.add(specCode); const el = specificElementMap.get(specCode); if (el) { el.relatedPes.add(pe.id); if (el.parentCode) compCodes.add(el.parentCode); } lineMatched = true; } }); if (!lineMatched) { const cleanId = ref.id.replace(' (secondary)', '').trim(); let cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(cleanId.split(':').pop().trim()); if (cCode) compCodes.add(cCode); } })); peMap.set(pe.id, { ...pe, gradeLabel: gradeData.gradeLabel, topicTitle: topic.topicTitle, connections: topic.connections, associatedComponentCodes: compCodes, associatedSpecificCodes: specCodes }); }))); };
+        const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const normalizeText = t => t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim(); const getGradeBandKey = l => { if (!l) return null; const lc = l.toLowerCase(); if (['kindergarten', 'first', 'second', 'k-2'].some(k => lc.includes(k))) return 'primary'; if (['third', 'fourth', 'fifth', '3-5'].some(k => lc.includes(k))) return 'elementary'; if (lc.includes('middle')) return 'middle'; if (lc.includes('high')) return 'high'; return null; }; const findBestMatchingSpecificElement = (text, grade) => { const clean = text.trim().replace(/^[\*•]\s*/, '').replace(/\s*\([^)]*\)/g, '').trim(); if (clean.length < 15) return null; const cacheKey = `${grade}|${clean}`; if (fuzzyMatchCache.has(cacheKey)) return fuzzyMatchCache.get(cacheKey); const normText = normalizeText(clean); const words = normText.split(' ').filter(w => w.length > 1); if (words.length === 0) return null; const threshold = words.length < 10 ? 0.75 : 0.80; const gradeKey = getGradeBandKey(grade); let best = { code: null, score: 0, base: 0, len: Infinity }; for (const [offText, code] of textToSpecificCodeMap.entries()) { const normOffText = normalizeText(offText); const found = words.reduce((count, word) => { const rgx = new RegExp(`\\b${escapeRegExp(word)}\\b`); if (rgx.test(normOffText)) return count + 1; const singular = word.endsWith('s') ? word.slice(0, -1) : null; if (singular && singular.length > 2 && new RegExp(`\\b${escapeRegExp(singular)}\\b`).test(normOffText)) return count + 1; const plural = !word.endsWith('s') ? word + 's' : null; if (plural && new RegExp(`\\b${escapeRegExp(plural)}\\b`).test(normOffText)) return count + 1; return count; }, 0); const baseScore = found / words.length; let weightedScore = baseScore; const el = specificElementMap.get(code); if (gradeKey && el && el.gradeBandKey === gradeKey) weightedScore += 1.0; if (weightedScore > best.score || (weightedScore === best.score && offText.length < best.len)) { best = { code, score: weightedScore, base: baseScore, len: offText.length }; } } const result = best.base >= threshold ? best.code : null; fuzzyMatchCache.set(cacheKey, result); return result; };
+        const processAllData = () => { window.allNgss3dElements.forEach(dim => (dim.elements || dim.core_ideas?.flatMap(c => c.components) || []).forEach(item => { const name = item.name.trim(); const parts = name.split(':'); const code = parts[0].trim(); if (!code) return; const nameOnly = parts.length > 1 ? parts.slice(1).join(':').trim() : name; if (!elementMap.has(code)) elementMap.set(code, { ...item, code, dimensionCode: dim.code, dimensionName: dim.dimension }); nameToCodeMap.set(name, code); nameToCodeMap.set(nameOnly, code); nameToCodeMap.set(code, code); Object.entries(item.progressions).forEach(([gradeKey, progs]) => (progs || []).forEach(prog => { if (!specificElementMap.has(prog.code)) specificElementMap.set(prog.code, { ...prog, parentCode: code, parentName: item.name, gradeBandKey: gradeKey, relatedPes: new Set() }); textToSpecificCodeMap.set(prog.text.trim(), prog.code); })); })); window.allNgssData.forEach(gradeData => gradeData.topics.forEach(topic => topic.performanceExpectations.forEach(pe => { const compCodes = new Set(); const specCodes = new Set(); ['sep', 'dci', 'ccc'].forEach(key => (pe.details[key] || []).forEach(ref => {
+    let lineMatched = false;
+
+    // FIX: Handle if 'text' is an Array (new JSON) or a String (old JSON)
+    const lines = Array.isArray(ref.text) 
+        ? ref.text 
+        : (typeof ref.text === 'string' ? ref.text.split('\n') : []);
+
+    lines.forEach(line => {
+        if (!line.trim()) return;
+        const specCode = findBestMatchingSpecificElement(line, gradeData.gradeLabel);
+        if (specCode) {
+            specCodes.add(specCode);
+            const el = specificElementMap.get(specCode);
+            if (el) {
+                el.relatedPes.add(pe.id);
+                if (el.parentCode) compCodes.add(el.parentCode);
+            }
+            lineMatched = true;
+        }
+    });
+
+    if (!lineMatched && ref.id) {
+        const cleanId = ref.id.replace(' (secondary)', '').trim();
+        let cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(cleanId.split(':').pop().trim());
+        if (cCode) compCodes.add(cCode);
+    }
+}));
+ peMap.set(pe.id, { ...pe, gradeLabel: gradeData.gradeLabel, topicTitle: topic.topicTitle, connections: topic.connections, associatedComponentCodes: compCodes, associatedSpecificCodes: specCodes }); }))); };
         
         const fetchRawData = async () => {
             try {
@@ -632,7 +954,7 @@
                 const hsData = await hsRes.json();
 
                 // Combine grade levels into the structure the app expects
-                window.allNgssData = [k5Data, msData, hsData].flat();
+                window.allNgssData = [...k5Data, msData, ...hsData].flat();
                 
             } catch (error) {
                 console.error("Error fetching NGSS JSON data:", error);
@@ -739,9 +1061,142 @@
                 </tr>`
             ).join(''); 
         };
-        const processAndLinkPeText = (text, peId) => { const pe = peMap.get(peId); if (!pe) return text; return text.split('\n').map(line => { if (!line.trim()) return line; const code = findBestMatchingSpecificElement(line, pe.gradeLabel); if (code) { const el = specificElementMap.get(code); if (el) return `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; } return line; }).join('<br>'); };
-        const createPeDetailsHtml = (pe, inBundle = false) => { const linkPeCodes = (text, currentPe) => { if (!text) return 'N/A'; text = text.replace(/\(([A-Z0-9-]+)\)/g, (match, id) => { const p = peMap.get(id); if (p && id !== currentPe.id) return `<span class="pe-nav-link" data-pe-id="${id}" title="${`PE: ${id}\n${p.description}`.replace(/"/g, '&quot;')}">${match}</span>`; return match; }); return text.replace(/\b(?:[K\d]|MS|HS)(?:-\d)?\.([A-Z]{2,4}\d?(?:\.[A-Z])?)\b/g, (match, code) => { const el = elementMap.get(code); if (el) return `<span class="clickable-element-link" data-pe-id="${currentPe.id}" data-component-code="${code}" title="${`Dimension Element: ${el.name}`.replace(/"/g, '&quot;')}">${match}</span>`; return match; }); }; const createCol = (dim, title) => { const items = pe.details[dim] || []; if (!items.length) return ''; return `<div class="pe-details-column"><h4>${title}</h4><ul>${items.map(item => { const code = nameToCodeMap.get(item.id.replace(' (secondary)', '').trim()); const el = code ? elementMap.get(code) : null; return `<li><span class="clickable-element-link" ${code ? `data-component-code="${code}" data-pe-id="${pe.id}"` : ''} ${el ? `title="${el.name.replace(/"/g, '&quot;')}"` : ''}><strong class="copyable">${item.id}</strong></span><div class="copyable" style="padding-left:1rem;">${processAndLinkPeText(item.text, pe.id)}</div></li>`; }).join('')}</ul></div>`; }; const createConns = (conns, currentPe) => { if (!conns) return ''; const filterStr = text => { if (!text) return 'N/A'; const relevant = text.split(';').map(s => s.trim()).filter(Boolean).filter(e => e.includes(`(${currentPe.id})`)); return relevant.length ? linkPeCodes(relevant.join('; '), currentPe) : 'N/A'; }; const filterArr = items => items ? items.filter(i => i.text && i.text.includes(`(${currentPe.id})`)) : []; const ela = filterArr(conns.commonCoreStateStandards?.elaLiteracy).map(i => `<li class="copyable"><strong>${i.id}:</strong> ${linkPeCodes(i.text, currentPe)}</li>`).join(''); const math = filterArr(conns.commonCoreStateStandards?.mathematics).map(i => `<li class="copyable"><strong>${i.id}:</strong> ${linkPeCodes(i.text, currentPe)}</li>`).join(''); return `<div class="pe-details-connections"><h3>Connections</h3><div class="pe-connections-grid"><div class="pe-connections-section"><h4>Connections to other DCIs in this grade-level</h4><p class="copyable">${filterStr(conns.connectionsToOtherDcisInGradeLevel)}</p></div><div class="pe-connections-section"><h4>Articulation of DCIs across grade levels</h4><p class="copyable">${filterStr(conns.articulationOfDcisAcrossGradeLevels)}</p></div><div class="pe-connections-section"><h4>Connections to Common Core (ELA)</h4><ul>${ela || '<li>N/A</li>'}</ul></div><div class="pe-connections-section"><h4>Connections to Common Core (Math)</h4><ul>${math || '<li>N/A</li>'}</ul></div></div></div>`; }; const savedDesc = savedAnalyses[pe.id]?.description || pe.description; const clarification = pe.details.clarificationStatement ? `<div class="pe-details-info-box"><h4>Clarification Statement</h4><p class="copyable">${pe.details.clarificationStatement}</p></div>` : ''; const boundary = pe.details.assessmentBoundary ? `<div class="pe-details-info-box"><h4>Assessment Boundary</h4><p class="copyable">${pe.details.assessmentBoundary}</p></div>` : ''; const esBtn = (pe.details.evidenceStatements && pe.details.evidenceStatements.length) ? `<button class="filter-btn view-evidence-btn" data-pe-id="${pe.id}">View Evidence Statements</button>` : ''; const analyzeBtn = inBundle ? '' : `<div class="ai-controls"><button class="filter-btn active analyze-pe-desc-btn" data-pe-id="${pe.id}">Analyze with Full Context</button><button class="filter-btn reset-btn reset-analysis-btn">Reset</button></div>`; return `<div class="pe-details-wrapper"><div class="pe-description-header"><h3 class="copyable">${inBundle ? '' : pe.id + ':'}</h3>${analyzeBtn}</div><div class="pe-description-text ai-editable-content copyable" data-pe-id="${pe.id}" data-part="description">${savedDesc}</div><div style="margin-top:1.5rem;">${clarification}${boundary}</div><div class="pe-details-container" style="margin-top:1rem;">${createCol('sep', 'SEP')}${createCol('dci', 'DCI')}${createCol('ccc', 'CCC')}</div><div class="pe-details-actions">${esBtn}<button class="filter-btn active view-related-3d-btn" data-pe-id="${pe.id}">Show All Related in 3D View</button></div>${createConns(pe.connections, pe)}</div>`; };
-        const populate3dTable = () => { threedTableBody.innerHTML = window.allNgss3dElements.map(dim => { let html = `<tr class="dimension-header header-row" data-dimension-code="${dim.code}"><td colspan="5">${dim.dimension}</td></tr>`; const items = dim.elements || dim.core_ideas?.flatMap(c => c.components) || []; const progHtml = p => ['primary', 'elementary', 'middle', 'high'].map(k => `<td>${(p[k] || []).map(i => `<div class="item" data-code="${i.code}" title="${i.text.replace(/"/g, '&quot;')}\n\n(Click to see related PEs)"><strong>${i.code}</strong> ${i.text}</div>`).join('')}</td>`).join(''); if (dim.elements) html += dim.elements.map(el => `<tr class="data-row" data-dimension-code="${dim.code}" data-component-code="${el.name.split(':')[0].trim()}"><td class="element-header">${el.name}</td>${progHtml(el.progressions)}</tr>`).join(''); else if (dim.core_ideas) html += dim.core_ideas.map(core => `<tr class="dci-major-header header-row" data-dimension-code="${dim.code}" data-component-code="${core.name.split(':')[0].trim()}"><td colspan="5">${core.name}</td></tr>` + core.components.map(comp => `<tr class="data-row" data-dimension-code="${dim.code}" data-component-code="${comp.name.split(':')[0].trim()}"><td class="dci-minor-header">${comp.name}</td>${progHtml(comp.progressions)}</tr>`).join('')).join(''); return html; }).join(''); };
+        const processAndLinkPeText = (text, peId) => { 
+            const pe = peMap.get(peId); 
+            
+            // 1. Handle Array (new) vs String (old) input
+            if (!text) return '';
+            const lines = Array.isArray(text) ? text : text.split('\n');
+
+            if (!pe) return lines.join('<br>'); // Fallback
+            
+            return lines.map((line, index) => { 
+                const cleanLine = line.trim();
+                if (!cleanLine) return ''; 
+                
+                let processedLine = line;
+                let codeDisplay = ''; // New variable to hold the code HTML
+                
+                // 2. Attempt to link text to 3D element codes
+                const code = findBestMatchingSpecificElement(line, pe.gradeLabel); 
+                
+                if (code) { 
+                    const el = specificElementMap.get(code); 
+                    if (el) {
+                        processedLine = `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; 
+                        codeDisplay = `<strong style="font-family: monospace; color: #888;  font-size: 0.9em;">(${code})</strong> `;
+                    }
+                } 
+                
+                // 3. Smart Bullet Detection
+                const hasExistingBullet = cleanLine.startsWith('•') || cleanLine.startsWith('*') || cleanLine.startsWith('-');
+                const isHeader = cleanLine.endsWith(':');
+                const isSpecificItem = !!code; // It matched a progression/element
+                
+                // Logic: It's a bullet if it already has one, OR if it's a specific element, OR if it's item 2+ in a list, UNLESS it looks like a header.
+                let shouldBeBullet = hasExistingBullet || ((isSpecificItem || (lines.length > 1 && index > 0)) && !isHeader);
+
+                let className = 'pe-details-paragraph';
+                let finalHtml = `${codeDisplay}${processedLine}`;
+                
+                if (shouldBeBullet) {
+                    className += ' is-bullet';
+                    // If the bullet character is missing from the text (because of the JSON cleanup), add it visually here.
+                    if (!hasExistingBullet) {
+                        finalHtml = `• ${finalHtml}`; 
+                    }
+                }
+                
+                return `<p class="${className}">${finalHtml}</p>`; 
+            }).join(''); 
+        };
+		const createPeDetailsHtml = (pe, inBundle = false) => {
+            // Helper to link codes
+            const linkPeCodes = (text, currentPe) => {
+                if (!text) return 'N/A';
+                text = text.replace(/\(([A-Z0-9-]+)\)/g, (match, id) => {
+                    const p = peMap.get(id);
+                    if (p && id !== currentPe.id) return `<span class="pe-nav-link" data-pe-id="${id}" title="${`PE: ${id}\n${p.description}`.replace(/"/g, '&quot;')}">${match}</span>`;
+                    return match;
+                });
+                return text.replace(/\b(?:[K\d]|MS|HS)(?:-\d)?\.([A-Z]{2,4}\d?(?:\.[A-Z])?)\b/g, (match, code) => {
+                    const el = elementMap.get(code);
+                    if (el) return `<span class="clickable-element-link" data-pe-id="${currentPe.id}" data-component-code="${code}" title="${`Dimension Element: ${el.name}`.replace(/"/g, '&quot;')}">${match}</span>`;
+                    return match;
+                });
+            };
+
+            // Helper to create columns with specific color classes
+            const createCol = (dim, title) => {
+                const items = pe.details[dim] || [];
+                if (!items.length) return '';
+                const colClass = `pe-col-${dim}`;
+                return `<div class="pe-details-column ${colClass}">
+                    <h4>${title}</h4>
+                    <ul>${items.map(item => {
+                        const code = nameToCodeMap.get(item.id.replace(' (secondary)', '').trim());
+                        const el = code ? elementMap.get(code) : null;
+                        return `<li>
+                            <span class="clickable-element-link" ${code ? `data-component-code="${code}" data-pe-id="${pe.id}"` : ''} ${el ? `title="${el.name.replace(/"/g, '&quot;')}"` : ''}>
+                                <strong class="copyable">${item.id}</strong>
+                            </span>
+                            <div class="copyable">${processAndLinkPeText(item.text, pe.id)}</div>
+                        </li>`;
+                    }).join('')}</ul>
+                </div>`;
+            };
+
+            const createConns = (conns, currentPe) => {
+                if (!conns) return '';
+                const filterStr = text => {
+                    if (!text) return 'N/A';
+                    const relevant = text.split(';').map(s => s.trim()).filter(Boolean).filter(e => e.includes(`(${currentPe.id})`));
+                    return relevant.length ? linkPeCodes(relevant.join('; '), currentPe) : 'N/A';
+                };
+                const filterArr = items => items ? items.filter(i => i.text && i.text.includes(`(${currentPe.id})`)) : [];
+                const ela = filterArr(conns.commonCoreStateStandards?.elaLiteracy).map(i => `<li class="copyable"><strong>${i.id}:</strong> ${linkPeCodes(i.text, currentPe)}</li>`).join('');
+                const math = filterArr(conns.commonCoreStateStandards?.mathematics).map(i => `<li class="copyable"><strong>${i.id}:</strong> ${linkPeCodes(i.text, currentPe)}</li>`).join('');
+                return `<div class="pe-details-connections">
+                    <h3>Connections</h3>
+                    <div class="pe-connections-grid">
+                        <div class="pe-connections-section"><h4>Connections to other DCIs in this grade-level</h4><p class="copyable">${filterStr(conns.connectionsToOtherDcisInGradeLevel)}</p></div>
+                        <div class="pe-connections-section"><h4>Articulation of DCIs across grade levels</h4><p class="copyable">${filterStr(conns.articulationOfDcisAcrossGradeLevels)}</p></div>
+                        <div class="pe-connections-section"><h4>Connections to Common Core (ELA)</h4><ul>${ela || '<li>N/A</li>'}</ul></div>
+                        <div class="pe-connections-section"><h4>Connections to Common Core (Math)</h4><ul>${math || '<li>N/A</li>'}</ul></div>
+                    </div>
+                </div>`;
+            };
+
+            const savedDesc = savedAnalyses[pe.id]?.description || pe.description;
+            
+            const clarification = pe.details.clarificationStatement ? `<div class="pe-details-info-box clarification"><h4>Clarification Statement</h4><p class="copyable">${pe.details.clarificationStatement}</p></div>` : '';
+            const boundary = pe.details.assessmentBoundary ? `<div class="pe-details-info-box boundary"><h4>Assessment Boundary</h4><p class="copyable">${pe.details.assessmentBoundary}</p></div>` : '';
+            
+            const esBtn = (pe.details.evidenceStatements && pe.details.evidenceStatements.length) ? `<button class="filter-btn view-evidence-btn" data-pe-id="${pe.id}">View Evidence Statements</button>` : '';
+            const analyzeBtn = inBundle ? '' : `<div class="ai-controls"><button class="filter-btn active analyze-pe-desc-btn" data-pe-id="${pe.id}">Analyze with Full Context</button><button class="filter-btn reset-btn reset-analysis-btn">Reset</button></div>`;
+
+            // MODIFIED LAYOUT STRUCTURE HERE
+            return `<div class="pe-details-wrapper">
+                <div class="pe-description-header">
+                    <div class="pe-header-content">
+                        <h3 class="copyable">${inBundle ? '' : pe.id + ':'}</h3>
+                        <div class="pe-description-text ai-editable-content copyable" data-pe-id="${pe.id}" data-part="description">${savedDesc}</div>
+                    </div>
+                    ${analyzeBtn}
+                </div>
+                <div style="margin-top:1rem;">${clarification}${boundary}</div>
+                <div class="pe-details-container" style="margin-top:1rem;">
+                    ${createCol('sep', 'Science & Engineering Practices')}
+                    ${createCol('dci', 'Disciplinary Core Ideas')}
+                    ${createCol('ccc', 'Crosscutting Concepts')}
+                </div>
+                <div class="pe-details-actions">
+                    ${esBtn}
+                </div>
+                ${createConns(pe.connections, pe)}
+            </div>`;
+        };
+const populate3dTable = () => { threedTableBody.innerHTML = window.allNgss3dElements.map(dim => { let html = `<tr class="dimension-header header-row" data-dimension-code="${dim.code}"><td colspan="5">${dim.dimension}</td></tr>`; const items = dim.elements || dim.core_ideas?.flatMap(c => c.components) || []; const progHtml = p => ['primary', 'elementary', 'middle', 'high'].map(k => `<td>${(p[k] || []).map(i => `<div class="item" data-code="${i.code}" title="${i.text.replace(/"/g, '&quot;')}\n\n(Click to see related PEs)"><strong>${i.code}</strong> ${i.text}</div>`).join('')}</td>`).join(''); if (dim.elements) html += dim.elements.map(el => `<tr class="data-row" data-dimension-code="${dim.code}" data-component-code="${el.name.split(':')[0].trim()}"><td class="element-header">${el.name}</td>${progHtml(el.progressions)}</tr>`).join(''); else if (dim.core_ideas) html += dim.core_ideas.map(core => `<tr class="dci-major-header header-row" data-dimension-code="${dim.code}" data-component-code="${core.name.split(':')[0].trim()}"><td colspan="5">${core.name}</td></tr>` + core.components.map(comp => `<tr class="data-row" data-dimension-code="${dim.code}" data-component-code="${comp.name.split(':')[0].trim()}"><td class="dci-minor-header">${comp.name}</td>${progHtml(comp.progressions)}</tr>`).join('')).join(''); return html; }).join(''); };
         const renderTopicFilters = grade => { const cont = document.getElementById('topic-filters-container'), group = document.getElementById('topic-filters'); const topics = grade === 'all' ? allTopics : gradeToTopicsMap[grade]; if (!topics || !topics.length) { cont.style.display = 'none'; group.innerHTML = ''; return; } const active = new Set([...document.querySelectorAll('#topic-filters .filter-btn.active')].map(b => b.dataset.filter)); let hasActive = active.size > 0 && !active.has('all'); let html = `<button class="filter-btn ${!hasActive ? 'active' : ''}" data-filter="all">All Topics</button>`; html += topics.map(t => `<button class="filter-btn ${active.has(t) ? 'active' : ''}" data-filter="${t}">${t}</button>`).join(''); group.innerHTML = html; cont.style.display = 'block'; };
         const updateNavControls = () => navigationControls.style.display = navigationHistory.length > 0 ? 'flex' : 'none';
         const pushNavState = (isLinkNav = false) => { const cont = document.querySelector('.explorer-view.is-visible .table-container'); const state = { view: currentView, scrollTop: cont ? cont.scrollTop : 0, searchTerm: searchInput.value, activePeFilter, isLinkNavigation: isLinkNav }; if (currentView === 'pe') { state.activeGrade = gradeFilters.querySelector('.active')?.dataset.filter; state.expandedPe = peTableBody.querySelector('.pe-main-row.expanded')?.dataset.peId; state.activeElementFilters = new Set(activeElementFilters); state.activeBundleFilter = activeBundleFilter; } else if (['3d', 'matrix'].includes(currentView)) { state.activeDimension = dimensionFilters.querySelector('.active')?.dataset.filter; state.activeSubFilters = [...subDimensionFilters.querySelectorAll('.active')].map(b => b.dataset.filter); state.activeDciMinorFilters = [...dciMinorFilters.querySelectorAll('.active')].map(b => b.dataset.filter); if (currentView === '3d') state.isolatedColumn = isolatedColumn; } if (currentView === 'matrix') state.matrixRowElements = new Set(matrixRowElements); navigationHistory.push(state); updateNavControls(); };
@@ -819,9 +1274,99 @@
         
         // --- 5. VIEW & FILTER LOGIC ---
         const switchView = (name, target = null, push = false) => { if (push && (currentView !== name || !navigationHistory[navigationHistory.length - 1]?.isLinkNavigation)) pushNavState(target !== null); currentView = name; navPeExplorer.classList.toggle('active', name === 'pe'); peExplorerView.style.display = name === 'pe' ? 'flex' : 'none'; navThreedExplorer.classList.toggle('active', name === '3d'); threedExplorerView.style.display = name === '3d' ? 'flex' : 'none'; navMatrixView.classList.toggle('active', name === 'matrix'); matrixView.style.display = name === 'matrix' ? 'flex' : 'none'; if (name !== 'bundle') bundleView.style.display = 'none'; sidebarFiltersContainer.style.display = 'block'; resultsCountSpan.style.display = 'block'; peFiltersAll.style.display = name === 'pe' ? 'block' : 'none'; threedFiltersAll.style.display = ['3d', 'matrix'].includes(name) ? 'block' : 'none'; if (name === 'matrix') renderMatrix(); else if (name === 'pe') syncCheckboxesWithBundle(); if (activePeFilter) { const pe = peMap.get(activePeFilter); activePeFilterTag.querySelector('span').textContent = `Highlighting for PE: ${pe ? pe.id : '...'}`; activePeFilterTag.style.display = 'flex'; activePeFilterTag.dataset.peId = activePeFilter; activePeFilterTag.style.cursor = 'pointer'; activePeFilterTag.title = `Click to go to ${activePeFilter} in PE Explorer`; } else { activePeFilterTag.style.display = 'none'; activePeFilterTag.removeAttribute('data-pe-id'); activePeFilterTag.style.cursor = 'default'; activePeFilterTag.removeAttribute('title'); } if (!target && !push && !isNavigatingHistory) { searchInput.value = ''; if (name === 'pe') { gradeFilters.querySelector('.active')?.classList.remove('active'); gradeFilters.querySelector('[data-filter="all"]')?.classList.add('active'); } else if (['3d', 'matrix'].includes(name)) dimensionFilters.querySelector('.active')?.classList.remove('active'); } if (name === '3d' && push) { dimensionFilters.querySelector('.active')?.classList.remove('active'); subDimensionFilters.innerHTML = ''; subDimensionFiltersContainer.style.display = 'none'; dciMinorFilters.innerHTML = ''; dciMinorFiltersContainer.style.display = 'none'; isolatedColumn = null; searchInput.value = ''; } applyFilters(); updateUrlFromState(); if (name === '3d' && target) { let el; if (target.specific) el = threedTableBody.querySelector(`.item[data-code="${target.specific}"]`); else if (target.component) el = threedTableBody.querySelector(`tr[data-component-code="${target.component}"]`); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (target.specific) { el.classList.add('scroll-target'); setTimeout(() => el.classList.remove('scroll-target'), 1500); } } } };
-        const resetApp = () => { isNavigatingHistory = true; searchInput.value = ''; navigationHistory = []; activePeFilter = null; isolatedColumn = null; activeElementFilters.clear(); activeBundleFilter = null; peTableBody.querySelectorAll('.expanded, .is-visible').forEach(r => r.classList.remove('expanded', 'is-visible')); matrixRowElements.clear(); window.allNgss3dElements.forEach(d => (d.elements || d.core_ideas?.flatMap(c => c.components) || []).forEach(i => { const c = i.name.split(':')[0].trim(); if (c) matrixRowElements.add(c); })); gradeFilters.querySelector('.active')?.classList.remove('active'); gradeFilters.querySelector('[data-filter="all"]')?.classList.add('active'); renderTopicFilters('all'); renderActiveElementFilters(); renderBundleFilters(); dimensionFilters.querySelector('.active')?.classList.remove('active'); subDimensionFiltersContainer.style.display = 'none'; dciMinorFiltersContainer.style.display = 'none'; subDimensionFilters.innerHTML = ''; dciMinorFilters.innerHTML = ''; updateNavControls(); clearPeFilter(); switchView('pe', null, false); const cont = peExplorerView.querySelector('.table-container'); if (cont) cont.scrollTop = 0; history.replaceState(null, '', window.location.pathname); isNavigatingHistory = false; };
-        const applySearchHighlight = (body, term) => { body.querySelectorAll('span.search-highlight').forEach(el => { el.parentNode.replaceChild(document.createTextNode(el.textContent), el); el.parentNode.normalize(); }); if (!term) return; const rgx = new RegExp(escapeRegExp(term), 'gi'); const sel = currentView === 'pe' ? 'tr:not([style*="display: none"]) td' : currentView === '3d' ? '.data-row:not([style*="display: none"]) td' : '#matrix-table tr:not([style*="display: none"]) td'; body.querySelectorAll(sel).forEach(cell => { const w = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT, null, false); let n; const nodes = []; while (n = w.nextNode()) if (n.textContent.match(rgx)) nodes.push(n); nodes.forEach(node => { const span = document.createElement('span'); span.innerHTML = node.textContent.replace(rgx, `<span class="search-highlight">$&</span>`); node.parentNode.replaceChild(span, node); }); }); };
-        const applyFilters = () => { if (currentView === 'pe') filterPeTable(); else if (currentView === '3d') update3dView(); else if (currentView === 'matrix') filterMatrixTable(); const body = document.querySelector('.explorer-view.is-visible table tbody'); if (body) applySearchHighlight(body, searchInput.value.trim()); };
+        const resetApp = () => { 
+            isNavigatingHistory = true; 
+            searchInput.value = ''; 
+            navigationHistory = []; 
+            
+            // --- FIX: Clear Bundle State ---
+            peBundle.clear();
+            syncCheckboxesWithBundle();
+            updateBundleControls();
+            // -------------------------------
+
+            activePeFilter = null; 
+            isolatedColumn = null; 
+            activeElementFilters.clear(); 
+            activeBundleFilter = null; 
+            peTableBody.querySelectorAll('.expanded, .is-visible').forEach(r => r.classList.remove('expanded', 'is-visible')); 
+            matrixRowElements.clear(); 
+            window.allNgss3dElements.forEach(d => (d.elements || d.core_ideas?.flatMap(c => c.components) || []).forEach(i => { const c = i.name.split(':')[0].trim(); if (c) matrixRowElements.add(c); })); 
+            gradeFilters.querySelector('.active')?.classList.remove('active'); 
+            gradeFilters.querySelector('[data-filter="all"]')?.classList.add('active'); 
+            renderTopicFilters('all'); 
+            renderActiveElementFilters(); 
+            renderBundleFilters(); 
+            dimensionFilters.querySelector('.active')?.classList.remove('active'); 
+            subDimensionFiltersContainer.style.display = 'none'; 
+            dciMinorFiltersContainer.style.display = 'none'; 
+            subDimensionFilters.innerHTML = ''; 
+            dciMinorFilters.innerHTML = ''; 
+            updateNavControls(); 
+            clearPeFilter(); 
+            switchView('pe', null, false); 
+            const cont = peExplorerView.querySelector('.table-container'); 
+            if (cont) cont.scrollTop = 0; 
+            history.replaceState(null, '', window.location.pathname); 
+            isNavigatingHistory = false; 
+        };
+        const applySearchHighlight = (container, term) => {
+            // 1. Cleanup: Remove existing highlights before applying new ones
+            container.querySelectorAll('span.search-highlight').forEach(span => {
+                const parent = span.parentNode;
+                parent.replaceChild(document.createTextNode(span.textContent), span);
+                parent.normalize(); // Merge adjacent text nodes
+            });
+
+            if (!term) return;
+
+            // 2. Escape regex characters to prevent errors with terms like "E=mc^2"
+            const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${safeTerm})`, 'gi');
+            
+            // 3. Walk through all text nodes
+            const walker = document.createTreeWalker(
+                container, 
+                NodeFilter.SHOW_TEXT, 
+                {
+                    acceptNode: (node) => {
+                        // Skip empty text or text inside existing highlights
+                        if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+                        if (node.parentNode.classList.contains('search-highlight')) return NodeFilter.FILTER_REJECT;
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                }, 
+                false
+            );
+
+            const nodesToHighlight = [];
+            while (walker.nextNode()) {
+                if (regex.test(walker.currentNode.textContent)) {
+                    nodesToHighlight.push(walker.currentNode);
+                }
+            }
+
+            // 4. Apply Highlight
+            nodesToHighlight.forEach(node => {
+                const fragment = document.createDocumentFragment();
+                // Split by the regex (capturing group keeps the separator/match)
+                const parts = node.textContent.split(regex);
+                
+                parts.forEach(part => {
+                    if (part.toLowerCase() === term.toLowerCase()) {
+                        const span = document.createElement('span');
+                        span.className = 'search-highlight';
+                        span.textContent = part;
+                        fragment.appendChild(span);
+                    } else {
+                        fragment.appendChild(document.createTextNode(part));
+                    }
+                });
+                
+                node.parentNode.replaceChild(fragment, node);
+            });
+        };
+		const applyFilters = () => { if (currentView === 'pe') filterPeTable(); else if (currentView === '3d') update3dView(); else if (currentView === 'matrix') filterMatrixTable(); const body = document.querySelector('.explorer-view.is-visible table tbody'); if (body) applySearchHighlight(body, searchInput.value.trim()); };
         const filterPeTable = () => { const term = searchInput.value.trim().toLowerCase(); const grade = gradeFilters.querySelector('.active')?.dataset.filter || 'all'; const topics = new Set([...document.querySelectorAll('#topic-filters .filter-btn.active')].map(b => b.dataset.filter)); const showAllTopics = topics.has('all') || topics.size === 0; const bundleIds = activeBundleFilter ? new Set(savedBundles[activeBundleFilter]) : null; let count = 0; peTableBody.querySelectorAll('.pe-main-row').forEach(row => { const pe = peMap.get(row.dataset.peId); const hasElems = activeElementFilters.size === 0 || [...activeElementFilters].every(code => pe.associatedComponentCodes.has(code)); const inBundle = !bundleIds || bundleIds.has(pe.id); const isVis = (!term || row.textContent.toLowerCase().includes(term)) && (grade === 'all' || row.dataset.grade === grade) && (showAllTopics || topics.has(pe.topicTitle)) && hasElems && inBundle; row.style.display = isVis ? '' : 'none'; const details = row.nextElementSibling; if (!isVis && details?.classList.contains('is-visible')) { details.classList.remove('is-visible'); row.classList.remove('expanded'); } if (isVis) count++; }); updateSelectAllCheckboxState(); resultsCountSpan.textContent = `${count} PEs found.`; };
         const clearPeFilter = () => { activePeFilter = null; activePeFilterTag.style.display = 'none'; applyFilters(); updateUrlFromState(); };
         const applyColumnIsolation = () => { const table = document.getElementById('threed-explorer-table'); table.className = ''; document.querySelectorAll('.col-toggle-btn.active').forEach(b => b.classList.remove('active')); if (isolatedColumn) { table.classList.add('col-isolated', `isolate-col-${isolatedColumn}`); table.querySelector(`.col-toggle-btn[data-col="${isolatedColumn}"]`)?.classList.add('active'); } };
@@ -835,7 +1380,11 @@
         const syncCheckboxesWithBundle = () => { peTableBody.querySelectorAll('.pe-bundle-checkbox').forEach(cb => { cb.checked = peBundle.has(cb.dataset.peId); }); updateSelectAllCheckboxState(); };
         const renderBundleSummary = () => { const counts = {}; peBundle.forEach(id => { const pe = peMap.get(id); if (!pe) return; pe.associatedComponentCodes.forEach(code => { const el = elementMap.get(code); if (!el) return; const dim = el.dimensionCode; if (!counts[dim]) counts[dim] = new Map(); if (!counts[dim].has(code)) counts[dim].set(code, { name: el.name, count: 0 }); counts[dim].get(code).count++; }); }); const order = window.allNgss3dElements.map(d => d.code); const dims = Object.keys(counts).filter(d => counts[d].size > 0).sort((a, b) => order.indexOf(a) - order.indexOf(b)); const listHtml = map => `<ul>${[...map.entries()].sort((a, b) => b[1].count - a[1].count).map(([_, { name, count }]) => `<li class="copyable"><strong>(${count})</strong> ${name}</li>`).join('')}</ul>`; const colHtml = code => { const data = window.allNgss3dElements.find(d => d.code === code); return `<div class="bundle-summary-col"><h4>${data ? data.dimension : code}</h4>${listHtml(counts[code])}</div>`; }; const dciHtml = codes => { if (!codes.length) return ''; return `<div class="bundle-summary-col dci-group"><h4>Disciplinary Core Ideas</h4>${codes.map(code => { const data = window.allNgss3dElements.find(d => d.code === code); return `<div class="dci-sub-group"><h5 class="dci-sub-header">${data ? data.dimension.replace('Disciplinary Core Ideas - ', '') : code}</h5>${listHtml(counts[code])}</div>`; }).join('')}</div>`; }; const mainCodes = ['SEP', 'CCC']; const dciCodes = dims.filter(d => d.startsWith('DCI')); const connCodes = dims.filter(d => ['CNS', 'C-ETAS'].includes(d)); let mainGrid = dims.filter(d => mainCodes.includes(d)).map(colHtml).join(''); mainGrid += dciHtml(dciCodes); const connGrid = connCodes.map(colHtml).join(''); return `<div class="bundle-summary"><h3>Bundle 3D Element Summary</h3><div class="bundle-summary-grid">${mainGrid}</div>${connGrid ? `<div class="bundle-summary-connections-grid">${connGrid}</div>` : ''}</div>`; };
         const renderBundleView = () => { if (!peBundle.size) return; currentView = 'bundle'; peExplorerView.style.display = 'none'; threedExplorerView.style.display = 'none'; bundleView.style.display = 'flex'; let html = `<div class="bundle-header"><h2>Selected PEs (${peBundle.size})</h2><div class="bundle-header-actions"><button id="copy-bundle-btn" class="filter-btn">Copy</button><button id="print-bundle-btn" class="filter-btn">Print</button><button id="back-to-pe-list-btn" class="filter-btn">&larr; Back</button></div></div>`; html += renderBundleSummary(); peBundle.forEach(id => { const pe = peMap.get(id); if (pe) html += `<div class="pe-bundle-item"><h3>${pe.id}: ${pe.description}</h3><div>${createPeDetailsHtml(pe, true)}</div></div>`; }); bundleView.innerHTML = html; document.getElementById('back-to-pe-list-btn').addEventListener('click', () => { bundleView.style.display = 'none'; switchView('pe'); }); document.getElementById('print-bundle-btn').addEventListener('click', () => window.print()); document.getElementById('copy-bundle-btn').addEventListener('click', copyBundleToClipboard); updateUrlFromState(); };
-        const copyBundleToClipboard = () => { let text = `NGSS PE Bundle (${peBundle.size} PEs)\n==============================\n\n`; const summary = document.querySelector('.bundle-summary'); if (summary) text += summary.innerText + '\n\n------------------------------\n\n'; peBundle.forEach(id => { const pe = peMap.get(id); if (pe) { text += `${pe.id}: ${pe.description}\n`; ['sep', 'dci', 'ccc'].forEach(dim => { if (pe.details[dim]?.length) { text += `  ${dim.toUpperCase()}:\n`; pe.details[dim].forEach(item => { text += `    - ${item.id}: ${item.text.trim().replace(/\n/g, ' ')}\n`; }); } }); text += '\n'; } }); navigator.clipboard.writeText(text).then(() => alert('Bundle details copied!')); };
+        const copyBundleToClipboard = () => { let text = `NGSS PE Bundle (${peBundle.size} PEs)\n==============================\n\n`; const summary = document.querySelector('.bundle-summary'); if (summary) text += summary.innerText + '\n\n------------------------------\n\n'; peBundle.forEach(id => { const pe = peMap.get(id); if (pe) { text += `${pe.id}: ${pe.description}\n`; ['sep', 'dci', 'ccc'].forEach(dim => { if (pe.details[dim]?.length) { text += `  ${dim.toUpperCase()}:\n`; // FIX: Handle Array or String for Clipboard
+pe.details[dim].forEach(item => { 
+    const txt = Array.isArray(item.text) ? item.text.join(' ') : item.text.replace(/\n/g, ' ');
+    text += `    - ${item.id}: ${txt.trim()}\n`; 
+}); } }); text += '\n'; } }); navigator.clipboard.writeText(text).then(() => alert('Bundle details copied!')); };
         const renderActiveElementFilters = () => { activeElementFiltersDiv.innerHTML = [...activeElementFilters].map(code => { const el = elementMap.get(code); const name = el ? el.name.split(':')[1]?.trim() || el.name : code; return `<span class="element-filter-tag">${name} <button data-code="${code}" title="Remove filter">&times;</button></span>`; }).join(''); };
         const saveBundlesToStorage = () => localStorage.setItem('ngssSavedBundles', JSON.stringify(savedBundles));
         const loadBundlesFromStorage = () => savedBundles = JSON.parse(localStorage.getItem('ngssSavedBundles') || '{}');
@@ -860,7 +1409,11 @@
             ['sep', 'dci', 'ccc'].forEach(key => {
                 if (p.details[key] && p.details[key].length > 0) {
                     context += `### ${key.toUpperCase()}s\n`;
-                    p.details[key].forEach(item => context += `- **${item.id}:** ${item.text.replace(/\n/g, ' ')}\n`);
+                   // FIX: Handle Array or String for AI context
+					p.details[key].forEach(item => {
+						const txt = Array.isArray(item.text) ? item.text.join(' ') : item.text.replace(/\n/g, ' ');
+						context += `- **${item.id}:** ${txt}\n`;
+					});
                     context += '\n';
                 }
             });
@@ -1132,14 +1685,13 @@ The JSON object must contain:
 
             const handle3dLinkClick = (e) => {
                 const link = e.target.closest('.clickable-element-link');
-                const viewAllBtn = e.target.closest('.view-related-3d-btn');
                 const evidenceBtn = e.target.closest('.view-evidence-btn');
                 const analyzeBtn = e.target.closest('.analyze-pe-desc-btn');
                 const resetBtn = e.target.closest('.reset-analysis-btn');
                 if (evidenceBtn) { e.stopPropagation(); showEvidenceStatements(evidenceBtn.dataset.peId); return; }
                 if (analyzeBtn) { e.stopPropagation(); const peId = analyzeBtn.dataset.peId; const targetDiv = analyzeBtn.closest('.pe-details-wrapper').querySelector('.pe-description-text'); runAiAnalysis(peId, 'description', targetDiv); return; }
                 if (resetBtn) { e.stopPropagation(); const wrapper = resetBtn.closest('.pe-details-wrapper, .modal-footer'); const content = wrapper.parentElement.querySelector('.ai-editable-content'); if (content) { resetAnalysis(content.dataset.peId, content.dataset.part, content); } return; }
-                if (link || viewAllBtn) { const peId = e.target.closest('[data-pe-id]').dataset.peId; const compCode = link?.dataset.componentCode; const specCode = link?.dataset.specificCode; activePeFilter = link?.closest('.pe-details-connections') ? null : peId; switchView('3d', { component: compCode, specific: specCode }, true); }
+                if (link) { const peId = e.target.closest('[data-pe-id]').dataset.peId; const compCode = link?.dataset.componentCode; const specCode = link?.dataset.specificCode; activePeFilter = link?.closest('.pe-details-connections') ? null : peId; switchView('3d', { component: compCode, specific: specCode }, true); }
             };
             
             document.body.addEventListener('click', e => {
@@ -1177,8 +1729,8 @@ The JSON object must contain:
                 const cb = e.target.closest('.pe-bundle-checkbox');
                 if (cb) { if (cb.checked) peBundle.add(cb.dataset.peId); else peBundle.delete(cb.dataset.peId); updateBundleControls(); updateSelectAllCheckboxState(); return; }
                 handle3dLinkClick(e);
-                const row = e.target.closest('.pe-main-row');
-                if (row && !e.target.closest('.clickable-element-link, .view-related-3d-btn, .view-evidence-btn, .analyze-pe-desc-btn, .reset-analysis-btn')) {
+                 const row = e.target.closest('.pe-main-row');
+                if (row && !e.target.closest('.clickable-element-link, .view-evidence-btn, .analyze-pe-desc-btn, .reset-analysis-btn')) {
                     const wasExp = row.classList.contains('expanded');
                     const detailsRow = row.nextElementSibling;
                     const peId = row.dataset.peId;
@@ -1197,7 +1749,10 @@ The JSON object must contain:
                         row.classList.add('expanded');
                         detailsRow.classList.add('is-visible');
                         
-                        scrollToPeRow(row); // Standardized scroll
+                        // *** NEW LINE: Re-apply highlight to the newly opened details ***
+                        applySearchHighlight(detailsRow, searchInput.value.trim());
+
+                        scrollToPeRow(row); 
                     }
                     updateUrlFromState();
                 }
@@ -1218,7 +1773,7 @@ The JSON object must contain:
 
             settingsBtn.addEventListener('click', () => settingsModal.classList.add('is-visible'));
             settingsModal.addEventListener('click', e => { if (e.target === settingsModal || e.target.closest('.modal-close-btn')) settingsModal.classList.remove('is-visible'); });
-            saveSettingsBtn.addEventListener('click', () => { const key = apiKeyInput.value.trim(); if(key){ localStorage.setItem('geminiApiKey', key); initializeGenAI(); } else { localStorage.removeItem('geminiApiKey'); genAI = null; } selectedAiModel = aiModelSelect.value; localStorage.setItem('aiModel', selectedAiModel); alert('Settings saved.'); settingsModal.classList.remove('is-visible'); });
+            saveSettingsBtn.addEventListener('click', () => { const key = apiKeyInput.value.trim(); if(key){ localStorage.setItem('geminiApiKey', key); initializeGenAI(); } else { localStorage.removeItem('geminiApiKey'); genAI = null; } selectedAiModel = aiModelSelect.value; localStorage.setItem('aiModel', selectedAiModel); alert('Settings saved.'); settingsModal.classList.remove('is-visible'); updateAiFeatureVisibility(); });
             clearAiCacheBtn.addEventListener('click', async () => { if (confirm("Delete all cached AI results?")) try { await clearAllAnalyses(); alert("AI cache cleared. Refresh may be needed."); } catch (e) { alert("Error clearing AI cache."); } });
             clearDataCacheBtn.addEventListener('click', async () => { if (confirm("Delete cached app data? Next load may be slow.")) try { await clearDataCache(); alert("Data cache cleared. Please refresh."); } catch (e) { alert("Error clearing data cache."); } });
             
@@ -1268,6 +1823,7 @@ The JSON object must contain:
             selectedAiModel = localStorage.getItem('aiModel') || 'gemini-2.5-pro';
             aiModelSelect.value = selectedAiModel;
             initializeGenAI(); 
+            updateAiFeatureVisibility();
             try { peBundle = new Set(JSON.parse(localStorage.getItem('ngssPeBundle')) || []); } catch (e) { peBundle = new Set(); }
             loadBundlesFromStorage();
             await loadAndProcessData();
@@ -1283,6 +1839,362 @@ The JSON object must contain:
             updateBundleControls(); 
             applyStateFromUrl();
         };
+		
+		// --- 10. SHEPHERD.JS GUIDED TOUR IMPLEMENTATION ---
+    const startTourBtn = document.getElementById('start-tour-btn');
+
+    const initTour = async () => {
+        // 1. FORCE RESET APPLICATION STATE
+        document.getElementById('reset-app-btn').click();
+        
+        // Wait for the reset to finish rendering the DOM
+        await new Promise(r => setTimeout(r, 500));
+
+        const hasApiKey = !!localStorage.getItem('geminiApiKey');
+        
+        // --- HELPER FUNCTIONS ---
+        
+        // Robustly wait for an element to appear in the DOM
+        const waitFor = (selector) => {
+            return new Promise(resolve => {
+                const el = document.querySelector(selector);
+                if (el) return resolve(el);
+                
+                const observer = new MutationObserver(() => {
+                    const el = document.querySelector(selector);
+                    if (el) {
+                        observer.disconnect();
+                        resolve(el);
+                    }
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+                setTimeout(() => { observer.disconnect(); resolve(null); }, 5000); 
+            });
+        };
+
+        const closeAllModals = () => {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('is-visible'));
+        };
+
+        const ensurePeView = () => {
+            if(currentView !== 'pe') switchView('pe');
+        };
+
+        const tour = new Shepherd.Tour({
+            useModalOverlay: true,
+            exitOnEsc: true,
+            keyboardNavigation: false,
+            defaultStepOptions: {
+                cancelIcon: { enabled: true },
+                classes: 'shepherd-theme-custom',
+                scrollTo: { behavior: 'smooth', block: 'center' },
+                buttons: [
+                    { action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Back' },
+                    { action() { return this.next(); }, text: 'Next' }
+                ]
+            }
+        });
+
+        // --- GLOBAL ESC HANDLER ---
+        const escHandler = (e) => { if (e.key === 'Escape') tour.cancel(); };
+        document.addEventListener('keydown', escHandler);
+        const cleanup = () => {
+            document.removeEventListener('keydown', escHandler);
+            document.getElementById('reset-app-btn').click();
+        };
+        tour.on('complete', cleanup);
+        tour.on('cancel', cleanup);
+
+        // --- TOUR STEPS ---
+
+        // 1. Intro
+        tour.addStep({
+            id: 'intro',
+            title: 'Welcome',
+            text: 'This guided tour will walk you through the NGSS Explorer. We have reset your view to ensure a smooth start.',
+            buttons: [{ action() { return this.next(); }, text: 'Start' }]
+        });
+
+        // 2. Filters
+        tour.addStep({
+            id: 'filters',
+            title: 'Filtering',
+            text: 'The sidebar allows you to filter standards by Grade, Topic, or Dimension. If you have saved bundles, they appear as filters, too.',
+            attachTo: { element: '#sidebar', on: 'right' }
+        });
+
+        // 3. Search
+        tour.addStep({
+            id: 'search',
+            title: 'Global Search',
+            text: 'Use this bar to search for specific keywords across the current view.',
+            attachTo: { element: '#search-input', on: 'bottom' }
+        });
+
+        // 4. Expand Row
+        tour.addStep({
+            id: 'expand-row',
+            title: 'Expand Details',
+            text: 'Click on the <strong>first row</strong> to see the full standard details.',
+            attachTo: { element: '.pe-main-row', on: 'bottom' },
+            buttons: [{ action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Back' }],
+            beforeShowPromise: function() {
+                return new Promise(resolve => {
+                    ensurePeView();
+                    document.querySelectorAll('.pe-main-row.expanded').forEach(r => r.click());
+                    setTimeout(resolve, 300);
+                });
+            },
+            when: {
+                show: function() {
+                    const row = document.querySelector('.pe-main-row');
+                    const handler = (e) => {
+                        setTimeout(() => tour.next(), 600);
+                        row.removeEventListener('click', handler);
+                    };
+                    if(row) row.addEventListener('click', handler);
+                }
+            }
+        });
+
+        // 5. Details Explanation
+        tour.addStep({
+            id: 'details-expl',
+            title: 'Standard Details',
+            text: 'Here you see the 3D breakdown. Colored text (SEP, DCI, CCC) is interactive!',
+            attachTo: { element: '.pe-details-wrapper', on: 'top' },
+            beforeShowPromise: () => waitFor('.pe-details-wrapper')
+        });
+
+        // 6. Copy Tip
+        tour.addStep({
+            id: 'copy-tip',
+            title: 'Pro Tip: Copying',
+            text: 'Right-click on almost any text to copy. For example, right click any of this  <strong>3D elements</strong> (SEP, DCI, or CCC) text to instantly copy them to your clipboard.',
+            attachTo: { element: '.pe-details-column li', on: 'right' },
+            beforeShowPromise: () => waitFor('.pe-details-column li')
+        });
+
+        // 7. Bundle 1st Item
+        tour.addStep({
+            id: 'bundle-1',
+            title: 'Start a Bundle',
+            text: 'Check this box to select the first standard.',
+            attachTo: { element: '.pe-main-row:nth-of-type(1) .pe-bundle-checkbox', on: 'right' },
+            popperOptions: { modifiers: [{ name: 'offset', options: { offset: [0, 20] } }] },
+            buttons: [{ action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Back' }],
+            when: {
+                show: function() {
+                    const cb = document.querySelector('.pe-main-row:nth-of-type(1) .pe-bundle-checkbox');
+                    const handler = () => setTimeout(() => tour.next(), 200);
+                    if(cb) cb.addEventListener('change', handler, { once: true });
+                }
+            }
+        });
+
+        // 8. Bundle 2nd Item
+        tour.addStep({
+            id: 'bundle-2',
+            title: 'Add Another',
+            text: 'Select a <strong>second checkbox</strong> to build a group.',
+            attachTo: { element: '.pe-main-row:nth-of-type(3) .pe-bundle-checkbox', on: 'right' },
+            popperOptions: { modifiers: [{ name: 'offset', options: { offset: [0, 20] } }] },
+            buttons: [{ action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Back' }],
+            beforeShowPromise: function() {
+                return new Promise(resolve => {
+                    const rows = document.querySelectorAll('.pe-main-row');
+                    if (rows.length >= 2) {
+                        const secondRow = rows[1]; 
+                        secondRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    setTimeout(resolve, 600);
+                });
+            },
+            when: {
+                show: function() {
+                    const cbs = document.querySelectorAll('.pe-bundle-checkbox');
+                    const handler = () => setTimeout(() => tour.next(), 200);
+                    cbs.forEach(cb => cb.addEventListener('change', handler, { once: true }));
+                }
+            }
+        });
+
+        // 9. Bundle Controls
+        tour.addStep({
+            id: 'bundle-controls',
+            title: 'Bundle Toolbar',
+            text: 'The toolbar appears when items are selected. You can view bundle details, save a bundle for quick filtering, or clear the selection. Bundle details can be printed or easily copied with a button',
+            attachTo: { element: '#bundle-controls', on: 'bottom' }
+        });
+
+        // 10. Switch to 3D
+        tour.addStep({
+            id: 'go-3d',
+            title: '3D Explorer',
+            text: 'Click the tab to switch to the 3D Element view.',
+            attachTo: { element: '#nav-threed-explorer', on: 'bottom' },
+            buttons: [{ action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Back' }],
+            when: {
+                show: function() {
+                    const btn = document.getElementById('nav-threed-explorer');
+                    const handler = () => setTimeout(() => tour.next(), 300);
+                    btn.addEventListener('click', handler, { once: true });
+                }
+            }
+        });
+
+        // 11. Click 3D Item
+        tour.addStep({
+            id: 'click-3d',
+            title: 'Interactive Elements',
+            text: 'Click on any element code to see where it is used in a PE, or if it is used at all.',
+            attachTo: { element: '#threed-explorer-table .item', on: 'top' },
+            buttons: [{ action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Back' }],
+            beforeShowPromise: function() {
+                return new Promise(resolve => {
+                    closeAllModals();
+                    document.getElementById('threed-explorer-table').scrollIntoView();
+                    setTimeout(resolve, 300);
+                });
+            },
+            when: {
+                show: function() {
+                    const items = document.querySelectorAll('#threed-explorer-table .item');
+                    const handler = () => setTimeout(() => tour.next(), 500);
+                    items.forEach(i => i.addEventListener('click', handler, { once: true }));
+                }
+            }
+        });
+
+        // 12. Modal View (CONSOLIDATED STEP)
+        tour.addStep({
+            id: 'modal-view',
+            title: 'Usage Modal',
+            text: 'This modal lists every PE that uses the element you clicked.<br><br>• Links take you back to the PE details.<br>• Click <strong>Next</strong> to close this modal.',
+            attachTo: { element: '#related-pe-modal .modal-content', on: 'right' },
+            buttons: [{ 
+                text: 'Next', 
+                action() { 
+                    closeAllModals(); 
+                    return this.next(); 
+                } 
+            }],
+            beforeShowPromise: function() {
+                return new Promise(resolve => {
+                    const modal = document.getElementById('related-pe-modal');
+                    // If user navigated back, we need to re-open the modal
+                    if (!modal.classList.contains('is-visible')) {
+                        const item = document.querySelector('#threed-explorer-table .item');
+                        if(item) item.click();
+                    }
+                    setTimeout(resolve, 300);
+                });
+            }
+        });
+
+        // 13. Matrix View Nav
+        tour.addStep({
+            id: 'go-matrix',
+            title: 'Matrix View',
+            text: 'Click here to access the custom Matrix builder.',
+            attachTo: { element: '#nav-matrix-view', on: 'bottom' },
+            buttons: [{ action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Back' }],
+            advanceOn: { selector: '#nav-matrix-view', event: 'click' }
+        });
+
+        // 14. Matrix Explanation
+        tour.addStep({
+            id: 'explain-matrix',
+            title: 'Custom Heatmaps',
+            text: 'Use the <strong>Select/Refine Rows</strong> button to choose specific elements and visualize their progression.<br><br><em>Note: Layouts are still being optimized for Middle & High School.</em>',
+            attachTo: { element: '#select-matrix-rows-btn', on: 'bottom' },
+            buttons: [{ action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Back' }, { action() { return this.next(); }, text: 'Next' }],
+            beforeShowPromise: () => waitFor('#select-matrix-rows-btn')
+        });
+		
+        // 16. Prepare for Evidence
+        tour.addStep({
+            id: 'prep-evidence',
+            title: 'Evidence Statements',
+            text: 'Let\'s view the official Evidence Statements. Heading back to the main list...',
+            buttons: [{ action() { return this.next(); }, text: 'Go' }],
+            beforeShowPromise: function() {
+                return new Promise(resolve => {
+                    ensurePeView();
+                    document.getElementById('reset-app-btn').click();
+                    setTimeout(async () => {
+                        const row = document.querySelector('.pe-main-row');
+                        if(row) {
+                            row.click();
+                            await waitFor('.view-evidence-btn');
+                            row.scrollIntoView({block: 'center', behavior: 'smooth'});
+                        }
+                        resolve();
+                    }, 500);
+                });
+            }
+        });
+
+        // 16. Click Evidence Button
+        tour.addStep({
+            id: 'click-evidence',
+            title: 'View Evidence',
+            text: 'Click the **View Evidence Statements** button.',
+            attachTo: { element: '.view-evidence-btn', on: 'top' },
+            buttons: [{ action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Back' }],
+            advanceOn: { selector: '.view-evidence-btn', event: 'click' },
+            beforeShowPromise: function() {
+                closeAllModals();
+                return Promise.resolve();
+            }
+        });
+
+        // 18. Explain Evidence
+        tour.addStep({
+            id: 'explain-evidence',
+            title: 'Official Data',
+            text: 'These are the official evidence statements from NGSS. They are raw data.',
+            attachTo: { element: '#evidence-statements-modal .modal-body', on: 'right' },
+            beforeShowPromise: function() {
+                return new Promise(resolve => {
+                     const modal = document.getElementById('evidence-statements-modal');
+                     if (!modal.classList.contains('is-visible')) {
+                         document.querySelector('.view-evidence-btn').click();
+                     }
+                     setTimeout(resolve, 300);
+                });
+            }
+        });
+
+        // 19. Conditional AI
+        if (hasApiKey) {
+            tour.addStep({
+                id: 'ai-features',
+                title: 'AI Features',
+                text: 'Use <strong>Deconstruct</strong> to break this down into learning facets, or <strong>Analyze</strong> for context.',
+                attachTo: { element: '.modal-footer .ai-controls', on: 'top' },
+                buttons: [{ 
+                    text: 'Finish', 
+                    action() { closeAllModals(); tour.complete(); } 
+                }]
+            });
+        } else {
+            tour.addStep({
+                id: 'no-ai',
+                title: 'Enable AI',
+                text: 'To unlock Deconstruction and Analysis, add a free API Key in <strong>Settings</strong>.',
+                attachTo: { element: '.ai-controls', on: 'top' },
+                buttons: [{ 
+                    text: 'Finish', 
+                    action() { closeAllModals(); tour.complete(); } 
+                }]
+            });
+        }
+
+        tour.start();
+    };
+
+    startTourBtn.addEventListener('click', initTour);
 
         initializeApp();
     });
