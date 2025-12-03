@@ -87,9 +87,10 @@
 					]
 				  },
 				  {
-					"id": "Connections to Nature of Science: Scientific Knowledge is Based on Empirical Evidence",
-					"text": [
-					  "Science knowledge is based upon logical and conceptual connections between evidence and explanations."
+						 "id":"Connections to Nature of Science",
+						 "text":[
+							"Scientific Knowledge is Based on Empirical Evidence",
+							"Science knowledge is based upon logical and conceptual connections between evidence and explanations."
 					]
 				  }
 				],
@@ -166,9 +167,10 @@
 					]
 				  },
 				  {
-					"id": "Connections to Engineering, Technology, and Applications of Science: Interdependence of Science, Engineering, and Technology",
-					"text": [
-					  "Engineering advances have led to important discoveries in virtually every field of science, and scientific discoveries have led to the development of entire industries and engineered systems."
+					"id":"Connections to Engineering, Technology, and Applications of Science",
+						 "text":[
+							"Interdependence of Science, Engineering, and Technology",
+							"Engineering advances have led to important discoveries in virtually every field of science, and scientific discoveries have led to the development of entire industries and engineered systems."
 					]
 				  },
 				  {
@@ -297,9 +299,10 @@
 					]
 				  },
 				  {
-					"id": "Connections to Nature of Science: Science Models, Laws, Mechanisms, and Theories Explain Natural Phenomena",
+					"id": "Connections to Nature of Science",
 					"text": [
-					  "Laws are regularities or mathematical descriptions of natural phenomena."
+					  	"Science Models, Laws, Mechanisms, and Theories Explain Natural Phenomena",
+						"Laws are regularities or mathematical descriptions of natural phenomena."
 					]
 				  }
 				],
@@ -307,13 +310,8 @@
 				  {
 					"id": "PS1.B: Chemical Reactions",
 					"text": [
-					  "Substances react chemically in characteristic ways. In a chemical process, the atoms that make up the original substances are regrouped into different molecules, and these new substances have different properties from those of the reactants. (MS-PS1-2), (MS-PS1-3), (MS-PS1-5)"
-					]
-				  },
-				  {
-					"id": "PS1.B: Chemical Reactions",
-					"text": [
-					  "The total number of each type of atom is conserved, and thus the mass does not change. (MS-PS1-5)"
+				  		"Substances react chemically in characteristic ways. In a chemical process, the atoms that make up the original substances are regrouped into different molecules, and these new substances have different properties from those of the reactants. (MS-PS1-2), (MS-PS1-3), (MS-PS1-5)",
+						"The total number of each type of atom is conserved, and thus the mass does not change. (MS-PS1-5)"
 					]
 				  }
 				],
@@ -535,9 +533,10 @@
 					]
 				  },
 				  {
-					"id": "Connections to Engineering, Technology, and Applications of Science: Influence of Science, Engineering, and Technology on Society and the Natural World",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
-					  "The uses of technologies and any limitations on their use are driven by individual or societal needs, desires, and values; by the findings of scientific research; and by differences in such factors as climate, natural resources, and economic conditions."
+					  	"Influence of Science, Engineering, and Technology on Society and the Natural World",
+						"The uses of technologies and any limitations on their use are driven by individual or societal needs, desires, and values; by the findings of scientific research; and by differences in such factors as climate, natural resources, and economic conditions."
 					]
 				  }
 				],
@@ -581,9 +580,10 @@
 					]
 				  },
 				  {
-					"id": "Connections to Nature of Science: Scientific Knowledge is Based on Empirical Evidence",
-					"text": [
-					  "Science knowledge is based upon logical and conceptual connections between evidence and explanations."
+							 "id":"Connections to Nature of Science",
+						 "text":[
+							"Scientific Knowledge is Based on Empirical Evidence",
+							"Science knowledge is based upon logical and conceptual connections between evidence and explanations."
 					]
 				  }
 				],
@@ -704,9 +704,10 @@
 					]
 				  },
 				  {
-					"id": "Connections to Nature of Science: Scientific Knowledge is Based on Empirical Evidence",
-					"text": [
-					  "Science knowledge is based upon logical and conceptual connections between evidence and explanations."
+					 "id":"Connections to Nature of Science",
+					 "text":[
+						"Scientific Knowledge is Based on Empirical Evidence",
+						"Science knowledge is based upon logical and conceptual connections between evidence and explanations."
 					]
 				  }
 				],
@@ -1086,9 +1087,10 @@
 					]
 				  },
 				  {
-					"id": "Connections to Nature of Science: Scientific Knowledge is Based on Empirical Evidence",
-					"text": [
-					  "Science knowledge is based upon logical and conceptual connections between evidence and explanations"
+					"id":"Connections to Nature of Science",
+					 "text":[
+						"Scientific Knowledge is Based on Empirical Evidence",
+						"Science knowledge is based upon logical and conceptual connections between evidence and explanations"
 					]
 				  }
 				],
@@ -1157,9 +1159,10 @@
 					]
 				  },
 				  {
-					"id": "Connections to Nature of Science: Scientific Knowledge is Based on Empirical Evidence",
-					"text": [
-					  "Science knowledge is based upon logical and conceptual connections between evidence and explanations"
+					"id":"Connections to Nature of Science",
+					 "text":[
+						"Scientific Knowledge is Based on Empirical Evidence",
+						"Science knowledge is based upon logical and conceptual connections between evidence and explanations"
 					]
 				  }
 				],
@@ -1318,9 +1321,10 @@
 					]
 				  },
 				  {
-					"id": "Connections to Nature of Science: Scientific Knowledge is Based on Empirical Evidence",
-					"text": [
-					  "Science knowledge is based upon logical and conceptual connections between evidence and explanations."
+					"id":"Connections to Nature of Science",
+					 "text":[
+						"Scientific Knowledge is Based on Empirical Evidence",
+						"Science knowledge is based upon logical and conceptual connections between evidence and explanations."
 					]
 				  }
 				],
@@ -1458,15 +1462,17 @@
 					]
 				  },
 				  {
-					"id": "Connections to Engineering, Technology, and Applications of Science: Influence of Science, Engineering, and Technology on Society and the Natural World",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
-					  "Technologies extend the measurement, exploration, modeling, and computational capacity of scientific investigations."
+					  	"Influence of Science, Engineering, and Technology on Society and the Natural World",
+						"Technologies extend the measurement, exploration, modeling, and computational capacity of scientific investigations."
 					]
 				  },
 				  {
-					"id": "Connections to Nature of Science: Science is a Human Endeavor",
+					"id": "Connections to Nature of Science",
 					"text": [
-					  "Advances in technology influence the progress of science and science has influenced advances in technology."
+					  	"Science is a Human Endeavor",
+						"Advances in technology influence the progress of science and science has influenced advances in technology."
 					]
 				  }
 				],
@@ -2928,9 +2934,10 @@
 					  ]
 					},
 					{
-					  "id": "Scientific Knowledge Assumes an Order and Consistency in Natural Systems",
-					  "text": [
-						"Science assumes that objects and events in natural systems occur in consistent patterns that are understandable through measurement and observation."
+					  "id":"Connections to Nature of Science",
+						 "text":[
+							"Scientific Knowledge Assumes an Order and Consistency in Natural Systems",
+							"Science assumes that objects and events in natural systems occur in consistent patterns that are understandable through measurement and observation."
 					  ]
 					}
 				  ],
@@ -3023,9 +3030,10 @@
 					  ]
 					},
 					{
-					  "id": "Scientific Knowledge Assumes an Order and Consistency in Natural Systems",
-					  "text": [
-						"Science assumes that objects and events in natural systems occur in consistent patterns that are understandable through measurement and observation."
+					  "id":"Connections to Nature of Science",
+						 "text":[
+							"Scientific Knowledge Assumes an Order and Consistency in Natural Systems",
+							"Science assumes that objects and events in natural systems occur in consistent patterns that are understandable through measurement and observation."
 					  ]
 					}
 				  ],
@@ -3091,9 +3099,10 @@
 					  ]
 					},
 					{
-					  "id": "Interdependence of Science, Engineering, and Technology",
-					  "text": [
-						"Engineering advances have led to important discoveries in virtually every field of science and scientific discoveries have led to the development of entire industries and engineered systems."
+					  "id":"Connections to Engineering, Technology, and Applications of Science",
+						 "text":[
+							"Interdependence of Science, Engineering, and Technology",
+							"Engineering advances have led to important discoveries in virtually every field of science and scientific discoveries have led to the development of entire industries and engineered systems."
 					  ]
 					}
 				  ],
@@ -3368,9 +3377,10 @@
 					  ]
 					},
 					{
-					  "id": "Scientific Knowledge is Open to Revision in Light of New Evidence",
+					  "id": "Connections to the Nature of Science"
 					  "text": [
-						"Science findings are frequently revised and/or reinterpreted based on new evidence."
+						"Scientific Knowledge is Open to Revision in Light of New Evidence",
+					  	"Science findings are frequently revised and/or reinterpreted based on new evidence."
 					  ]
 					}
 				  ],
@@ -3714,8 +3724,9 @@
 					  ]
 					},
 					{
-					  "id": "Influence of Science, Engineering, and Technology on Society and the Natural World",
+					  "id": "Connections to Engineering, Technology, and Applications of Science",
 					  "text": [
+					  	"Influence of Science, Engineering, and Technology on Society and the Natural World",
 						"All human activity draws on natural resources and has both short and long-term consequences, positive as well as negative, for the health of people and the natural environment."
 					  ]
 					}
@@ -3776,8 +3787,9 @@
 					  ]
 					},
 					{
-					  "id": "Influence of Science, Engineering, and Technology on Society and the Natural World",
+					  "id": "Connections to Engineering, Technology, and Applications of Science",
 					  "text": [
+					  	"Influence of Science, Engineering, and Technology on Society and the Natural World",
 						"The uses of technologies and any limitations on their use are driven by individual or societal needs, desires, and values; by the findings of scientific research; and by differences in such factors as climate, natural resources, and economic conditions. Thus technology use varies from region to region and over time."
 					  ]
 					}
@@ -3841,8 +3853,9 @@
 					  ]
 					},
 					{
-					  "id": "Influence of Science, Engineering, and Technology on Society and the Natural World",
+					  "id": "Connections to Engineering, Technology, and Applications of Science",
 					  "text": [
+					  	"Influence of Science, Engineering, and Technology on Society and the Natural World",
 						"The uses of technologies and any limitations on their use are driven by individual or societal needs, desires, and values; by the findings of scientific research; and by differences in such factors as climate, natural resources, and economic conditions. Thus technology use varies from region to region and over time."
 					  ]
 					}
@@ -3897,14 +3910,16 @@
 					  ]
 					},
 					{
-					  "id": "Influence of Science, Engineering, and Technology on Society and the Natural World",
+					  "id": "Connections to Engineering, Technology, and Applications of Science",
 					  "text": [
+					  	"Influence of Science, Engineering, and Technology on Society and the Natural World",
 						"All human activity draws on natural resources and has both short and long-term consequences, positive as well as negative, for the health of people and the natural environment."
 					  ]
 					},
 					{
-					  "id": "Science Addresses Questions About the Natural and Material World",
+					  "id": "Connections to the Nature of Science",
 					  "text": [
+						"Science Addresses Questions About the Natural and Material World",
 						"Scientific knowledge can describe the consequences of actions but does not necessarily prescribe the decisions that society takes."
 					  ]
 					}
@@ -4071,8 +4086,9 @@
 				  ],
 				  "ccc": [
 					{
-					  "id": "Influence of Science, Engineering, and Technology on Society and the Natural World",
+					  "id": "Connections to Engineering, Technology, and Applications of Science",
 					  "text": [
+					  	"Influence of Science, Engineering, and Technology on Society and the Natural World",
 						"All human activity draws on natural resources and has both short and long-term consequences, positive as well as negative, for the health of people and the natural environment.",
 						"The uses of technologies and limitations on their use are driven by individual or societal needs, desires, and values; by the findings of scientific research; and by differences in such factors as climate, natural resources, and economic conditions."
 					  ]
