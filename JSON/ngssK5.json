@@ -673,8 +673,9 @@
 					]
 				  },
 				  {
-					"id": "Influence of Engineering, Technology, and Science on Society and the Natural World",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
+					  "Influence of Engineering, Technology, and Science on Society and the Natural World",
 					  "People depend on various technologies in their lives; human life would be very different without technology."
 					]
 				  }
@@ -1003,8 +1004,9 @@
 				],
 				"ccc": [
 				  {
-					"id": "Connections to Engineering, Technology, and Applications of Science: Influence of Engineering, Technology, and Science on Society and the Natural World",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
+					  "Influence of Engineering, Technology, and Science on Society and the Natural World",
 					  "People depend on various technologies in their lives; human life would be very different without technology."
 					]
 				  }
@@ -1112,8 +1114,9 @@
 					]
 				  },
 				  {
-					"id": "Influence of Engineering, Technology, and Science on Society and the Natural World",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
+					  "Influence of Engineering, Technology, and Science on Society and the Natural World",
 					  "Every human-made product is designed by applying some knowledge of the natural world and is built using materials derived from the natural world."
 					]
 				  }
@@ -2179,14 +2182,16 @@
 					]
 				  },
 				  {
-					"id": "Influence of Engineering, Technology, and Science on Society and the Natural World",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
+					  "Influence of Engineering, Technology, and Science on Society and the Natural World",
 					  "Developing and using technology has impacts on the natural world."
 					]
 				  },
 				  {
-					"id": "Science Addresses Questions About the Natural and Material World",
+					"id": "Connections to Nature of Science",
 					"text": [
+					  "Science Addresses Questions About the Natural and Material World",
 					  "Scientists study the natural and material world."
 					]
 				  }
@@ -2762,8 +2767,9 @@
 				],
 				"ccc": [
 				  {
-					"id": "Interdependence of Science, Engineering, and Technology",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
+					  "Interdependence of Science, Engineering, and Technology",
 					  "Scientific discoveries about the natural world can often lead to new and improved technologies, which are developed through the engineering design process."
 					]
 				  }
@@ -3400,8 +3406,9 @@
 					]
 				  },
 				  {
-					"id": "Interdependence of Science, Engineering, and Technology",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
+					  "Interdependence of Science, Engineering, and Technology",
 					  "Knowledge of relevant scientific concepts and research findings is important in engineering."
 					]
 				  }
@@ -3673,8 +3680,9 @@
 					]
 				  },
 				  {
-					"id": "Influence of Engineering, Technology, and Science on Society and the Natural World",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
+					  "Influence of Engineering, Technology, and Science on Society and the Natural World",
 					  "Engineers improve existing technologies or develop new ones to increase their benefits (e.g., better artificial limbs), decrease known risks (e.g., seatbelts in cars), and meet societal demands (e.g., cell phones)."
 					]
 				  },
@@ -3976,14 +3984,16 @@
 					]
 				  },
 				  {
-					"id": "Influence of Engineering, Technology, and Science on Society and the Natural World",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
+					  "Influence of Engineering, Technology, and Science on Society and the Natural World",
 					  "Engineers improve existing technologies or develop new ones."
 					]
 				  },
 				  {
-					"id": "Science is a Human Endeavor",
+					"id": "Connections to the Nature of Science",
 					"text": [
+					  "Science is a Human Endeavor",
 					  "Most scientists and engineers work in teams.",
 					  "Science affects everyday life."
 					]
@@ -4216,8 +4226,9 @@
 					]
 				  },
 				  {
-					"id": "Interdependence of Science, Engineering, and Technology",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
+					  "Interdependence of Science, Engineering, and Technology",
 					  "Knowledge of relevant scientific concepts and research findings is important in engineering."
 					]
 				  }
@@ -4717,15 +4728,12 @@
 					]
 				  },
 				  {
-					"id": "Interdependence of Science, Engineering, and Technology",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
-					  "Knowledge of relevant scientific concepts and research findings is important in engineering."
-					]
-				  },
-				  {
-					"id": "Influence of Engineering, Technology, and Science on Society and the Natural World",
-					"text": [
-					  "Over time, people's needs and wants change, as do their demands for new and improved technologies."
+					"Interdependence of Science, Engineering, and Technology",
+					"Knowledge of relevant scientific concepts and research findings is important in engineering.",
+					"Influence of Engineering, Technology, and Science on Society and the Natural World",
+					"Over time, people's needs and wants change, as do their demands for new and improved technologies."
 					]
 				  }
 				],
@@ -4787,8 +4795,9 @@
 					]
 				  },
 				  {
-					"id": "Influence of Engineering, Technology, and Science on Society and the Natural World",
+					"id": "Connections to Engineering, Technology, and Applications of Science",
 					"text": [
+					  "Influence of Engineering, Technology, and Science on Society and the Natural World",
 					  "Engineers improve existing technologies or develop new ones to increase their benefits, to decrease known risks, and to meet societal demands."
 					]
 				  }
