@@ -498,7 +498,20 @@
                 };
                 
                 this.state.allNgss3dElements.forEach(dim => {
-                    (dim.elements || dim.core_ideas).forEach(el => {
+                    let elementsToProcess = [];
+                    if (dim.elements) {
+                        elementsToProcess = dim.elements;
+                    } else if (dim.core_ideas) {
+                        elementsToProcess = dim.core_ideas;
+                    } else if (dim.understandings) {
+                        dim.understandings.forEach(understanding => {
+                            if (understanding.elements) {
+                                elementsToProcess.push(...understanding.elements);
+                            }
+                        });
+                    }
+
+                    elementsToProcess.forEach(el => {
                          const processProgressions = (item) => {
                              if(item.progressions){
                                  Object.values(item.progressions).forEach(pArr=>(pArr||[]).forEach(i=>{
@@ -1195,35 +1208,59 @@
                     }); 
                 }); 
 
+                const groupedElements = { PE: [], SEP: [], DCI: [], CCC: [] };
+                const groupNames = { PE: "Performance Expectations", SEP: "Science and Engineering Practices", DCI: "Disciplinary Core Ideas", CCC: "Crosscutting Concepts & Connections" };
+
+                allUnique3DElements.forEach((elementData, code) => {
+                    if (App.dataMaps.peMap.has(code)) {
+                        groupedElements.PE.push([code, elementData]);
+                    } else {
+                        const dim = elementData.dimension || '';
+                        if (dim.startsWith('SEP')) groupedElements.SEP.push([code, elementData]);
+                        else if (dim.startsWith('DCI')) groupedElements.DCI.push([code, elementData]);
+                        else groupedElements.CCC.push([code, elementData]);
+                    }
+                });
+
+                for (const key in groupedElements) {
+                    groupedElements[key].sort((a, b) => a[0].localeCompare(b[0]));
+                }
+
                 let tableHTML = `<table class="w-full border-collapse"><thead><tr class="bg-gray-200 dark:bg-gray-800"><th class="sticky p-2 border border-gray-300 dark:border-gray-700 text-left top-0 bg-gray-200 dark:bg-gray-800">3D Element / PE</th>`;
                 selectedPlanners.forEach(p => { tableHTML += `<th class="p-2 border border-gray-300 dark:border-gray-700 text-left sticky top-0 bg-gray-200 dark:bg-gray-800">${p.title}</th>`; });
                 tableHTML += `</tr></thead><tbody>`;
 
-                const sortedElements = Array.from(allUnique3DElements.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-                sortedElements.forEach(([code, elementData]) => {
-                    const desc = elementData.text || elementData.description || '';
-                    const elementTooltip = desc.replace(/"/g, '&quot;');
-                    tableHTML += `<tr class="border-b dark:border-gray-700">
-                        <td class="p-2 border border-gray-300 dark:border-gray-700 align-top font-semibold sticky left-0 bg-gray-50 dark:bg-gray-800/50 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)] dark:shadow-[4px_0_5px_-2px_rgba(0,0,0,0.2)]">
-                            <strong data-tooltip="${elementTooltip}">${code}</strong><br><small class="font-normal text-gray-600 dark:text-gray-400">${desc}</small>
-                        </td>`;
-                    selectedPlanners.forEach(planner => {
-                        const entriesForPlanner = (allTrackedElements.get(code) || []).filter(e => e.plannerId === planner.id);
-                        let cellContent = '<div class="flex flex-col space-y-2">';
-                        if (entriesForPlanner.length > 0) {
-                            cellContent += entriesForPlanner.map(e => {
-                               const tooltip = `${e.lessonSetTitle ? `${e.lessonSetTitle} &rarr; ` : ''}${e.lessonTitle}`;
-                               const badgeColor = App.constants.statusBadgeClasses[e.status] || 'bg-gray-200 dark:bg-gray-600';
-                               return `<div class="flex items-center gap-2 text-sm">
-                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold flex-shrink-0 ${badgeColor}" data-tooltip="${tooltip.replace(/"/g, '&quot;')}">${e.status}</span>
-                                        <span class="truncate" title="${tooltip}">${tooltip}</span>
-                                       </div>`;
-                            }).join('');
-                        }
-                        cellContent += '</div>';
-                        tableHTML += `<td class="p-2 border border-gray-300 dark:border-gray-700 align-top">${cellContent}</td>`;
-                    });
-                    tableHTML += `</tr>`;
+                Object.keys(groupedElements).forEach(groupKey => {
+                    const elements = groupedElements[groupKey];
+                    if (elements.length > 0) {
+                        tableHTML += `<tr><th colspan="${selectedPlanners.length + 1}" class="p-2 text-left bg-gray-100 dark:bg-gray-900/50 font-bold text-lg text-gray-700 dark:text-gray-300 border-t-4 border-b-2 border-gray-300 dark:border-gray-600">${groupNames[groupKey]}</th></tr>`;
+                        
+                        elements.forEach(([code, elementData]) => {
+                            const desc = elementData.text || elementData.description || '';
+                            const elementTooltip = desc.replace(/"/g, '&quot;');
+                            tableHTML += `<tr class="border-b dark:border-gray-700">
+                                <td class="p-2 border border-gray-300 dark:border-gray-700 align-top font-semibold sticky left-0 bg-gray-50 dark:bg-gray-800/50 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)] dark:shadow-[4px_0_5px_-2px_rgba(0,0,0,0.2)]">
+                                    <strong data-tooltip="${elementTooltip}">${code}</strong><br><small class="font-normal text-gray-600 dark:text-gray-400">${desc}</small>
+                                </td>`;
+                            selectedPlanners.forEach(planner => {
+                                const entriesForPlanner = (allTrackedElements.get(code) || []).filter(e => e.plannerId === planner.id);
+                                let cellContent = '<div class="flex flex-col space-y-2">';
+                                if (entriesForPlanner.length > 0) {
+                                    cellContent += entriesForPlanner.map(e => {
+                                       const tooltip = `${e.lessonSetTitle ? `${e.lessonSetTitle} &rarr; ` : ''}${e.lessonTitle}`;
+                                       const badgeColor = App.constants.statusBadgeClasses[e.status] || 'bg-gray-200 dark:bg-gray-600';
+                                       return `<div class="flex items-center gap-2 text-sm">
+                                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold flex-shrink-0 ${badgeColor}" data-tooltip="${tooltip.replace(/"/g, '&quot;')}">${e.status}</span>
+                                                <span class="truncate" title="${tooltip}">${tooltip}</span>
+                                               </div>`;
+                                    }).join('');
+                                }
+                                cellContent += '</div>';
+                                tableHTML += `<td class="p-2 border border-gray-300 dark:border-gray-700 align-top">${cellContent}</td>`;
+                            });
+                            tableHTML += `</tr>`;
+                        });
+                    }
                 });
                 tableHTML += `</tbody></table>`;
                 tableContainer.innerHTML = tableHTML;
@@ -1257,19 +1294,43 @@
                 });
             },
             createStorylineLessonHTML(lesson) {
-                 const badgeHTML = Object.entries(lesson.trackingData || {}).map(([code, status]) => {
+                 const groupedBadges = { PE: [], SEP: [], DCI: [], CCC: [] };
+
+                 Object.entries(lesson.trackingData || {}).forEach(([code, status]) => {
                     const elementData = App.dataMaps.ngss3dMap.get(code) || App.dataMaps.peMap.get(code);
                     const desc = elementData ? (elementData.text || elementData.description) : 'Unknown Element';
                     const tooltip = `<b>${code} (${status})</b>: ${desc.replace(/"/g, '&quot;')}`;
                     const badgeColor = App.constants.statusBadgeClasses[status] || 'bg-gray-200 dark:bg-gray-600';
-                    return `<span class="px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${badgeColor}" data-tooltip="${tooltip}">${code}</span>`;
-                }).join('');
+                    const badgeHTML = `<span class="px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${badgeColor}" data-tooltip="${tooltip}">${code}</span>`;
+
+                    if (App.dataMaps.peMap.has(code)) {
+                        groupedBadges.PE.push(badgeHTML);
+                    } else if (elementData) {
+                        const dim = elementData.dimension || '';
+                        if (dim.startsWith('SEP')) groupedBadges.SEP.push(badgeHTML);
+                        else if (dim.startsWith('DCI')) groupedBadges.DCI.push(badgeHTML);
+                        else groupedBadges.CCC.push(badgeHTML);
+                    }
+                });
+
+                let finalHTML = '';
+                const groupOrder = ['PE', 'DCI', 'SEP', 'CCC'];
+                const groupNames = { PE: 'PEs', DCI: 'DCIs', SEP: 'SEPs', CCC: 'CCCs' };
+
+                groupOrder.forEach(key => {
+                    if (groupedBadges[key].length > 0) {
+                        finalHTML += `<div class="flex items-start gap-2 mb-1.5">
+                                        <strong class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 w-10 flex-shrink-0 pt-0.5">${groupNames[key]}:</strong>
+                                        <div class="flex flex-wrap gap-1.5">${groupedBadges[key].join('')}</div>
+                                      </div>`;
+                    }
+                });
 
                 return `
                     <div class="p-3 border dark:border-gray-700 bg-white dark:bg-gray-800/50">
                         <h4 class="font-semibold">${lesson.title}</h4>
-                        <div class="flex flex-wrap gap-1.5 mt-2">
-                            ${badgeHTML || '<p class="text-xs text-gray-500 dark:text-gray-400">No elements tracked.</p>'}
+                        <div class="mt-2 space-y-2">
+                            ${finalHTML || '<p class="text-xs text-gray-500 dark:text-gray-400">No elements tracked.</p>'}
                         </div>
                     </div>
                 `;
@@ -1281,11 +1342,15 @@
                 document.getElementById('summary-subtitle').textContent = planner.title;
                 const container = document.getElementById('summary-content');
                 container.innerHTML = `
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow"><h3 class="font-bold mb-2">3D Element Status Distribution</h3><canvas id="status-chart"></canvas></div>
                         <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow"><h3 class="font-bold mb-2">Dimension Usage Balance</h3><canvas id="dimension-chart"></canvas></div>
+                        <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow"><h3 class="font-bold mb-2">Assessment Scope</h3><canvas id="scope-chart"></canvas></div>
                     </div>
-                     <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow"><h3 class="font-bold mb-2">Assessment Scope</h3><canvas id="scope-chart"></canvas></div>
+                     <div class="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+                        <h3 class="font-bold text-lg mb-4">Element Coverage Report</h3>
+                        <div id="element-coverage-report" class="space-y-6"></div>
+                    </div>
                 `;
 
                 const allLessons = [];
@@ -1341,6 +1406,69 @@
                     },
                     options: { responsive: true }
                 });
+                
+                const coverageReportContainer = document.getElementById('element-coverage-report');
+                const allColumns = App.utils.gatherColumns(planner.gradeBand);
+                const coverageMap = new Map();
+
+                allLessons.forEach(lesson => {
+                    Object.entries(lesson.trackingData || {}).forEach(([code, status]) => {
+                        if (!App.dataMaps.ngss3dMap.has(code)) return;
+                        if (!coverageMap.has(code)) {
+                            coverageMap.set(code, { I: 0, D: 0, A: 0 });
+                        }
+                        coverageMap.get(code)[status]++;
+                    });
+                });
+
+                let reportHTML = '';
+                const groupOrder = ['dci', 'sep', 'ccc'];
+                groupOrder.forEach(groupKey => {
+                    const group = allColumns[groupKey];
+                    if (group.cols.length === 0) return;
+
+                    reportHTML += `<div class="mb-4">
+                                    <h4 class="text-xl font-semibold border-b-2 pb-2 mb-3 dark:border-gray-600">${group.name}</h4>`;
+                    
+                    group.cols.forEach(parentCol => {
+                        const parentInfo = App.dataMaps.parentToChildrenMap.get(parentCol.code);
+                        if (!parentInfo) return;
+                        
+                        reportHTML += `<div class="mb-4 pl-2">
+                                        <h5 class="font-bold text-gray-800 dark:text-gray-200">${parentInfo.name}</h5>
+                                        <ul class="list-disc pl-5 mt-1 space-y-2 text-sm">`;
+                        
+                        const gradeBandProgressions = parentInfo.children[0]?.allProgressions?.[planner.gradeBand] || [];
+                        const validCodesForBand = new Set(gradeBandProgressions.map(p => p.code));
+                        const childrenForBand = parentInfo.children.filter(child => validCodesForBand.has(child.code));
+
+                        if (childrenForBand.length === 0) {
+                            reportHTML += `<li class="text-gray-500">No elements for this grade band.</li>`;
+                        } else {
+                            childrenForBand.forEach(child => {
+                                const coverage = coverageMap.get(child.code);
+                                let coverageString = '';
+                                if (coverage) {
+                                    coverageString = Object.entries(coverage)
+                                        .filter(([, count]) => count > 0)
+                                        .map(([status, count]) => `<span class="px-2 py-0.5 rounded-full text-xs font-bold ${App.constants.statusBadgeClasses[status]}">${status}: ${count}</span>`)
+                                        .join(' ');
+                                } else {
+                                    coverageString = `<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">Not Covered</span>`;
+                                }
+                                reportHTML += `<li>
+                                                <div class="flex justify-between items-center flex-wrap gap-2">
+                                                    <span><strong>${child.code}:</strong> ${child.text}</span>
+                                                    <span class="flex-shrink-0 ml-4 text-right flex flex-wrap gap-1.5">${coverageString}</span>
+                                                </div>
+                                               </li>`;
+                            });
+                        }
+                        reportHTML += `</ul></div>`;
+                    });
+                    reportHTML += `</div>`;
+                });
+                coverageReportContainer.innerHTML = reportHTML;
 
                 App.utils.showView('summary-view');
             }
