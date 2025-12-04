@@ -16,7 +16,7 @@
         }
     </script>
     <style>
-        /* A few helper styles for sticky table headers and custom scrollbars */
+        /* Custom Scrollbars */
         #planner-table-container, .modal-content, #progression-table-view, #summary-content, #popover-content {
             scrollbar-width: thin;
             scrollbar-color: #a0aec0 #e2e8f0;
@@ -33,9 +33,9 @@
             border-radius: 10px;
             border: 2px solid #e2e8f0;
         }
-		#pe-modal-list {
-		    overflow-y: auto;
-		}
+		#pe-modal-list { overflow-y: auto; }
+        
+        /* Dark Mode Scrollbars */
         .dark #planner-table-container, .dark .modal-content, .dark #progression-table-view, .dark #summary-content, .dark #popover-content {
             scrollbar-color: #4a5568 #2d3748;
         }
@@ -47,46 +47,80 @@
             border-color: #2d3748;
         }
         
-        #planner-table-container thead th {
-            position: sticky; top: 0; z-index: 20;
-            height: 140px; /* Increased height for rotated text */
-            vertical-align: bottom;
-            padding-bottom: 5px;
-        }
-        #planner-table-container thead th > div {
-            transform-origin: bottom left;
-            transform: translateX(10px) rotate(-60deg);
-            width: 30px;
-            white-space: nowrap;
+        /* --- NEW TABLE STYLES --- */
+        
+        /* Force the table to respect specific widths */
+        table.fixed-layout {
+            table-layout: fixed;
+            width: max-content; /* Allows table to grow horizontally beyond screen */
+            min-width: 100%;
         }
 
-        .sticky-col-1 { position: sticky; left: 0; z-index: 15; min-width: 94px;}
-        .sticky-col-2 { position: sticky; left: 93px; z-index: 14; }
+        /* Header Styling */
+        #planner-table-container thead th {
+            position: sticky; 
+            top: 0; 
+            z-index: 20;
+            height: 160px; /* Tall headers for vertical text */
+            vertical-align: bottom;
+            padding: 8px 4px;
+            border-bottom: 2px solid #cbd5e0;
+        }
+        .dark #planner-table-container thead th {
+            border-bottom-color: #4a5568;
+        }
+
+        /* Vertical Text Logic - Replaces Slanted Text */
+        .vertical-header-text {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            white-space: nowrap;
+            text-align: left;
+            max-height: 140px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Sticky Columns Configuration */
+        /* 1. Actions Column */
+        .sticky-col-1 { 
+            position: sticky; left: 0; z-index: 25; 
+            width: 60px; min-width: 60px; max-width: 60px;
+        }
+        /* 2. Scope Column */
+        .sticky-col-2 { 
+            position: sticky; left: 60px; z-index: 24; 
+            width: 60px; min-width: 60px; max-width: 60px;
+        }
+        /* 3. Sequence (Title) Column */
         .sticky-col-3 { 
             position: sticky; 
-            left: 154px; 
-            z-index: 13; 
+            left: 120px; 
+            z-index: 23; 
+            width: 350px; min-width: 350px; max-width: 350px;
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.05);
         }
         .dark .sticky-col-3 {
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.25);
         }
-		#planner-table-container thead th.sticky-col-1, #planner-table-container thead th.sticky-col-2, #planner-table-container thead th.sticky-col-3 {
-			z-index: 21;
-            height: auto; /* Reset height for non-rotated sticky headers */
+
+        /* Data Columns (PEs, DCIs, etc) */
+        .data-col-header {
+            width: 45px; min-width: 45px; max-width: 45px;
+        }
+
+        /* Reset z-index for sticky headers */
+		#planner-table-container thead th.sticky-col-1, 
+        #planner-table-container thead th.sticky-col-2, 
+        #planner-table-container thead th.sticky-col-3 {
+			z-index: 30;
+            height: auto; /* Normal height for the title headers */
+            vertical-align: middle;
+            padding-bottom: 10px;
 		}
-        #planner-table-container thead th.sticky-col-1 > div, #planner-table-container thead th.sticky-col-2 > div, #planner-table-container thead th.sticky-col-3 > div {
-            transform: none; /* No rotation for first three headers */
-            width: auto;
-        }
 
-        #progression-table-view th.sticky {
-            box-shadow: 0 4px 5px -2px rgba(0,0,0,0.05);
-        }
-        .dark #progression-table-view th.sticky {
-             box-shadow: 0 4px 5px -2px rgba(0,0,0,0.25);
-        }
-
+        /* Standard Features */
         body.sidebar-open #sidebar { transform: translateX(0); }
         body.sidebar-open #sidebar-backdrop { opacity: 1; pointer-events: auto; }
         body.modal-open #menu-toggle { display: none; }
@@ -94,7 +128,6 @@
         .pe-link-indicator { display: inline-block; font-size: 0.7em; padding: 1px 5px; background-color: #e6f4ff; color: #005a9c; border: 1px solid #b3d7ff; border-radius: 4px; font-weight: bold; vertical-align: middle; margin-left: 4px; }
         .dark .pe-link-indicator { background-color: #1e3a8a; color: #93c5fd; border-color: #3b82f6; }
         
-        /* Styles for new features */
         tr.filtered-out { display: none; }
         .shepherd-button { background-color: #3b82f6; color: white; border-radius: 0.375rem; padding: 0.5rem 1rem; }
         .shepherd-button:not(.shepherd-button-secondary):hover { background-color: #2563eb; }
@@ -964,11 +997,17 @@
                 this.rowsFromState(planner.rows || []);
             },
             table(columnGroups) {
-                App.dom.plannerTableContainer.innerHTML = ''; const table = document.createElement('table'); table.className = 'table-view w-full border-collapse'; const thead = document.createElement('thead');
+                App.dom.plannerTableContainer.innerHTML = ''; 
+                // Added 'fixed-layout' class here
+                const table = document.createElement('table'); 
+                table.className = 'table-view fixed-layout border-collapse'; 
+                const thead = document.createElement('thead');
+                
+                // Updated Sticky Headers with specific classes
                 let headerRowHTML = `<tr>
-                    <th class="sticky-col-1"><div class="w-full">Actions</div></th>
-                    <th class="sticky-col-2"><div class="w-full">Scope</div></th>
-                    <th class="sticky-col-3"><div class="w-full">Instructional Sequence</div></th>`;
+                    <th class="sticky-col-1 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700">Actions</th>
+                    <th class="sticky-col-2 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700">Scope</th>
+                    <th class="sticky-col-3 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700 text-left pl-2">Instructional Sequence</th>`;
                 
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
 
@@ -979,18 +1018,102 @@
                              const peData = App.dataMaps.peMap.get(peCode);
                              const tooltip = peData ? `${peCode}: ${peData.description.replace(/"/g, '&quot;')}` : peCode;
                              const secondaryClass = peObj.isSecondary ? 'font-normal italic text-gray-500 dark:text-gray-400' : 'font-semibold';
-                             headerRowHTML += `<th class="cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}"><div>${peCode}</div></th>`;
+                             // Added data-col-header class and vertical-header-text div
+                             headerRowHTML += `<th class="data-col-header cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}"><div class="vertical-header-text">${peCode}</div></th>`;
                         });
                         if (!planner?.assignedPes || planner.assignedPes.length === 0) {
                             headerRowHTML += `<th class="font-normal" data-tab-group="pe"><div>Assign PEs</div></th>`;
                         }
                     } else {
                         columnGroups[key].cols.forEach(col => {
-                            headerRowHTML += `<th class="cursor-pointer" data-tab-group="${key}" data-code="${col.code}" data-tooltip="${col.title}"><div>${col.title}</div></th>`;
+                            // Added data-col-header class and vertical-header-text div
+                            headerRowHTML += `<th class="data-col-header cursor-pointer" data-tab-group="${key}" data-code="${col.code}" data-tooltip="${col.title}"><div class="vertical-header-text">${col.title}</div></th>`;
                         });
                     }
                 });
                 headerRowHTML += '</tr>'; thead.innerHTML = headerRowHTML; table.appendChild(thead); table.appendChild(document.createElement('tbody')); App.dom.plannerTableContainer.appendChild(table);
+            },
+
+            createRowElement(rowData, parentId = null) {
+                const row = document.createElement('tr');
+                const searchTerm = App.dom.searchInput.value.toLowerCase();
+                if (searchTerm && rowData.type === 'lesson') {
+                    const rowText = (rowData.title + ' ' + Object.keys(rowData.trackingData || {}).join(' ')).toLowerCase();
+                    if (!rowText.includes(searchTerm)) {
+                        row.classList.add('filtered-out');
+                    }
+                }
+                
+                row.className += ` ${rowData.type}-row group/row`; row.dataset.rowType = rowData.type; row.dataset.id = rowData.id;
+                row.draggable = !App.state.isViewMode;
+
+                const planner = App.utils.findPlanner(App.state.currentPlannerId); const columnGroups = App.utils.gatherColumns(planner.gradeBand);
+                
+                // Common border classes
+                const borderClass = "border-b border-r border-gray-200 dark:border-gray-700";
+
+                if (rowData.type === 'lesson-set') {
+                    const isCollapsedClass = rowData.isCollapsed ? 'is-collapsed' : '';
+                    const rotateClass = rowData.isCollapsed ? '-rotate-90' : '';
+                    const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
+                    
+                    let cellsHTML = `
+                        <td class="sticky-col-1 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson Set">✖</span></td>
+                        <td class="sticky-col-2 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
+                        <td class="sticky-col-3 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>`;
+                    
+                    Object.keys(columnGroups).forEach(key => {
+                        if (key === 'pe') {
+                            const peCount = planner?.assignedPes?.length || 0;
+                            if (peCount > 0) {
+                                cellsHTML += `<td data-tab-group="pe" class="p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50" colspan="${peCount}"></td>`;
+                            } else {
+                                cellsHTML += `<td data-tab-group="pe" class="p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50"></td>`;
+                            }
+                        } else {
+                            columnGroups[key].cols.forEach(() => {
+                                cellsHTML += `<td data-tab-group="${key}" class="p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50"></td>`;
+                            });
+                        }
+                    });
+                    row.innerHTML = cellsHTML;
+
+                } else {
+                    if (parentId) row.dataset.parentId = parentId;
+                    const scope = rowData.scope || '';
+                    const scopeClass = App.constants.scopeClasses[scope] || '';
+                    const scopeCursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer';
+                    const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
+                    const notesIcon = `<span class="notes-btn cursor-pointer text-base" title="Edit Notes & Links">📝</span>`;
+                    let cellsHTML = `
+                        <td class="sticky-col-1 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle">
+                            <div class="flex items-center justify-between gap-1.5 text-gray-400">
+                                <span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span>
+                                <div class="flex items-center gap-1.5 invisible group-hover/row:visible">
+                                    ${notesIcon}
+                                    <span class="delete-btn cursor-pointer font-bold hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson">✖</span>
+                                    <span class="add-below-btn cursor-pointer hover:text-green-500 transition-colors group-[.view-mode-active]:hidden" title="Add Lesson Below">+</span>
+                                    <span class="copy-row-btn cursor-pointer hover:text-blue-500 transition-colors group-[.view-mode-active]:hidden" title="Duplicate Lesson">❐</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td data-scope-cell="true" class="sticky-col-2 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle font-bold text-center ${scopeCursorClass} ${scopeClass}" data-tooltip="Click to cycle Assessment Scope">${scope}</td>
+                        <td class="sticky-col-3 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 text-left ${parentId ? 'pl-10' : ''}">${editableSpan}</td>`;
+
+                    Object.keys(columnGroups).forEach(key => {
+                         if (key === 'pe') {
+                             (planner?.assignedPes || []).forEach(peObj => {
+                                 cellsHTML += this.createTrackingCellHTML({ code: peObj.id, type: 'pe' }, rowData);
+                             });
+                             if (!planner?.assignedPes || planner.assignedPes.length === 0) {
+                                cellsHTML += `<td data-tab-group="pe" class="p-2 ${borderClass}"></td>`;
+                             }
+                         } else {
+                            cellsHTML += columnGroups[key].cols.map(col => this.createTrackingCellHTML({ code: col.code, title: col.title, type: '3d', tabGroup: key }, rowData)).join('');
+                         }
+                    });
+                    row.innerHTML = cellsHTML;
+                } return row;
             },
             rowsFromState(rowsData) {
                 const tbody = App.dom.plannerTableContainer.querySelector('tbody');
