@@ -295,6 +295,27 @@
 		.pe-col-dci li > div { border-color: #fbd4b4; } /* Orange line for DCIs */
 		.pe-col-ccc li > div { border-color: #d6e3bc; } /* Green line for CCCs */
 
+        /* ---- STYLES FOR IN-COLUMN CONNECTIONS ---- */
+        .pe-details-col-connections-wrapper {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            margin-top: 1rem;
+        }
+        .pe-details-col-connections-wrapper .connection-header,
+        .pe-details-col-connections-wrapper .connection-subheader {
+            display: block;
+            text-align: center;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 0.5rem;
+        }
+        .pe-details-col-connections-wrapper .connection-item-block {
+            margin-top: 1rem;
+        }
+        .pe-details-col-connections-wrapper .connection-item-block:first-child {
+            margin-top: 0;
+        }
+
         /* Button Styling */
         .ai-controls button, .pe-details-actions button {
             font-size: 0.85rem;
@@ -1130,19 +1151,54 @@
             const createCol = (dim, title) => {
                 const items = pe.details[dim] || [];
                 if (!items.length) return '';
+
+                const regularItems = [];
+                const connectionItems = [];
+                let inConnectionSection = false;
+                for (const item of items) {
+                    if (item.id.startsWith('Connections to')) {
+                        inConnectionSection = true;
+                    }
+                    if (inConnectionSection) {
+                        connectionItems.push(item);
+                    } else {
+                        regularItems.push(item);
+                    }
+                }
+
+                const regularItemsHtml = regularItems.map(item => {
+                    const code = nameToCodeMap.get(item.id.replace(' (secondary)', '').trim());
+                    const el = code ? elementMap.get(code) : null;
+                    return `<li>
+                        <span class="clickable-element-link" ${code ? `data-component-code="${code}" data-pe-id="${pe.id}"` : ''} ${el ? `title="${el.name.replace(/"/g, '&quot;')}"` : ''}>
+                            <strong class="copyable">${item.id}</strong>
+                        </span>
+                        <div class="copyable">${processAndLinkPeText(item.text, pe.id)}</div>
+                    </li>`;
+                }).join('');
+
+                let connectionItemsHtml = '';
+                if (connectionItems.length > 0) {
+                    connectionItemsHtml += `<div class="pe-details-col-connections-wrapper">`;
+                    connectionItems.forEach(item => {
+                        const textContent = Array.isArray(item.text) ? item.text.join('') : (item.text || '');
+                        if (textContent.trim() === '') {
+                            connectionItemsHtml += `<strong class="connection-header">${item.id}</strong>`;
+                        } else {
+                            connectionItemsHtml += `<div class="connection-item-block">
+                                <strong class="connection-subheader">${item.id}</strong>
+                                <div class="connection-text">${processAndLinkPeText(item.text, pe.id)}</div>
+                            </div>`;
+                        }
+                    });
+                    connectionItemsHtml += `</div>`;
+                }
+
                 const colClass = `pe-col-${dim}`;
                 return `<div class="pe-details-column ${colClass}">
                     <h4>${title}</h4>
-                    <ul>${items.map(item => {
-                        const code = nameToCodeMap.get(item.id.replace(' (secondary)', '').trim());
-                        const el = code ? elementMap.get(code) : null;
-                        return `<li>
-                            <span class="clickable-element-link" ${code ? `data-component-code="${code}" data-pe-id="${pe.id}"` : ''} ${el ? `title="${el.name.replace(/"/g, '&quot;')}"` : ''}>
-                                <strong class="copyable">${item.id}</strong>
-                            </span>
-                            <div class="copyable">${processAndLinkPeText(item.text, pe.id)}</div>
-                        </li>`;
-                    }).join('')}</ul>
+                    <ul>${regularItemsHtml}</ul>
+                    ${connectionItemsHtml}
                 </div>`;
             };
 
