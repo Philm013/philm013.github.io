@@ -805,7 +805,7 @@
         const handleEnd = document.getElementById('resize-handle-end');
 
         // --- 2. STATE MANAGEMENT ---
-        const CACHE_VERSION = '1.4'; // Incremented for lazy loading caching fix
+        const CACHE_VERSION = '1.6'; // Incremented to fix the Connections data parsing issue.
         let currentView = 'pe';
         let activePeFilter = null;
         let peMap = new Map();
@@ -925,13 +925,22 @@
         };
         const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const normalizeText = t => t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim(); const getGradeBandKey = l => { if (!l) return null; const lc = l.toLowerCase(); if (['kindergarten', 'first', 'second', 'k-2'].some(k => lc.includes(k))) return 'primary'; if (['third', 'fourth', 'fifth', '3-5'].some(k => lc.includes(k))) return 'elementary'; if (lc.includes('middle')) return 'middle'; if (lc.includes('high')) return 'high'; return null; }; const findBestMatchingSpecificElement = (text, grade) => { const clean = text.trim().replace(/^[\*•]\s*/, '').replace(/\s*\([^)]*\)/g, '').trim(); if (clean.length < 15) return null; const cacheKey = `${grade}|${clean}`; if (fuzzyMatchCache.has(cacheKey)) return fuzzyMatchCache.get(cacheKey); const normText = normalizeText(clean); const words = normText.split(' ').filter(w => w.length > 1); if (words.length === 0) return null; const threshold = words.length < 10 ? 0.75 : 0.80; const gradeKey = getGradeBandKey(grade); let best = { code: null, score: 0, base: 0, len: Infinity }; for (const [offText, code] of textToSpecificCodeMap.entries()) { const normOffText = normalizeText(offText); const found = words.reduce((count, word) => { const rgx = new RegExp(`\\b${escapeRegExp(word)}\\b`); if (rgx.test(normOffText)) return count + 1; const singular = word.endsWith('s') ? word.slice(0, -1) : null; if (singular && singular.length > 2 && new RegExp(`\\b${escapeRegExp(singular)}\\b`).test(normOffText)) return count + 1; const plural = !word.endsWith('s') ? word + 's' : null; if (plural && new RegExp(`\\b${escapeRegExp(plural)}\\b`).test(normOffText)) return count + 1; return count; }, 0); const baseScore = found / words.length; let weightedScore = baseScore; const el = specificElementMap.get(code); if (gradeKey && el && el.gradeBandKey === gradeKey) weightedScore += 1.0; if (weightedScore > best.score || (weightedScore === best.score && offText.length < best.len)) { best = { code, score: weightedScore, base: baseScore, len: offText.length }; } } const result = best.base >= threshold ? best.code : null; fuzzyMatchCache.set(cacheKey, result); return result; };
         const processAllData = () => { window.allNgss3dElements.forEach(dim => (dim.elements || dim.core_ideas?.flatMap(c => c.components) || []).forEach(item => { const name = item.name.trim(); const parts = name.split(':'); const code = parts[0].trim(); if (!code) return; const nameOnly = parts.length > 1 ? parts.slice(1).join(':').trim() : name; if (!elementMap.has(code)) elementMap.set(code, { ...item, code, dimensionCode: dim.code, dimensionName: dim.dimension }); nameToCodeMap.set(name, code); nameToCodeMap.set(nameOnly, code); nameToCodeMap.set(code, code); Object.entries(item.progressions).forEach(([gradeKey, progs]) => (progs || []).forEach(prog => { if (!specificElementMap.has(prog.code)) specificElementMap.set(prog.code, { ...prog, parentCode: code, parentName: item.name, gradeBandKey: gradeKey, relatedPes: new Set() }); textToSpecificCodeMap.set(prog.text.trim(), prog.code); })); })); window.allNgssData.forEach(gradeData => gradeData.topics.forEach(topic => topic.performanceExpectations.forEach(pe => { const compCodes = new Set(); const specCodes = new Set(); ['sep', 'dci', 'ccc'].forEach(key => (pe.details[key] || []).forEach(ref => {
+    let lines = Array.isArray(ref.text) ? [...ref.text] : (typeof ref.text === 'string' ? ref.text.split('\n') : []);
     let lineMatched = false;
+    let componentName = ref.id;
 
-    // FIX: Handle if 'text' is an Array (new JSON) or a String (old JSON)
-    const lines = Array.isArray(ref.text) 
-        ? ref.text 
-        : (typeof ref.text === 'string' ? ref.text.split('\n') : []);
+    // --- FIX FOR CONNECTIONS DATA STRUCTURE ---
+    const isConnection = ref.id.startsWith("Connections to");
+    if (isConnection && lines.length > 0) {
+        componentName = lines.shift().trim(); // Use first line as component name and remove it
+    }
 
+    // Match component code
+    const cleanId = componentName.replace(' (secondary)', '').trim();
+    let cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(cleanId.split(':').pop().trim());
+    if (cCode) compCodes.add(cCode);
+
+    // Match specific progression codes from remaining lines
     lines.forEach(line => {
         if (!line.trim()) return;
         const specCode = findBestMatchingSpecificElement(line, gradeData.gradeLabel);
@@ -940,16 +949,16 @@
             const el = specificElementMap.get(specCode);
             if (el) {
                 el.relatedPes.add(pe.id);
+                // Ensure parent is added, even if primary lookup failed
                 if (el.parentCode) compCodes.add(el.parentCode);
             }
             lineMatched = true;
         }
     });
 
-    if (!lineMatched && ref.id) {
-        const cleanId = ref.id.replace(' (secondary)', '').trim();
-        let cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(cleanId.split(':').pop().trim());
-        if (cCode) compCodes.add(cCode);
+    // Fallback if no specific code was found but we have a component code from the ID
+    if (!lineMatched && cCode) {
+       // This path is less common now but kept for safety
     }
 }));
  peMap.set(pe.id, { ...pe, gradeLabel: gradeData.gradeLabel, topicTitle: topic.topicTitle, connections: topic.connections, associatedComponentCodes: compCodes, associatedSpecificCodes: specCodes }); }))); };
@@ -1012,8 +1021,8 @@
                 }
             }
 
-            // 2. Cache Miss: Fetch JSON files from server
-            console.log("Cache miss or empty. Downloading data...");
+            // 2. Cache Miss or empty: Fetch JSON files from server
+            console.log("Cache miss or version mismatch. Downloading fresh data...");
             await fetchRawData();
 
             // 3. Process the raw data
