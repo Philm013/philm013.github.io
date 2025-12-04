@@ -121,41 +121,13 @@
                 </div>
 
                 <div id="planner-view" class="view flex-1 flex flex-col">
-                    <h1 id="planner-title" class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100"></h1>
-                    <p id="planner-subtitle" class="text-base text-gray-500 dark:text-gray-400 mb-2 -mt-1"></p>
-                    <div class="mb-4 p-3 border border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <p class="font-bold text-sm text-blue-800 dark:text-blue-200">Anchoring Phenomenon:</p>
-                        <p id="planner-phenomenon" class="text-sm text-blue-700 dark:text-blue-300 italic">Not specified.</p>
-                        <p class="font-bold text-sm text-blue-800 dark:text-blue-200 mt-2">Unit Driving Question:</p>
-                        <p id="planner-question" class="text-sm text-blue-700 dark:text-blue-300 italic">Not specified.</p>
-                    </div>
-                    
-                    <div class="controls flex flex-col md:flex-row md:flex-wrap gap-2 md:gap-4 mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm md:items-center">
-                         <div class="relative w-full md:w-48">
-                            <input type="search" id="search-input" placeholder="Search lessons..." class="w-full pl-8 pr-2 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500">
-                            <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400">⚲</div>
+                    <!-- Compact Header -->
+                    <div class="flex flex-wrap justify-between items-start gap-4 mb-4">
+                        <div>
+                            <h1 id="planner-title" class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100"></h1>
+                            <p id="planner-subtitle" class="text-base text-gray-500 dark:text-gray-400 -mt-1"></p>
                         </div>
-                        <div class="controls-group flex gap-2 w-full md:w-auto">
-                            <button id="assign-pe-btn" class="w-full md:w-auto px-3 py-2 bg-cyan-500 text-white rounded-md hover:bg-cyan-600 text-sm font-medium transition-colors">Manage PEs</button>
-                            <button id="view-summary-btn" class="w-full md:w-auto px-3 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 text-sm font-medium transition-colors">Summary</button>
-                        </div>
-                        <div class="controls-group flex gap-2 w-full md:w-auto group-[.view-mode-active]:hidden">
-                            <button id="add-lesson-set-btn" class="md:w-auto px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">Add Set</button>
-                            <button id="add-lesson-btn" class="md:w-auto px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">Add Lesson</button>
-                        </div>
-                         <div class="controls-group flex gap-2 w-full md:w-auto">
-                            <button id="undo-btn" disabled title="Undo (Ctrl+Z)" class="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Undo</button>
-                            <button id="redo-btn" disabled title="Redo (Ctrl+Y)" class="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Redo</button>
-                        </div>
-                        <div class="controls-group flex gap-2 w-full md:w-auto">
-                            <button id="edit-planner-btn" class="md:w-auto px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors group-[.view-mode-active]:hidden">Settings</button>
-                            <button id="view-mode-toggle" class="md:w-auto px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors">View Mode</button>
-                        </div>
-                        <div class="controls-group flex gap-2 w-full md:w-auto">
-                            <button id="import-planner-btn" class="md:w-auto px-3 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm font-medium transition-colors">Import</button>
-                            <button id="export-planner-btn" class="md:w-auto px-3 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm font-medium transition-colors">Export</button>
-                        </div>
-                        <div class="flex items-center justify-center md:justify-end gap-x-4 gap-y-2 w-full md:w-auto md:ml-auto flex-wrap">
+                        <div class="flex items-center justify-end gap-x-4 gap-y-2 flex-wrap">
                              <label class="flex items-center gap-2 text-sm cursor-pointer font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                 <span>PE Bundled Only</span>
                                 <input type="checkbox" id="pe-bundle-toggle" class="sr-only peer">
@@ -165,13 +137,55 @@
                         </div>
                     </div>
 
+                    <div class="mb-4 p-3 border border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <p class="font-bold text-sm text-blue-800 dark:text-blue-200">Anchoring Phenomenon:</p>
+                        <p id="planner-phenomenon" class="text-sm text-blue-700 dark:text-blue-300 italic">Not specified.</p>
+                        <p class="font-bold text-sm text-blue-800 dark:text-blue-200 mt-2">Unit Driving Question:</p>
+                        <p id="planner-question" class="text-sm text-blue-700 dark:text-blue-300 italic">Not specified.</p>
+                    </div>
+                    
+                    <div class="controls flex flex-row flex-wrap gap-2 md:gap-4 mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm md:items-center">
+                         <div class="relative flex-shrink-0">
+                            <input type="search" id="search-input" placeholder="Search lessons..." class="w-full md:w-48 pl-8 pr-2 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500">
+                            <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400">⚲</div>
+                        </div>
+                        <div class="controls-group flex gap-2">
+                            <button id="assign-pe-btn" class="px-3 py-2 bg-cyan-500 text-white rounded-md hover:bg-cyan-600 text-sm font-medium transition-colors">Manage PEs</button>
+                            <button id="view-summary-btn" class="px-3 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 text-sm font-medium transition-colors">Summary</button>
+                        </div>
+                        <div class="controls-group flex gap-2 group-[.view-mode-active]:hidden">
+                            <button id="add-lesson-set-btn" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">Add Set</button>
+                            <button id="add-lesson-btn" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">Add Lesson</button>
+                        </div>
+                         <div class="controls-group flex gap-2">
+                            <button id="undo-btn" disabled title="Undo (Ctrl+Z)" class="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Undo</button>
+                            <button id="redo-btn" disabled title="Redo (Ctrl+Y)" class="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Redo</button>
+                        </div>
+                        <div class="controls-group flex gap-2">
+                            <button id="edit-planner-btn" class="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors group-[.view-mode-active]:hidden">Settings</button>
+                            <button id="view-mode-toggle" class="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors">View Mode</button>
+                        </div>
+                        <div class="controls-group flex gap-2">
+                            <button id="import-planner-btn" class="px-3 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm font-medium transition-colors">Import</button>
+                            <button id="export-planner-btn" class="px-3 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm font-medium transition-colors">Export</button>
+                        </div>
+                    </div>
+
                     <div id="tab-container" class="tabs flex border-b-2 border-gray-300 dark:border-gray-700 -mb-px"></div>
                     <div id="planner-table-container" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-b-lg rounded-tr-lg bg-white dark:bg-gray-800/50"></div>
                 </div>
                 
                 <div id="progression-view" class="view flex-1 flex flex-col">
-                     <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Progression Storyline</h1>
-                     <p id="progression-subtitle" class="subtitle text-base text-gray-500 dark:text-gray-400 mb-4"></p>
+                     <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Progression Storyline</h1>
+                            <p id="progression-subtitle" class="subtitle text-base text-gray-500 dark:text-gray-400"></p>
+                        </div>
+                        <div class="flex items-center gap-2 p-1 bg-gray-200 dark:bg-gray-700 rounded-lg">
+                            <button id="progression-view-element" class="px-3 py-1 text-sm font-medium rounded-md">By Element</button>
+                            <button id="progression-view-lesson" class="px-3 py-1 text-sm font-medium rounded-md">By Lesson</button>
+                        </div>
+                     </div>
                      <div id="progression-table-view" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-lg"></div>
                 </div>
                  <div id="summary-view" class="view flex-1 flex flex-col">
@@ -216,7 +230,7 @@
                         </select>
                     </div>
                 </div>
-                <div id="new-planner-structure-fields" class="grid grid-cols-2 gap-4">
+                <div id="new-planner-structure-fields" class="grid grid-cols-2 gap-4 border-t pt-4 dark:border-gray-700">
                     <div>
                         <label for="planner-sets-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Number of Lesson Sets</label>
                         <input type="number" id="planner-sets-input" value="4" min="1" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700">
@@ -250,10 +264,10 @@
     </div>
     
     <div id="pe-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-        <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-            <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Assign Performance Expectations</h3>
+        <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+            <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100 sticky top-0 bg-white dark:bg-gray-800">Assign Performance Expectations</h3>
             <div class="modal-content p-6 overflow-y-auto" id="pe-modal-list"></div>
-            <div class="modal-actions p-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-700 rounded-b-lg text-right space-x-2">
+            <div class="modal-actions p-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-700 rounded-b-lg text-right space-x-2 sticky bottom-0">
                 <button id="pe-modal-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors font-semibold text-sm">Cancel</button>
                 <button id="pe-modal-save" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm">Save Changes</button>
             </div>
@@ -386,6 +400,7 @@
                 pendingImportData: null,
                 allNgssData: [],
                 allNgss3dElements: [],
+                progressionViewType: 'element', // 'element' or 'lesson'
             },
 			dataMaps: {
                 peMap: new Map(),
@@ -567,6 +582,8 @@
                 this.dom.searchInput.addEventListener('input', e => this.utils.performSearch(e.target.value));
                 document.getElementById('help-btn').addEventListener('click', () => this.tour.start());
                 document.getElementById('welcome-help-btn').addEventListener('click', () => this.tour.start());
+                document.getElementById('progression-view-element').addEventListener('click', () => { App.state.progressionViewType = 'element'; App.render.progressionViewer(); });
+                document.getElementById('progression-view-lesson').addEventListener('click', () => { App.state.progressionViewType = 'lesson'; App.render.progressionViewer(); });
 
                 document.getElementById('view-mode-toggle').addEventListener('click', () => this.utils.toggleViewMode());
                 document.getElementById('pe-bundle-toggle').addEventListener('change', e => { App.state.isPeBundleMode = e.target.checked; App.render.setActiveTab(App.state.currentActiveTab); });
@@ -748,6 +765,7 @@
             },
             get(key) {
                 return new Promise((resolve, reject) => {
+                    if (!this.db) return reject("DB not initialized");
                     const transaction = this.db.transaction([this.STORE_NAME], 'readonly');
                     const store = transaction.objectStore(this.STORE_NAME);
                     const request = store.get(key);
@@ -757,6 +775,7 @@
             },
             set(key, value) {
                 return new Promise((resolve, reject) => {
+                    if (!this.db) return reject("DB not initialized");
                     const transaction = this.db.transaction([this.STORE_NAME], 'readwrite');
                     const store = transaction.objectStore(this.STORE_NAME);
                     const request = store.put(value, key);
@@ -880,8 +899,6 @@
                 if (!planner) return;
                 const allColumns = App.utils.gatherColumns(planner.gradeBand);
 
-                // For simplicity, this implementation just re-renders the table.
-                // A more complex implementation could selectively update rows.
                 this.table(allColumns);
                 this.rowsFromState(planner.rows || []);
             },
@@ -948,10 +965,29 @@
                     const isCollapsedClass = rowData.isCollapsed ? 'is-collapsed' : '';
                     const rotateClass = rowData.isCollapsed ? '-rotate-90' : '';
                     const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
-                    const colspan = 2 + Object.values(columnGroups).reduce((sum, group) => sum + (group.key === 'pe' ? (planner.assignedPes?.length || 1) : group.cols.length), 0);
-                    row.innerHTML = `<td class="sticky-col-1 p-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 align-middle"><span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson Set">✖</span></td>
-                                     <td class="sticky-col-2 p-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 align-middle"></td>
-                                     <td class="sticky-col-3 p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}" colspan="${colspan}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>`;
+                    
+                    // *** COLSPAN BUG FIX: Render 3 cells to match sticky columns, leave others empty ***
+                    let cellsHTML = `
+                        <td class="sticky-col-1 p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson Set">✖</span></td>
+                        <td class="sticky-col-2 p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
+                        <td class="sticky-col-3 p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>`;
+                    
+                    Object.keys(columnGroups).forEach(key => {
+                        if (key === 'pe') {
+                            const peCount = planner?.assignedPes?.length || 0;
+                            if (peCount > 0) {
+                                cellsHTML += `<td data-tab-group="pe" class="p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50" colspan="${peCount}"></td>`;
+                            } else {
+                                cellsHTML += `<td data-tab-group="pe" class="p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50"></td>`;
+                            }
+                        } else {
+                            columnGroups[key].cols.forEach(() => {
+                                cellsHTML += `<td data-tab-group="${key}" class="p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50"></td>`;
+                            });
+                        }
+                    });
+                    row.innerHTML = cellsHTML;
+
                 } else {
                     if (parentId) row.dataset.parentId = parentId;
                     const scope = rowData.scope || '';
@@ -1096,13 +1132,28 @@
                 });
             },
             progressionViewer() { 
+                const btnElement = document.getElementById('progression-view-element');
+                const btnLesson = document.getElementById('progression-view-lesson');
+                
+                btnElement.classList.toggle('bg-white', App.state.progressionViewType === 'element');
+                btnElement.classList.toggle('dark:bg-gray-900', App.state.progressionViewType === 'element');
+                btnLesson.classList.toggle('bg-white', App.state.progressionViewType === 'lesson');
+                btnLesson.classList.toggle('dark:bg-gray-900', App.state.progressionViewType === 'lesson');
+                
+                if (App.state.progressionViewType === 'lesson') {
+                    this.renderProgressionByLesson();
+                } else {
+                    this.renderProgressionByElement();
+                }
+                App.utils.showView('progression-view'); 
+            },
+            renderProgressionByElement() {
                 const selectedPlannerIds = Array.from(App.dom.navigatorList.querySelectorAll('.planner-checkbox:checked')).map(cb => cb.closest('.planner-item').dataset.plannerId); 
                 if (selectedPlannerIds.length === 0) { 
                     alert('Please select at least one planner from the navigator to view its progression.'); 
                     return; 
                 } 
                 const selectedPlanners = selectedPlannerIds.map(id => App.utils.findPlanner(id)); 
-                
                 const tableContainer = document.getElementById('progression-table-view');
                 tableContainer.innerHTML = '';
                 document.getElementById('progression-subtitle').textContent = `Comparing: ${selectedPlanners.map(p => p.title).join(', ')}`; 
@@ -1115,18 +1166,13 @@
                         const processLesson = (lesson, lessonSetTitle = null) => { 
                             if (!lesson.trackingData) return;
                             Object.entries(lesson.trackingData).forEach(([code, status]) => { 
-                                const elementData = App.dataMaps.ngss3dMap.get(code);
+                                const elementData = App.dataMaps.ngss3dMap.get(code) || App.dataMaps.peMap.get(code);
                                 if (elementData) {
                                     if (!allTrackedElements.has(code)) { 
                                         allTrackedElements.set(code, []);
                                         allUnique3DElements.set(code, elementData);
                                     } 
-                                    allTrackedElements.get(code).push({ 
-                                        plannerId: planner.id, 
-                                        lessonTitle: lesson.title, 
-                                        lessonSetTitle: lessonSetTitle, 
-                                        status: status 
-                                    });
+                                    allTrackedElements.get(code).push({ plannerId: planner.id, lessonTitle: lesson.title, lessonSetTitle: lessonSetTitle, status: status });
                                 }
                             }); 
                         }; 
@@ -1135,16 +1181,17 @@
                     }); 
                 }); 
 
-                let tableHTML = `<table class="w-full border-collapse"><thead><tr class="bg-gray-200 dark:bg-gray-800"><th class="sticky p-2 border border-gray-300 dark:border-gray-700 text-left top-0 bg-gray-200 dark:bg-gray-800">3D Element</th>`;
+                let tableHTML = `<table class="w-full border-collapse"><thead><tr class="bg-gray-200 dark:bg-gray-800"><th class="sticky p-2 border border-gray-300 dark:border-gray-700 text-left top-0 bg-gray-200 dark:bg-gray-800">3D Element / PE</th>`;
                 selectedPlanners.forEach(p => { tableHTML += `<th class="p-2 border border-gray-300 dark:border-gray-700 text-left sticky top-0 bg-gray-200 dark:bg-gray-800">${p.title}</th>`; });
                 tableHTML += `</tr></thead><tbody>`;
 
                 const sortedElements = Array.from(allUnique3DElements.entries()).sort((a, b) => a[0].localeCompare(b[0]));
                 sortedElements.forEach(([code, elementData]) => {
-                    const elementTooltip = (elementData.text || '').replace(/"/g, '&quot;');
+                    const desc = elementData.text || elementData.description || '';
+                    const elementTooltip = desc.replace(/"/g, '&quot;');
                     tableHTML += `<tr class="border-b dark:border-gray-700">
                         <td class="p-2 border border-gray-300 dark:border-gray-700 align-top font-semibold sticky left-0 bg-gray-50 dark:bg-gray-800/50 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)] dark:shadow-[4px_0_5px_-2px_rgba(0,0,0,0.2)]">
-                            <strong data-tooltip="${elementTooltip}">${code}</strong><br><small class="font-normal text-gray-600 dark:text-gray-400">${elementData.text}</small>
+                            <strong data-tooltip="${elementTooltip}">${code}</strong><br><small class="font-normal text-gray-600 dark:text-gray-400">${desc}</small>
                         </td>`;
                     selectedPlanners.forEach(planner => {
                         const entriesForPlanner = (allTrackedElements.get(code) || []).filter(e => e.plannerId === planner.id);
@@ -1166,7 +1213,52 @@
                 });
                 tableHTML += `</tbody></table>`;
                 tableContainer.innerHTML = tableHTML;
-                App.utils.showView('progression-view'); 
+            },
+            renderProgressionByLesson() {
+                const selectedPlannerIds = Array.from(App.dom.navigatorList.querySelectorAll('.planner-checkbox:checked')).map(cb => cb.closest('.planner-item').dataset.plannerId); 
+                if (selectedPlannerIds.length === 0) { 
+                    alert('Please select at least one planner to view its progression.'); 
+                    return; 
+                } 
+                // "By Lesson" view only makes sense for one planner at a time.
+                const planner = App.utils.findPlanner(selectedPlannerIds[0]);
+                if (!planner) return;
+                
+                const container = document.getElementById('progression-table-view');
+                container.innerHTML = '';
+                document.getElementById('progression-subtitle').textContent = `Storyline for: ${planner.title}`;
+
+                (planner.rows || []).forEach(row => {
+                    const rowEl = document.createElement('div');
+                    rowEl.className = 'mb-4';
+                    if (row.type === 'lesson-set') {
+                        rowEl.innerHTML = `<h3 class="text-lg font-bold p-2 bg-blue-100 dark:bg-blue-900/50 rounded-t-lg text-blue-800 dark:text-blue-200">${row.title}</h3>`;
+                        (row.children || []).forEach(lesson => {
+                            rowEl.innerHTML += this.createStorylineLessonHTML(lesson);
+                        });
+                    } else {
+                        rowEl.innerHTML = this.createStorylineLessonHTML(row);
+                    }
+                    container.appendChild(rowEl);
+                });
+            },
+            createStorylineLessonHTML(lesson) {
+                 const badgeHTML = Object.entries(lesson.trackingData || {}).map(([code, status]) => {
+                    const elementData = App.dataMaps.ngss3dMap.get(code) || App.dataMaps.peMap.get(code);
+                    const desc = elementData ? (elementData.text || elementData.description) : 'Unknown Element';
+                    const tooltip = `<b>${code} (${status})</b>: ${desc.replace(/"/g, '&quot;')}`;
+                    const badgeColor = App.constants.statusBadgeClasses[status] || 'bg-gray-200 dark:bg-gray-600';
+                    return `<span class="px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${badgeColor}" data-tooltip="${tooltip}">${code}</span>`;
+                }).join('');
+
+                return `
+                    <div class="p-3 border dark:border-gray-700 bg-white dark:bg-gray-800/50">
+                        <h4 class="font-semibold">${lesson.title}</h4>
+                        <div class="flex flex-wrap gap-1.5 mt-2">
+                            ${badgeHTML || '<p class="text-xs text-gray-500 dark:text-gray-400">No elements tracked.</p>'}
+                        </div>
+                    </div>
+                `;
             },
             summary() {
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
@@ -1653,48 +1745,54 @@
                 App.utils.closeAllModals();
             },
             openPeAssignmentModal() { 
-                const p=App.utils.findPlanner(App.state.currentPlannerId);if(!p)return;
-                const list=document.getElementById('pe-modal-list');list.innerHTML='';
-                const r=Object.keys(App.dataMaps.gradeBandMap).filter(g=>App.dataMaps.gradeBandMap[g]===p.gradeBand); 
-                list.className = 'grid grid-cols-1 md:grid-cols-2 gap-3'; 
+                const p = App.utils.findPlanner(App.state.currentPlannerId); if(!p) return;
+                const list = document.getElementById('pe-modal-list');
+                list.innerHTML = '';
+                const r = Object.keys(App.dataMaps.gradeBandMap).filter(g => App.dataMaps.gradeBandMap[g] === p.gradeBand); 
+                list.className = 'grid grid-cols-1 md:grid-cols-2 gap-4'; 
 
-                App.state.allNgssData.forEach(g=>{
+                App.state.allNgssData.forEach(g => {
                     if(r.includes(g.gradeId)){
-                        g.topics.forEach(t=>{
-                            t.performanceExpectations.forEach(pe=>{
+                        g.topics.forEach(t => {
+                            t.performanceExpectations.forEach(pe => {
                                 const assignedPeObj = p.assignedPes?.find(p_obj => p_obj.id === pe.id);
                                 const isChecked = !!assignedPeObj;
                                 const isSecondaryChecked = assignedPeObj?.isSecondary || false;
 
-                                const d=document.createElement('div');
-                                d.className='pe-modal-item';
+                                const d = document.createElement('div');
+                                d.className = 'pe-modal-item relative p-4 border rounded-lg shadow-sm transition-all has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 dark:border-gray-700 dark:has-[:checked]:bg-blue-900/20 dark:has-[:checked]:border-blue-700';
+                                
                                 const links = App.dataMaps.peTo3dMap.get(pe.id) || { componentCodes: new Set(), secondaryComponentCodes: new Set() };
-                                const linksByDim = { SEP: [], DCI: [], CCC: [] };
-
-                                [...links.componentCodes, ...links.secondaryComponentCodes].forEach(code => {
-                                    const parentInfo = App.dataMaps.parentToChildrenMap.get(code);
-                                    if(parentInfo) {
-                                        const isSec = links.secondaryComponentCodes.has(code) ? ' (secondary)' : '';
-                                        if (parentInfo.dimension.startsWith('SEP')) linksByDim.SEP.push(code + isSec);
-                                        else if (parentInfo.dimension.startsWith('DCI')) linksByDim.DCI.push(code + isSec);
-                                        else if (parentInfo.dimension.startsWith('CCC')) linksByDim.CCC.push(code + isSec);
+                                let linksHTML = '<dl class="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1">';
+                                ['SEP', 'DCI', 'CCC'].forEach(dim => {
+                                    const codes = [...links.componentCodes, ...links.secondaryComponentCodes].filter(code => {
+                                        const parentInfo = App.dataMaps.parentToChildrenMap.get(code);
+                                        return parentInfo && parentInfo.dimension.startsWith(dim);
+                                    });
+                                    if (codes.length > 0) {
+                                        linksHTML += `<div><dt class="font-semibold inline">${dim}: </dt><dd class="inline">${codes.join(', ')}</dd></div>`;
                                     }
                                 });
-
-                                const createLinkText = (dim) => {
-                                    if (linksByDim[dim].length === 0) return 'N/A';
-                                    return linksByDim[dim].map(codeWithSec => {
-                                        const isSec = codeWithSec.includes('(secondary)');
-                                        const code = codeWithSec.replace(' (secondary)', '');
-                                        const name = App.dataMaps.major3DMap.get(code) || code;
-                                        return `<span class="whitespace-nowrap ${isSec ? 'italic' : ''}">(${code}) ${name}</span>`;
-                                    }).join('<br>');
-                                };
+                                linksHTML += '</dl>';
                                 
-                                d.innerHTML=`<label class="flex items-start p-3 rounded-md cursor-pointer border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"><input type="checkbox" value="${pe.id}" ${isChecked?'checked':''} class="mr-3 mt-1 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-100 dark:bg-gray-900"><div class="text-gray-800 dark:text-gray-200"><strong class="font-semibold">${pe.id}:</strong> ${pe.description}<div class="flex items-center mt-2"><input type="checkbox" id="secondary-toggle-${pe.id}" class="secondary-pe-toggle h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500" ${isSecondaryChecked ? 'checked' : ''}><label for="secondary-toggle-${pe.id}" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Mark as a supporting PE</label></div><div class="text-xs text-gray-500 dark:text-gray-400 mt-2 pl-6"><strong>SEP:</strong> ${createLinkText('SEP')}<br><strong>DCI:</strong> ${createLinkText('DCI')}<br><strong>CCC:</strong> ${createLinkText('CCC')}</div></div></label>`;
+                                d.innerHTML=`
+                                    <label class="block">
+                                        <div class="flex items-start">
+                                            <input type="checkbox" value="${pe.id}" ${isChecked ? 'checked' : ''} class="h-4 w-4 mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                                            <div class="ml-3 text-sm flex-1">
+                                                <span class="font-bold text-gray-900 dark:text-gray-100">${pe.id}</span>
+                                                <p class="text-gray-600 dark:text-gray-400">${pe.description}</p>
+                                            </div>
+                                        </div>
+                                        ${linksHTML}
+                                        <div class="flex items-center mt-2 pl-7">
+                                            <input type="checkbox" id="secondary-toggle-${pe.id}" class="secondary-pe-toggle h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer" ${isSecondaryChecked ? 'checked' : ''}>
+                                            <label for="secondary-toggle-${pe.id}" class="ml-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer">Mark as a supporting PE</label>
+                                        </div>
+                                    </label>`;
                                 list.appendChild(d);
-                            })
-                        })
+                            });
+                        });
                     }
                 }); 
                 this.openModal('pe-modal-backdrop');
@@ -1703,7 +1801,7 @@
                 const p = App.utils.findPlanner(App.state.currentPlannerId); if (!p) return;
                 App.history.saveState(p);
                 p.assignedPes = Array.from(document.querySelectorAll('#pe-modal-list input[type="checkbox"][value]:checked')).map(i => {
-                    const container = i.closest('label');
+                    const container = i.closest('.pe-modal-item');
                     const isSecondary = container.querySelector('.secondary-pe-toggle').checked;
                     return { id: i.value, isSecondary: isSecondary };
                 });
@@ -1850,201 +1948,6 @@
             performSearch(query) {
                 this.render.renderPlannerContent(); // Re-render to apply filter
             },
-        };
-
-        App.export = {
-            showExportOptions() {
-                const planner = App.utils.findPlanner(App.state.currentPlannerId);
-                if (!planner) { alert('Please select a planner to export.'); return; }
-                App.utils.openModal('export-modal-backdrop');
-            },
-            
-            downloadFile(filename, content, mimeType) {
-                const blob = new Blob([content], { type: mimeType });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            },
-
-            asJson(planner) {
-                const jsonString = JSON.stringify(planner, null, 2);
-                this.downloadFile(`${planner.title}.json`, jsonString, 'application/json');
-            },
-
-            asHtml(planner) {
-                const tableContainer = document.getElementById('planner-table-container').cloneNode(true);
-                tableContainer.querySelectorAll('[contenteditable]').forEach(el => el.setAttribute('contenteditable', 'false'));
-                tableContainer.querySelectorAll('.drag-handle, .delete-btn, .add-below-btn, .copy-row-btn, .notes-btn').forEach(el => el.remove());
-
-                const htmlContent = `
-                    <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${planner.title}</title>
-                    <script src="https://cdn.tailwindcss.com"><\/script>
-                    <style>
-                        body { overflow: auto; height: auto; display: block; }
-                        th[data-tab-group], td[data-tab-group] { display: none; }
-                        .sticky-col-1 { position: sticky; left: 0; z-index: 5; }
-                        .sticky-col-2 { position: sticky; left: 104px; z-index: 4; }
-                        .sticky-col-3 { position: sticky; left: 165px; z-index: 3; }
-                    <\/style>
-                    </head><body class="bg-gray-100 p-8"><main>
-                    <h1 class="text-3xl font-bold">${planner.title}</h1><p class="text-gray-600">${planner.course} (${planner.gradeBand})</p>
-                    <div id="tab-container" class="mt-4 flex border-b-2 border-gray-300 -mb-px">${document.getElementById('tab-container').innerHTML}</div>
-                    <div id="planner-table-container" class="overflow-auto border border-gray-300 rounded-b-lg rounded-tr-lg">${tableContainer.innerHTML}</div>
-                    <script>
-                        document.addEventListener('DOMContentLoaded', () => {
-                            const firstTab = document.querySelector('.tab-button');
-                            if (firstTab) { 
-                                activateTab(firstTab);
-                            }
-                            document.getElementById('tab-container').addEventListener('click', e => {
-                                if (e.target.matches('.tab-button')) {
-                                   activateTab(e.target);
-                                }
-                            });
-                            function activateTab(tabButton) {
-                                document.querySelectorAll('.tab-button').forEach(btn => {
-                                    btn.classList.remove('bg-white', 'border-gray-300', 'border-b-white', 'text-blue-600');
-                                });
-                                tabButton.classList.add('bg-white', 'border-gray-300', 'border-b-white', 'text-blue-600');
-                                const tabKey = tabButton.dataset.tab;
-                                document.querySelectorAll('th[data-tab-group], td[data-tab-group]').forEach(cell => {
-                                    cell.style.display = cell.dataset.tabGroup === tabKey ? 'table-cell' : 'none';
-                                });
-                            }
-                        });
-                    <\/script>
-                    </main></body></html>`;
-                this.downloadFile(`${planner.title}.html`, htmlContent, 'text/html');
-            },
-
-            createCombinedSheet(planner) {
-                let { sheetData, merges, rowInfo } = this._generateCombinedSheetData(planner);
-
-                sheetData = sheetData.map(row => row.map(cell => Array.isArray(cell) ? cell.join('\n') : cell));
-
-                const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
-                const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4B5563" } }, border: thinBorder, alignment: { horizontal: "center", vertical: "center", wrapText: true } };
-                const unitStyle = { font: { bold: true, sz: 14, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4472C4" } }, border: thinBorder, alignment: { vertical: "center" } };
-                const lessonTitleStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { vertical: "center" } };
-                const subTitleStyle = { font: { italic: true }, border: thinBorder, alignment: { indent: 1, vertical: "top" } };
-                const dataCellStyle = { border: thinBorder, alignment: { vertical: "top", wrapText: true } };
-
-                const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-                worksheet['!merges'] = merges;
-                worksheet['!cols'] = sheetData[0].map(h => ({ wch: h.toLowerCase().includes('element') ? 25 : 18 }));
-                worksheet['!cols'][0].wch = 35;
-
-                Object.keys(worksheet).forEach(cellAddress => {
-                    if (cellAddress.startsWith('!')) return;
-                    const cell = worksheet[cellAddress];
-                    const { r, c } = XLSX.utils.decode_cell(cellAddress);
-                    
-                    if (r === 0) {
-                        cell.s = headerStyle;
-                        return;
-                    }
-                    
-                    const info = rowInfo[r];
-                    if (info) {
-                        if (info.type === 'unit') cell.s = unitStyle;
-                        else if (info.type === 'lessonTitle') cell.s = lessonTitleStyle;
-                        else if (info.type === 'dataRow') cell.s = (c === 0) ? subTitleStyle : dataCellStyle;
-                    }
-                });
-                
-                return worksheet;
-            },
-            _generateCombinedSheetData(planner) {
-                const headers = ['Lesson', 'Primary PE', 'Secondary PE', 'Primary DCI Element', 'DCI: I/D/A', 'DCI: Full or Partial?', 'SEP Element', 'SEP: I/D/A', 'SEP: Full or Partial?', 'CCC Element', 'CCC: I/D/A', 'CCC: Full or Partial?', 'NOS Connection', 'ETAS Connection'];
-                const sheetData = [headers];
-                const merges = [];
-                const rowInfo = {};
-
-                const statusMap = { I: 'Introduced', D: 'Developed', A: 'Assessed' };
-                const assignedPeMap = new Map((planner.assignedPes || []).map(p => [p.id, p]));
-
-                const processRow = (plannerRow) => {
-                    if (plannerRow.type === 'lesson-set') {
-                        const rowIndex = sheetData.length;
-                        sheetData.push([plannerRow.title]);
-                        rowInfo[rowIndex] = { type: 'unit' };
-                        merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: headers.length - 1 } });
-                        (plannerRow.children || []).forEach(child => processRow(child));
-                    } else if (plannerRow.type === 'lesson') {
-                        const lessonTitleRowIndex = sheetData.length;
-                        sheetData.push([plannerRow.title]);
-                        rowInfo[lessonTitleRowIndex] = { type: 'lessonTitle' };
-                        merges.push({ s: { r: lessonTitleRowIndex, c: 0 }, e: { r: lessonTitleRowIndex, c: headers.length - 1 } });
-
-                        const nonAssessed = { primaryPEs: [], secondaryPEs: [], dcis: [], seps: [], cccs: [] };
-                        const assessed = { primaryPEs: [], secondaryPEs: [], dcis: [], seps: [], cccs: [] };
-
-                        Object.entries(plannerRow.trackingData || {}).forEach(([code, status]) => {
-                            const element = { code, status };
-                            const targetGroup = (status === 'A') ? assessed : nonAssessed;
-
-                            if (assignedPeMap.has(code)) {
-                                if (assignedPeMap.get(code).isSecondary) targetGroup.secondaryPEs.push(element);
-                                else targetGroup.primaryPEs.push(element);
-                            } else {
-                                const elData = App.dataMaps.ngss3dMap.get(code);
-                                if (elData?.dimension.startsWith('DCI')) targetGroup.dcis.push(element);
-                                else if (elData?.dimension.startsWith('SEP') || (elData?.dimension === 'CNS' && ['VOM', 'BEE', 'OTR', 'ENP'].includes(elData.parentCode))) targetGroup.seps.push(element);
-                                else if (elData?.dimension.startsWith('CCC') || elData?.dimension.startsWith('C-ETAS') || (elData?.dimension === 'CNS' && ['WOK', 'AOC', 'HE', 'AQAW'].includes(elData.parentCode))) targetGroup.cccs.push(element);
-                            }
-                        });
-
-                        const nonAssessedRow = new Array(headers.length).fill([]);
-                        nonAssessedRow[0] = 'Non-Assessed Elements';
-                        nonAssessedRow[1] = nonAssessed.primaryPEs.map(e => e.code);
-                        nonAssessedRow[2] = nonAssessed.secondaryPEs.map(e => e.code);
-                        nonAssessedRow[3] = nonAssessed.dcis.map(e => e.code);
-                        nonAssessedRow[4] = nonAssessed.dcis.map(e => statusMap[e.status]);
-                        nonAssessedRow[6] = nonAssessed.seps.map(e => e.code);
-                        nonAssessedRow[7] = nonAssessed.seps.map(e => statusMap[e.status]);
-                        nonAssessedRow[9] = nonAssessed.cccs.map(e => e.code);
-                        nonAssessedRow[10] = nonAssessed.cccs.map(e => statusMap[e.status]);
-                        sheetData.push(nonAssessedRow);
-                        rowInfo[sheetData.length - 1] = { type: 'dataRow' };
-
-                        const assessedRow = new Array(headers.length).fill([]);
-                        assessedRow[0] = 'Formative Assessment';
-                        assessedRow[1] = assessed.primaryPEs.map(e => e.code);
-                        assessedRow[2] = assessed.secondaryPEs.map(e => e.code);
-                        assessedRow[3] = assessed.dcis.map(e => e.code);
-                        assessedRow[4] = assessed.dcis.map(e => statusMap[e.status]);
-                        assessedRow[6] = assessed.seps.map(e => e.code);
-                        assessedRow[7] = assessed.seps.map(e => statusMap[e.status]);
-                        assessedRow[9] = assessed.cccs.map(e => e.code);
-                        assessedRow[10] = assessed.cccs.map(e => statusMap[e.status]);
-                        sheetData.push(assessedRow);
-                        rowInfo[sheetData.length - 1] = { type: 'dataRow' };
-                    }
-                };
-                
-                (planner.rows || []).forEach(row => processRow(row));
-                return { sheetData, merges, rowInfo };
-            },
-            asXlsx(planner) {
-                const workbook = XLSX.utils.book_new();
-                
-                try {
-                    const combinedWorksheet = this.createCombinedSheet(planner);
-                    XLSX.utils.book_append_sheet(workbook, combinedWorksheet, 'Combined View');
-                } catch (e) {
-                    console.error("Failed to create Combined View sheet:", e);
-                    alert("An error occurred while creating the Combined View export. See console for details.");
-                }
-
-                if (workbook.SheetNames.length > 0) {
-                    XLSX.writeFile(workbook, `${planner.title}.xlsx`);
-                } else {
-                    alert("No data available to export.");
-                }
-            }
         };
 
         App.import = {
@@ -2214,33 +2117,43 @@
         async function loadDataAndInit() {
             try {
                 await App.db.init();
-                let ngss3d = await App.db.get('ngss3d');
-                let k5 = await App.db.get('k5');
-                let m68 = await App.db.get('m68');
-                let h912 = await App.db.get('h912');
+                const cachedMaps = await App.db.get('processed_maps');
 
-                if (!ngss3d || !k5 || !m68 || !h912) {
-                    console.log("Data not found in cache. Fetching from server...");
+                if (cachedMaps) {
+                    console.log("Loading processed data maps from cache.");
+                    App.dataMaps.peMap = new Map(cachedMaps.peMap);
+                    App.dataMaps.ngss3dMap = new Map(cachedMaps.ngss3dMap);
+                    App.dataMaps.peTo3dMap = new Map(cachedMaps.peTo3dMap.map(([key, value]) => [key, { componentCodes: new Set(value.componentCodes), secondaryComponentCodes: new Set(value.secondaryComponentCodes), specificCodes: new Set(value.specificCodes) }]));
+                    App.dataMaps.parentToChildrenMap = new Map(cachedMaps.parentToChildrenMap);
+                    App.dataMaps.major3DMap = new Map(cachedMaps.major3DMap);
+                    App.dataMaps.nameToCodeMap = new Map(cachedMaps.nameToCodeMap);
+                    App.dataMaps.textToSpecificCodeMap = new Map(cachedMaps.textToSpecificCodeMap);
+                } else {
+                    console.log("Data not found in cache. Fetching from server and processing...");
                     const dataPath = 'https://philm013.github.io/JSON/';
-                    [ngss3d, k5, m68, h912] = await Promise.all([
+                    const [ngss3d, k5, m68, h912] = await Promise.all([
                         fetch(`${dataPath}ngss3DElements.json`).then(res => res.json()),
                         fetch(`${dataPath}ngssK5.json`).then(res => res.json()),
                         fetch(`${dataPath}ngss68.json`).then(res => res.json()),
                         fetch(`${dataPath}ngss912.json`).then(res => res.json())
                     ]);
-                    await Promise.all([
-                        App.db.set('ngss3d', ngss3d),
-                        App.db.set('k5', k5),
-                        App.db.set('m68', m68),
-                        App.db.set('h912', h912),
-                    ]);
-                     console.log("Data fetched and cached.");
-                } else {
-                    console.log("Data loaded from cache.");
+                    App.state.allNgss3dElements = ngss3d;
+                    App.state.allNgssData = [...k5, ...m68, ...h912];
+                    
+                    App.buildDataMaps();
+                    
+                    const serializableMaps = {
+                        peMap: [...App.dataMaps.peMap],
+                        ngss3dMap: [...App.dataMaps.ngss3dMap],
+                        peTo3dMap: [...App.dataMaps.peTo3dMap].map(([key, value]) => [key, { componentCodes: [...value.componentCodes], secondaryComponentCodes: [...value.secondaryComponentCodes], specificCodes: [...value.specificCodes] }]),
+                        parentToChildrenMap: [...App.dataMaps.parentToChildrenMap],
+                        major3DMap: [...App.dataMaps.major3DMap],
+                        nameToCodeMap: [...App.dataMaps.nameToCodeMap],
+                        textToSpecificCodeMap: [...App.dataMaps.textToSpecificCodeMap],
+                    };
+                    await App.db.set('processed_maps', serializableMaps);
+                    console.log("Data processed and cached.");
                 }
-
-                App.state.allNgss3dElements = ngss3d;
-                App.state.allNgssData = [...k5, ...m68, ...h912];
 
                 App.init();
 
