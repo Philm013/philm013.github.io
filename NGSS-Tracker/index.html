@@ -49,6 +49,15 @@
         
         #planner-table-container thead th {
             position: sticky; top: 0; z-index: 20;
+            height: 140px; /* Increased height for rotated text */
+            vertical-align: bottom;
+            padding-bottom: 5px;
+        }
+        #planner-table-container thead th > div {
+            transform-origin: bottom left;
+            transform: translateX(10px) rotate(-60deg);
+            width: 30px;
+            white-space: nowrap;
         }
 
         .sticky-col-1 { position: sticky; left: 0; z-index: 15; min-width: 94px;}
@@ -64,7 +73,12 @@
         }
 		#planner-table-container thead th.sticky-col-1, #planner-table-container thead th.sticky-col-2, #planner-table-container thead th.sticky-col-3 {
 			z-index: 21;
+            height: auto; /* Reset height for non-rotated sticky headers */
 		}
+        #planner-table-container thead th.sticky-col-1 > div, #planner-table-container thead th.sticky-col-2 > div, #planner-table-container thead th.sticky-col-3 > div {
+            transform: none; /* No rotation for first three headers */
+            width: auto;
+        }
 
         #progression-table-view th.sticky {
             box-shadow: 0 4px 5px -2px rgba(0,0,0,0.05);
@@ -186,7 +200,7 @@
                             <button id="progression-view-lesson" class="px-3 py-1 text-sm font-medium rounded-md">By Lesson</button>
                         </div>
                      </div>
-                     <div id="progression-table-view" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-lg"></div>
+                     <div id="progression-table-view" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-lg p-4"></div>
                 </div>
                  <div id="summary-view" class="view flex-1 flex flex-col">
                     <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Planner Summary & Analytics</h1>
@@ -448,7 +462,7 @@
             },
 
             init() {
-                this.buildDataMaps();
+                // buildDataMaps is now called in loadDataAndInit after fetching
                 this.persistence.loadProgramData();
                 this.render.navigator();
                 this.attachEventListeners();
@@ -738,6 +752,7 @@
                     delete rowData.trackingData[code];
                 }
                 App.render.renderPlannerContent();
+                App.render.setActiveTab(App.state.currentActiveTab);
                 App.persistence.debouncedSave();
             }
         };
@@ -905,9 +920,9 @@
             table(columnGroups) {
                 App.dom.plannerTableContainer.innerHTML = ''; const table = document.createElement('table'); table.className = 'table-view w-full border-collapse'; const thead = document.createElement('thead');
                 let headerRowHTML = `<tr>
-                    <th class="sticky-col-1 w-[94px] min-w-[94px] p-2 bg-gray-100 dark:bg-gray-900/50">Actions</th>
-                    <th class="sticky-col-2 w-[60px] min-w-[60px] text-center p-2 bg-gray-100 dark:bg-gray-900/50" data-tooltip="Assessment Scope (F=Formative, S=Summative)">Scope</th>
-                    <th class="sticky-col-3 min-w-[150px] md:min-w-[250px] p-2 bg-gray-100 dark:bg-gray-900/50">Instructional Sequence</th>`;
+                    <th class="sticky-col-1"><div class="w-full">Actions</div></th>
+                    <th class="sticky-col-2"><div class="w-full">Scope</div></th>
+                    <th class="sticky-col-3"><div class="w-full">Instructional Sequence</div></th>`;
                 
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
 
@@ -918,14 +933,14 @@
                              const peData = App.dataMaps.peMap.get(peCode);
                              const tooltip = peData ? `${peCode}: ${peData.description.replace(/"/g, '&quot;')}` : peCode;
                              const secondaryClass = peObj.isSecondary ? 'font-normal italic text-gray-500 dark:text-gray-400' : 'font-semibold';
-                             headerRowHTML += `<th class="p-2 border-b-2 border-gray-300 dark:border-gray-700 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}">${peCode}</th>`;
+                             headerRowHTML += `<th class="cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}"><div>${peCode}</div></th>`;
                         });
                         if (!planner?.assignedPes || planner.assignedPes.length === 0) {
-                            headerRowHTML += `<th class="p-2 text-gray-500 font-normal" data-tab-group="pe">Assign PEs to see columns here</th>`;
+                            headerRowHTML += `<th class="font-normal" data-tab-group="pe"><div>Assign PEs</div></th>`;
                         }
                     } else {
                         columnGroups[key].cols.forEach(col => {
-                            headerRowHTML += `<th class="p-2 border-b-2 border-gray-300 dark:border-gray-700 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors cursor-pointer" data-tab-group="${key}" data-code="${col.code}" data-tooltip="${col.title}">${col.title}</th>`;
+                            headerRowHTML += `<th class="cursor-pointer" data-tab-group="${key}" data-code="${col.code}" data-tooltip="${col.title}"><div>${col.title}</div></th>`;
                         });
                     }
                 });
@@ -966,7 +981,6 @@
                     const rotateClass = rowData.isCollapsed ? '-rotate-90' : '';
                     const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
                     
-                    // *** COLSPAN BUG FIX: Render 3 cells to match sticky columns, leave others empty ***
                     let cellsHTML = `
                         <td class="sticky-col-1 p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson Set">✖</span></td>
                         <td class="sticky-col-2 p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
@@ -1217,7 +1231,7 @@
             renderProgressionByLesson() {
                 const selectedPlannerIds = Array.from(App.dom.navigatorList.querySelectorAll('.planner-checkbox:checked')).map(cb => cb.closest('.planner-item').dataset.plannerId); 
                 if (selectedPlannerIds.length === 0) { 
-                    alert('Please select at least one planner to view its progression.'); 
+                    alert('Please select at least one planner from the navigator to view its progression.'); 
                     return; 
                 } 
                 // "By Lesson" view only makes sense for one planner at a time.
@@ -1542,7 +1556,13 @@
                         const columnInfo = { code: parentCode, title: parentData.name };
                         const dimension = parentData.dimension;
 
-                        if (dimension === 'CNS') {
+                        if (dimension === 'SEP') {
+                            groups.sep.cols.push(columnInfo);
+                        } else if (dimension.startsWith('DCI')) {
+                            groups.dci.cols.push(columnInfo);
+                        } else if (dimension === 'CCC') {
+                            groups.ccc.cols.push(columnInfo);
+                        } else if (dimension === 'CNS') {
                             if (nosForSep.has(parentCode)) {
                                 groups.sep.cols.push(columnInfo);
                             }
@@ -1551,11 +1571,6 @@
                             }
                         } else if (dimension === 'C-ETAS') {
                             groups.ccc.cols.push(columnInfo);
-                        } else {
-                            const groupKey = dimension.toLowerCase().split('-')[0];
-                            if (groups[groupKey]) {
-                                groups[groupKey].cols.push(columnInfo);
-                            }
                         }
                     }
                 });
@@ -2128,17 +2143,23 @@
                     App.dataMaps.major3DMap = new Map(cachedMaps.major3DMap);
                     App.dataMaps.nameToCodeMap = new Map(cachedMaps.nameToCodeMap);
                     App.dataMaps.textToSpecificCodeMap = new Map(cachedMaps.textToSpecificCodeMap);
+                    // We still need the raw data for the PE modal, load it from cache if available
+                    App.state.allNgssData = await App.db.get('raw_ngss_data');
+                    if (!App.state.allNgssData) throw new Error("Raw data missing from cache.");
                 } else {
                     console.log("Data not found in cache. Fetching from server and processing...");
                     const dataPath = 'https://philm013.github.io/JSON/';
                     const [ngss3d, k5, m68, h912] = await Promise.all([
-                        fetch(`${dataPath}ngss3DElements.json`).then(res => res.json()),
-                        fetch(`${dataPath}ngssK5.json`).then(res => res.json()),
-                        fetch(`${dataPath}ngss68.json`).then(res => res.json()),
-                        fetch(`${dataPath}ngss912.json`).then(res => res.json())
+                        fetch(`${dataPath}ngss3DElements.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss3DElements.json`); return res.json(); }),
+                        fetch(`${dataPath}ngssK5.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngssK5.json`); return res.json(); }),
+                        fetch(`${dataPath}ngss68.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss68.json`); return res.json(); }),
+                        fetch(`${dataPath}ngss912.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss912.json`); return res.json(); })
                     ]);
+                    
                     App.state.allNgss3dElements = ngss3d;
-                    App.state.allNgssData = [...k5, ...m68, ...h912];
+                    const msData = { gradeId: 'MS', gradeLabel: 'Middle School', topics: m68 };
+                    const hsData = { gradeId: 'HS', gradeLabel: 'High School', topics: h912 };
+                    App.state.allNgssData = [...k5, msData, hsData];
                     
                     App.buildDataMaps();
                     
@@ -2152,6 +2173,7 @@
                         textToSpecificCodeMap: [...App.dataMaps.textToSpecificCodeMap],
                     };
                     await App.db.set('processed_maps', serializableMaps);
+                    await App.db.set('raw_ngss_data', App.state.allNgssData);
                     console.log("Data processed and cached.");
                 }
 
