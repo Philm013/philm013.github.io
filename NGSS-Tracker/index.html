@@ -497,21 +497,32 @@
                     }
                 };
                 
+                if (!this.state.allNgss3dElements) return;
+
                 this.state.allNgss3dElements.forEach(dim => {
                     const elementsToProcess = dim.elements || dim.core_ideas || [];
-                    
+                    // Robust handling for potential other structures like 'understandings' if they exist in future data
+                    if (dim.understandings) {
+                        dim.understandings.forEach(u => { if(u.elements) elementsToProcess.push(...u.elements); });
+                    }
+
                     elementsToProcess.forEach(el => {
                          const processProgressions = (item) => {
                              if(item.progressions){
-                                 Object.values(item.progressions).forEach(pArr=>(pArr||[]).forEach(i=>{
-                                     i.parentName = item.name;
-                                     i.parentCode = item.name.split(':')[0].trim();
-                                     i.dimension = dim.short_name;
-                                     i.allProgressions = item.progressions;
-                                     i.relatedPes = new Set();
-                                     ngss3dMap.set(i.code,i);
-                                     textToSpecificCodeMap.set(i.text.trim(), i.code);
-                                 }));
+                                 Object.values(item.progressions).forEach(pArr=>{
+                                     if(Array.isArray(pArr)) {
+                                         pArr.forEach(i=>{
+                                             if(!i) return;
+                                             i.parentName = item.name;
+                                             i.parentCode = item.name.split(':')[0].trim();
+                                             i.dimension = dim.short_name;
+                                             i.allProgressions = item.progressions;
+                                             i.relatedPes = new Set();
+                                             ngss3dMap.set(i.code,i);
+                                             textToSpecificCodeMap.set(i.text.trim(), i.code);
+                                         });
+                                     }
+                                 });
                              }
                          };
                         processElementForMaps(el);
@@ -525,51 +536,74 @@
                     });
                 });
                 
-                this.state.allNgssData.forEach(gradeData => gradeData.topics.forEach(t => t.performanceExpectations.forEach(p => {
-                    peMap.set(p.id, p);
-                    if (!p.details) return;
+                if (!this.state.allNgssData) return;
 
-                    const componentCodes = new Set();
-                    const secondaryComponentCodes = new Set();
-                    const specificCodes = new Set();
+                this.state.allNgssData.forEach(gradeData => {
+                    if(!gradeData.topics) return;
+                    gradeData.topics.forEach(t => {
+                        if(!t.performanceExpectations) return;
+                        t.performanceExpectations.forEach(p => {
+                            peMap.set(p.id, p);
+                            if (!p.details) return;
 
-                    ['sep', 'dci', 'ccc'].forEach(key => (p.details[key] || []).forEach(ref => {
-                        let lineMatched = false;
-                        const textLines = Array.isArray(ref.text) ? ref.text : (ref.text ? [ref.text] : []);
-                        
-                        textLines.forEach(line => {
-                            if (!line.trim()) return;
-                            const specCode = App.utils.findBestMatchingSpecificElement(line, gradeData.gradeLabel);
-                            if (specCode) {
-                                specificCodes.add(specCode);
-                                const el = ngss3dMap.get(specCode);
-                                if (el) {
-                                    el.relatedPes.add(p.id);
-                                    if (el.parentCode) componentCodes.add(el.parentCode);
-                                }
-                                lineMatched = true;
+                            const componentCodes = new Set();
+                            const secondaryComponentCodes = new Set();
+                            const specificCodes = new Set();
+
+                            ['sep', 'dci', 'ccc'].forEach(key => {
+                                const refs = p.details[key] || [];
+                                refs.forEach(ref => {
+                                    let lineMatched = false;
+                                    const textLines = Array.isArray(ref.text) ? ref.text : (ref.text ? [ref.text] : []);
+                                    
+                                    textLines.forEach(line => {
+                                        if (!line || typeof line !== 'string') return;
+                                        const cleanLine = line.trim();
+                                        if(!cleanLine) return;
+
+                                        // 1. Try matching exact specific progression text
+                                        const specCode = App.utils.findBestMatchingSpecificElement(cleanLine, gradeData.gradeLabel);
+                                        if (specCode) {
+                                            specificCodes.add(specCode);
+                                            const el = ngss3dMap.get(specCode);
+                                            if (el) {
+                                                el.relatedPes.add(p.id);
+                                                if (el.parentCode) componentCodes.add(el.parentCode);
+                                            }
+                                            lineMatched = true;
+                                        }
+                                        
+                                        // 2. Try matching Element Name (for Connections headers)
+                                        // Check against nameToCodeMap
+                                        const potentialCode = nameToCodeMap.get(cleanLine);
+                                        if (potentialCode) {
+                                            // It matches a major element (like INFLU)
+                                            componentCodes.add(potentialCode);
+                                            // lineMatched = true; // Keep checking just in case
+                                        }
+                                    });
+                                    
+                                    // Fallback to ID matching
+                                    const isSecondary = ref.id.includes('(secondary)');
+                                    const cleanId = ref.id.replace(' (secondary)', '').trim();
+                                    const nameOnly = cleanId.includes(':') ? cleanId.split(':').pop().trim() : cleanId;
+                                    const cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(nameOnly);
+                                    if (cCode) {
+                                        if(isSecondary) {
+                                            secondaryComponentCodes.add(cCode);
+                                        } else {
+                                            componentCodes.add(cCode);
+                                        }
+                                    }
+                                });
+                            });
+
+                            if (componentCodes.size > 0 || secondaryComponentCodes.size > 0 || specificCodes.size > 0) {
+                                peTo3dMap.set(p.id, { componentCodes, secondaryComponentCodes, specificCodes });
                             }
                         });
-                        
-                        if (!lineMatched) {
-                            const isSecondary = ref.id.includes('(secondary)');
-                            const cleanId = ref.id.replace(' (secondary)', '').trim();
-                            const nameOnly = cleanId.includes(':') ? cleanId.split(':').pop().trim() : cleanId;
-                            const cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(nameOnly);
-                            if (cCode) {
-                                if(isSecondary) {
-                                    secondaryComponentCodes.add(cCode);
-                                } else {
-                                    componentCodes.add(cCode);
-                                }
-                            }
-                        }
-                    }));
-
-                    if (componentCodes.size > 0 || secondaryComponentCodes.size > 0 || specificCodes.size > 0) {
-                        peTo3dMap.set(p.id, { componentCodes, secondaryComponentCodes, specificCodes });
-                    }
-                })));
+                    });
+                });
                 
                 const processParent = (parent, dimShortName) => {
                     if (!parent.progressions) return;
