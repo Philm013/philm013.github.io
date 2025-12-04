@@ -106,7 +106,7 @@
     </style>
 </head>
 <body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased group">
-    <div id="loading-indicator" class="fixed inset-0 bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-lg text-gray-500 dark:text-gray-400 z-[2000] transition-opacity duration-500">Loading NGSS Planner</div>
+    <div id="loading-indicator" class="fixed inset-0 bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-lg text-gray-500 dark:text-gray-400 z-[2000] transition-opacity duration-500">Loading NGSS Planner...</div>
 
     <div class="relative flex h-screen overflow-hidden">
         <aside id="sidebar" class="bg-gray-800 text-gray-100 flex flex-col w-80 flex-shrink-0 p-4 transform transition-transform duration-300 ease-in-out z-[1000] -translate-x-full md:relative md:translate-x-0 fixed top-0 left-0 h-full md:shadow-lg">
@@ -160,7 +160,7 @@
                     
                     <div class="controls flex flex-row flex-wrap gap-2 md:gap-4 mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm md:items-center">
                          <div class="relative flex-shrink-0">
-                            <input type="search" id="search-input" placeholder="Search lessons" class="w-full md:w-48 pl-8 pr-2 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500">
+                            <input type="search" id="search-input" placeholder="Search lessons..." class="w-full md:w-48 pl-8 pr-2 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400">⚲</div>
                         </div>
                         <div class="controls-group flex gap-2">
@@ -498,19 +498,8 @@
                 };
                 
                 this.state.allNgss3dElements.forEach(dim => {
-                    let elementsToProcess = [];
-                    if (dim.elements) {
-                        elementsToProcess = dim.elements;
-                    } else if (dim.core_ideas) {
-                        elementsToProcess = dim.core_ideas;
-                    } else if (dim.understandings) {
-                        dim.understandings.forEach(understanding => {
-                            if (understanding.elements) {
-                                elementsToProcess.push(understanding.elements);
-                            }
-                        });
-                    }
-
+                    const elementsToProcess = dim.elements || dim.core_ideas || [];
+                    
                     elementsToProcess.forEach(el => {
                          const processProgressions = (item) => {
                              if(item.progressions){
@@ -590,7 +579,17 @@
                     const uniqueChildren = Array.from(new Map(children.map(item => [item.code, item])).values());
                     parentToChildrenMap.set(parentCode, {name: parent.name, children: uniqueChildren, dimension: dimShortName});
                 };
-                this.state.allNgss3dElements.forEach(dim => { (dim.elements || dim.core_ideas).forEach(el => { if (el.progressions) { processParent(el, dim.short_name); } else if (el.components) { el.components.forEach(comp => processParent(comp, dim.short_name)); } }); });
+
+                this.state.allNgss3dElements.forEach(dim => {
+                    (dim.elements || []).forEach(el => processParent(el, dim.short_name));
+                    (dim.core_ideas || []).forEach(el => {
+                        if (el.progressions) {
+                            processParent(el, dim.short_name);
+                        } else if (el.components) {
+                            el.components.forEach(comp => processParent(comp, dim.short_name));
+                        }
+                    });
+                });
                 parentToChildrenMap.set('PE', {name: "Performance Expectations", children: [], dimension: 'PE'});
             },
 
