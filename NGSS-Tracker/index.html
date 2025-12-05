@@ -35,7 +35,6 @@
         }
 		#pe-modal-list { overflow-y: auto; }
         
-        /* Dark Mode Scrollbars */
         .dark #planner-table-container, .dark .modal-content, .dark #progression-table-view, .dark #summary-content, .dark #popover-content {
             scrollbar-color: #4a5568 #2d3748;
         }
@@ -47,30 +46,30 @@
             border-color: #2d3748;
         }
         
-        /* --- NEW TABLE STYLES --- */
+        /* --- FIXED LAYOUT STYLES --- */
         
-        /* Force the table to respect specific widths */
         table.fixed-layout {
             table-layout: fixed;
-            width: max-content; /* Allows table to grow horizontally beyond screen */
+            width: max-content; 
             min-width: 100%;
+            border-collapse: separate; /* Required for sticky to work perfectly with borders in some browsers */
+            border-spacing: 0;
         }
 
-        /* Header Styling */
         #planner-table-container thead th {
             position: sticky; 
             top: 0; 
             z-index: 20;
-            height: 160px; /* Tall headers for vertical text */
+            height: 160px;
             vertical-align: bottom;
             padding: 8px 4px;
             border-bottom: 2px solid #cbd5e0;
+            background-clip: padding-box;
         }
         .dark #planner-table-container thead th {
             border-bottom-color: #4a5568;
         }
 
-        /* Vertical Text Logic - Replaces Slanted Text */
         .vertical-header-text {
             writing-mode: vertical-rl;
             transform: rotate(180deg);
@@ -80,47 +79,51 @@
             width: 100%;
             display: flex;
             align-items: center;
+            justify-content: flex-start; /* Ensures text starts at bottom */
         }
 
-        /* Sticky Columns Configuration */
-        /* 1. Actions Column */
+        /* --- STICKY COLUMN DEFINITIONS --- */
+        
+        /* 1. Actions Column (120px) */
         .sticky-col-1 { 
             position: sticky; left: 0; z-index: 25; 
-            width: 60px; min-width: 60px; max-width: 60px;
+            width: 120px; min-width: 120px; max-width: 120px;
         }
-        /* 2. Scope Column */
+        
+        /* 2. Scope Column (80px) */
         .sticky-col-2 { 
-            position: sticky; left: 60px; z-index: 24; 
-            width: 60px; min-width: 60px; max-width: 60px;
+            position: sticky; left: 120px; z-index: 24; 
+            width: 80px; min-width: 80px; max-width: 80px;
         }
-        /* 3. Sequence (Title) Column */
+        
+        /* 3. Sequence Column (400px) */
         .sticky-col-3 { 
             position: sticky; 
-            left: 120px; 
+            left: 200px; /* 120 + 80 */
             z-index: 23; 
-            width: 350px; min-width: 350px; max-width: 350px;
+            width: 400px; min-width: 400px; max-width: 400px;
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.05);
         }
         .dark .sticky-col-3 {
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.25);
         }
 
-        /* Data Columns (PEs, DCIs, etc) */
+        /* Data Columns (50px) */
         .data-col-header {
-            width: 45px; min-width: 45px; max-width: 45px;
+            width: 50px; min-width: 50px; max-width: 50px;
         }
 
-        /* Reset z-index for sticky headers */
+        /* Sticky Header Overrides */
 		#planner-table-container thead th.sticky-col-1, 
         #planner-table-container thead th.sticky-col-2, 
         #planner-table-container thead th.sticky-col-3 {
 			z-index: 30;
-            height: auto; /* Normal height for the title headers */
+            height: auto; 
             vertical-align: middle;
             padding-bottom: 10px;
 		}
 
-        /* Standard Features */
+        /* Standard App Styles */
         body.sidebar-open #sidebar { transform: translateX(0); }
         body.sidebar-open #sidebar-backdrop { opacity: 1; pointer-events: auto; }
         body.modal-open #menu-toggle { display: none; }
@@ -998,12 +1001,11 @@
             },
             table(columnGroups) {
                 App.dom.plannerTableContainer.innerHTML = ''; 
-                // Added 'fixed-layout' class here
                 const table = document.createElement('table'); 
-                table.className = 'table-view fixed-layout border-collapse'; 
+                table.className = 'table-view fixed-layout'; // Using fixed-layout class
                 const thead = document.createElement('thead');
                 
-                // Updated Sticky Headers with specific classes
+                // Updated Sticky Headers with new labels and classes
                 let headerRowHTML = `<tr>
                     <th class="sticky-col-1 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700">Actions</th>
                     <th class="sticky-col-2 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700">Scope</th>
@@ -1018,7 +1020,6 @@
                              const peData = App.dataMaps.peMap.get(peCode);
                              const tooltip = peData ? `${peCode}: ${peData.description.replace(/"/g, '&quot;')}` : peCode;
                              const secondaryClass = peObj.isSecondary ? 'font-normal italic text-gray-500 dark:text-gray-400' : 'font-semibold';
-                             // Added data-col-header class and vertical-header-text div
                              headerRowHTML += `<th class="data-col-header cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}"><div class="vertical-header-text">${peCode}</div></th>`;
                         });
                         if (!planner?.assignedPes || planner.assignedPes.length === 0) {
@@ -1026,7 +1027,6 @@
                         }
                     } else {
                         columnGroups[key].cols.forEach(col => {
-                            // Added data-col-header class and vertical-header-text div
                             headerRowHTML += `<th class="data-col-header cursor-pointer" data-tab-group="${key}" data-code="${col.code}" data-tooltip="${col.title}"><div class="vertical-header-text">${col.title}</div></th>`;
                         });
                     }
@@ -1048,8 +1048,6 @@
                 row.draggable = !App.state.isViewMode;
 
                 const planner = App.utils.findPlanner(App.state.currentPlannerId); const columnGroups = App.utils.gatherColumns(planner.gradeBand);
-                
-                // Common border classes
                 const borderClass = "border-b border-r border-gray-200 dark:border-gray-700";
 
                 if (rowData.type === 'lesson-set') {
@@ -1058,7 +1056,7 @@
                     const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
                     
                     let cellsHTML = `
-                        <td class="sticky-col-1 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson Set">✖</span></td>
+                        <td class="sticky-col-1 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab group-[.view-mode-active]:hidden mr-2">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson Set">✖</span></td>
                         <td class="sticky-col-2 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
                         <td class="sticky-col-3 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>`;
                     
@@ -1085,11 +1083,13 @@
                     const scopeCursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer';
                     const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
                     const notesIcon = `<span class="notes-btn cursor-pointer text-base" title="Edit Notes & Links">📝</span>`;
+                    
+                    // Fixed width container for actions to prevent wrapping
                     let cellsHTML = `
                         <td class="sticky-col-1 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle">
-                            <div class="flex items-center justify-between gap-1.5 text-gray-400">
+                            <div class="flex items-center justify-start gap-2 text-gray-400 w-full overflow-hidden">
                                 <span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span>
-                                <div class="flex items-center gap-1.5 invisible group-hover/row:visible">
+                                <div class="flex items-center gap-2 invisible group-hover/row:visible">
                                     ${notesIcon}
                                     <span class="delete-btn cursor-pointer font-bold hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson">✖</span>
                                     <span class="add-below-btn cursor-pointer hover:text-green-500 transition-colors group-[.view-mode-active]:hidden" title="Add Lesson Below">+</span>
@@ -1098,7 +1098,7 @@
                             </div>
                         </td>
                         <td data-scope-cell="true" class="sticky-col-2 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle font-bold text-center ${scopeCursorClass} ${scopeClass}" data-tooltip="Click to cycle Assessment Scope">${scope}</td>
-                        <td class="sticky-col-3 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 text-left ${parentId ? 'pl-10' : ''}">${editableSpan}</td>`;
+                        <td class="sticky-col-3 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 text-left ${parentId ? 'pl-10' : ''}"><div class="truncate">${editableSpan}</div></td>`;
 
                     Object.keys(columnGroups).forEach(key => {
                          if (key === 'pe') {
