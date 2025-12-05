@@ -42,8 +42,8 @@
           "type": "lesson",
           "title": "Lesson 1: The Incredible Machine",
           "trackingData": {
-            "CCC.5-E2": "I",
-            "SEP.1-E1": "I"
+            "EM-E3": "I",
+            "AQDP-E1": "I"
           },
           "scope": "",
           "details": {"notes": "Students watch a video of a Rube Goldberg machine and list their observations and questions.", "links": []}
@@ -74,7 +74,7 @@
           "trackingData": {
             "PS3.A-E1": "D",
             "4-PS3-1": "D",
-            "SEP.3-E2": "I"
+            "INV-E2": "I"
           },
           "scope": "F",
           "details": {"notes": "Investigating how the height of a ramp affects the speed of a marble.", "links": []}
@@ -97,7 +97,7 @@
           "title": "Lesson 5: Domino Chain Reactions",
           "trackingData": {
             "PS3.B-E1": "D",
-            "CCC.2-E2": "I"
+            "CE-E2": "I"
           },
           "scope": "F",
           "details": {"notes": "", "links": []}
@@ -108,7 +108,7 @@
           "title": "Lesson 6: Energy Transfer Investigation",
           "trackingData": {
             "4-PS3-3": "D",
-            "SEP.3-E2": "D"
+            "INV-E2": "D"
           },
           "scope": "",
           "details": {"notes": "", "links": []}
@@ -150,7 +150,7 @@
           "trackingData": {
             "PS3.B-E2": "D",
             "4-PS3-2": "D",
-            "CCC.5-E2": "D"
+            "EM-E3": "D"
           },
           "scope": "F",
           "details": {"notes": "", "links": []}
@@ -221,8 +221,8 @@
           "type": "lesson",
           "title": "Lesson 15: Cause and Effect Chains",
           "trackingData": {
-            "CCC.2-E2": "D",
-            "SEP.6-E3": "I"
+            "CE-E2": "D",
+            "CEDS-E3": "I"
           },
           "scope": "",
           "details": {"notes": "", "links": []}
@@ -233,7 +233,7 @@
           "title": "Lesson 16: Explaining Energy Transfer",
           "trackingData": {
             "4-PS3-2": "A",
-            "SEP.6-E3": "D"
+            "CEDS-E3": "D"
           },
           "scope": "F",
           "details": {"notes": "", "links": []}
@@ -271,7 +271,7 @@
           "type": "lesson",
           "title": "Lesson 19: Brainstorming & Planning",
           "trackingData": {
-            "SEP.6-E3": "D"
+            "CEDS-E3": "D"
           },
           "scope": "",
           "details": {"notes": "", "links": []}
@@ -319,8 +319,8 @@
           "type": "lesson",
           "title": "Lesson 23: Machine Showcase",
           "trackingData": {
-            "SEP.6-E3": "A",
-            "CCC.5-E2": "A"
+            "CEDS-E3": "A",
+            "EM-E3": "A"
           },
           "scope": "S",
           "details": {"notes": "Students present their machines and explain the energy transfers and conversions.", "links": []}
