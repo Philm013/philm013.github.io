@@ -1,0 +1,344 @@
+{
+  "id": "planner-1721248800001",
+  "title": "Grade 7 Earth Systems: Plate Tectonics",
+  "course": "7th Grade Science",
+  "gradeBand": "middle",
+  "standardSet": "NGSS",
+  "phenomenon": "The Hawaiian Islands are a chain of volcanoes that formed in the middle of the Pacific Plate, far from any plate boundary.",
+  "question": "How can new land form in the middle of the ocean?",
+  "description": "A unit exploring the mechanisms of plate tectonics, the rock cycle, and geological time to explain large-scale Earth features and processes.",
+  "activeTab": "dci",
+  "assignedPes": [
+    {
+      "id": "MS-ESS2-1",
+      "isSecondary": false
+    },
+    {
+      "id": "MS-ESS2-2",
+      "isSecondary": false
+    },
+    {
+      "id": "MS-ESS2-3",
+      "isSecondary": false
+    },
+    {
+      "id": "MS-ESS1-4",
+      "isSecondary": true
+    }
+  ],
+  "rows": [
+    {
+      "id": "row-1721248800002",
+      "type": "lesson-set",
+      "title": "Anchor Lesson",
+      "isCollapsed": false,
+      "children": [
+        {
+          "id": "row-1721248800003",
+          "type": "lesson",
+          "title": "Lesson 1: Hawaiian Hot Spot Phenomenon",
+          "trackingData": {
+            "SEP.1-M1": "I",
+            "CCC.2-M2": "I"
+          },
+          "scope": "",
+          "details": {
+            "notes": "Introduce the phenomenon using maps and videos. Students generate initial questions.",
+            "links": []
+          }
+        },
+        {
+          "id": "row-1721248800004",
+          "type": "lesson",
+          "title": "Lesson 2: Initial Models",
+          "trackingData": {
+            "SEP.2-M3": "I",
+            "MS-ESS2-2": "I"
+          },
+          "scope": "F",
+          "details": {
+            "notes": "Students draw initial models to explain how the Hawaiian islands could have formed.",
+            "links": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "row-1721248800005",
+      "type": "lesson-set",
+      "title": "Investigation 1: Earth's Layers & Convection",
+      "isCollapsed": false,
+      "children": [
+        {
+          "id": "row-1721248800006",
+          "type": "lesson",
+          "title": "Lesson 3: What's Inside Earth?",
+          "trackingData": {
+            "ESS2.A-M1": "I"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800007",
+          "type": "lesson",
+          "title": "Lesson 4: Modeling Mantle Convection",
+          "trackingData": {
+            "ESS2.A-M1": "D",
+            "SEP.2-M3": "D",
+            "CCC.5-M1": "I"
+          },
+          "scope": "F",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800008",
+          "type": "lesson",
+          "title": "Lesson 5: Tectonic Plates Puzzle",
+          "trackingData": {
+            "ESS2.B-M1": "I",
+            "MS-ESS2-3": "I"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800009",
+          "type": "lesson",
+          "title": "Lesson 6: Plate Boundary Types",
+          "trackingData": {
+            "ESS2.B-M1": "D"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800010",
+          "type": "lesson",
+          "title": "Lesson 7: Revisiting Initial Models",
+          "trackingData": {
+            "SEP.2-M3": "D",
+            "CCC.2-M2": "D"
+          },
+          "scope": "F",
+          "details": { "notes": "", "links": [] }
+        }
+      ]
+    },
+    {
+      "id": "row-1721248800011",
+      "type": "lesson-set",
+      "title": "Investigation 2: The Rock Cycle",
+      "isCollapsed": false,
+      "children": [
+        {
+          "id": "row-1721248800012",
+          "type": "lesson",
+          "title": "Lesson 8: Rock Identification Lab",
+          "trackingData": {
+            "ESS2.A-M2": "I"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800013",
+          "type": "lesson",
+          "title": "Lesson 9: Crayon Rock Cycle Model",
+          "trackingData": {
+            "ESS2.A-M2": "D",
+            "MS-ESS2-1": "I",
+            "CCC.7-M1": "I"
+          },
+          "scope": "F",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800014",
+          "type": "lesson",
+          "title": "Lesson 10: Weathering and Erosion Stations",
+          "trackingData": {
+            "ESS2.A-M3": "I"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800015",
+          "type": "lesson",
+          "title": "Lesson 11: How Landscapes Change",
+          "trackingData": {
+            "ESS2.A-M3": "D",
+            "MS-ESS2-2": "D"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800016",
+          "type": "lesson",
+          "title": "Lesson 12: Connecting the Rock Cycle to Plate Tectonics",
+          "trackingData": {
+            "MS-ESS2-1": "D",
+            "CCC.7-M1": "D"
+          },
+          "scope": "F",
+          "details": { "notes": "", "links": [] }
+        }
+      ]
+    },
+    {
+      "id": "row-1721248800017",
+      "type": "lesson-set",
+      "title": "Investigation 3: Geologic Time",
+      "isCollapsed": false,
+      "children": [
+        {
+          "id": "row-1721248800018",
+          "type": "lesson",
+          "title": "Lesson 13: Reading Rock Layers",
+          "trackingData": {
+            "ESS1.C-M1": "I"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800019",
+          "type": "lesson",
+          "title": "Lesson 14: Index Fossils",
+          "trackingData": {
+            "ESS1.C-M1": "D",
+            "MS-ESS1-4": "I"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800020",
+          "type": "lesson",
+          "title": "Lesson 15: Geologic Time Scale",
+          "trackingData": {
+            "MS-ESS1-4": "D",
+            "CCC.6-M1": "I"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800021",
+          "type": "lesson",
+          "title": "Lesson 16: Mapping Earth's History",
+          "trackingData": {
+            "MS-ESS2-3": "D"
+          },
+          "scope": "F",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800022",
+          "type": "lesson",
+          "title": "Lesson 17: Analyzing Global Data",
+          "trackingData": {
+            "SEP.4-M4": "I",
+            "MS-ESS2-3": "A"
+          },
+          "scope": "F",
+          "details": { "notes": "", "links": [] }
+        }
+      ]
+    },
+    {
+      "id": "row-1721248800023",
+      "type": "lesson-set",
+      "title": "Investigation 4: Synthesizing the Model",
+      "isCollapsed": false,
+      "children": [
+        {
+          "id": "row-1721248800024",
+          "type": "lesson",
+          "title": "Lesson 18: Explaining Volcanoes and Earthquakes",
+          "trackingData": {
+            "ESS2.B-M1": "A"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800025",
+          "type": "lesson",
+          "title": "Lesson 19: The Supercontinent Cycle",
+          "trackingData": {
+            "MS-ESS2-2": "A"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800026",
+          "type": "lesson",
+          "title": "Lesson 20: Finalizing the Hawaiian Islands Model",
+          "trackingData": {
+            "SEP.2-M3": "A",
+            "CCC.2-M2": "A"
+          },
+          "scope": "F",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800027",
+          "type": "lesson",
+          "title": "Lesson 21: Constructing an Argument",
+          "trackingData": {
+            "SEP.7-M3": "I"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        },
+        {
+          "id": "row-1721248800028",
+          "type": "lesson",
+          "title": "Lesson 22: Peer Review and Refinement",
+          "trackingData": {
+            "SEP.7-M3": "D"
+          },
+          "scope": "",
+          "details": { "notes": "", "links": [] }
+        }
+      ]
+    },
+    {
+      "id": "row-1721248800029",
+      "type": "lesson-set",
+      "title": "Transfer Task",
+      "isCollapsed": false,
+      "children": [
+        {
+          "id": "row-1721248800030",
+          "type": "lesson",
+          "title": "Lesson 23: New Scenario - East African Rift Valley",
+          "trackingData": {
+            "MS-ESS2-1": "A",
+            "MS-ESS2-2": "A"
+          },
+          "scope": "S",
+          "details": { "notes": "Students apply their model to a new divergent boundary scenario.", "links": [] }
+        },
+        {
+          "id": "row-1721248800031",
+          "type": "lesson",
+          "title": "Final Assessment",
+          "trackingData": {
+            "MS-ESS2-3": "A",
+            "SEP.7-M3": "A",
+            "ESS1.C-M1": "A",
+            "ESS2.A-M1": "A",
+            "ESS2.B-M1": "A"
+          },
+          "scope": "S",
+          "details": { "notes": "Unit test covering all targeted PEs and 3D elements.", "links": [] }
+        }
+      ]
+    }
+  ]
+}
