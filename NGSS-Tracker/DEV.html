@@ -165,7 +165,7 @@
                                 </label>
                             </div>
 
-                            <div id="tab-container" class="tabs flex border-b-2 border-gray-300 dark:border-gray-700 -mb-px flex-1"></div>
+                            <div id="tab-container" class="tabs flex border-b-2 border-gray-300 dark:border-gray-700 -mb-px flex-1 justify-center"></div>
 
                             <div class="flex items-center gap-2">
                                 <div class="relative group">
@@ -382,7 +382,9 @@
         <div id="popover-content" class="overflow-y-auto max-h-[50vh]"></div>
     </div>
 
-
+    <div id="scrollbar-tooltip" class="fixed bottom-2 right-1/2 translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-md z-[1002] pointer-events-none opacity-0 transition-opacity shadow-lg">
+        Tip: Hold <kbd class="px-1.5 py-0.5 border border-gray-600 bg-gray-700 rounded-md font-sans text-xs">Shift</kbd> + Scroll to scroll horizontally
+    </div>
     <div id="tooltip" class="fixed bg-gray-900 text-white px-3 py-1.5 rounded-md z-[1002] pointer-events-none opacity-0 transition-opacity text-sm max-w-md shadow-lg"></div>
     
     <script>
@@ -406,6 +408,8 @@
                 progressionViewType: 'element',
                 summaryShowCoveredOnly: false,
                 summaryChartFilter: null,
+                scrollbarTooltipTimeout: null,
+                scrollbarTooltipShown: false,
                 activeCharts: {},
             },
 			dataMaps: {
@@ -433,6 +437,7 @@
                 tabContainer: document.getElementById('tab-container'),
                 saveStatus: document.getElementById('save-status'),
                 tooltip: document.getElementById('tooltip'),
+                scrollbarTooltip: document.getElementById('scrollbar-tooltip'),
                 loadingIndicator: document.getElementById('loading-indicator'),
                 body: document.getElementById('body-tag'),
                 undoBtn: document.getElementById('undo-btn'),
@@ -454,6 +459,7 @@
                 },
                 scopeClasses: {
                     F: 'bg-indigo-200/60 dark:bg-indigo-700/40 border-indigo-300',
+                    CF: 'bg-amber-200/60 dark:bg-amber-700/40 border-amber-300',
                     S: 'bg-rose-200/60 dark:bg-rose-700/40 border-rose-300'
                 }
             },
@@ -696,6 +702,8 @@
 
                 this.dom.plannerTableContainer.addEventListener('click', e => this.handlers.mainTableClick(e));
                 this.dom.plannerTableContainer.addEventListener('blur', e => { if (e.target.matches('.editable')) this.handlers.titleEdit(e) }, true);
+                this.dom.plannerTableContainer.addEventListener('mousemove', e => this.handlers.handleScrollbarTooltip(e));
+                this.dom.plannerTableContainer.addEventListener('mouseleave', () => this.handlers.hideScrollbarTooltip());
                 this.dom.tabContainer.addEventListener('click', e => {
                     const tabBtn = e.target.closest('.tab-button');
                     if (tabBtn) this.render.setActiveTab(tabBtn.dataset.tab);
@@ -1651,6 +1659,7 @@
                     if (value === 'A') label = 'Assessed';
                     if (value === '') label = 'Not Scoped';
                     if (value === 'F') label = 'Formative';
+                    if (value === 'CF') label = 'Critical Formative';
                     if (value === 'S') label = 'Summative';
                     
                     filterBadge = `
@@ -1714,7 +1723,7 @@
                 const globalStats = {
                     status: { I: 0, D: 0, A: 0 },
                     dimension: { SEP: 0, DCI: 0, CCC: 0, PE: 0 },
-                    scope: { F: 0, S: 0, None: 0 }
+                    scope: { F: 0, CF: 0, S: 0, None: 0 }
                 };
                 
                 const coverageMap = new Map(); 
@@ -1738,15 +1747,23 @@
                             if (element) {
                                 if (element.dimension.startsWith('SEP')) globalStats.dimension.SEP++;
                                 else if (element.dimension.startsWith('DCI')) globalStats.dimension.DCI++;
-                                else globalStats.dimension.CCC++;
+                                else if (element.dimension.startsWith('CCC')) globalStats.dimension.CCC++;
                             } else if (App.dataMaps.peMap.has(code)) {
                                 globalStats.dimension.PE++;
                             }
                         });
 
                         if (filter && filter.type === 'scope') {
-                            const targetScope = filter.value === 'None' ? '' : (filter.value === 'Formative' ? 'F' : 'S');
-                            if ((lesson.scope || '') !== targetScope) return;
+                            let targetScope = '';
+                            if (filter.value === 'Formative') targetScope = 'F';
+                            else if (filter.value === 'Critical Formative') targetScope = 'CF';
+                            else if (filter.value === 'Summative') targetScope = 'S';
+                            else if (filter.value === 'Not Scoped') targetScope = '';
+                            
+                            const rowScope = lesson.scope || '';
+                            const checkScope = filter.value === 'Not Scoped' ? '' : targetScope;
+                            
+                            if (rowScope !== checkScope) return;
                         }
 
                         Object.entries(lesson.trackingData || {}).forEach(([code, status]) => {
@@ -1808,10 +1825,10 @@
                 App.state.activeCharts.scope = new Chart(document.getElementById('scope-chart'), {
                     type: 'pie',
                     data: {
-                        labels: ['Formative', 'Summative', 'Not Scoped'],
+                        labels: ['Formative', 'Critical Formative', 'Summative', 'Not Scoped'],
                         datasets: [{ 
-                            data: [globalStats.scope.F, globalStats.scope.S, globalStats.scope.None], 
-                            backgroundColor: ['#6366F1', '#EC4899', '#E5E7EB'],
+                            data: [globalStats.scope.F, globalStats.scope.CF, globalStats.scope.S, globalStats.scope.None], 
+                            backgroundColor: ['#6366F1', '#F59E0B', '#EC4899', '#E5E7EB'],
                             borderWidth: 0
                         }]
                     },
@@ -2067,6 +2084,26 @@
                 App.state.draggedGroup = null;
                 App.persistence.updateStateFromTableOrder();
                 App.persistence.debouncedSave();
+            },
+            handleScrollbarTooltip(e) {
+                const container = App.dom.plannerTableContainer;
+                if (App.state.scrollbarTooltipShown || container.scrollWidth <= container.clientWidth) {
+                    return;
+                }
+                const rect = container.getBoundingClientRect();
+                const scrollbarHeight = container.offsetHeight - container.clientHeight;
+                if (e.clientY > (rect.bottom - scrollbarHeight - 5)) { // 5px buffer
+                    clearTimeout(App.state.scrollbarTooltipTimeout);
+                    App.dom.scrollbarTooltip.style.opacity = '1';
+                    App.state.scrollbarTooltipTimeout = setTimeout(() => {
+                        this.hideScrollbarTooltip();
+                    }, 4000);
+                    App.state.scrollbarTooltipShown = true;
+                }
+            },
+            hideScrollbarTooltip() {
+                clearTimeout(App.state.scrollbarTooltipTimeout);
+                App.dom.scrollbarTooltip.style.opacity = '0';
             }
         };
 
@@ -2225,7 +2262,7 @@
                 const rowData = this.findRowData(planner, rowId);
                 if (!rowData) return;
                 const currentScope = rowData.scope;
-                const cycle = { '': 'F', 'F': 'S', 'S': '' };
+                const cycle = { '': 'F', 'F': 'CF', 'CF': 'S', 'S': '' };
                 rowData.scope = cycle[currentScope || ''];
                 App.render.renderPlannerContent();
                 App.render.setActiveTab(App.state.currentActiveTab);
@@ -2811,7 +2848,11 @@
                         rowInfo[sheetData.length - 1] = { type: 'dataRow' };
 
                         const assessedRow = new Array(headers.length).fill([]);
-                        assessedRow[0] = 'Formative Assessment';
+                        let scopeLabel = 'Formative Assessment';
+                        if (plannerRow.scope === 'S') scopeLabel = 'Summative Assessment';
+                        else if (plannerRow.scope === 'CF') scopeLabel = 'Critical Formative Assessment';
+                        
+                        assessedRow[0] = scopeLabel;
                         assessedRow[1] = assessed.primaryPEs.map(e => e.code);
                         assessedRow[2] = assessed.secondaryPEs.map(e => e.code);
                         assessedRow[3] = assessed.dcis.map(e => e.code);
