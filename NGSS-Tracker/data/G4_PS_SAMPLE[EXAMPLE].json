@@ -28,6 +28,14 @@
     {
       "id": "3-5-ETS1-1",
       "isSecondary": true
+    },
+    {
+      "id": "3-5-ETS1-2",
+      "isSecondary": true
+    },
+    {
+      "id": "3-5-ETS1-3",
+      "isSecondary": true
     }
   ],
   "rows": [
@@ -42,11 +50,12 @@
           "type": "lesson",
           "title": "Lesson 1: The Incredible Machine",
           "trackingData": {
-            "EM-E3": "I",
-            "AQDP-E1": "I"
+            "AQDP-E3": "I",
+            "SYS-E2": "I",
+            "4-PS3-1": "I"
           },
           "scope": "",
-          "details": {"notes": "Students watch a video of a Rube Goldberg machine and list their observations and questions.", "links": []}
+          "details": {"notes": "Students watch a video of a Rube Goldberg machine and list their observations and questions focusing on cause and effect.", "links": []}
         },
         {
           "id": "row-1721249900004",
@@ -54,10 +63,11 @@
           "title": "Lesson 2: What is Energy?",
           "trackingData": {
             "PS3.A-E1": "I",
-            "4-PS3-1": "I"
+            "MOD-E3": "I",
+            "EM-E1": "I"
           },
           "scope": "F",
-          "details": {"notes": "Class discussion to build a consensus definition of energy.", "links": []}
+          "details": {"notes": "Class discussion to build a consensus definition of energy using the 'Energy is the ability to do work' analogy.", "links": []}
         }
       ]
     },
@@ -73,8 +83,9 @@
           "title": "Lesson 3: Ramp Races",
           "trackingData": {
             "PS3.A-E1": "D",
-            "4-PS3-1": "D",
-            "INV-E2": "I"
+            "INV-E1": "D",
+            "DATA-E1": "I",
+            "4-PS3-1": "D"
           },
           "scope": "F",
           "details": {"notes": "Investigating how the height of a ramp affects the speed of a marble.", "links": []}
@@ -86,10 +97,11 @@
           "trackingData": {
             "PS3.B-E1": "I",
             "PS3.C-E1": "I",
+            "CE-E1": "I",
             "4-PS3-3": "I"
           },
           "scope": "",
-          "details": {"notes": "Students observe what happens when a moving marble hits a stationary one.", "links": []}
+          "details": {"notes": "Students observe what happens when a moving marble hits a stationary one. Focus on sound and movement.", "links": []}
         },
         {
           "id": "row-1721249900008",
@@ -97,32 +109,36 @@
           "title": "Lesson 5: Domino Chain Reactions",
           "trackingData": {
             "PS3.B-E1": "D",
-            "CE-E2": "I"
+            "PAT-E2": "I",
+            "SYS-E1": "I"
           },
-          "scope": "F",
-          "details": {"notes": "", "links": []}
+          "scope": "",
+          "details": {"notes": "Observing energy transfer through a line of dominos.", "links": []}
         },
         {
           "id": "row-1721249900009",
           "type": "lesson",
           "title": "Lesson 6: Energy Transfer Investigation",
           "trackingData": {
-            "4-PS3-3": "D",
-            "INV-E2": "D"
+            "INV-E3": "D",
+            "DATA-E2": "D",
+            "CE-E1": "D",
+            "4-PS3-3": "D"
           },
-          "scope": "",
-          "details": {"notes": "", "links": []}
+          "scope": "F",
+          "details": {"notes": "Collecting data on collision distances to support the claim that faster objects transfer more energy.", "links": []}
         },
         {
           "id": "row-1721249900010",
           "type": "lesson",
           "title": "Lesson 7: Designing a Collision Device",
           "trackingData": {
-            "4-PS3-3": "A",
-            "3-5-ETS1-1": "I"
+            "ETS1.A-E1": "I",
+            "CEDS-E4": "I",
+            "4-PS3-3": "A"
           },
-          "scope": "F",
-          "details": {"notes": "", "links": []}
+          "scope": "S",
+          "details": {"notes": "Design task: Make a marble move a cup exactly 10cm.", "links": []}
         }
       ]
     },
@@ -137,33 +153,37 @@
           "type": "lesson",
           "title": "Lesson 8: Simple Circuits",
           "trackingData": {
-            "PS3.B-E2": "I",
+            "PS3.B-E3": "I",
+            "SYS-E2": "D",
             "4-PS3-2": "I"
           },
           "scope": "",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Introduction to the system components required for electricity to flow.", "links": []}
         },
         {
           "id": "row-1721249900013",
           "type": "lesson",
           "title": "Lesson 9: From Electricity to Light & Sound",
           "trackingData": {
-            "PS3.B-E2": "D",
-            "4-PS3-2": "D",
-            "EM-E3": "D"
+            "PS3.B-E3": "D",
+            "PS3.B-E2": "I",
+            "EM-E3": "D",
+            "4-PS3-2": "D"
           },
           "scope": "F",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Adding buzzers and bulbs to circuits to observe energy conversion.", "links": []}
         },
         {
           "id": "row-1721249900014",
           "type": "lesson",
           "title": "Lesson 10: Building an Electromagnet",
           "trackingData": {
+            "PS3.B-E3": "D",
+            "ETS1.B-E1": "I",
             "4-PS3-4": "I"
           },
           "scope": "",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Using electricity to create magnetic force.", "links": []}
         },
         {
           "id": "row-1721249900015",
@@ -171,10 +191,11 @@
           "title": "Lesson 11: Hand-Cranked Generators",
           "trackingData": {
             "PS3.D-E1": "I",
+            "CE-E1": "A",
             "4-PS3-4": "D"
           },
           "scope": "",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Reversing the process: Motion to Electricity.", "links": []}
         },
         {
           "id": "row-1721249900016",
@@ -182,10 +203,11 @@
           "title": "Lesson 12: Energy Conversion Stations",
           "trackingData": {
             "4-PS3-4": "A",
-            "PS3.B-E2": "A"
+            "PS3.B-E1": "A",
+            "DATA-E5": "I"
           },
-          "scope": "F",
-          "details": {"notes": "", "links": []}
+          "scope": "S",
+          "details": {"notes": "Station lab where students identify the energy conversion (e.g., electrical -> thermal) at each station.", "links": []}
         }
       ]
     },
@@ -200,53 +222,55 @@
           "type": "lesson",
           "title": "Lesson 13: What's the Energy Source?",
           "trackingData": {
-            "PS3.D-E1": "D"
+            "PS3.D-E2": "I",
+            "INFO-E1": "I"
           },
           "scope": "",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Tracing energy back to the sun or fuel sources.", "links": []}
         },
         {
           "id": "row-1721249900019",
           "type": "lesson",
           "title": "Lesson 14: Design a Solution",
           "trackingData": {
-            "4-PS3-4": "A",
-            "3-5-ETS1-1": "D"
+            "ETS1.A-E1": "D",
+            "CEDS-E5": "D"
           },
           "scope": "F",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Designing a passive solar heater box.", "links": []}
         },
         {
           "id": "row-1721249900020",
           "type": "lesson",
           "title": "Lesson 15: Cause and Effect Chains",
           "trackingData": {
-            "CE-E2": "D",
-            "CEDS-E3": "I"
+            "SYS-E1": "A",
+            "MOD-E5": "D"
           },
           "scope": "",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Drawing system models of complex energy transfers.", "links": []}
         },
         {
           "id": "row-1721249900021",
           "type": "lesson",
           "title": "Lesson 16: Explaining Energy Transfer",
           "trackingData": {
-            "4-PS3-2": "A",
-            "CEDS-E3": "D"
+            "CEDS-E1": "D",
+            "4-PS3-2": "A"
           },
           "scope": "F",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Writing prompt: How does the energy get from the battery to the lightbulb?", "links": []}
         },
         {
           "id": "row-1721249900022",
           "type": "lesson",
           "title": "Lesson 17: Energy in Everyday Life",
           "trackingData": {
-            "PS3.D-E1": "A"
+            "INFLU-E3": "I",
+            "PS3.D-E1": "D"
           },
           "scope": "",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Discussion on how electricity availability changes how we live.", "links": []}
         }
       ]
     },
@@ -261,50 +285,56 @@
           "type": "lesson",
           "title": "Lesson 18: Defining the Problem",
           "trackingData": {
-            "3-5-ETS1-1": "D"
+            "ETS1.A-E1": "A",
+            "3-5-ETS1-1": "A"
           },
           "scope": "",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Criteria: Must use 3 energy conversions. Constraint: Must fit on the desk.", "links": []}
         },
         {
           "id": "row-1721249900025",
           "type": "lesson",
           "title": "Lesson 19: Brainstorming & Planning",
           "trackingData": {
-            "CEDS-E3": "D"
+            "MOD-E5": "A",
+            "ETS1.B-E1": "D"
           },
           "scope": "",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Drawing diagrams of the proposed machine.", "links": []}
         },
         {
           "id": "row-1721249900026",
           "type": "lesson",
           "title": "Lesson 20: Build Day 1",
           "trackingData": {
+            "INV-E5": "D",
             "4-PS3-1": "A"
           },
           "scope": "F",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Building and testing individual components.", "links": []}
         },
         {
           "id": "row-1721249900027",
           "type": "lesson",
           "title": "Lesson 21: Build Day 2 & Testing",
           "trackingData": {
-            "4-PS3-3": "A"
+            "ETS1.B-E2": "D",
+            "ETS1.C-E1": "I"
           },
           "scope": "F",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Connecting components and identifying failure points.", "links": []}
         },
         {
           "id": "row-1721249900028",
           "type": "lesson",
           "title": "Lesson 22: Refining the Design",
           "trackingData": {
-            "3-5-ETS1-1": "A"
+            "ETS1.C-E1": "A",
+            "3-5-ETS1-2": "A",
+            "3-5-ETS1-3": "A"
           },
           "scope": "",
-          "details": {"notes": "", "links": []}
+          "details": {"notes": "Final adjustments to ensure reliability.", "links": []}
         }
       ]
     },
@@ -319,11 +349,12 @@
           "type": "lesson",
           "title": "Lesson 23: Machine Showcase",
           "trackingData": {
+            "INFO-E5": "A",
             "CEDS-E3": "A",
             "EM-E3": "A"
           },
           "scope": "S",
-          "details": {"notes": "Students present their machines and explain the energy transfers and conversions.", "links": []}
+          "details": {"notes": "Students present their machines and verbally explain the energy transfers and conversions.", "links": []}
         },
         {
           "id": "row-1721249900031",
