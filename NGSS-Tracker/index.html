@@ -5,36 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>K-12 NGSS 3D Progression Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Added Chart.js and Shepherd.js for new features -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/js/shepherd.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/css/shepherd.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script>
-        // Support for Tailwind's dark mode based on user's OS preference
-        tailwind.config = {
-          darkMode: 'media',
-        }
+        tailwind.config = { darkMode: 'media' }
     </script>
     <style>
-        /* Custom Scrollbars */
+        /* --- SCROLLBARS --- */
         #planner-table-container, .modal-content, #progression-table-view, #summary-content, #popover-content {
             scrollbar-width: thin;
             scrollbar-color: #a0aec0 #e2e8f0;
         }
         #planner-table-container::-webkit-scrollbar, .modal-content::-webkit-scrollbar, #progression-table-view::-webkit-scrollbar, #summary-content::-webkit-scrollbar, #popover-content::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 8px; height: 8px;
         }
         #planner-table-container::-webkit-scrollbar-track, .modal-content::-webkit-scrollbar-track, #progression-table-view::-webkit-scrollbar-track, #summary-content::-webkit-scrollbar-track, #popover-content::-webkit-scrollbar-track {
             background: #e2e8f0;
         }
         #planner-table-container::-webkit-scrollbar-thumb, .modal-content::-webkit-scrollbar-thumb, #progression-table-view::-webkit-scrollbar-thumb, #summary-content::-webkit-scrollbar-thumb, #popover-content::-webkit-scrollbar-thumb {
-            background-color: #a0aec0;
-            border-radius: 10px;
-            border: 2px solid #e2e8f0;
+            background-color: #a0aec0; border-radius: 10px; border: 2px solid #e2e8f0;
         }
-		#pe-modal-list { overflow-y: auto; }
-        
         .dark #planner-table-container, .dark .modal-content, .dark #progression-table-view, .dark #summary-content, .dark #popover-content {
             scrollbar-color: #4a5568 #2d3748;
         }
@@ -42,12 +34,10 @@
             background: #2d3748;
         }
         .dark #planner-table-container::-webkit-scrollbar-thumb, .dark .modal-content::-webkit-scrollbar-thumb, .dark #progression-table-view::-webkit-scrollbar-thumb, .dark #summary-content::-webkit-scrollbar-thumb, .dark #popover-content::-webkit-scrollbar-thumb {
-            background-color: #4a5568;
-            border-color: #2d3748;
+            background-color: #4a5568; border-color: #2d3748;
         }
         
         /* --- STRICT FIXED LAYOUT --- */
-        
         table.fixed-layout {
             table-layout: fixed;
             width: max-content; 
@@ -57,18 +47,14 @@
         }
 
         #planner-table-container thead th {
-            position: sticky; 
-            top: 0; 
-            z-index: 20;
+            position: sticky; top: 0; z-index: 20;
             height: 160px;
             vertical-align: bottom;
             padding: 8px 4px;
             border-bottom: 2px solid #cbd5e0;
             background-clip: padding-box;
         }
-        .dark #planner-table-container thead th {
-            border-bottom-color: #4a5568;
-        }
+        .dark #planner-table-container thead th { border-bottom-color: #4a5568; }
 
         .vertical-header-text {
             writing-mode: vertical-rl;
@@ -82,60 +68,39 @@
             justify-content: flex-start;
         }
 
-        /* --- STICKY COLUMN DEFINITIONS --- */
-        /* Using strict min/max widths to prevent expansion */
-
-        /* 1. Actions Column (120px) */
+        /* --- STICKY COLUMNS --- */
         .sticky-col-1 { 
             position: sticky; left: 0; z-index: 25; 
             width: 120px; min-width: 120px; max-width: 120px;
             overflow: hidden;
         }
-        
-        /* 2. Scope Column (80px) */
         .sticky-col-2 { 
             position: sticky; left: 120px; z-index: 24; 
             width: 80px; min-width: 80px; max-width: 80px;
             overflow: hidden;
         }
-        
-        /* 3. Sequence Column (400px) */
         .sticky-col-3 { 
-            position: sticky; 
-            left: 200px; /* 120 + 80 */
-            z-index: 23; 
+            position: sticky; left: 200px; z-index: 23; 
             width: 400px; min-width: 400px; max-width: 400px;
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.05);
-            overflow: hidden; /* Crucial: cuts off content that forces width changes */
-            text-overflow: ellipsis;
+            overflow: hidden; text-overflow: ellipsis;
         }
-        .dark .sticky-col-3 {
-            box-shadow: 4px 0 5px -2px rgba(0,0,0,0.25);
-        }
+        .dark .sticky-col-3 { box-shadow: 4px 0 5px -2px rgba(0,0,0,0.25); }
 
-        /* Data Columns (50px) */
-        .data-col-header {
-            width: 50px; min-width: 50px; max-width: 50px;
-        }
+        .data-col-header { width: 50px; min-width: 50px; max-width: 50px; }
 
-        /* Sticky Header Overrides */
-		#planner-table-container thead th.sticky-col-1, 
+        #planner-table-container thead th.sticky-col-1, 
         #planner-table-container thead th.sticky-col-2, 
         #planner-table-container thead th.sticky-col-3 {
-			z-index: 30;
-            height: auto; 
-            vertical-align: middle;
-            padding-bottom: 10px;
+			z-index: 30; height: auto; vertical-align: middle; padding-bottom: 10px;
 		}
 
-        /* Standard App Styles */
+        /* --- MISC --- */
         body.sidebar-open #sidebar { transform: translateX(0); }
         body.sidebar-open #sidebar-backdrop { opacity: 1; pointer-events: auto; }
         body.modal-open #menu-toggle { display: none; }
-        
         .pe-link-indicator { display: inline-block; font-size: 0.7em; padding: 1px 5px; background-color: #e6f4ff; color: #005a9c; border: 1px solid #b3d7ff; border-radius: 4px; font-weight: bold; vertical-align: middle; margin-left: 4px; }
         .dark .pe-link-indicator { background-color: #1e3a8a; color: #93c5fd; border-color: #3b82f6; }
-        
         tr.filtered-out { display: none; }
         .shepherd-button { background-color: #3b82f6; color: white; border-radius: 0.375rem; padding: 0.5rem 1rem; }
         .shepherd-button:not(.shepherd-button-secondary):hover { background-color: #2563eb; }
@@ -144,6 +109,7 @@
         .shepherd-footer { padding: 0.5rem; }
         .dark .shepherd-text, .dark .shepherd-header, .dark .shepherd-content { background-color: #374151; color: #e5e7eb; }
         .dark .shepherd-arrow::before { background-color: #374151; }
+        #pe-modal-list { overflow-y: auto; }
     </style>
 </head>
 <body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased group">
@@ -152,10 +118,16 @@
     <div class="relative flex h-screen overflow-hidden">
         <aside id="sidebar" class="bg-gray-800 text-gray-100 flex flex-col w-80 flex-shrink-0 p-4 transform transition-transform duration-300 ease-in-out z-[1000] -translate-x-full md:relative md:translate-x-0 fixed top-0 left-0 h-full md:shadow-lg">
             <h2 class="text-xl font-bold border-b border-gray-600 pb-3 mb-4">Planner Navigator</h2>
-            <div id="navigator-controls" class="grid grid-cols-2 gap-2 mb-4">
+            
+            <!-- Updated Navigator Controls with Summary Button -->
+            <div id="navigator-controls" class="grid grid-cols-1 gap-2 mb-4">
                 <button id="new-planner-btn" class="w-full px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm">+ New Planner</button>
-                <button id="view-progression-btn" class="w-full px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-semibold text-sm">Progression</button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="view-summary-btn" class="w-full px-3 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 transition-colors font-semibold text-sm">Summary</button>
+                    <button id="view-progression-btn" class="w-full px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-semibold text-sm">Progression</button>
+                </div>
             </div>
+            
              <div class="grid grid-cols-1 gap-2 mb-4">
                 <button id="help-btn" class="w-full px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-semibold text-sm">Help / Tour</button>
             </div>
@@ -204,9 +176,9 @@
                             <input type="search" id="search-input" placeholder="Search lessons..." class="w-full md:w-48 pl-8 pr-2 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400">⚲</div>
                         </div>
+                        <!-- Removed Summary Button from here -->
                         <div class="controls-group flex gap-2">
                             <button id="assign-pe-btn" class="px-3 py-2 bg-cyan-500 text-white rounded-md hover:bg-cyan-600 text-sm font-medium transition-colors">Manage PEs</button>
-                            <button id="view-summary-btn" class="px-3 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 text-sm font-medium transition-colors">Summary</button>
                         </div>
                         <div class="controls-group flex gap-2 group-[.view-mode-active]:hidden">
                             <button id="add-lesson-set-btn" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">Add Set</button>
@@ -252,7 +224,7 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modals (Same as before) -->
     <div id="planner-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div class="p-6 border-b dark:border-gray-700">
@@ -429,15 +401,7 @@
 
     <div id="tooltip" class="fixed bg-gray-900 text-white px-3 py-1.5 rounded-md z-[1002] pointer-events-none opacity-0 transition-opacity text-sm max-w-md shadow-lg"></div>
     
-    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-
     <script>
-	
-    /**
-     * @file This file contains the complete JavaScript application for the K-12 NGSS 3D Progression Planner.
-     * This version includes numerous feature enhancements like Undo/Redo, search, guided tours,
-     * lesson notes, analytics dashboards, a storyline view, templates, and phenomenon integration.
-     */
     document.addEventListener('DOMContentLoaded', () => {
         
         /** @namespace App */
@@ -452,12 +416,12 @@
                 isPeBundleMode: false,
                 undoStack: [],
                 redoStack: [],
-				summaryShowCoveredOnly: false,
-				summaryChartFilter: null, 
                 pendingImportData: null,
                 allNgssData: [],
                 allNgss3dElements: [],
-                progressionViewType: 'element', // 'element' or 'lesson'
+                progressionViewType: 'element',
+                summaryShowCoveredOnly: false,
+                summaryChartFilter: null,
             },
 			dataMaps: {
                 peMap: new Map(),
@@ -505,7 +469,6 @@
             },
 
             init() {
-                // buildDataMaps is now called in loadDataAndInit after fetching
                 this.persistence.loadProgramData();
                 this.render.navigator();
                 this.attachEventListeners();
@@ -544,7 +507,6 @@
 
                 this.state.allNgss3dElements.forEach(dim => {
                     const elementsToProcess = dim.elements || dim.core_ideas || [];
-                    // Robust handling for potential other structures like 'understandings' if they exist in future data
                     if (dim.understandings) {
                         dim.understandings.forEach(u => { if(u.elements) elementsToProcess.push(...u.elements); });
                     }
@@ -604,7 +566,6 @@
                                         const cleanLine = line.trim();
                                         if(!cleanLine) return;
 
-                                        // 1. Try matching exact specific progression text
                                         const specCode = App.utils.findBestMatchingSpecificElement(cleanLine, gradeData.gradeLabel);
                                         if (specCode) {
                                             specificCodes.add(specCode);
@@ -616,17 +577,12 @@
                                             lineMatched = true;
                                         }
                                         
-                                        // 2. Try matching Element Name (for Connections headers)
-                                        // Check against nameToCodeMap
                                         const potentialCode = nameToCodeMap.get(cleanLine);
                                         if (potentialCode) {
-                                            // It matches a major element (like INFLU)
                                             componentCodes.add(potentialCode);
-                                            // lineMatched = true; // Keep checking just in case
                                         }
                                     });
                                     
-                                    // Fallback to ID matching
                                     const isSecondary = ref.id.includes('(secondary)');
                                     const cleanId = ref.id.replace(' (secondary)', '').trim();
                                     const nameOnly = cleanId.includes(':') ? cleanId.split(':').pop().trim() : cleanId;
@@ -673,9 +629,11 @@
             attachEventListeners() {
                 document.getElementById('new-planner-btn').addEventListener('click', () => this.utils.openPlannerModal());
                 document.getElementById('view-progression-btn').addEventListener('click', () => this.render.progressionViewer());
+                // Summary Button Listener (Now in Sidebar)
+                document.getElementById('view-summary-btn').addEventListener('click', () => this.render.summary());
+                
                 this.dom.navigatorList.addEventListener('click', e => { if (e.target.type === 'checkbox') return; const item = e.target.closest('.planner-item'); if (item) { this.render.plannerView(item.dataset.plannerId); if (window.innerWidth <= 768) this.dom.body.classList.remove('sidebar-open'); } });
                 document.getElementById('assign-pe-btn').addEventListener('click', () => this.utils.openPeAssignmentModal());
-                document.getElementById('view-summary-btn').addEventListener('click', () => this.render.summary());
                 document.getElementById('add-lesson-set-btn').addEventListener('click', () => this.utils.addRow('lesson-set', 'New Lesson Set...'));
                 document.getElementById('add-lesson-btn').addEventListener('click', () => this.utils.addRow('lesson', 'New Lesson...'));
                 document.getElementById('edit-planner-btn').addEventListener('click', () => { const p = this.utils.findPlanner(this.state.currentPlannerId); if(p) this.utils.openPlannerModal(p); });
@@ -692,23 +650,23 @@
                 document.getElementById('pe-bundle-toggle').addEventListener('change', e => { App.state.isPeBundleMode = e.target.checked; App.render.setActiveTab(App.state.currentActiveTab); });
                 document.getElementById('export-planner-btn').addEventListener('click', () => this.export.showExportOptions());
                 document.getElementById('import-planner-btn').addEventListener('click', () => this.import.handleImport());
-                // In App.init() or App.attachEventListeners():
-				document.getElementById('export-options-list').addEventListener('click', e => {
-				    const btn = e.target.closest('.export-option-btn');
-				    if (btn) {
-				        const format = btn.dataset.format;
-				        const planner = App.utils.findPlanner(App.state.currentPlannerId);
-				        if (!planner) return;
-				        
-				        // Use the handler we added to App.export
-				        App.export.handleExportClick(format, planner);
-				        
-				        // Only close modal if it's not clipboard (clipboard shows an alert then closes itself)
-				        if (format !== 'clipboard') {
-				            App.utils.closeAllModals();
-				        }
-				    }
-				});
+                
+                // Export Options Click Handler
+                document.getElementById('export-options-list').addEventListener('click', e => {
+                    const btn = e.target.closest('.export-option-btn');
+                    if (btn) {
+                        const format = btn.dataset.format;
+                        const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                        if (!planner) return;
+                        
+                        App.export.handleExportClick(format, planner);
+                        
+                        if (format !== 'clipboard') {
+                            this.utils.closeAllModals();
+                        }
+                    }
+                });
+                
                 document.getElementById('import-options-confirm').addEventListener('click', () => this.import.processImport());
 
                 this.dom.plannerTableContainer.addEventListener('click', e => this.handlers.mainTableClick(e));
@@ -745,6 +703,7 @@
             },
         };
 
+        // ... (App.popover, App.db, App.persistence, App.history - No changes needed) ...
         App.popover = {
             dom: {},
             state: { isVisible: false, activeCell: null, activeRowId: null },
@@ -936,43 +895,33 @@
                 App.state.redoStack = []; 
                 this.updateUndoRedoButtons();
             },
-            
             undo() {
                 if (App.state.undoStack.length === 0) return;
-                
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
                 const currentState = JSON.parse(JSON.stringify(planner));
                 App.state.redoStack.push(currentState);
-                
                 const previousState = App.state.undoStack.pop();
                 Object.assign(planner, previousState);
-                
                 App.render.plannerView(App.state.currentPlannerId);
                 App.persistence.saveProgramData(); 
                 this.updateUndoRedoButtons();
             },
-
             redo() {
                 if (App.state.redoStack.length === 0) return;
-
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
                 const currentState = JSON.parse(JSON.stringify(planner));
                 App.state.undoStack.push(currentState);
-
                 const nextState = App.state.redoStack.pop();
                 Object.assign(planner, nextState);
-                
                 App.render.plannerView(App.state.currentPlannerId);
                 App.persistence.saveProgramData();
                 this.updateUndoRedoButtons();
             },
-
             clear() {
                 App.state.undoStack = [];
                 App.state.redoStack = [];
                 this.updateUndoRedoButtons();
             },
-            
             updateUndoRedoButtons() {
                 App.dom.undoBtn.disabled = App.state.undoStack.length === 0;
                 App.dom.redoBtn.disabled = App.state.redoStack.length === 0;
@@ -1014,7 +963,6 @@
                 table.className = 'table-view fixed-layout'; // Using fixed-layout class
                 const thead = document.createElement('thead');
                 
-                // Updated Sticky Headers with new labels and classes
                 let headerRowHTML = `<tr>
                     <th class="sticky-col-1 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700">Actions</th>
                     <th class="sticky-col-2 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700">Scope</th>
@@ -1042,7 +990,22 @@
                 });
                 headerRowHTML += '</tr>'; thead.innerHTML = headerRowHTML; table.appendChild(thead); table.appendChild(document.createElement('tbody')); App.dom.plannerTableContainer.appendChild(table);
             },
-
+            rowsFromState(rowsData) {
+                const tbody = App.dom.plannerTableContainer.querySelector('tbody');
+                tbody.innerHTML = '';
+                if (!rowsData || rowsData.length === 0) return;
+                rowsData.forEach(rowData => {
+                    tbody.appendChild(this.createRowElement(rowData));
+                    if (rowData.type === 'lesson-set' && rowData.children) {
+                        rowData.children.forEach(childRowData => {
+                            const childRow = this.createRowElement(childRowData, rowData.id);
+                            if (rowData.isCollapsed) childRow.classList.add('hidden');
+                            tbody.appendChild(childRow);
+                        });
+                    }
+                });
+                this.updateTableHeaderHighlights();
+            },
             createRowElement(rowData, parentId = null) {
                 const row = document.createElement('tr');
                 const searchTerm = App.dom.searchInput.value.toLowerCase();
@@ -1093,7 +1056,6 @@
                     const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
                     const notesIcon = `<span class="notes-btn cursor-pointer text-base" title="Edit Notes & Links">📝</span>`;
                     
-                    // Fixed width container for actions to prevent wrapping
                     let cellsHTML = `
                         <td class="sticky-col-1 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle">
                             <div class="flex items-center justify-start gap-2 text-gray-400 w-full overflow-hidden">
@@ -1124,99 +1086,7 @@
                     row.innerHTML = cellsHTML;
                 } return row;
             },
-            rowsFromState(rowsData) {
-                const tbody = App.dom.plannerTableContainer.querySelector('tbody');
-                tbody.innerHTML = '';
-                if (!rowsData || rowsData.length === 0) return;
-                rowsData.forEach(rowData => {
-                    tbody.appendChild(this.createRowElement(rowData));
-                    if (rowData.type === 'lesson-set' && rowData.children) {
-                        rowData.children.forEach(childRowData => {
-                            const childRow = this.createRowElement(childRowData, rowData.id);
-                            if (rowData.isCollapsed) childRow.classList.add('hidden');
-                            tbody.appendChild(childRow);
-                        });
-                    }
-                });
-                this.updateTableHeaderHighlights();
-            },
-            createRowElement(rowData, parentId = null) {
-                const row = document.createElement('tr');
-                const searchTerm = App.dom.searchInput.value.toLowerCase();
-                if (searchTerm && rowData.type === 'lesson') {
-                    const rowText = (rowData.title + ' ' + Object.keys(rowData.trackingData || {}).join(' ')).toLowerCase();
-                    if (!rowText.includes(searchTerm)) {
-                        row.classList.add('filtered-out');
-                    }
-                }
-                
-                row.className += ` ${rowData.type}-row group/row`; row.dataset.rowType = rowData.type; row.dataset.id = rowData.id;
-                row.draggable = !App.state.isViewMode;
-
-                const planner = App.utils.findPlanner(App.state.currentPlannerId); const columnGroups = App.utils.gatherColumns(planner.gradeBand);
-                if (rowData.type === 'lesson-set') {
-                    const isCollapsedClass = rowData.isCollapsed ? 'is-collapsed' : '';
-                    const rotateClass = rowData.isCollapsed ? '-rotate-90' : '';
-                    const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
-                    
-                    let cellsHTML = `
-                        <td class="sticky-col-1 p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson Set">✖</span></td>
-                        <td class="sticky-col-2 p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
-                        <td class="sticky-col-3 p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>`;
-                    
-                    Object.keys(columnGroups).forEach(key => {
-                        if (key === 'pe') {
-                            const peCount = planner?.assignedPes?.length || 0;
-                            if (peCount > 0) {
-                                cellsHTML += `<td data-tab-group="pe" class="p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50" colspan="${peCount}"></td>`;
-                            } else {
-                                cellsHTML += `<td data-tab-group="pe" class="p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50"></td>`;
-                            }
-                        } else {
-                            columnGroups[key].cols.forEach(() => {
-                                cellsHTML += `<td data-tab-group="${key}" class="p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50"></td>`;
-                            });
-                        }
-                    });
-                    row.innerHTML = cellsHTML;
-
-                } else {
-                    if (parentId) row.dataset.parentId = parentId;
-                    const scope = rowData.scope || '';
-                    const scopeClass = App.constants.scopeClasses[scope] || '';
-                    const scopeCursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer';
-                    const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
-                    const notesIcon = `<span class="notes-btn cursor-pointer text-base" title="Edit Notes & Links">📝</span>`;
-                    let cellsHTML = `
-                        <td class="sticky-col-1 p-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 align-middle">
-                            <div class="flex items-center justify-between gap-1.5 text-gray-400">
-                                <span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span>
-                                <div class="flex items-center gap-1.5 invisible group-hover/row:visible">
-                                    ${notesIcon}
-                                    <span class="delete-btn cursor-pointer font-bold hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson">✖</span>
-                                    <span class="add-below-btn cursor-pointer hover:text-green-500 transition-colors group-[.view-mode-active]:hidden" title="Add Lesson Below">+</span>
-                                    <span class="copy-row-btn cursor-pointer hover:text-blue-500 transition-colors group-[.view-mode-active]:hidden" title="Duplicate Lesson">❐</span>
-                                </div>
-                            </div>
-                        </td>
-                        <td data-scope-cell="true" class="sticky-col-2 p-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 align-middle font-bold text-center ${scopeCursorClass} ${scopeClass}" data-tooltip="Click to cycle Assessment Scope">${scope}</td>
-                        <td class="sticky-col-3 p-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-left ${parentId ? 'pl-10' : ''}">${editableSpan}</td>`;
-
-                    Object.keys(columnGroups).forEach(key => {
-                         if (key === 'pe') {
-                             (planner?.assignedPes || []).forEach(peObj => {
-                                 cellsHTML += this.createTrackingCellHTML({ code: peObj.id, type: 'pe' }, rowData);
-                             });
-                             if (!planner?.assignedPes || planner.assignedPes.length === 0) {
-                                cellsHTML += `<td data-tab-group="pe" class="p-2 border border-gray-200 dark:border-gray-700"></td>`;
-                             }
-                         } else {
-                            cellsHTML += columnGroups[key].cols.map(col => this.createTrackingCellHTML({ code: col.code, title: col.title, type: '3d', tabGroup: key }, rowData)).join('');
-                         }
-                    });
-                    row.innerHTML = cellsHTML;
-                } return row;
-            },
+            // ... (createTrackingCellHTML, generateCellContent, tabs, setActiveTab, updateTableHeaderHighlights, progressionViewer, renderProgressionByElement, renderProgressionByLesson, createStorylineLessonHTML - No changes needed) ...
             createTrackingCellHTML(column, rowData) {
                 const commonCellClasses = "p-2 border border-gray-200 dark:border-gray-700 align-top";
                 if (column.type === 'pe') {
@@ -1436,7 +1306,6 @@
                     alert('Please select at least one planner from the navigator to view its progression.'); 
                     return; 
                 } 
-                // "By Lesson" view only makes sense for one planner at a time.
                 const planner = App.utils.findPlanner(selectedPlannerIds[0]);
                 if (!planner) return;
                 
@@ -1500,6 +1369,7 @@
                     </div>
                 `;
             },
+            
             summary() {
                 // 1. Determine which planners to summarize
                 const checkedBoxes = document.querySelectorAll('.planner-checkbox:checked');
@@ -1536,7 +1406,6 @@
                 if (App.state.summaryChartFilter) {
                     const { type, value } = App.state.summaryChartFilter;
                     let label = value;
-                    // Map internal codes to readable labels for the badge
                     if (value === 'I') label = 'Introduced';
                     if (value === 'D') label = 'Developed';
                     if (value === 'A') label = 'Assessed';
@@ -1602,17 +1471,13 @@
                 }
 
                 // 4. Aggregate Data
-                // We calculate TWO sets of data: 
-                // A) Global stats for the charts (always shows everything)
-                // B) Filtered stats for the Report List (respects the active filter)
-                
                 const globalStats = {
                     status: { I: 0, D: 0, A: 0 },
                     dimension: { SEP: 0, DCI: 0, CCC: 0, PE: 0 },
                     scope: { F: 0, S: 0, None: 0 }
                 };
                 
-                const coverageMap = new Map(); // For the report list
+                const coverageMap = new Map(); 
                 const filter = App.state.summaryChartFilter;
 
                 selectedPlanners.forEach(planner => {
@@ -1625,7 +1490,6 @@
                     allLessons.forEach(lesson => {
                         const scopeKey = lesson.scope || 'None';
                         
-                        // 1. Populate Global Chart Stats
                         globalStats.scope[scopeKey]++;
                         Object.entries(lesson.trackingData || {}).forEach(([code, status]) => {
                             if (globalStats.status[status] !== undefined) globalStats.status[status]++;
@@ -1640,18 +1504,12 @@
                             }
                         });
 
-                        // 2. Populate Filtered Report Data
-                        // If filtering by scope, skip lessons that don't match
                         if (filter && filter.type === 'scope') {
                             const targetScope = filter.value === 'None' ? '' : (filter.value === 'Formative' ? 'F' : 'S');
                             if ((lesson.scope || '') !== targetScope) return;
                         }
 
                         Object.entries(lesson.trackingData || {}).forEach(([code, status]) => {
-                            // If filtering by Status, we still track it, but we might hide it later in the render loop 
-                            // OR we can skip tracking unrelated statuses here.
-                            // Let's track everything here and filter visibility in the HTML generation for granularity.
-                            
                             if (!coverageMap.has(code)) coverageMap.set(code, { I: 0, D: 0, A: 0 });
                             coverageMap.get(code)[status]++;
                         });
@@ -1659,23 +1517,17 @@
                 });
 
                 // 5. Render Interactive Charts
-                
-                // Helper to handle chart clicks
                 const handleChartClick = (type, labelMap) => (e, elements) => {
                     if (!elements || elements.length === 0) return;
                     const index = elements[0].index;
-                    // Use the chart instance from the event context
                     const chart = e.chart; 
                     const label = chart.data.labels[index];
-                    
                     let value = label;
                     if (labelMap) value = labelMap[label];
-                    
                     App.state.summaryChartFilter = { type, value };
-                    this.summary(); // Re-render
+                    this.summary(); 
                 };
 
-                // Status Chart
                 new Chart(document.getElementById('status-chart'), {
                     type: 'bar',
                     data: {
@@ -1696,7 +1548,6 @@
                     }
                 });
 
-                // Dimension Chart
                 new Chart(document.getElementById('dimension-chart'), {
                     type: 'doughnut',
                     data: {
@@ -1714,7 +1565,6 @@
                     }
                 });
 
-                // Scope Chart
                 new Chart(document.getElementById('scope-chart'), {
                     type: 'pie',
                     data: {
@@ -1732,16 +1582,15 @@
                     }
                 });
                 
-                // 6. Render Coverage Report (Respecting Filters)
+                // 6. Render Coverage Report
                 const coverageReportContainer = document.getElementById('element-coverage-report');
                 const referenceBand = selectedPlanners[0].gradeBand; 
                 const allColumns = App.utils.gatherColumns(referenceBand);
                 
                 let reportHTML = '';
-                // If filtering by Dimension, only show that group. Otherwise show all 3.
                 let groupOrder = ['dci', 'sep', 'ccc'];
                 if (filter && filter.type === 'dimension') {
-                    if (filter.value === 'pe') groupOrder = []; // PEs are handled separately usually, or we can show a special PE list. For now, empty.
+                    if (filter.value === 'pe') groupOrder = []; 
                     else groupOrder = [filter.value];
                 }
                 
@@ -1758,22 +1607,19 @@
                         
                         const gradeBandProgressions = parentInfo.children[0]?.allProgressions?.[referenceBand] || [];
                         const validCodesForBand = new Set(gradeBandProgressions.map(p => p.code));
-                        const childrenForBand = parentInfo.children.filter(child => validCodesForBand.has(child.code));
+                        const childrenForBand = parentInfo.children.filter(child => {
+                            const inBand = validCodesForBand.has(child.code);
+                            const isTracked = coverageMap.has(child.code);
+                            return inBand || isTracked;
+                        });
 
-                        // Filter children based on Toggle AND Chart Filter
                         const visibleChildren = childrenForBand.filter(child => {
                             const coverage = coverageMap.get(child.code);
                             const isCovered = !!coverage;
-
-                            // 1. Check Toggle
                             if (App.state.summaryShowCoveredOnly && !isCovered) return false;
-
-                            // 2. Check Status Filter (If active)
                             if (filter && filter.type === 'status') {
-                                // If filtering by "Introduced", only show elements that HAVE an 'I' count
                                 if (!coverage || !coverage[filter.value]) return false;
                             }
-
                             return true;
                         });
 
@@ -1793,7 +1639,6 @@
                                 coverageString = Object.entries(coverage)
                                     .filter(([, count]) => count > 0)
                                     .map(([status, count]) => {
-                                        // Highlight the badge if it matches the status filter
                                         const isMatch = (filter && filter.type === 'status' && filter.value === status);
                                         const border = isMatch ? 'border-2 border-black dark:border-white ring-2 ring-offset-1 ring-blue-400' : 'border border-black/10';
                                         return `<span class="px-2 py-0.5 rounded-full text-xs font-bold ${App.constants.statusBadgeClasses[status]} ${border}">${status}: ${count}</span>`;
@@ -1839,8 +1684,9 @@
 
                 App.utils.showView('summary-view');
             },
-		};
+        };
 
+        // ... (App.handlers, App.utils - No changes needed except in export below) ...
         App.handlers = {
             mainTableClick(e) {
                 const target = e.target;
@@ -2377,7 +2223,7 @@
                         }
                     }
                 } else {
-                    return; // Code not found
+                    return; 
                 }
 
                 document.getElementById('element-modal-title').textContent = title;
@@ -2456,16 +2302,15 @@
             },
 
             performSearch(query) {
-                this.render.renderPlannerContent(); // Re-render to apply filter
+                this.render.renderPlannerContent(); 
             },
         };
 
-		App.export = {
+        App.export = {
             showExportOptions() {
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
                 if (!planner) { alert('Please select a planner to export.'); return; }
                 
-                // Dynamically add the "Copy to Clipboard" button if it doesn't exist in the modal
                 const modalContent = document.getElementById('export-options-list');
                 if (modalContent && !modalContent.querySelector('[data-format="clipboard"]')) {
                     const btnContainer = modalContent.querySelector('.space-y-3');
@@ -2477,19 +2322,11 @@
                         <small class="text-gray-500 dark:text-gray-400 block">Copy combined data to paste into Excel or Google Sheets.</small>
                     `;
                     btnContainer.appendChild(copyBtn);
-                    
-                    // Re-attach event listener for the new button specifically (or rely on existing delegation if set up)
-                    // Since the main listener is on the container, we just need to handle the format in the switch statement.
                 }
-
-                // Update the main event listener to handle 'clipboard'
-                // Note: In App.init(), you likely have a listener for 'export-options-list'. 
-                // Ensure that listener calls App.export.asClipboard(planner) when format is 'clipboard'.
                 
                 App.utils.openModal('export-modal-backdrop');
             },
             
-            // Helper to handle the "Copy" button click from the existing event listener in App.init
             handleExportClick(format, planner) {
                 switch (format) {
                     case 'json': this.asJson(planner); break;
@@ -2531,14 +2368,8 @@
                         thead th { height: 160px; vertical-align: bottom; padding: 4px; }
                         .vertical-header-text { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; text-align: left; max-height: 140px; width: 100%; display: flex; align-items: center; justify-content: flex-start; }
 
-                        /* Strict Sticky Column Logic for Export */
-                        /* 1. Actions (120px) */
                         .sticky-col-1 { position: sticky; left: 0; z-index: 5; width: 120px; min-width: 120px; background-color: #f3f4f6; overflow: hidden; }
-                        
-                        /* 2. Scope (80px), Left = 120px */
                         .sticky-col-2 { position: sticky; left: 120px; z-index: 4; width: 80px; min-width: 80px; background-color: #f3f4f6; overflow: hidden; }
-                        
-                        /* 3. Sequence (400px), Left = 200px */
                         .sticky-col-3 { position: sticky; left: 200px; z-index: 3; width: 400px; min-width: 400px; background-color: #f3f4f6; box-shadow: 4px 0 5px -2px rgba(0,0,0,0.1); overflow: hidden; }
                         
                         thead th.sticky-col-1, thead th.sticky-col-2, thead th.sticky-col-3 { height: auto; vertical-align: middle; z-index: 10; padding: 10px; }
@@ -2673,7 +2504,7 @@
 					return finalContent;
 				};
 
-				const tsvString = sheetData.slice(1) // Exclude header row
+				const tsvString = sheetData.slice(1) 
 					.map(row => row.map(formatCellForTsv).join('\t'))
 					.join('\n');
 				
@@ -2734,7 +2565,6 @@
             asXlsx(planner) {
                 const workbook = XLSX.utils.book_new();
                 
-                // Add Combined View
                 try {
                     const combinedWorksheet = this.createCombinedSheet(planner);
                     XLSX.utils.book_append_sheet(workbook, combinedWorksheet, 'Combined View');
@@ -2742,7 +2572,6 @@
                     console.error("Failed to create Combined View sheet:", e);
                 }
 
-                // Add Standard View
                 const columnGroups = App.utils.gatherColumns(planner.gradeBand);
                 const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
                 const headerStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { horizontal: "center", wrapText: true, vertical: "center", textRotation: 90 } };
@@ -2862,16 +2691,13 @@
                 }
             }
         };
-		
+
         App.import = {
             handleImport() {
-                // 1. Create the input
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = '.json,application/json';
-                input.style.display = 'none'; // Hide it
-                
-                // 2. Append to body (Fixes "Nothing happens" in strict browsers)
+                input.style.display = 'none'; 
                 document.body.appendChild(input);
 
                 input.onchange = e => {
@@ -2885,44 +2711,25 @@
                     reader.onload = event => {
                         try {
                             const importedPlanner = JSON.parse(event.target.result);
-                            
-                            // Basic Validation
-                            if (!importedPlanner.title) {
-                                throw new Error('Invalid planner file: Missing title.');
-                            }
-                            
-                            // Ensure rows exist
-                            if (!importedPlanner.rows) {
-                                importedPlanner.rows = [];
-                            }
-
+                            if (!importedPlanner.title) throw new Error('Invalid planner file: Missing title.');
+                            if (!importedPlanner.rows) importedPlanner.rows = [];
                             App.state.pendingImportData = importedPlanner;
                             this.showImportOptions();
                         } catch (error) {
                             console.error("Import Error:", error);
                             alert(`Error importing file: ${error.message}`);
                         } finally {
-                            // Clean up input after reading
-                            if (document.body.contains(input)) {
-                                document.body.removeChild(input);
-                            }
+                            if (document.body.contains(input)) document.body.removeChild(input);
                         }
                     };
-                    reader.readText(file);
+                    reader.readAsText(file); 
                 };
-
-                // 3. Force click
                 input.click();
             },
 
             showImportOptions() {
                 const modal = document.getElementById('import-options-modal-backdrop');
-                if (!modal) {
-                    console.error("Import modal element not found!");
-                    return;
-                }
-
-                // Update Modal Text
+                if (!modal) return;
                 document.getElementById('import-planner-name').textContent = App.state.pendingImportData.title;
 
                 const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
@@ -2932,10 +2739,8 @@
                 const replaceInput = replaceLabel.querySelector('input');
                 const createInput = document.querySelector('input[name="import-option"][value="create"]');
 
-                // Reset selection to Create
                 createInput.checked = true;
 
-                // Enable/Disable options based on whether a planner is currently open
                 if (currentPlanner) {
                     mergeLabel.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
                     replaceLabel.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
@@ -2947,7 +2752,6 @@
                     mergeInput.disabled = true;
                     replaceInput.disabled = true;
                 }
-
                 App.utils.openModal('import-options-modal-backdrop');
             },
 
@@ -2961,26 +2765,18 @@
                 try {
                     switch (option) {
                         case 'create':
-                            // Always generate a new ID to prevent conflicts
                             importedPlanner.id = `planner-${Date.now()}`;
                             App.state.programData.planners.push(importedPlanner);
                             alert(`Planner "${importedPlanner.title}" imported successfully!`);
                             break;
-
                         case 'merge':
                             if (!currentPlanner) { alert("No planner open to merge with."); return; }
                             App.history.saveState(currentPlanner);
-                            
-                            // Merge PEs
                             const currentPes = new Map((currentPlanner.assignedPes || []).map(p => [p.id, p]));
                             (importedPlanner.assignedPes || []).forEach(p => {
-                                if (!currentPes.has(p.id)) {
-                                    currentPes.set(p.id, p);
-                                }
+                                if (!currentPes.has(p.id)) currentPes.set(p.id, p);
                             });
                             currentPlanner.assignedPes = Array.from(currentPes.values());
-                            
-                            // Merge Rows - Generate new IDs for imported rows to prevent collision
                             const newRows = (importedPlanner.rows || []).map(row => {
                                 row.id = `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
                                 if (row.children) {
@@ -2990,16 +2786,13 @@
                                 }
                                 return row;
                             });
-                            
                             currentPlanner.rows.push(...newRows);
                             alert(`Merged "${importedPlanner.title}" into "${currentPlanner.title}".`);
                             break;
-
                         case 'replace':
                             if (!currentPlanner) { alert("No planner open to replace."); return; }
                             const index = App.state.programData.planners.findIndex(p => p.id === App.state.currentPlannerId);
                             if (index > -1) {
-                                // Keep the ID of the current planner so the view doesn't break
                                 importedPlanner.id = currentPlanner.id; 
                                 App.state.programData.planners[index] = importedPlanner;
                                 App.history.clear(); 
@@ -3007,20 +2800,15 @@
                             alert(`Replaced "${currentPlanner.title}" with "${importedPlanner.title}".`);
                             break;
                     }
-
                     App.persistence.saveProgramData();
                     App.render.navigator();
-                    
-                    // If we created a new one, switch to it. If we merged/replaced, reload current.
                     if (option === 'create') {
                         App.render.plannerView(importedPlanner.id);
                     } else {
                         App.render.plannerView(App.state.currentPlannerId);
                     }
-                    
                     App.utils.closeAllModals();
                     App.state.pendingImportData = null;
-
                 } catch (err) {
                     console.error("Process Import Error", err);
                     alert("An error occurred while processing the import.");
@@ -3060,8 +2848,8 @@
                     attachTo: { element: '#planner-table-container tbody tr:first-child td:last-child', on: 'left' }, isRequired: ['#planner-table-container tbody tr'], buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
                 });
                 this.instance.addStep({
-                    id: 'step6', text: 'You can check planner analytics in the Summary view, or compare multiple planners using the Progression view.',
-                    attachTo: { element: '#view-summary-btn', on: 'bottom' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.complete(); }, text: 'Finish' }]
+                    id: 'step6', text: 'You can check multiple planners in the navigator and click Summary to see aggregated analytics.',
+                    attachTo: { element: '#view-summary-btn', on: 'right' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.complete(); }, text: 'Finish' }]
                 });
 
                 this.instance.on('complete', () => {
@@ -3072,7 +2860,6 @@
                 if (App.state.currentPlannerId === null && App.state.programData.planners.length > 0) {
                     App.render.plannerView(App.state.programData.planners[0].id);
                 } else if (App.state.programData.planners.length === 0) {
-                    // Create a default planner for the tour if none exist
                     const newPlanner = {
                         id: `planner-${Date.now()}`, title: 'Sample 4th Grade Unit', course: '4th Grade Science', gradeBand: 'elementary', standardSet: 'NGSS',
                         phenomenon: 'A wrecking ball can knock down a wall.', question: 'How does energy change and move?', description: 'A sample unit.',
@@ -3106,7 +2893,6 @@
                     App.dataMaps.major3DMap = new Map(cachedMaps.major3DMap);
                     App.dataMaps.nameToCodeMap = new Map(cachedMaps.nameToCodeMap);
                     App.dataMaps.textToSpecificCodeMap = new Map(cachedMaps.textToSpecificCodeMap);
-                    // We still need the raw data for the PE modal, load it from cache if available
                     App.state.allNgssData = await App.db.get('raw_ngss_data');
                     if (!App.state.allNgssData) throw new Error("Raw data missing from cache.");
                 } else {
