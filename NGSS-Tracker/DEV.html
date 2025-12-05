@@ -598,16 +598,26 @@
                     parentToChildrenMap.set(parentCode, {name: parent.name, children: uniqueChildren, dimension: dimShortName});
                 };
 
-                this.state.allNgss3dElements.forEach(dim => {
-                    (dim.elements || []).forEach(el => processParent(el, dim.short_name));
-                    (dim.core_ideas || []).forEach(el => {
-                        if (el.progressions) {
-                            processParent(el, dim.short_name);
-                        } else if (el.components) {
-                            el.components.forEach(comp => processParent(comp, dim.short_name));
-                        }
-                    });
-                });
+                // CORRECTED CODE
+				this.state.allNgss3dElements.forEach(dim => {
+				    // Corrected logic for dim.elements
+				    (dim.elements || []).forEach(el => {
+				        if (el.progressions) {
+				            processParent(el, dim.short_name);
+				        } else if (el.components) {
+				            el.components.forEach(comp => processParent(comp, dim.short_name));
+				        }
+				    });
+				
+				    // Original, correct logic for dim.core_ideas remains
+				    (dim.core_ideas || []).forEach(el => {
+				        if (el.progressions) {
+				            processParent(el, dim.short_name);
+				        } else if (el.components) {
+				            el.components.forEach(comp => processParent(comp, dim.short_name));
+				        }
+				    });
+				});
                 parentToChildrenMap.set('PE', {name: "Performance Expectations", children: [], dimension: 'PE'});
             },
 
