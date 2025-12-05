@@ -83,6 +83,7 @@
         .dark .sticky-col-3 { box-shadow: 4px 0 5px -2px rgba(0,0,0,0.25); }
 
         .data-col-header { width: 50px; min-width: 50px; max-width: 50px; }
+        .collapsed-placeholder { width: 30px; min-width: 30px; max-width: 30px; font-size: 0.8rem; }
 
         #planner-table-container thead th.sticky-col-1, 
         #planner-table-container thead th.sticky-col-2, 
@@ -104,7 +105,7 @@
 
     </style>
 </head>
-<body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased group">
+<body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased">
     <div id="loading-indicator" class="fixed inset-0 bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-lg text-gray-500 dark:text-gray-400 z-[2000] transition-opacity duration-500">Loading NGSS Planner...</div>
 
     <div class="relative flex h-screen overflow-hidden">
@@ -133,67 +134,62 @@
 
                 <div id="planner-view" class="view flex-1 flex flex-col h-full">
                     <!-- Streamlined Header & Toolbar -->
-                    <div class="flex flex-col gap-2 mb-2 border-b border-gray-200 dark:border-gray-700 pb-2">
-                        <div class="flex flex-wrap justify-between items-end gap-x-4 gap-y-2">
-                            <!-- Title Section -->
-                            <div class="min-w-[200px]">
+                    <div class="flex flex-col gap-3 mb-2 border-b border-gray-200 dark:border-gray-700 pb-3">
+                        <div class="flex flex-wrap justify-between items-start gap-x-4 gap-y-2">
+                            <!-- Left Side: Title & Info -->
+                            <div class="flex-1 min-w-[300px]">
                                 <h1 id="planner-title" class="text-2xl font-bold text-gray-800 dark:text-gray-100 leading-tight"></h1>
                                 <p id="planner-subtitle" class="text-sm text-gray-500 dark:text-gray-400"></p>
+                                <details class="group relative mt-2">
+                                    <summary class="list-none cursor-pointer text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1 text-xs">
+                                        <span class="group-open:rotate-90 transition-transform">▶</span> Show Phenomenon & Driving Question
+                                    </summary>
+                                    <div class="absolute top-full left-0 mt-1 z-50 w-96 p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-lg shadow-xl text-sm">
+                                        <p class="font-bold text-blue-800 dark:text-blue-200">Anchoring Phenomenon:</p>
+                                        <p id="planner-phenomenon" class="mb-2 text-gray-700 dark:text-gray-300 italic"></p>
+                                        <p class="font-bold text-blue-800 dark:text-blue-200">Driving Question:</p>
+                                        <p id="planner-question" class="text-gray-700 dark:text-gray-300 italic"></p>
+                                    </div>
+                                </details>
                             </div>
 
-                            <!-- Toolbar Section -->
-                            <div class="flex flex-wrap items-center gap-2 justify-end flex-1">
-                                <!-- Search -->
-                                <div class="relative">
-                                    <input type="search" id="search-input" placeholder="Search..." class="w-32 focus:w-48 transition-all pl-7 pr-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500">
-                                    <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400 text-xs">🔍</div>
+                            <!-- Right Side: Toolbar -->
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 justify-end">
+                                <!-- View Controls -->
+                                <div class="flex items-center gap-3">
+                                    <div class="relative">
+                                        <input type="search" id="search-input" placeholder="Search..." class="w-32 focus:w-48 transition-all pl-7 pr-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500">
+                                        <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400 text-xs">🔍</div>
+                                    </div>
+                                    <label class="flex items-center gap-1.5 cursor-pointer text-gray-600 dark:text-gray-400 text-xs whitespace-nowrap">
+                                        <span>Bundled PEs Only</span>
+                                        <input type="checkbox" id="pe-bundle-toggle" class="accent-blue-600">
+                                    </label>
+                                </div>
+                                
+                                <!-- History -->
+                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-3">
+                                    <button id="undo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed text-xs" title="Undo (Ctrl+Z)">↶</button>
+                                    <button id="redo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed text-xs" title="Redo (Ctrl+Y)">↷</button>
+                                </div>
+                                
+                                <!-- Actions -->
+                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-3">
+                                    <button id="assign-pe-btn" class="px-2 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-xs font-medium">Assign PEs</button>
+                                    <button id="add-lesson-set-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">+ Set</button>
+                                    <button id="add-lesson-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">+ Lesson</button>
+                                    <button id="edit-planner-btn" class="px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-xs" title="Planner Settings">⚙️</button>
                                 </div>
 
-                                <!-- Action Buttons -->
-                                <div class="flex gap-1">
-                                    <button id="assign-pe-btn" class="px-2 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-xs font-medium">PEs</button>
-                                    <button id="add-lesson-set-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium group-[.view-mode-active]:hidden">+ Set</button>
-                                    <button id="add-lesson-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium group-[.view-mode-active]:hidden">+ Lesson</button>
-                                </div>
-
-                                <!-- Undo/Redo -->
-                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-2">
-                                    <button id="undo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 text-xs">↶</button>
-                                    <button id="redo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 text-xs">↷</button>
-                                </div>
-
-                                <!-- Settings/View/Export -->
-                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-2">
-                                    <button id="edit-planner-btn" class="px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-xs group-[.view-mode-active]:hidden">⚙️</button>
-                                    <button id="view-mode-toggle" class="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-xs">View</button>
-                                    <button id="export-planner-btn" class="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Export</button>
+                                <!-- Import/Export -->
+                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-3">
                                     <button id="import-planner-btn" class="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Import</button>
+                                    <button id="export-planner-btn" class="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Export</button>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Row 2: Toggles & Status (Compact) -->
-                        <div class="flex justify-between items-center text-xs">
-                             <!-- Collapsible Phenomenon Toggle -->
-                            <details class="group relative">
-                                <summary class="list-none cursor-pointer text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1">
-                                    <span class="group-open:rotate-90 transition-transform">▶</span> Show Phenomenon & Driving Question
-                                </summary>
-                                <div class="absolute top-full left-0 mt-1 z-50 w-96 p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-lg shadow-xl text-sm">
-                                    <p class="font-bold text-blue-800 dark:text-blue-200">Anchoring Phenomenon:</p>
-                                    <p id="planner-phenomenon" class="mb-2 text-gray-700 dark:text-gray-300 italic"></p>
-                                    <p class="font-bold text-blue-800 dark:text-blue-200">Driving Question:</p>
-                                    <p id="planner-question" class="text-gray-700 dark:text-gray-300 italic"></p>
-                                </div>
-                            </details>
-
-                            <div class="flex items-center gap-4">
-                                <label class="flex items-center gap-2 cursor-pointer text-gray-600 dark:text-gray-400">
-                                    <span>Bundled PEs Only</span>
-                                    <input type="checkbox" id="pe-bundle-toggle" class="accent-blue-600">
-                                </label>
-                                <span id="save-status" class="italic text-gray-400"></span>
-                            </div>
+                        <div class="flex justify-end items-center text-xs">
+                             <span id="save-status" class="italic text-gray-400"></span>
                         </div>
                     </div>
 
@@ -409,7 +405,6 @@
                 currentActiveTab: 'pe',
                 saveTimeout: null,
                 draggedGroup: null, 
-                isViewMode: false,
                 isPeBundleMode: false,
                 undoStack: [],
                 redoStack: [],
@@ -677,7 +672,6 @@
                 document.getElementById('export-progression-btn').addEventListener('click', () => this.export.exportProgressionView());
                 document.getElementById('export-summary-btn').addEventListener('click', () => this.export.exportSummaryView());
 
-                document.getElementById('view-mode-toggle').addEventListener('click', () => this.utils.toggleViewMode());
                 document.getElementById('pe-bundle-toggle').addEventListener('change', e => { App.state.isPeBundleMode = e.target.checked; App.render.setActiveTab(App.state.currentActiveTab); });
                 document.getElementById('export-planner-btn').addEventListener('click', () => this.export.showExportOptions());
                 document.getElementById('import-planner-btn').addEventListener('click', () => this.import.handleImport());
@@ -711,16 +705,17 @@
                 document.getElementById('sidebar-backdrop').addEventListener('click', () => this.dom.body.classList.remove('sidebar-open'));
 
                 document.addEventListener('keydown', (e) => {
-                    if (document.activeElement.isContentEditable || document.querySelector('.modal-backdrop:not(.hidden)')) return;
+                    if (e.target.matches('input, textarea, [contenteditable]')) return;
+                    if (document.querySelector('.modal-backdrop:not(.hidden)')) return;
                     if (e.ctrlKey || e.metaKey) {
                         if (e.key === 'z') { e.preventDefault(); this.history.undo(); }
-                        if (e.key === 'y') { e.preventDefault(); this.history.redo(); }
+                        if (e.key === 'y' || (e.shiftKey && e.key === 'Z')) { e.preventDefault(); this.history.redo(); }
                     }
                 });
             },
         };
 
-        // ... (App.popover, App.db, App.persistence, App.history - No changes needed) ...
+        // ... (App.popover, App.db, App.persistence - No changes needed) ...
         App.popover = {
             dom: {},
             state: { isVisible: false, activeCell: null, activeRowId: null },
@@ -811,7 +806,7 @@
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
                 const rowData = App.utils.findRowData(planner, rowId);
                 if (!rowData) return;
-                App.history.saveState(planner);
+                App.history.saveState();
                 const code = radioInput.name.replace('status-', '');
                 if (radioInput.value) {
                     rowData.trackingData[code] = radioInput.value;
@@ -905,12 +900,22 @@
         };
 
         App.history = {
-            saveState(planner) {
+            saveState() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
                 if (!planner) return;
                 const stateCopy = JSON.parse(JSON.stringify(planner));
                 App.state.undoStack.push(stateCopy);
                 App.state.redoStack = []; 
                 this.updateUndoRedoButtons();
+            },
+            _restoreState(stateToApply) {
+                const plannerIndex = App.state.programData.planners.findIndex(p => p.id === App.state.currentPlannerId);
+                if (plannerIndex > -1) {
+                    App.state.programData.planners[plannerIndex] = stateToApply;
+                    App.render.plannerView(App.state.currentPlannerId);
+                    App.persistence.saveProgramData();
+                    this.updateUndoRedoButtons();
+                }
             },
             undo() {
                 if (App.state.undoStack.length === 0) return;
@@ -918,10 +923,7 @@
                 const currentState = JSON.parse(JSON.stringify(planner));
                 App.state.redoStack.push(currentState);
                 const previousState = App.state.undoStack.pop();
-                Object.assign(planner, previousState);
-                App.render.plannerView(App.state.currentPlannerId);
-                App.persistence.saveProgramData(); 
-                this.updateUndoRedoButtons();
+                this._restoreState(previousState);
             },
             redo() {
                 if (App.state.redoStack.length === 0) return;
@@ -929,10 +931,7 @@
                 const currentState = JSON.parse(JSON.stringify(planner));
                 App.state.undoStack.push(currentState);
                 const nextState = App.state.redoStack.pop();
-                Object.assign(planner, nextState);
-                App.render.plannerView(App.state.currentPlannerId);
-                App.persistence.saveProgramData();
-                this.updateUndoRedoButtons();
+                this._restoreState(nextState);
             },
             clear() {
                 App.state.undoStack = [];
@@ -1072,7 +1071,9 @@
                                 const fullGroupKey = `${key}-${groupKey}`;
                                 const isCollapsed = App.state.collapsedSections.has(fullGroupKey);
                                 const icon = isCollapsed ? '▶' : '▼';
-                                groupHeaderRow += `<th class="group-toggle-header bg-gray-200 dark:bg-gray-800 border-l border-r border-gray-300 dark:border-gray-700 cursor-pointer" data-tab-group="${key}" data-group-toggle="${fullGroupKey}" colspan="${groupData.cols.length}"><span class="toggle-icon">${icon}</span> ${groupData.name}</th>`;
+                                const colspan = isCollapsed ? 1 : groupData.cols.length;
+                                const placeholderClass = isCollapsed ? 'collapsed-placeholder' : '';
+                                groupHeaderRow += `<th class="group-toggle-header bg-gray-200 dark:bg-gray-800 border-l border-r border-gray-300 dark:border-gray-700 cursor-pointer ${placeholderClass}" data-tab-group="${key}" data-group-toggle="${fullGroupKey}" data-original-colspan="${groupData.cols.length}" colspan="${colspan}"><span class="toggle-icon">${icon}</span> ${groupData.name}</th>`;
                                 
                                 groupData.cols.forEach(col => {
                                     mainHeaderRow += `<th class="data-col-header cursor-pointer" data-tab-group="${key}" data-group-parent="${fullGroupKey}" data-code="${col.code}" data-tooltip="${col.title}"><div class="vertical-header-text">${col.title}</div></th>`;
@@ -1115,7 +1116,7 @@
                 }
                 
                 row.className += ` ${rowData.type}-row group/row`; row.dataset.rowType = rowData.type; row.dataset.id = rowData.id;
-                row.draggable = !App.state.isViewMode;
+                row.draggable = true;
 
                 const planner = App.utils.findPlanner(App.state.currentPlannerId); const columnGroups = App.utils.gatherColumns(planner.gradeBand);
                 const borderClass = "border-b border-r border-gray-200 dark:border-gray-700";
@@ -1123,10 +1124,10 @@
                 if (rowData.type === 'lesson-set') {
                     const isCollapsedClass = rowData.isCollapsed ? 'is-collapsed' : '';
                     const rotateClass = rowData.isCollapsed ? '-rotate-90' : '';
-                    const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
+                    const editableSpan = `<span class="editable hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="true">${rowData.title}</span>`;
                     
                     let cellsHTML = `
-                        <td class="sticky-col-1 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab group-[.view-mode-active]:hidden mr-2">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson Set">✖</span></td>
+                        <td class="sticky-col-1 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab mr-2">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors" title="Delete Lesson Set">✖</span></td>
                         <td class="sticky-col-2 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
                         <td class="sticky-col-3 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>`;
                     
@@ -1146,23 +1147,22 @@
                     if (parentId) row.dataset.parentId = parentId;
                     const scope = rowData.scope || '';
                     const scopeClass = App.constants.scopeClasses[scope] || '';
-                    const scopeCursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer';
-                    const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
+                    const editableSpan = `<span class="editable hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="true">${rowData.title}</span>`;
                     const notesIcon = `<span class="notes-btn cursor-pointer text-base" title="Edit Notes & Links">📝</span>`;
                     
                     let cellsHTML = `
                         <td class="sticky-col-1 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle">
                             <div class="flex items-center justify-start gap-2 text-gray-400 w-full overflow-hidden">
-                                <span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span>
+                                <span class="drag-handle cursor-grab">⠿</span>
                                 <div class="flex items-center gap-2 invisible group-hover/row:visible">
                                     ${notesIcon}
-                                    <span class="delete-btn cursor-pointer font-bold hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson">✖</span>
-                                    <span class="add-below-btn cursor-pointer hover:text-green-500 transition-colors group-[.view-mode-active]:hidden" title="Add Lesson Below">+</span>
-                                    <span class="copy-row-btn cursor-pointer hover:text-blue-500 transition-colors group-[.view-mode-active]:hidden" title="Duplicate Lesson">❐</span>
+                                    <span class="delete-btn cursor-pointer font-bold hover:text-red-500 transition-colors" title="Delete Lesson">✖</span>
+                                    <span class="add-below-btn cursor-pointer hover:text-green-500 transition-colors" title="Add Lesson Below">+</span>
+                                    <span class="copy-row-btn cursor-pointer hover:text-blue-500 transition-colors" title="Duplicate Lesson">❐</span>
                                 </div>
                             </div>
                         </td>
-                        <td data-scope-cell="true" class="sticky-col-2 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle font-bold text-center ${scopeCursorClass} ${scopeClass}" data-tooltip="Click to cycle Assessment Scope">${scope}</td>
+                        <td data-scope-cell="true" class="sticky-col-2 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle font-bold text-center cursor-pointer ${scopeClass}" data-tooltip="Click to cycle Assessment Scope">${scope}</td>
                         <td class="sticky-col-3 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 text-left ${parentId ? 'pl-10' : ''}"><div class="truncate">${editableSpan}</div></td>`;
 
                     Object.keys(columnGroups).forEach(key => {
@@ -1187,12 +1187,12 @@
                 if (column.type === 'pe') {
                     const status = rowData.trackingData?.[column.code] || '';
                     const statusClass = App.constants.statusClasses[status] || '';
-                    const cursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer hover:bg-yellow-300/50 dark:hover:bg-yellow-500/50';
+                    const cursorClass = 'cursor-pointer hover:bg-yellow-300/50 dark:hover:bg-yellow-500/50';
                     return `<td class="${commonCellClasses} text-center font-bold ${cursorClass} ${statusClass}" data-tab-group="pe" data-pe-code="${column.code}" data-tooltip="Click to change status for ${column.code}">${status}</td>`;
                 }
                 const parentCode = column.code; 
                 const cellTooltip = `${column.title}. Click to edit elements.`;
-                const cursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50';
+                const cursorClass = 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50';
                 const cellContent = this.generateCellContent(parentCode, rowData);
                 return `<td class="${commonCellClasses} ${cursorClass}" data-tab-group="${column.tabGroup}" data-group-parent="${column.parentGroup}" data-parent-code="${parentCode}" data-tooltip="${cellTooltip}">${cellContent}</td>`;
             },
@@ -1237,6 +1237,8 @@
                     assignedPes.forEach(peCode => {
                         const links = App.dataMaps.peTo3dMap.get(peCode);
                         if (links) {
+                            links.componentCodes.forEach(code => bundledParentCodes.add(code));
+                            links.secondaryComponentCodes.forEach(code => bundledParentCodes.add(code));
                             links.specificCodes.forEach(specificCode => {
                                 const element = App.dataMaps.ngss3dMap.get(specificCode);
                                 if (element && element.parentCode) {
@@ -1824,7 +1826,6 @@
             },
         };
 
-        // ... (App.handlers, App.utils - No changes needed except in export below) ...
         App.handlers = {
             mainTableClick(e) {
                 const target = e.target;
@@ -1833,18 +1834,24 @@
                 const groupToggle = target.closest('[data-group-toggle]');
                 if (groupToggle) {
                     const groupKey = groupToggle.dataset.groupToggle;
+                    const originalColspan = groupToggle.dataset.originalColspan;
+
                     if (App.state.collapsedSections.has(groupKey)) {
                         App.state.collapsedSections.delete(groupKey);
                         groupToggle.querySelector('.toggle-icon').textContent = '▼';
+                        groupToggle.setAttribute('colspan', originalColspan);
+                        groupToggle.classList.remove('collapsed-placeholder');
                     } else {
                         App.state.collapsedSections.add(groupKey);
                         groupToggle.querySelector('.toggle-icon').textContent = '▶';
+                        groupToggle.setAttribute('colspan', '1');
+                        groupToggle.classList.add('collapsed-placeholder');
                     }
                     App.render.updateColumnVisibility();
                     return;
                 }
                 
-                if (!rowEl || App.state.isViewMode) return;
+                if (!rowEl) return;
                 
                 const rowId = rowEl.dataset.id;
                 
@@ -1874,7 +1881,7 @@
                 
                 const lessonSetRow = target.closest('.lesson-set-row');
                 if (lessonSetRow && !target.matches('.editable')) { 
-                    App.history.saveState(App.utils.findPlanner(App.state.currentPlannerId));
+                    App.history.saveState();
                     const planner = App.utils.findPlanner(App.state.currentPlannerId); 
                     const rowData = App.utils.findRowData(planner, rowId); 
                     if (rowData) { 
@@ -1891,7 +1898,7 @@
                 this.titleEditTimeout = setTimeout(() => {
                     const rowId = e.target.closest('[data-id]').dataset.id;
                     const planner = App.utils.findPlanner(App.state.currentPlannerId);
-                    App.history.saveState(planner);
+                    App.history.saveState();
                     const rowData = App.utils.findRowData(planner, rowId);
                     if (rowData) {
                         rowData.title = e.target.textContent;
@@ -1902,7 +1909,7 @@
             tooltipShow(e) { const target = e.target.closest('[data-tooltip]'); if (!target || !target.dataset.tooltip) return; App.dom.tooltip.innerHTML = target.dataset.tooltip; App.dom.tooltip.style.opacity = '1'; const targetRect = target.getBoundingClientRect(); App.dom.tooltip.style.left = `${e.clientX + 10}px`; App.dom.tooltip.style.top = `${e.clientY + 10}px`; },
             tooltipHide() { App.dom.tooltip.style.opacity = '0'; },
             dragStart(e) {
-                if (!e.target.matches('tr') || App.state.isViewMode) return;
+                if (!e.target.matches('tr')) return;
                 const draggedRow = e.target;
                 App.state.draggedGroup = [draggedRow];
 
@@ -1932,8 +1939,7 @@
                 }
             },
             drop(e) {
-                const planner = App.utils.findPlanner(App.state.currentPlannerId);
-                App.history.saveState(planner);
+                App.history.saveState();
                 e.preventDefault();
                 const dropTarget = e.target.closest('tbody tr');
                 if (dropTarget && App.state.draggedGroup && !App.state.draggedGroup.includes(dropTarget)) {
@@ -2068,8 +2074,8 @@
                 return dims;
             },
             cyclePeStatus(rowId, peCode) {
+                App.history.saveState();
                 const planner = this.findPlanner(App.state.currentPlannerId);
-                App.history.saveState(planner);
                 const rowData = this.findRowData(planner, rowId);
                 if (!rowData) return;
                 const currentStatus = rowData.trackingData[peCode];
@@ -2082,8 +2088,8 @@
                 App.persistence.debouncedSave();
             },
             cycleScopeStatus(rowId) {
+                App.history.saveState();
                 const planner = this.findPlanner(App.state.currentPlannerId);
-                App.history.saveState(planner);
                 const rowData = this.findRowData(planner, rowId);
                 if (!rowData) return;
                 const currentScope = rowData.scope;
@@ -2093,16 +2099,10 @@
                 App.render.setActiveTab(App.state.currentActiveTab);
                 App.persistence.debouncedSave();
             },
-            toggleViewMode() {
-                App.state.isViewMode = !App.state.isViewMode;
-                App.dom.body.classList.toggle('view-mode-active', App.state.isViewMode);
-                document.getElementById('view-mode-toggle').textContent = App.state.isViewMode ? 'Exit View' : 'View';
-                if (App.state.currentPlannerId) App.render.plannerView(App.state.currentPlannerId);
-            },
             addRow(type, text) {
                 const planner = this.findPlanner(App.state.currentPlannerId);
                 if (!planner) return;
-                App.history.saveState(planner);
+                App.history.saveState();
                 const newRowData = { id: `row-${Date.now()}`, type, title: text };
                 if (type === 'lesson-set') {
                     newRowData.children = [];
@@ -2126,7 +2126,7 @@
             addRowAdjacent(referenceRowId, position = 'below') {
                 const planner = this.findPlanner(App.state.currentPlannerId);
                 if (!planner) return;
-                App.history.saveState(planner);
+                App.history.saveState();
                 const location = this.findRowAndParent(planner, referenceRowId);
                 if (!location) return;
                 const newLesson = {
@@ -2146,7 +2146,7 @@
             copyRow(sourceRowId) {
                 const planner = this.findPlanner(App.state.currentPlannerId);
                 if (!planner) return;
-                App.history.saveState(planner);
+                App.history.saveState();
                 const location = this.findRowAndParent(planner, sourceRowId);
                 if (!location) return;
                 const sourceRowData = location.row;
@@ -2160,7 +2160,7 @@
             },
             deleteRow(rowId) {
                 const planner = this.findPlanner(App.state.currentPlannerId); if (!planner) return;
-                App.history.saveState(planner);
+                App.history.saveState();
                 let foundAndRemoved = false;
                 planner.rows = planner.rows.filter(row => {
                     if (row.id === rowId) {
@@ -2204,8 +2204,8 @@
             },
             savePlanner() { 
                 const id = document.getElementById('planner-id-input').value;
-                const planner = id ? this.findPlanner(id) : null;
-                if(planner) App.history.saveState(planner);
+                const isEditing = !!id;
+                if(isEditing) App.history.saveState();
 
                 const data = {
                     title: document.getElementById('planner-title-input').value,
@@ -2219,7 +2219,7 @@
 
                 if (!data.title) { alert('Planner Title is required.'); return; }
 
-                if (id) {
+                if (isEditing) {
                     Object.assign(App.utils.findPlanner(id), data);
                 } else {
                     data.id = `planner-${Date.now()}`;
@@ -2246,7 +2246,7 @@
                 App.persistence.saveProgramData();
                 App.render.navigator();
                 App.render.welcomeView();
-                if (!id) {
+                if (!isEditing) {
                     App.render.plannerView(data.id);
                 } else if (id === App.state.currentPlannerId) {
                     App.render.plannerView(id);
@@ -2262,7 +2262,8 @@
 
                 App.state.allNgssData.forEach(g => {
                     if(r.includes(g.gradeId)){
-                        g.topics.forEach(t => {
+                        (g.topics || []).forEach(t => {
+                            if (!t.performanceExpectations) return; // FIX: Defensive check
                             t.performanceExpectations.forEach(pe => {
                                 const assignedPeObj = p.assignedPes?.find(p_obj => p_obj.id === pe.id);
                                 const isChecked = !!assignedPeObj;
@@ -2308,7 +2309,7 @@
             },
             savePeAssignments() { 
                 const p = App.utils.findPlanner(App.state.currentPlannerId); if (!p) return;
-                App.history.saveState(p);
+                App.history.saveState();
                 p.assignedPes = Array.from(document.querySelectorAll('#pe-modal-list input[type="checkbox"][value]:checked')).map(i => {
                     const container = i.closest('.pe-modal-item');
                     const isSecondary = container.querySelector('.secondary-pe-toggle').checked;
@@ -2442,7 +2443,7 @@
                 const modal = document.getElementById('lesson-details-modal-backdrop');
                 const rowId = modal.dataset.currentRowId;
                 const planner = this.findPlanner(App.state.currentPlannerId);
-                App.history.saveState(planner);
+                App.history.saveState();
 
                 const rowData = this.findRowData(planner, rowId);
                 if (!rowData) return;
