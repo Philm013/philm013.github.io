@@ -453,6 +453,7 @@
                 undoStack: [],
                 redoStack: [],
 				summaryShowCoveredOnly: false,
+				summaryChartFilter: null, 
                 pendingImportData: null,
                 allNgssData: [],
                 allNgss3dElements: [],
@@ -1507,7 +1508,7 @@
                 if (checkedBoxes.length > 0) {
                     selectedPlanners = Array.from(checkedBoxes).map(cb => {
                         return App.utils.findPlanner(cb.closest('.planner-item').dataset.plannerId);
-                    }).filter(p => p); // Filter out undefined
+                    }).filter(p => p); 
                 } else {
                     const current = App.utils.findPlanner(App.state.currentPlannerId);
                     if (current) selectedPlanners = [current];
@@ -1518,22 +1519,42 @@
                     return;
                 }
 
-                // 2. Update Header
+                // 2. Setup Headers & Filter UI
                 const titleText = selectedPlanners.length === 1 ? selectedPlanners[0].title : 'Combined Summary';
                 const subText = selectedPlanners.length === 1 
                     ? `${selectedPlanners[0].course} (${selectedPlanners[0].gradeBand})` 
                     : `Aggregating data from ${selectedPlanners.length} selected planners.`;
                 
-                // We update the main view title/subtitle directly here for the Summary View
                 document.querySelector('#summary-view h1').textContent = titleText;
                 document.getElementById('summary-subtitle').textContent = subText;
 
-                // 3. Render Structure with Toggle
                 const container = document.getElementById('summary-content');
                 const isChecked = App.state.summaryShowCoveredOnly ? 'checked' : '';
                 
+                // Generate Active Filter Badge HTML
+                let filterBadge = '';
+                if (App.state.summaryChartFilter) {
+                    const { type, value } = App.state.summaryChartFilter;
+                    let label = value;
+                    // Map internal codes to readable labels for the badge
+                    if (value === 'I') label = 'Introduced';
+                    if (value === 'D') label = 'Developed';
+                    if (value === 'A') label = 'Assessed';
+                    if (value === '') label = 'Not Scoped';
+                    if (value === 'F') label = 'Formative';
+                    if (value === 'S') label = 'Summative';
+                    
+                    filterBadge = `
+                        <button id="clear-filter-btn" class="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-sm font-bold hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
+                            <span>Filter: ${type.charAt(0).toUpperCase() + type.slice(1)} = ${label}</span>
+                            <span class="text-lg leading-none">&times;</span>
+                        </button>
+                    `;
+                }
+
                 container.innerHTML = `
-                    <div class="flex justify-end mb-4">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                        <div id="filter-container">${filterBadge}</div>
                         <label class="flex items-center cursor-pointer">
                             <span class="mr-3 text-sm font-medium text-gray-900 dark:text-gray-300">Show Covered Elements Only</span>
                             <div class="relative">
@@ -1544,17 +1565,20 @@
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                        <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+                        <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 hover:border-blue-400 transition-colors">
                             <h3 class="font-bold mb-2 text-gray-700 dark:text-gray-200">3D Element Status Distribution</h3>
                             <div class="relative h-64"><canvas id="status-chart"></canvas></div>
+                            <p class="text-xs text-center mt-2 text-gray-400">Click bars to filter report by status</p>
                         </div>
-                        <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+                        <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 hover:border-blue-400 transition-colors">
                             <h3 class="font-bold mb-2 text-gray-700 dark:text-gray-200">Dimension Usage Balance</h3>
                             <div class="relative h-64"><canvas id="dimension-chart"></canvas></div>
+                            <p class="text-xs text-center mt-2 text-gray-400">Click ring to filter report by dimension</p>
                         </div>
-                        <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+                        <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 hover:border-blue-400 transition-colors">
                             <h3 class="font-bold mb-2 text-gray-700 dark:text-gray-200">Assessment Scope</h3>
                             <div class="relative h-64"><canvas id="scope-chart"></canvas></div>
+                            <p class="text-xs text-center mt-2 text-gray-400">Click slices to filter report by scope</p>
                         </div>
                     </div>
                     
@@ -1564,17 +1588,32 @@
                     </div>
                 `;
 
-                // 4. Attach Toggle Listener
+                // 3. Attach Listeners
                 document.getElementById('summary-coverage-toggle').addEventListener('change', (e) => {
                     App.state.summaryShowCoveredOnly = e.target.checked;
-                    this.summary(); // Re-render
+                    this.summary();
                 });
+                
+                if (document.getElementById('clear-filter-btn')) {
+                    document.getElementById('clear-filter-btn').addEventListener('click', () => {
+                        App.state.summaryChartFilter = null;
+                        this.summary();
+                    });
+                }
 
-                // 5. Aggregate Data
-                const statusCounts = { I: 0, D: 0, A: 0 };
-                const dimensionCounts = { SEP: 0, DCI: 0, CCC: 0, PE: 0 };
-                const scopeCounts = { F: 0, S: 0, None: 0};
-                const coverageMap = new Map();
+                // 4. Aggregate Data
+                // We calculate TWO sets of data: 
+                // A) Global stats for the charts (always shows everything)
+                // B) Filtered stats for the Report List (respects the active filter)
+                
+                const globalStats = {
+                    status: { I: 0, D: 0, A: 0 },
+                    dimension: { SEP: 0, DCI: 0, CCC: 0, PE: 0 },
+                    scope: { F: 0, S: 0, None: 0 }
+                };
+                
+                const coverageMap = new Map(); // For the report list
+                const filter = App.state.summaryChartFilter;
 
                 selectedPlanners.forEach(planner => {
                     const allLessons = [];
@@ -1584,94 +1623,131 @@
                     });
 
                     allLessons.forEach(lesson => {
-                        // Scope
-                        scopeCounts[lesson.scope || 'None']++;
+                        const scopeKey = lesson.scope || 'None';
                         
-                        // Elements
+                        // 1. Populate Global Chart Stats
+                        globalStats.scope[scopeKey]++;
                         Object.entries(lesson.trackingData || {}).forEach(([code, status]) => {
-                            // Charts
-                            if (statusCounts[status] !== undefined) statusCounts[status]++;
+                            if (globalStats.status[status] !== undefined) globalStats.status[status]++;
                             
                             const element = App.dataMaps.ngss3dMap.get(code);
                             if (element) {
-                                if (element.dimension.startsWith('SEP')) dimensionCounts.SEP++;
-                                else if (element.dimension.startsWith('DCI')) dimensionCounts.DCI++;
-                                else if (element.dimension.startsWith('CCC') || element.dimension.startsWith('C-ETAS') || element.dimension.startsWith('CNS')) {
-                                    dimensionCounts.CCC++; 
-                                }
-                                
-                                // Coverage Map (Key: Code, Value: {I:0, D:0, A:0})
-                                if (!coverageMap.has(code)) coverageMap.set(code, { I: 0, D: 0, A: 0 });
-                                coverageMap.get(code)[status]++;
-                                
+                                if (element.dimension.startsWith('SEP')) globalStats.dimension.SEP++;
+                                else if (element.dimension.startsWith('DCI')) globalStats.dimension.DCI++;
+                                else globalStats.dimension.CCC++;
                             } else if (App.dataMaps.peMap.has(code)) {
-                                dimensionCounts.PE++;
+                                globalStats.dimension.PE++;
                             }
+                        });
+
+                        // 2. Populate Filtered Report Data
+                        // If filtering by scope, skip lessons that don't match
+                        if (filter && filter.type === 'scope') {
+                            const targetScope = filter.value === 'None' ? '' : (filter.value === 'Formative' ? 'F' : 'S');
+                            if ((lesson.scope || '') !== targetScope) return;
+                        }
+
+                        Object.entries(lesson.trackingData || {}).forEach(([code, status]) => {
+                            // If filtering by Status, we still track it, but we might hide it later in the render loop 
+                            // OR we can skip tracking unrelated statuses here.
+                            // Let's track everything here and filter visibility in the HTML generation for granularity.
+                            
+                            if (!coverageMap.has(code)) coverageMap.set(code, { I: 0, D: 0, A: 0 });
+                            coverageMap.get(code)[status]++;
                         });
                     });
                 });
 
-                // 6. Render Charts
-                // Note: We use a small timeout or check if Chart is loaded to be safe, 
-                // but usually it's fine here.
+                // 5. Render Interactive Charts
+                
+                // Helper to handle chart clicks
+                const handleChartClick = (type, labelMap) => (e, elements) => {
+                    if (!elements || elements.length === 0) return;
+                    const index = elements[0].index;
+                    // Use the chart instance from the event context
+                    const chart = e.chart; 
+                    const label = chart.data.labels[index];
+                    
+                    let value = label;
+                    if (labelMap) value = labelMap[label];
+                    
+                    App.state.summaryChartFilter = { type, value };
+                    this.summary(); // Re-render
+                };
+
+                // Status Chart
                 new Chart(document.getElementById('status-chart'), {
                     type: 'bar',
                     data: {
                         labels: ['Introduced', 'Developed', 'Assessed'],
                         datasets: [{ 
                             label: 'Count', 
-                            data: [statusCounts.I, statusCounts.D, statusCounts.A], 
+                            data: [globalStats.status.I, globalStats.status.D, globalStats.status.A], 
                             backgroundColor: ['#FBBF24', '#34D399', '#60A5FA'],
                             borderRadius: 4
                         }]
                     },
                     options: { 
-                        responsive: true, 
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                        onClick: handleChartClick('status', { 'Introduced': 'I', 'Developed': 'D', 'Assessed': 'A' }),
+                        onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default'; }
                     }
                 });
 
-                 new Chart(document.getElementById('dimension-chart'), {
+                // Dimension Chart
+                new Chart(document.getElementById('dimension-chart'), {
                     type: 'doughnut',
                     data: {
                         labels: ['SEPs', 'DCIs', 'CCCs', 'PEs'],
                         datasets: [{ 
-                            data: [dimensionCounts.SEP, dimensionCounts.DCI, dimensionCounts.CCC, dimensionCounts.PE], 
+                            data: [globalStats.dimension.SEP, globalStats.dimension.DCI, globalStats.dimension.CCC, globalStats.dimension.PE], 
                             backgroundColor: ['#818CF8', '#F87171', '#FB923C', '#60A5FA'],
                             borderWidth: 0
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    options: { 
+                        responsive: true, maintainAspectRatio: false,
+                        onClick: handleChartClick('dimension', { 'SEPs': 'sep', 'DCIs': 'dci', 'CCCs': 'ccc', 'PEs': 'pe' }),
+                        onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default'; }
+                    }
                 });
 
+                // Scope Chart
                 new Chart(document.getElementById('scope-chart'), {
                     type: 'pie',
                     data: {
                         labels: ['Formative', 'Summative', 'Not Scoped'],
                         datasets: [{ 
-                            data: [scopeCounts.F, scopeCounts.S, scopeCounts.None], 
+                            data: [globalStats.scope.F, globalStats.scope.S, globalStats.scope.None], 
                             backgroundColor: ['#6366F1', '#EC4899', '#E5E7EB'],
                             borderWidth: 0
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    options: { 
+                        responsive: true, maintainAspectRatio: false,
+                        onClick: handleChartClick('scope'),
+                        onHover: (event, chartElement) => { event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default'; }
+                    }
                 });
                 
-                // 7. Render Coverage Report
+                // 6. Render Coverage Report (Respecting Filters)
                 const coverageReportContainer = document.getElementById('element-coverage-report');
-                // Use the grade band of the first selected planner to determine structure, 
-                // or default to elementary if mixed (edge case).
                 const referenceBand = selectedPlanners[0].gradeBand; 
                 const allColumns = App.utils.gatherColumns(referenceBand);
                 
                 let reportHTML = '';
-                const groupOrder = ['dci', 'sep', 'ccc'];
+                // If filtering by Dimension, only show that group. Otherwise show all 3.
+                let groupOrder = ['dci', 'sep', 'ccc'];
+                if (filter && filter.type === 'dimension') {
+                    if (filter.value === 'pe') groupOrder = []; // PEs are handled separately usually, or we can show a special PE list. For now, empty.
+                    else groupOrder = [filter.value];
+                }
                 
                 groupOrder.forEach(groupKey => {
                     const group = allColumns[groupKey];
-                    if (group.cols.length === 0) return;
+                    if (!group || group.cols.length === 0) return;
 
                     let groupHTML = `<div class="mb-6"><h4 class="text-xl font-bold border-b-2 pb-2 mb-4 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-100">${group.name}</h4>`;
                     let hasVisibleParents = false;
@@ -1680,18 +1756,28 @@
                         const parentInfo = App.dataMaps.parentToChildrenMap.get(parentCol.code);
                         if (!parentInfo) return;
                         
-                        // Get children relevant to this band
                         const gradeBandProgressions = parentInfo.children[0]?.allProgressions?.[referenceBand] || [];
                         const validCodesForBand = new Set(gradeBandProgressions.map(p => p.code));
                         const childrenForBand = parentInfo.children.filter(child => validCodesForBand.has(child.code));
 
-                        // Filter children based on toggle
+                        // Filter children based on Toggle AND Chart Filter
                         const visibleChildren = childrenForBand.filter(child => {
-                            if (!App.state.summaryShowCoveredOnly) return true; // Show all if toggle off
-                            return coverageMap.has(child.code); // Only show if tracked
+                            const coverage = coverageMap.get(child.code);
+                            const isCovered = !!coverage;
+
+                            // 1. Check Toggle
+                            if (App.state.summaryShowCoveredOnly && !isCovered) return false;
+
+                            // 2. Check Status Filter (If active)
+                            if (filter && filter.type === 'status') {
+                                // If filtering by "Introduced", only show elements that HAVE an 'I' count
+                                if (!coverage || !coverage[filter.value]) return false;
+                            }
+
+                            return true;
                         });
 
-                        if (visibleChildren.length === 0) return; // Skip parent if no children visible
+                        if (visibleChildren.length === 0) return;
                         hasVisibleParents = true;
 
                         groupHTML += `<div class="mb-5 pl-2">
@@ -1701,12 +1787,17 @@
                         visibleChildren.forEach(child => {
                             const coverage = coverageMap.get(child.code);
                             let coverageString = '';
-                            let rowClass = 'bg-gray-50 dark:bg-gray-700/30'; // Default background
+                            let rowClass = 'bg-gray-50 dark:bg-gray-700/30'; 
 
                             if (coverage) {
                                 coverageString = Object.entries(coverage)
                                     .filter(([, count]) => count > 0)
-                                    .map(([status, count]) => `<span class="px-2 py-0.5 rounded-full text-xs font-bold ${App.constants.statusBadgeClasses[status]} border border-black/10">${status}: ${count}</span>`)
+                                    .map(([status, count]) => {
+                                        // Highlight the badge if it matches the status filter
+                                        const isMatch = (filter && filter.type === 'status' && filter.value === status);
+                                        const border = isMatch ? 'border-2 border-black dark:border-white ring-2 ring-offset-1 ring-blue-400' : 'border border-black/10';
+                                        return `<span class="px-2 py-0.5 rounded-full text-xs font-bold ${App.constants.statusBadgeClasses[status]} ${border}">${status}: ${count}</span>`;
+                                    })
                                     .join(' ');
                                 rowClass = 'bg-white dark:bg-gray-800 border-l-4 border-blue-400';
                             } else {
@@ -1727,18 +1818,25 @@
                     });
                     
                     groupHTML += `</div>`;
-
-                    // Only append the group if it actually has content
-                    if (hasVisibleParents) {
-                        reportHTML += groupHTML;
-                    }
+                    if (hasVisibleParents) reportHTML += groupHTML;
                 });
 
                 if (reportHTML === '') {
-                    reportHTML = `<div class="text-center py-8 text-gray-500 italic">No elements match the current filter. Try unchecking "Show Covered Elements Only" or adding tracking data to your lessons.</div>`;
+                    reportHTML = `<div class="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+                        <p class="text-gray-500 text-lg">No elements match the current filters.</p>
+                        ${filter ? `<button id="clear-filter-empty-btn" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Clear Filter</button>` : ''}
+                    </div>`;
                 }
 
                 coverageReportContainer.innerHTML = reportHTML;
+                
+                if(document.getElementById('clear-filter-empty-btn')) {
+                     document.getElementById('clear-filter-empty-btn').addEventListener('click', () => {
+                        App.state.summaryChartFilter = null;
+                        this.summary();
+                    });
+                }
+
                 App.utils.showView('summary-view');
             },
 
