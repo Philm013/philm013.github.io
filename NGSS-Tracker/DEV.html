@@ -502,15 +502,25 @@
                                  Object.values(item.progressions).forEach(pArr=>{
                                      if(Array.isArray(pArr)) {
                                          pArr.forEach(i=>{
-                                             if(!i) return;
-                                             i.parentName = item.name;
-                                             i.parentCode = item.name.split(':')[0].trim();
-                                             i.dimension = dim.short_name;
-                                             i.allProgressions = item.progressions;
-                                             i.relatedPes = new Set();
-                                             ngss3dMap.set(i.code,i);
-                                             textToSpecificCodeMap.set(i.text.trim(), i.code);
-                                         });
+										    if(!i) return;
+										    i.parentName = item.name;
+										    i.parentCode = item.name.split(':')[0].trim();
+										    i.dimension = dim.short_name;
+										    
+										    // FIX: Normalize progression keys to match planner gradeBands
+										    // (e.g., maps "3-5" to "elementary")
+										    i.allProgressions = {};
+										    if (item.progressions) {
+										        Object.keys(item.progressions).forEach(k => {
+										            const normalizedKey = App.dataMaps.gradeBandMap[k] || k;
+										            i.allProgressions[normalizedKey] = item.progressions[k];
+										        });
+										    }
+										
+										    i.relatedPes = new Set();
+										    ngss3dMap.set(i.code,i);
+										    textToSpecificCodeMap.set(i.text.trim(), i.code);
+										});
                                      }
                                  });
                              }
