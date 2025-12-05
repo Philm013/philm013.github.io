@@ -409,6 +409,7 @@
                 pendingImportData: null,
                 allNgssData: [],
                 allNgss3dElements: [],
+                availableExamples: [], // New state for dynamically loaded examples
                 progressionViewType: 'element',
                 summaryShowCoveredOnly: false,
                 summaryChartFilter: null,
@@ -424,7 +425,6 @@
                 nameToCodeMap: new Map(),
                 textToSpecificCodeMap: new Map(),
                 fuzzyMatchCache: new Map(),
-                // Updated to include ETS grade keys (K-2, 3-5, etc.)
                 gradeBandMap: { 
                     'K': 'primary', '1': 'primary', '2': 'primary', 'K-2': 'primary',
                     '3': 'elementary', '4': 'elementary', '5': 'elementary', '3-5': 'elementary',
@@ -464,12 +464,6 @@
                     F: 'bg-indigo-200/60 dark:bg-indigo-700/40 border-indigo-300',
                     S: 'bg-rose-200/60 dark:bg-rose-700/40 border-rose-300'
                 }
-            },
-            examples: {
-                planners: [
-                    { "id": "planner-1721248800001", "title": "Grade 7 Earth Systems: Plate Tectonics", "course": "7th Grade Science", "gradeBand": "middle", "standardSet": "NGSS", "phenomenon": "The Hawaiian Islands are a chain of volcanoes that formed in the middle of the Pacific Plate, far from any plate boundary.", "question": "How can new land form in the middle of the ocean?", "description": "A unit exploring the mechanisms of plate tectonics, the rock cycle, and geological time to explain large-scale Earth features and processes.", "activeTab": "dci", "assignedPes": [ { "id": "MS-ESS2-1", "isSecondary": false }, { "id": "MS-ESS2-2", "isSecondary": false }, { "id": "MS-ESS2-3", "isSecondary": false }, { "id": "MS-ESS1-4", "isSecondary": true } ], "rows": [ { "id": "row-1721248800002", "type": "lesson-set", "title": "Anchor Lesson", "isCollapsed": false, "children": [ { "id": "row-1721248800003", "type": "lesson", "title": "Lesson 1: Hawaiian Hot Spot Phenomenon", "trackingData": { "SEP.1-M1": "I", "CCC.2-M2": "I" }, "scope": "", "details": { "notes": "Introduce the phenomenon using maps and videos. Students generate initial questions.", "links": [] } }, { "id": "row-1721248800004", "type": "lesson", "title": "Lesson 2: Initial Models", "trackingData": { "SEP.2-M3": "I", "MS-ESS2-2": "I" }, "scope": "F", "details": { "notes": "Students draw initial models to explain how the Hawaiian islands could have formed.", "links": [] } } ] }, { "id": "row-1721248800005", "type": "lesson-set", "title": "Investigation 1: Earth's Layers & Convection", "isCollapsed": false, "children": [ { "id": "row-1721248800006", "type": "lesson", "title": "Lesson 3: What's Inside Earth?", "trackingData": { "ESS2.A-M1": "I" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800007", "type": "lesson", "title": "Lesson 4: Modeling Mantle Convection", "trackingData": { "ESS2.A-M1": "D", "SEP.2-M3": "D", "CCC.5-M1": "I" }, "scope": "F", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800008", "type": "lesson", "title": "Lesson 5: Tectonic Plates Puzzle", "trackingData": { "ESS2.B-M1": "I", "MS-ESS2-3": "I" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800009", "type": "lesson", "title": "Lesson 6: Plate Boundary Types", "trackingData": { "ESS2.B-M1": "D" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800010", "type": "lesson", "title": "Lesson 7: Revisiting Initial Models", "trackingData": { "SEP.2-M3": "D", "CCC.2-M2": "D" }, "scope": "F", "details": { "notes": "", "links": [] } } ] }, { "id": "row-1721248800011", "type": "lesson-set", "title": "Investigation 2: The Rock Cycle", "isCollapsed": false, "children": [ { "id": "row-1721248800012", "type": "lesson", "title": "Lesson 8: Rock Identification Lab", "trackingData": { "ESS2.A-M2": "I" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800013", "type": "lesson", "title": "Lesson 9: Crayon Rock Cycle Model", "trackingData": { "ESS2.A-M2": "D", "MS-ESS2-1": "I", "CCC.7-M1": "I" }, "scope": "F", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800014", "type": "lesson", "title": "Lesson 10: Weathering and Erosion Stations", "trackingData": { "ESS2.A-M3": "I" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800015", "type": "lesson", "title": "Lesson 11: How Landscapes Change", "trackingData": { "ESS2.A-M3": "D", "MS-ESS2-2": "D" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800016", "type": "lesson", "title": "Lesson 12: Connecting the Rock Cycle to Plate Tectonics", "trackingData": { "MS-ESS2-1": "D", "CCC.7-M1": "D" }, "scope": "F", "details": { "notes": "", "links": [] } } ] }, { "id": "row-1721248800017", "type": "lesson-set", "title": "Investigation 3: Geologic Time", "isCollapsed": false, "children": [ { "id": "row-1721248800018", "type": "lesson", "title": "Lesson 13: Reading Rock Layers", "trackingData": { "ESS1.C-M1": "I" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800019", "type": "lesson", "title": "Lesson 14: Index Fossils", "trackingData": { "ESS1.C-M1": "D", "MS-ESS1-4": "I" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800020", "type": "lesson", "title": "Lesson 15: Geologic Time Scale", "trackingData": { "MS-ESS1-4": "D", "CCC.6-M1": "I" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800021", "type": "lesson", "title": "Lesson 16: Mapping Earth's History", "trackingData": { "MS-ESS2-3": "D" }, "scope": "F", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800022", "type": "lesson", "title": "Lesson 17: Analyzing Global Data", "trackingData": { "SEP.4-M4": "I", "MS-ESS2-3": "A" }, "scope": "F", "details": { "notes": "", "links": [] } } ] }, { "id": "row-1721248800023", "type": "lesson-set", "title": "Investigation 4: Synthesizing the Model", "isCollapsed": false, "children": [ { "id": "row-1721248800024", "type": "lesson", "title": "Lesson 18: Explaining Volcanoes and Earthquakes", "trackingData": { "ESS2.B-M1": "A" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800025", "type": "lesson", "title": "Lesson 19: The Supercontinent Cycle", "trackingData": { "MS-ESS2-2": "A" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800026", "type": "lesson", "title": "Lesson 20: Finalizing the Hawaiian Islands Model", "trackingData": { "SEP.2-M3": "A", "CCC.2-M2": "A" }, "scope": "F", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800027", "type": "lesson", "title": "Lesson 21: Constructing an Argument", "trackingData": { "SEP.7-M3": "I" }, "scope": "", "details": { "notes": "", "links": [] } }, { "id": "row-1721248800028", "type": "lesson", "title": "Lesson 22: Peer Review and Refinement", "trackingData": { "SEP.7-M3": "D" }, "scope": "", "details": { "notes": "", "links": [] } } ] }, { "id": "row-1721248800029", "type": "lesson-set", "title": "Transfer Task", "isCollapsed": false, "children": [ { "id": "row-1721248800030", "type": "lesson", "title": "Lesson 23: New Scenario - East African Rift Valley", "trackingData": { "MS-ESS2-1": "A", "MS-ESS2-2": "A" }, "scope": "S", "details": { "notes": "Students apply their model to a new divergent boundary scenario.", "links": [] } }, { "id": "row-1721248800031", "type": "lesson", "title": "Final Assessment", "trackingData": { "MS-ESS2-3": "A", "SEP.7-M3": "A", "ESS1.C-M1": "A", "ESS2.A-M1": "A", "ESS2.B-M1": "A" }, "scope": "S", "details": { "notes": "Unit test covering all targeted PEs and 3D elements.", "links": [] } } ] } ] },
-                    { "id": "planner-1721249900001", "title": "Grade 4 Energy: Chain Reactions", "course": "4th Grade Science", "gradeBand": "elementary", "standardSet": "NGSS", "phenomenon": "A complex Rube Goldberg machine uses many different steps to pop a balloon.", "question": "How can we make a chain of events happen to complete a task?", "description": "This unit explores concepts of energy, energy transfer, and energy conversion through the lens of designing and building chain reaction machines.", "activeTab": "pe", "assignedPes": [ { "id": "4-PS3-1", "isSecondary": false }, { "id": "4-PS3-2", "isSecondary": false }, { "id": "4-PS3-3", "isSecondary": false }, { "id": "4-PS3-4", "isSecondary": false }, { "id": "3-5-ETS1-1", "isSecondary": true } ], "rows": [ { "id": "row-1721249900002", "type": "lesson-set", "title": "Anchor Lesson", "isCollapsed": false, "children": [ { "id": "row-1721249900003", "type": "lesson", "title": "Lesson 1: The Incredible Machine", "trackingData": { "CCC.5-E2": "I", "SEP.1-E1": "I" }, "scope": "", "details": {"notes": "Students watch a video of a Rube Goldberg machine and list their observations and questions.", "links": []} }, { "id": "row-1721249900004", "type": "lesson", "title": "Lesson 2: What is Energy?", "trackingData": { "PS3.A-E1": "I", "4-PS3-1": "I" }, "scope": "F", "details": {"notes": "Class discussion to build a consensus definition of energy.", "links": []} } ] }, { "id": "row-1721249900005", "type": "lesson-set", "title": "Investigation 1: Speed & Collisions", "isCollapsed": false, "children": [ { "id": "row-1721249900006", "type": "lesson", "title": "Lesson 3: Ramp Races", "trackingData": { "PS3.A-E1": "D", "4-PS3-1": "D", "SEP.3-E2": "I" }, "scope": "F", "details": {"notes": "Investigating how the height of a ramp affects the speed of a marble.", "links": []} }, { "id": "row-1721249900007", "type": "lesson", "title": "Lesson 4: Marble Collisions", "trackingData": { "PS3.B-E1": "I", "PS3.C-E1": "I", "4-PS3-3": "I" }, "scope": "", "details": {"notes": "Students observe what happens when a moving marble hits a stationary one.", "links": []} }, { "id": "row-1721249900008", "type": "lesson", "title": "Lesson 5: Domino Chain Reactions", "trackingData": { "PS3.B-E1": "D", "CCC.2-E2": "I" }, "scope": "F", "details": {"notes": "", "links": []} }, { "id": "row-1721249900009", "type": "lesson", "title": "Lesson 6: Energy Transfer Investigation", "trackingData": { "4-PS3-3": "D", "SEP.3-E2": "D" }, "scope": "", "details": {"notes": "", "links": []} }, { "id": "row-1721249900010", "type": "lesson", "title": "Lesson 7: Designing a Collision Device", "trackingData": { "4-PS3-3": "A", "3-5-ETS1-1": "I" }, "scope": "F", "details": {"notes": "", "links": []} } ] }, { "id": "row-1721249900011", "type": "lesson-set", "title": "Investigation 2: Energy Conversion", "isCollapsed": false, "children": [ { "id": "row-1721249900012", "type": "lesson", "title": "Lesson 8: Simple Circuits", "trackingData": { "PS3.B-E2": "I", "4-PS3-2": "I" }, "scope": "", "details": {"notes": "", "links": []} }, { "id": "row-1721249900013", "type": "lesson", "title": "Lesson 9: From Electricity to Light & Sound", "trackingData": { "PS3.B-E2": "D", "4-PS3-2": "D", "CCC.5-E2": "D" }, "scope": "F", "details": {"notes": "", "links": []} }, { "id": "row-1721249900014", "type": "lesson", "title": "Lesson 10: Building an Electromagnet", "trackingData": { "4-PS3-4": "I" }, "scope": "", "details": {"notes": "", "links": []} }, { "id": "row-1721249900015", "type": "lesson", "title": "Lesson 11: Hand-Cranked Generators", "trackingData": { "PS3.D-E1": "I", "4-PS3-4": "D" }, "scope": "", "details": {"notes": "", "links": []} }, { "id": "row-1721249900016", "type": "lesson", "title": "Lesson 12: Energy Conversion Stations", "trackingData": { "4-PS3-4": "A", "PS3.B-E2": "A" }, "scope": "F", "details": {"notes": "", "links": []} } ] }, { "id": "row-1721249900017", "type": "lesson-set", "title": "Investigation 3: Applying Energy Concepts", "isCollapsed": false, "children": [ { "id": "row-1721249900018", "type": "lesson", "title": "Lesson 13: What's the Energy Source?", "trackingData": { "PS3.D-E1": "D" }, "scope": "", "details": {"notes": "", "links": []} }, { "id": "row-1721249900019", "type": "lesson", "title": "Lesson 14: Design a Solution", "trackingData": { "4-PS3-4": "A", "3-5-ETS1-1": "D" }, "scope": "F", "details": {"notes": "", "links": []} }, { "id": "row-1721249900020", "type": "lesson", "title": "Lesson 15: Cause and Effect Chains", "trackingData": { "CCC.2-E2": "D", "SEP.6-E3": "I" }, "scope": "", "details": {"notes": "", "links": []} }, { "id": "row-1721249900021", "type": "lesson", "title": "Lesson 16: Explaining Energy Transfer", "trackingData": { "4-PS3-2": "A", "SEP.6-E3": "D" }, "scope": "F", "details": {"notes": "", "links": []} }, { "id": "row-1721249900022", "type": "lesson", "title": "Lesson 17: Energy in Everyday Life", "trackingData": { "PS3.D-E1": "A" }, "scope": "", "details": {"notes": "", "links": []} } ] }, { "id": "row-1721249900023", "type": "lesson-set", "title": "Investigation 4: Rube Goldberg Design Challenge", "isCollapsed": false, "children": [ { "id": "row-1721249900024", "type": "lesson", "title": "Lesson 18: Defining the Problem", "trackingData": { "3-5-ETS1-1": "D" }, "scope": "", "details": {"notes": "", "links": []} }, { "id": "row-1721249900025", "type": "lesson", "title": "Lesson 19: Brainstorming & Planning", "trackingData": { "SEP.6-E3": "D" }, "scope": "", "details": {"notes": "", "links": []} }, { "id": "row-1721249900026", "type": "lesson", "title": "Lesson 20: Build Day 1", "trackingData": { "4-PS3-1": "A" }, "scope": "F", "details": {"notes": "", "links": []} }, { "id": "row-1721249900027", "type": "lesson", "title": "Lesson 21: Build Day 2 & Testing", "trackingData": { "4-PS3-3": "A" }, "scope": "F", "details": {"notes": "", "links": []} }, { "id": "row-1721249900028", "type": "lesson", "title": "Lesson 22: Refining the Design", "trackingData": { "3-5-ETS1-1": "A" }, "scope": "", "details": {"notes": "", "links": []} } ] }, { "id": "row-1721249900029", "type": "lesson-set", "title": "Transfer Task", "isCollapsed": false, "children": [ { "id": "row-1721249900030", "type": "lesson", "title": "Lesson 23: Machine Showcase", "trackingData": { "SEP.6-E3": "A", "CCC.5-E2": "A" }, "scope": "S", "details": {"notes": "Students present their machines and explain the energy transfers and conversions.", "links": []} }, { "id": "row-1721249900031", "type": "lesson", "title": "Final Assessment", "trackingData": { "4-PS3-1": "A", "4-PS3-2": "A", "4-PS3-4": "A", "PS3.A-E1": "A", "PS3.B-E1": "A", "PS3.B-E2": "A" }, "scope": "S", "details": {"notes": "Written assessment requiring students to analyze a new chain reaction diagram.", "links": []} } ] } ] }
-                ]
             },
 
             init() {
@@ -651,8 +645,8 @@
 
                     const exampleBtn = e.target.closest('.load-example-btn');
                     if (exampleBtn) {
-                        const index = parseInt(exampleBtn.dataset.exampleIndex, 10);
-                        this.utils.loadExamplePlanner(index);
+                        const plannerId = exampleBtn.dataset.plannerId;
+                        this.utils.loadPlannerFromFile(plannerId);
                     }
                 });
 
@@ -955,58 +949,75 @@
                 App.dom.welcomeView.innerHTML = '';
                 const planners = App.state.programData.planners;
                 let userPlannersHTML = '';
-                let noPlannersHTML = '';
 
                 if (planners.length > 0) {
                     userPlannersHTML = `
-                        <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6 text-center">Your Planners</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl w-full">
-                            ${planners.map(p => `
-                                <div class="planner-card bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer border dark:border-gray-700 flex flex-col" data-planner-id="${p.id}">
-                                    <div class="p-6 flex-grow">
-                                        <h3 class="text-xl font-semibold text-blue-600 dark:text-blue-400">${p.title}</h3>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">${p.course} (${p.gradeBand})</p>
-                                        <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">${p.description || 'No description provided.'}</p>
+                        <div class="w-full text-center">
+                            <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">Your Planners</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl w-full mx-auto">
+                                ${planners.map(p => `
+                                    <div class="planner-card bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer border dark:border-gray-700 flex flex-col" data-planner-id="${p.id}">
+                                        <div class="p-6 flex-grow">
+                                            <h3 class="text-xl font-semibold text-blue-600 dark:text-blue-400">${p.title}</h3>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">${p.course} (${p.gradeBand})</p>
+                                            <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">${p.description || 'No description provided.'}</p>
+                                        </div>
+                                        <div class="bg-gray-50 dark:bg-gray-700/50 px-6 py-3 text-right text-sm font-bold text-blue-600 dark:text-blue-400">Open Planner →</div>
                                     </div>
-                                    <div class="bg-gray-50 dark:bg-gray-700/50 px-6 py-3 text-right text-sm font-bold text-blue-600 dark:text-blue-400">Open Planner →</div>
-                                </div>
-                            `).join('')}
+                                `).join('')}
+                            </div>
+                            <p class="mt-8 text-gray-500 dark:text-gray-400">Or, <button onclick="App.utils.openPlannerModal()" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">create a new planner</button>.</p>
                         </div>
-                         <p class="mt-8 text-gray-500 dark:text-gray-400">Or, <button onclick="App.utils.openPlannerModal()" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">create a new planner</button>.</p>
+                        <hr class="my-12 w-full max-w-4xl border-gray-200 dark:border-gray-700">
                     `;
-                } else {
-                    noPlannersHTML = `
+                }
+
+                const existingIds = new Set(planners.map(p => p.id));
+                const availableFiles = (App.state.availableExamples || []).filter(file => !existingIds.has(file.content.id));
+
+                let examplesHTML = '';
+                if (availableFiles.length > 0) {
+                    examplesHTML = `
+                        <div class="w-full text-center">
+                             <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">Available Templates & Examples</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl w-full mx-auto">
+                                ${availableFiles.map(file => {
+                                    const p = file.content;
+                                    const isExample = file.filename.includes('[EXAMPLE]');
+                                    const headerColor = isExample ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300';
+                                    const buttonColor = isExample ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 hover:bg-gray-700';
+                                    const tag = isExample ? '<span class="absolute top-0 right-0 bg-purple-100 text-purple-800 text-xs font-medium mr-2 mt-2 px-2.5 py-0.5 rounded-full dark:bg-purple-900 dark:text-purple-300">Example</span>' : '';
+
+                                    return `
+                                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 flex flex-col relative">
+                                            ${tag}
+                                            <div class="p-6 flex-grow">
+                                                <h3 class="text-xl font-semibold ${headerColor}">${p.title}</h3>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">${p.course} (${p.gradeBand})</p>
+                                                <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">${p.description || 'No description provided.'}</p>
+                                            </div>
+                                            <div class="bg-gray-50 dark:bg-gray-700/50 p-4 text-right">
+                                                <button class="load-example-btn px-4 py-2 text-white rounded-md font-semibold text-sm ${buttonColor}" data-planner-id="${p.id}">Load</button>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                let noPlannersHTML = '';
+                if (planners.length === 0) {
+                     noPlannersHTML = `
                         <div class="text-center text-gray-500 dark:text-gray-400 mb-12">
                             <h2 class="text-2xl font-semibold mb-2">Welcome to the NGSS 3D Progression Planner</h2>
-                            <p>You don't have any planners yet. Create a new one, or load an example below to get started.</p>
+                            <p>You don't have any planners yet. Create one or load a template below to get started.</p>
                         </div>
                     `;
                 }
 
-                const examplesHTML = `
-                    <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6 text-center">${planners.length > 0 ? 'Start with an Example' : ''}</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
-                        ${App.examples.planners.map((p, index) => `
-                            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 flex flex-col">
-                                <div class="p-6 flex-grow">
-                                    <h3 class="text-xl font-semibold text-purple-600 dark:text-purple-400">${p.title}</h3>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400">${p.course} (${p.gradeBand})</p>
-                                    <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">${p.description || 'No description provided.'}</p>
-                                </div>
-                                <div class="bg-gray-50 dark:bg-gray-700/50 p-4 text-right">
-                                    <button class="load-example-btn px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-semibold text-sm" data-example-index="${index}">Load Example</button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-
-                App.dom.welcomeView.innerHTML = `
-                    <div class="w-full text-center">${userPlannersHTML}</div>
-                    <hr class="my-12 w-full max-w-4xl border-gray-200 dark:border-gray-700 ${planners.length === 0 ? 'hidden' : ''}">
-                    <div class="w-full text-center">${noPlannersHTML}</div>
-                    <div class="w-full flex flex-col items-center">${examplesHTML}</div>
-                `;
+                App.dom.welcomeView.innerHTML = userPlannersHTML + noPlannersHTML + examplesHTML;
             },
             plannerView(plannerId) {
                 const planner = App.utils.findPlanner(plannerId); if (!planner) { this.render.welcomeView(); App.utils.showView('welcome-view'); return; }
@@ -1298,6 +1309,12 @@
                         isVisible = isVisible && hasVisibleChild;
                     }
                     th.style.display = isVisible ? '' : 'none';
+
+                    if(isVisible) {
+                        const isCollapsed = App.state.collapsedSections.has(fullGroupKey);
+                        th.classList.toggle('collapsed-placeholder', isCollapsed);
+                        th.colSpan = isCollapsed ? 1 : th.dataset.originalColspan;
+                    }
                 });
 
                  // Update main header cells and body cells
@@ -1896,15 +1913,10 @@
 
                     if (App.state.collapsedSections.has(groupKey)) {
                         App.state.collapsedSections.delete(groupKey);
-                        groupToggle.querySelector('.toggle-icon').textContent = '▼';
-                        groupToggle.classList.remove('collapsed-placeholder');
-
                     } else {
                         App.state.collapsedSections.add(groupKey);
-                        groupToggle.querySelector('.toggle-icon').textContent = '▶';
-                        groupToggle.classList.add('collapsed-placeholder');
                     }
-                    App.render.updateColumnVisibility();
+                    App.render.plannerView(App.state.currentPlannerId); // Re-render to apply changes
                     return;
                 }
                 
@@ -2528,14 +2540,15 @@
                 return newPlanner;
             },
 
-            loadExamplePlanner(index) {
-                const originalPlanner = App.examples.planners[index];
-                if (!originalPlanner) return;
+            loadPlannerFromFile(plannerId) {
+                const fileData = App.state.availableExamples.find(f => f.content.id === plannerId);
+                if (!fileData) return;
 
-                const newPlanner = this.clonePlannerWithNewIds(originalPlanner);
+                const newPlanner = this.clonePlannerWithNewIds(fileData.content);
                 App.state.programData.planners.push(newPlanner);
                 App.persistence.saveProgramData();
                 App.render.navigator();
+                App.render.welcomeView(); // Re-render to remove the loaded planner from the list
                 App.render.plannerView(newPlanner.id);
                 const navItem = App.dom.navigatorList.querySelector(`[data-planner-id="${newPlanner.id}"]`);
                 if(navItem) navItem.querySelector('.planner-checkbox').checked = true;
@@ -3112,6 +3125,35 @@
             }
         };
 		 
+        async function loadAvailableExamples() {
+            try {
+                const manifestResponse = await fetch('data/manifest.json');
+                if (!manifestResponse.ok) throw new Error('manifest.json not found');
+                const filenames = await manifestResponse.json();
+
+                const filePromises = filenames.map(async (name) => {
+                    try {
+                        const res = await fetch(`data/${name}`);
+                        if (!res.ok) throw new Error(`Failed to fetch ${name}`);
+                        const content = await res.json();
+                        return { status: 'fulfilled', value: { filename: name, content } };
+                    } catch (error) {
+                        console.error(`Error loading example file ${name}:`, error);
+                        return { status: 'rejected', reason: error };
+                    }
+                });
+                
+                const results = await Promise.allSettled(filePromises);
+                App.state.availableExamples = results
+                    .filter(result => result.status === 'fulfilled')
+                    .map(result => result.value);
+                    
+            } catch (error) {
+                console.warn("Could not load external examples/templates:", error);
+                App.state.availableExamples = [];
+            }
+        }
+
         async function loadDataAndInit() {
             try {
                 await App.db.init();
@@ -3159,6 +3201,7 @@
                     console.log("Data processed and cached.");
                 }
 
+                await loadAvailableExamples();
                 App.init();
 
             } catch (error) {
