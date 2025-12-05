@@ -112,8 +112,7 @@
         #pe-modal-list { overflow-y: auto; }
         details > summary { list-style: none; }
         details > summary::-webkit-details-marker { display: none; }
-        details > summary::before { content: '►'; display: inline-block; margin-right: 0.5rem; transition: transform 0.2s; }
-        details[open] > summary::before { transform: rotate(90deg); }
+
     </style>
 </head>
 <body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased group">
@@ -195,7 +194,7 @@
                         <div class="flex justify-between items-center text-xs">
                              <!-- Collapsible Phenomenon Toggle -->
                             <details class="group relative">
-                                <summary class="list-none cursor-pointer text-blue-600 dark:text-blue-400 font-medium hover:underline flex items-center gap-1">
+                                <summary class="list-none cursor-pointer text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1">
                                     <span class="group-open:rotate-90 transition-transform">▶</span> Show Phenomenon & Driving Question
                                 </summary>
                                 <div class="absolute top-full left-0 mt-1 z-50 w-96 p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-lg shadow-xl text-sm">
