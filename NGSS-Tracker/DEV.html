@@ -969,7 +969,8 @@
                 }
 
                 const existingIds = new Set(planners.map(p => p.id));
-                const availableFiles = (App.state.availableExamples || []).filter(file => !existingIds.has(file.content.id));
+                // FIX IS HERE: Added checks for file and file.content before accessing file.content.id
+                const availableFiles = (App.state.availableExamples || []).filter(file => file && file.content && !existingIds.has(file.content.id));
 
                 let examplesHTML = '';
                 if (availableFiles.length > 0) {
