@@ -2517,31 +2517,64 @@
 		
         App.import = {
             handleImport() {
+                // 1. Create the input
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = '.json,application/json';
+                input.style.display = 'none'; // Hide it
+                
+                // 2. Append to body (Fixes "Nothing happens" in strict browsers)
+                document.body.appendChild(input);
+
                 input.onchange = e => {
                     const file = e.target.files[0];
-                    if (!file) return;
+                    if (!file) {
+                        document.body.removeChild(input);
+                        return;
+                    }
+
                     const reader = new FileReader();
-                    reader.onload = e => {
+                    reader.onload = event => {
                         try {
-                            const importedPlanner = JSON.parse(e.target.result);
-                            if (!importedPlanner.id || !importedPlanner.title) {
-                                throw new Error('Invalid planner file format.');
+                            const importedPlanner = JSON.parse(event.target.result);
+                            
+                            // Basic Validation
+                            if (!importedPlanner.title) {
+                                throw new Error('Invalid planner file: Missing title.');
                             }
+                            
+                            // Ensure rows exist
+                            if (!importedPlanner.rows) {
+                                importedPlanner.rows = [];
+                            }
+
                             App.state.pendingImportData = importedPlanner;
                             this.showImportOptions();
                         } catch (error) {
+                            console.error("Import Error:", error);
                             alert(`Error importing file: ${error.message}`);
+                        } finally {
+                            // Clean up input after reading
+                            if (document.body.contains(input)) {
+                                document.body.removeChild(input);
+                            }
                         }
                     };
                     reader.readText(file);
                 };
+
+                // 3. Force click
                 input.click();
             },
+
             showImportOptions() {
                 const modal = document.getElementById('import-options-modal-backdrop');
+                if (!modal) {
+                    console.error("Import modal element not found!");
+                    return;
+                }
+
+                // Update Modal Text
                 document.getElementById('import-planner-name').textContent = App.state.pendingImportData.title;
 
                 const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
@@ -2549,7 +2582,12 @@
                 const replaceLabel = document.getElementById('import-replace-label');
                 const mergeInput = mergeLabel.querySelector('input');
                 const replaceInput = replaceLabel.querySelector('input');
+                const createInput = document.querySelector('input[name="import-option"][value="create"]');
 
+                // Reset selection to Create
+                createInput.checked = true;
+
+                // Enable/Disable options based on whether a planner is currently open
                 if (currentPlanner) {
                     mergeLabel.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
                     replaceLabel.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
@@ -2560,10 +2598,11 @@
                     replaceLabel.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
                     mergeInput.disabled = true;
                     replaceInput.disabled = true;
-                    document.querySelector('input[name="import-option"][value="create"]').checked = true;
                 }
+
                 App.utils.openModal('import-options-modal-backdrop');
             },
+
             processImport() {
                 const importedPlanner = App.state.pendingImportData;
                 if (!importedPlanner) return;
@@ -2571,47 +2610,73 @@
                 const option = document.querySelector('input[name="import-option"]:checked').value;
                 const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
 
-                switch (option) {
-                    case 'create':
-                        if (App.utils.findPlanner(importedPlanner.id)) {
+                try {
+                    switch (option) {
+                        case 'create':
+                            // Always generate a new ID to prevent conflicts
                             importedPlanner.id = `planner-${Date.now()}`;
-                            importedPlanner.title = `${importedPlanner.title} (Imported Copy)`;
-                        }
-                        App.state.programData.planners.push(importedPlanner);
-                        alert(`Planner "${importedPlanner.title}" imported successfully!`);
-                        break;
-                    case 'merge':
-                        if (!currentPlanner) { alert("No planner open to merge with."); return; }
-                        App.history.saveState(currentPlanner);
-                        const currentPes = new Map((currentPlanner.assignedPes || []).map(p => [p.id, p]));
-                        (importedPlanner.assignedPes || []).forEach(p => {
-                            if (!currentPes.has(p.id)) {
-                                currentPes.set(p.id, p);
+                            App.state.programData.planners.push(importedPlanner);
+                            alert(`Planner "${importedPlanner.title}" imported successfully!`);
+                            break;
+
+                        case 'merge':
+                            if (!currentPlanner) { alert("No planner open to merge with."); return; }
+                            App.history.saveState(currentPlanner);
+                            
+                            // Merge PEs
+                            const currentPes = new Map((currentPlanner.assignedPes || []).map(p => [p.id, p]));
+                            (importedPlanner.assignedPes || []).forEach(p => {
+                                if (!currentPes.has(p.id)) {
+                                    currentPes.set(p.id, p);
+                                }
+                            });
+                            currentPlanner.assignedPes = Array.from(currentPes.values());
+                            
+                            // Merge Rows - Generate new IDs for imported rows to prevent collision
+                            const newRows = (importedPlanner.rows || []).map(row => {
+                                row.id = `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                                if (row.children) {
+                                    row.children.forEach(child => {
+                                        child.id = `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                                    });
+                                }
+                                return row;
+                            });
+                            
+                            currentPlanner.rows.push(...newRows);
+                            alert(`Merged "${importedPlanner.title}" into "${currentPlanner.title}".`);
+                            break;
+
+                        case 'replace':
+                            if (!currentPlanner) { alert("No planner open to replace."); return; }
+                            const index = App.state.programData.planners.findIndex(p => p.id === App.state.currentPlannerId);
+                            if (index > -1) {
+                                // Keep the ID of the current planner so the view doesn't break
+                                importedPlanner.id = currentPlanner.id; 
+                                App.state.programData.planners[index] = importedPlanner;
+                                App.history.clear(); 
                             }
-                        });
-                        currentPlanner.assignedPes = Array.from(currentPes.values());
-                        currentPlanner.rows.push(...(importedPlanner.rows || []));
-                        alert(`Merged "${importedPlanner.title}" into "${currentPlanner.title}".`);
-                        break;
-                    case 'replace':
-                        if (!currentPlanner) { alert("No planner open to replace."); return; }
-                        const index = App.state.programData.planners.findIndex(p => p.id === App.state.currentPlannerId);
-                        if (index > -1) {
-                            importedPlanner.id = currentPlanner.id; 
-                            App.state.programData.planners[index] = importedPlanner;
-                            App.history.clear(); // History is invalid after replacement
-                        }
-                        alert(`Replaced "${currentPlanner.title}" with "${importedPlanner.title}".`);
-                        break;
+                            alert(`Replaced "${currentPlanner.title}" with "${importedPlanner.title}".`);
+                            break;
+                    }
+
+                    App.persistence.saveProgramData();
+                    App.render.navigator();
+                    
+                    // If we created a new one, switch to it. If we merged/replaced, reload current.
+                    if (option === 'create') {
+                        App.render.plannerView(importedPlanner.id);
+                    } else {
+                        App.render.plannerView(App.state.currentPlannerId);
+                    }
+                    
+                    App.utils.closeAllModals();
+                    App.state.pendingImportData = null;
+
+                } catch (err) {
+                    console.error("Process Import Error", err);
+                    alert("An error occurred while processing the import.");
                 }
-                
-                App.persistence.saveProgramData();
-                App.render.navigator();
-                if (option !== 'create') {
-                    App.render.plannerView(App.state.currentPlannerId);
-                }
-                App.utils.closeAllModals();
-                App.state.pendingImportData = null;
             }
         };
         
