@@ -69,21 +69,22 @@
         /* --- STICKY COLUMNS --- */
         .sticky-col-1 { 
             position: sticky; left: 0; z-index: 25; 
-            width: 65px; min-width: 65px; max-width: 65px;
         }
         .sticky-col-2 { 
             position: sticky; left: 65px; z-index: 24; 
-            width: 40px; min-width: 40px; max-width: 40px;
         }
         .sticky-col-3 { 
             position: sticky; left: 105px; z-index: 23; 
-            width: 400px; min-width: 400px; max-width: 400px;
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.05);
         }
         .dark .sticky-col-3 { box-shadow: 4px 0 5px -2px rgba(0,0,0,0.25); }
+        
+        col.sticky-col-1 { width: 65px; min-width: 65px; }
+        col.sticky-col-2 { width: 40px; min-width: 40px; }
+        col.sticky-col-3 { width: 400px; min-width: 400px; }
+        col.data-col { width: 50px; min-width: 50px; }
+        col.collapsed { width: 0; min-width: 0; }
 
-        .data-col-header { width: 50px; min-width: 50px; max-width: 50px; }
-        .collapsed-placeholder { width: 30px; min-width: 30px; max-width: 30px; font-size: 0.8rem; }
 
         #planner-table-container thead th.sticky-col-1, 
         #planner-table-container thead th.sticky-col-2, 
@@ -102,7 +103,7 @@
         details > summary { list-style: none; }
         details > summary::-webkit-details-marker { display: none; }
         .group-toggle-header { top: 0; z-index: 21 !important; height: auto !important; vertical-align: middle !important; padding: 4px !important; }
-
+        .collapsed-placeholder { width: 30px; min-width: 30px; font-size: 0.8rem; }
     </style>
 </head>
 <body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased">
@@ -134,67 +135,64 @@
 
                 <div id="planner-view" class="view flex-1 flex flex-col h-full">
                     <!-- Streamlined Header & Toolbar -->
-                    <div class="flex flex-col gap-3 mb-2 border-b border-gray-200 dark:border-gray-700 pb-3">
-                        <div class="flex flex-wrap justify-between items-start gap-x-4 gap-y-2">
-                            <!-- Left Side: Title & Info -->
-                            <div class="flex-1 min-w-[300px]">
-                                <h1 id="planner-title" class="text-2xl font-bold text-gray-800 dark:text-gray-100 leading-tight"></h1>
+                    <div class="flex flex-col gap-2 mb-2 border-b border-gray-200 dark:border-gray-700 pb-2">
+                        <!-- Row 1: Title, Settings, and Info -->
+                        <div class="flex justify-between items-start gap-4">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h1 id="planner-title" class="text-2xl font-bold text-gray-800 dark:text-gray-100 leading-tight"></h1>
+                                    <button id="edit-planner-btn" class="px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-lg" title="Planner Settings">⚙️</button>
+                                </div>
                                 <p id="planner-subtitle" class="text-sm text-gray-500 dark:text-gray-400"></p>
-                                <details class="group relative mt-2">
+                            </div>
+                            <div class="text-right">
+                                <details class="group relative">
                                     <summary class="list-none cursor-pointer text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1 text-xs">
                                         <span class="group-open:rotate-90 transition-transform">▶</span> Show Phenomenon & Driving Question
                                     </summary>
-                                    <div class="absolute top-full left-0 mt-1 z-50 w-96 p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-lg shadow-xl text-sm">
+                                    <div class="absolute top-full right-0 mt-1 z-50 w-96 p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-lg shadow-xl text-sm">
                                         <p class="font-bold text-blue-800 dark:text-blue-200">Anchoring Phenomenon:</p>
                                         <p id="planner-phenomenon" class="mb-2 text-gray-700 dark:text-gray-300 italic"></p>
                                         <p class="font-bold text-blue-800 dark:text-blue-200">Driving Question:</p>
                                         <p id="planner-question" class="text-gray-700 dark:text-gray-300 italic"></p>
                                     </div>
                                 </details>
+                                <span id="save-status" class="italic text-gray-400 text-xs mt-1 block"></span>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Actions, Tabs, and History -->
+                        <div class="flex justify-between items-center gap-2">
+                             <div class="flex items-center gap-2">
+                                <button id="add-lesson-set-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">+ Set</button>
+                                <button id="add-lesson-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">+ Lesson</button>
+                                <label class="flex items-center gap-1.5 cursor-pointer text-gray-600 dark:text-gray-400 text-xs whitespace-nowrap pl-2 border-l ml-1">
+                                    <span>Bundled PEs Only</span>
+                                    <input type="checkbox" id="pe-bundle-toggle" class="accent-blue-600">
+                                </label>
                             </div>
 
-                            <!-- Right Side: Toolbar -->
-                            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 justify-end">
-                                <!-- View Controls -->
-                                <div class="flex items-center gap-3">
-                                    <div class="relative">
-                                        <input type="search" id="search-input" placeholder="Search..." class="w-32 focus:w-48 transition-all pl-7 pr-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500">
-                                        <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400 text-xs">🔍</div>
+                            <div id="tab-container" class="tabs flex border-b-2 border-gray-300 dark:border-gray-700 -mb-px flex-1 justify-center"></div>
+
+                            <div class="flex items-center gap-2">
+                                <div class="relative group">
+                                    <button id="export-dropdown-btn" class="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Export</button>
+                                    <div id="export-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border dark:border-gray-700 z-50 hidden group-hover:block">
+                                        <a href="#" id="export-xlsx-btn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Export to XLSX...</a>
+                                        <a href="#" id="export-json-btn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Export as JSON</a>
+                                        <a href="#" id="export-html-btn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Export as HTML</a>
                                     </div>
-                                    <label class="flex items-center gap-1.5 cursor-pointer text-gray-600 dark:text-gray-400 text-xs whitespace-nowrap">
-                                        <span>Bundled PEs Only</span>
-                                        <input type="checkbox" id="pe-bundle-toggle" class="accent-blue-600">
-                                    </label>
                                 </div>
-                                
-                                <!-- History -->
-                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-3">
+                                <button id="import-planner-btn" class="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Import</button>
+                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-2">
                                     <button id="undo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed text-xs" title="Undo (Ctrl+Z)">↶</button>
                                     <button id="redo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed text-xs" title="Redo (Ctrl+Y)">↷</button>
                                 </div>
-                                
-                                <!-- Actions -->
-                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-3">
-                                    <button id="assign-pe-btn" class="px-2 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-xs font-medium">Assign PEs</button>
-                                    <button id="add-lesson-set-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">+ Set</button>
-                                    <button id="add-lesson-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">+ Lesson</button>
-                                    <button id="edit-planner-btn" class="px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-xs" title="Planner Settings">⚙️</button>
-                                </div>
-
-                                <!-- Import/Export -->
-                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-3">
-                                    <button id="import-planner-btn" class="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Import</button>
-                                    <button id="export-planner-btn" class="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Export</button>
-                                </div>
                             </div>
-                        </div>
-                        <div class="flex justify-end items-center text-xs">
-                             <span id="save-status" class="italic text-gray-400"></span>
                         </div>
                     </div>
 
-                    <div id="tab-container" class="tabs flex border-b-2 border-gray-300 dark:border-gray-700 -mb-px"></div>
-                    <div id="planner-table-container" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-b-lg rounded-tr-lg bg-white dark:bg-gray-800/50"></div>
+                    <div id="planner-table-container" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50"></div>
                 </div>
                 
                 <div id="progression-view" class="view flex-1 flex flex-col">
@@ -318,9 +316,9 @@
     </div>
     <div id="export-master-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-             <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Master Export</h3>
+             <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">XLSX Export Options</h3>
             <div class="modal-content p-6 overflow-y-auto">
-                <p class="text-gray-600 dark:text-gray-400 mb-4">Select which items you would like to export. All selected XLSX formats will be bundled into a single file.</p>
+                <p class="text-gray-600 dark:text-gray-400 mb-4">Select which XLSX formats you would like to export. All selected items will be bundled into a single file.</p>
                 <div id="export-master-options-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Options will be dynamically inserted here -->
                 </div>
@@ -447,7 +445,6 @@
                 body: document.getElementById('body-tag'),
                 undoBtn: document.getElementById('undo-btn'),
                 redoBtn: document.getElementById('redo-btn'),
-                searchInput: document.getElementById('search-input'),
                 plannerPhenomenon: document.getElementById('planner-phenomenon'),
                 plannerQuestion: document.getElementById('planner-question'),
                 welcomeView: document.getElementById('welcome-view'),
@@ -659,21 +656,24 @@
                     }
                 });
 
-                document.getElementById('assign-pe-btn').addEventListener('click', () => this.utils.openPeAssignmentModal());
                 document.getElementById('add-lesson-set-btn').addEventListener('click', () => this.utils.addRow('lesson-set', 'New Lesson Set...'));
                 document.getElementById('add-lesson-btn').addEventListener('click', () => this.utils.addRow('lesson', 'New Lesson...'));
                 document.getElementById('edit-planner-btn').addEventListener('click', () => { const p = this.utils.findPlanner(this.state.currentPlannerId); if(p) this.utils.openPlannerModal(p); });
                 
                 this.dom.undoBtn.addEventListener('click', () => this.history.undo());
                 this.dom.redoBtn.addEventListener('click', () => this.history.redo());
-                this.dom.searchInput.addEventListener('input', e => this.utils.performSearch(e.target.value));
                 document.getElementById('progression-view-element').addEventListener('click', () => { App.state.progressionViewType = 'element'; App.render.progressionViewer(); });
                 document.getElementById('progression-view-lesson').addEventListener('click', () => { App.state.progressionViewType = 'lesson'; App.render.progressionViewer(); });
                 document.getElementById('export-progression-btn').addEventListener('click', () => this.export.exportProgressionView());
                 document.getElementById('export-summary-btn').addEventListener('click', () => this.export.exportSummaryView());
 
                 document.getElementById('pe-bundle-toggle').addEventListener('change', e => { App.state.isPeBundleMode = e.target.checked; App.render.setActiveTab(App.state.currentActiveTab); });
-                document.getElementById('export-planner-btn').addEventListener('click', () => this.export.showExportOptions());
+                
+                // Export Dropdown Listeners
+                document.getElementById('export-xlsx-btn').addEventListener('click', (e) => { e.preventDefault(); this.export.showExportOptions(); });
+                document.getElementById('export-json-btn').addEventListener('click', (e) => { e.preventDefault(); this.export.asJson(); });
+                document.getElementById('export-html-btn').addEventListener('click', (e) => { e.preventDefault(); this.export.asHtml(); });
+                
                 document.getElementById('import-planner-btn').addEventListener('click', () => this.import.handleImport());
                 
                 document.getElementById('export-master-download').addEventListener('click', () => this.export.handleMasterExport());
@@ -682,7 +682,12 @@
 
                 this.dom.plannerTableContainer.addEventListener('click', e => this.handlers.mainTableClick(e));
                 this.dom.plannerTableContainer.addEventListener('blur', e => { if (e.target.matches('.editable')) this.handlers.titleEdit(e) }, true);
-                this.dom.tabContainer.addEventListener('click', e => { if (e.target.matches('.tab-button')) this.render.setActiveTab(e.target.dataset.tab); });
+                this.dom.tabContainer.addEventListener('click', e => {
+                    const tabBtn = e.target.closest('.tab-button');
+                    if (tabBtn) this.render.setActiveTab(tabBtn.dataset.tab);
+                    const peBtn = e.target.closest('#assign-pe-btn');
+                    if(peBtn) this.utils.openPeAssignmentModal();
+                });
                 document.body.addEventListener('mouseover', e => this.handlers.tooltipShow(e));
                 document.body.addEventListener('mouseout', () => this.handlers.tooltipHide());
 
@@ -1036,18 +1041,16 @@
                 App.dom.plannerTableContainer.innerHTML = ''; 
                 const table = document.createElement('table'); 
                 table.className = 'table-view fixed-layout';
-                const thead = document.createElement('thead');
+                const colgroup = document.createElement('colgroup');
                 
-                let groupHeaderRow = `<tr class="group-header-row">
-                    <th class="sticky-col-1 bg-gray-100 dark:bg-gray-800"></th>
-                    <th class="sticky-col-2 bg-gray-100 dark:bg-gray-800"></th>
-                    <th class="sticky-col-3 bg-gray-100 dark:bg-gray-800"></th>`;
+                let groupHeaderRow = `<tr class="group-header-row">`;
+                let mainHeaderRow = `<tr>`;
                 
-                let mainHeaderRow = `<tr>
-                    <th class="sticky-col-1 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700">Actions</th>
-                    <th class="sticky-col-2 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700">Scope</th>
-                    <th class="sticky-col-3 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700 text-left pl-2">Instructional Sequence</th>`;
-                
+                // Sticky columns
+                colgroup.innerHTML = '<col class="sticky-col-1"><col class="sticky-col-2"><col class="sticky-col-3">';
+                groupHeaderRow += `<th class="sticky-col-1 bg-gray-100 dark:bg-gray-800"></th><th class="sticky-col-2 bg-gray-100 dark:bg-gray-800"></th><th class="sticky-col-3 bg-gray-100 dark:bg-gray-800"></th>`;
+                mainHeaderRow += `<th class="sticky-col-1 bg-gray-100 dark:bg-gray-800 border-b border-r">Actions</th><th class="sticky-col-2 bg-gray-100 dark:bg-gray-800 border-b border-r">Scope</th><th class="sticky-col-3 bg-gray-100 dark:bg-gray-800 border-b border-r text-left pl-2">Instructional Sequence</th>`;
+
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
 
                 Object.keys(columnGroups).forEach(key => {
@@ -1057,13 +1060,15 @@
 
                         (planner?.assignedPes || []).forEach(peObj => {
                              const peCode = peObj.id;
+                             colgroup.innerHTML += `<col class="data-col" data-tab-group="pe" data-code="${peCode}">`;
                              const peData = App.dataMaps.peMap.get(peCode);
                              const tooltip = peData ? `${peCode}: ${peData.description.replace(/"/g, '&quot;')}` : peCode;
                              const secondaryClass = peObj.isSecondary ? 'font-normal italic text-gray-500 dark:text-gray-400' : 'font-semibold';
-                             mainHeaderRow += `<th class="data-col-header cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}"><div class="vertical-header-text">${peCode}</div></th>`;
+                             mainHeaderRow += `<th class="cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}"><div class="vertical-header-text">${peCode}</div></th>`;
                         });
                         if (!planner?.assignedPes || planner.assignedPes.length === 0) {
-                            mainHeaderRow += `<th class="font-normal" data-tab-group="pe"><div>Assign PEs</div></th>`;
+                             colgroup.innerHTML += `<col class="data-col" data-tab-group="pe">`;
+                             mainHeaderRow += `<th class="font-normal" data-tab-group="pe"><div>Assign PEs</div></th>`;
                         }
                     } else {
                         Object.entries(columnGroups[key].groups).forEach(([groupKey, groupData]) => {
@@ -1071,12 +1076,12 @@
                                 const fullGroupKey = `${key}-${groupKey}`;
                                 const isCollapsed = App.state.collapsedSections.has(fullGroupKey);
                                 const icon = isCollapsed ? '▶' : '▼';
-                                const colspan = isCollapsed ? 1 : groupData.cols.length;
-                                const placeholderClass = isCollapsed ? 'collapsed-placeholder' : '';
-                                groupHeaderRow += `<th class="group-toggle-header bg-gray-200 dark:bg-gray-800 border-l border-r border-gray-300 dark:border-gray-700 cursor-pointer ${placeholderClass}" data-tab-group="${key}" data-group-toggle="${fullGroupKey}" data-original-colspan="${groupData.cols.length}" colspan="${colspan}"><span class="toggle-icon">${icon}</span> ${groupData.name}</th>`;
+                                const colspan = groupData.cols.length;
+                                groupHeaderRow += `<th class="group-toggle-header bg-gray-200 dark:bg-gray-800 border-l border-r border-gray-300 dark:border-gray-700 cursor-pointer" data-tab-group="${key}" data-group-toggle="${fullGroupKey}" colspan="${colspan}"><span class="toggle-icon">${icon}</span> ${groupData.name}</th>`;
                                 
                                 groupData.cols.forEach(col => {
-                                    mainHeaderRow += `<th class="data-col-header cursor-pointer" data-tab-group="${key}" data-group-parent="${fullGroupKey}" data-code="${col.code}" data-tooltip="${col.title}"><div class="vertical-header-text">${col.title}</div></th>`;
+                                    colgroup.innerHTML += `<col class="data-col" data-tab-group="${key}" data-group-parent="${fullGroupKey}" data-code="${col.code}">`;
+                                    mainHeaderRow += `<th class="cursor-pointer" data-tab-group="${key}" data-group-parent="${fullGroupKey}" data-code="${col.code}" data-tooltip="${col.title}"><div class="vertical-header-text">${col.title}</div></th>`;
                                 });
                             }
                         });
@@ -1084,7 +1089,9 @@
                 });
                 mainHeaderRow += '</tr>'; 
                 groupHeaderRow += '</tr>';
+                const thead = document.createElement('thead');
                 thead.innerHTML = groupHeaderRow + mainHeaderRow; 
+                table.appendChild(colgroup);
                 table.appendChild(thead); 
                 table.appendChild(document.createElement('tbody')); 
                 App.dom.plannerTableContainer.appendChild(table);
@@ -1107,15 +1114,8 @@
             },
             createRowElement(rowData, parentId = null) {
                 const row = document.createElement('tr');
-                const searchTerm = App.dom.searchInput.value.toLowerCase();
-                if (searchTerm && rowData.type === 'lesson') {
-                    const rowText = (rowData.title + ' ' + Object.keys(rowData.trackingData || {}).join(' ')).toLowerCase();
-                    if (!rowText.includes(searchTerm)) {
-                        row.classList.add('filtered-out');
-                    }
-                }
                 
-                row.className += ` ${rowData.type}-row group/row`; row.dataset.rowType = rowData.type; row.dataset.id = rowData.id;
+                row.className = `${rowData.type}-row group/row`; row.dataset.rowType = rowData.type; row.dataset.id = rowData.id;
                 row.draggable = true;
 
                 const planner = App.utils.findPlanner(App.state.currentPlannerId); const columnGroups = App.utils.gatherColumns(planner.gradeBand);
@@ -1126,12 +1126,7 @@
                     const rotateClass = rowData.isCollapsed ? '-rotate-90' : '';
                     const editableSpan = `<span class="editable hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="true">${rowData.title}</span>`;
                     
-                    let cellsHTML = `
-                        <td class="sticky-col-1 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab mr-2">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors" title="Delete Lesson Set">✖</span></td>
-                        <td class="sticky-col-2 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
-                        <td class="sticky-col-3 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>`;
-                    
-                    let totalCols = 0;
+                    let totalCols = 1; // Start with 1 for the placeholder cell itself
                     Object.values(columnGroups).forEach(dim => {
                         if (dim.key === 'pe') {
                             totalCols += planner?.assignedPes?.length || 1;
@@ -1139,9 +1134,12 @@
                             Object.values(dim.groups).forEach(group => totalCols += group.cols.length);
                         }
                     });
-                    cellsHTML += `<td class="p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50" colspan="${totalCols}"></td>`;
 
-                    row.innerHTML = cellsHTML;
+                    row.innerHTML = `
+                        <td class="sticky-col-1 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab mr-2">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors" title="Delete Lesson Set">✖</span></td>
+                        <td class="sticky-col-2 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
+                        <td class="sticky-col-3 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>
+                        <td class="p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50" colspan="${totalCols}"></td>`;
 
                 } else {
                     if (parentId) row.dataset.parentId = parentId;
@@ -1175,7 +1173,8 @@
                              }
                          } else {
                             Object.entries(columnGroups[key].groups).forEach(([groupKey, groupData]) => {
-                                cellsHTML += groupData.cols.map(col => this.createTrackingCellHTML({ code: col.code, title: col.title, type: '3d', tabGroup: key, parentGroup: `${key}-${groupKey}` }, rowData)).join('');
+                                const fullGroupKey = `${key}-${groupKey}`;
+                                cellsHTML += groupData.cols.map(col => this.createTrackingCellHTML({ code: col.code, title: col.title, type: '3d', tabGroup: key, parentGroup: fullGroupKey }, rowData)).join('');
                             });
                          }
                     });
@@ -1188,13 +1187,13 @@
                     const status = rowData.trackingData?.[column.code] || '';
                     const statusClass = App.constants.statusClasses[status] || '';
                     const cursorClass = 'cursor-pointer hover:bg-yellow-300/50 dark:hover:bg-yellow-500/50';
-                    return `<td class="${commonCellClasses} text-center font-bold ${cursorClass} ${statusClass}" data-tab-group="pe" data-pe-code="${column.code}" data-tooltip="Click to change status for ${column.code}">${status}</td>`;
+                    return `<td class="${commonCellClasses} text-center font-bold ${cursorClass} ${statusClass}" data-tab-group="pe" data-code="${column.code}" data-tooltip="Click to change status for ${column.code}">${status}</td>`;
                 }
                 const parentCode = column.code; 
                 const cellTooltip = `${column.title}. Click to edit elements.`;
                 const cursorClass = 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50';
                 const cellContent = this.generateCellContent(parentCode, rowData);
-                return `<td class="${commonCellClasses} ${cursorClass}" data-tab-group="${column.tabGroup}" data-group-parent="${column.parentGroup}" data-parent-code="${parentCode}" data-tooltip="${cellTooltip}">${cellContent}</td>`;
+                return `<td class="${commonCellClasses} ${cursorClass}" data-tab-group="${column.tabGroup}" data-group-parent="${column.parentGroup}" data-code="${parentCode}" data-tooltip="${cellTooltip}">${cellContent}</td>`;
             },
             generateCellContent(parentCode, rowData) {
                 const parentInfo = App.dataMaps.parentToChildrenMap.get(parentCode);
@@ -1209,7 +1208,23 @@
                 }).join('');
                 return `<div class="flex flex-wrap gap-1 items-center min-h-[24px]">${badgeHTML}</div>`;
             },
-            tabs(columnGroups) { App.dom.tabContainer.innerHTML = ''; Object.keys(columnGroups).forEach(key => { if(columnGroups[key].totalCols > 0 || key === 'pe') { const btn = document.createElement('button'); btn.className = 'tab-button px-4 py-2 cursor-pointer border border-transparent rounded-t-lg font-medium transition-colors text-sm'; btn.dataset.tab = key; btn.textContent = columnGroups[key].name; App.dom.tabContainer.appendChild(btn); } }); },
+            tabs(columnGroups) {
+                App.dom.tabContainer.innerHTML = '';
+                const tabOrder = ['pe', 'dci', 'sep', 'ccc'];
+                tabOrder.forEach(key => {
+                    if (columnGroups[key] && (columnGroups[key].totalCols > 0 || key === 'pe')) {
+                        const tabContent = key === 'pe'
+                            ? `<button id="assign-pe-btn" class="px-2 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-xs font-medium hidden">Assign PEs</button><span>${columnGroups[key].name}</span>`
+                            : `<span>${columnGroups[key].name}</span>`;
+                        
+                        const btn = document.createElement('div');
+                        btn.className = 'tab-button px-4 py-2 cursor-pointer border border-transparent rounded-t-lg font-medium transition-colors text-sm flex items-center gap-2';
+                        btn.dataset.tab = key;
+                        btn.innerHTML = tabContent;
+                        App.dom.tabContainer.appendChild(btn);
+                    }
+                });
+            },
             setActiveTab(tabKey) {
                 const table = App.dom.plannerTableContainer.querySelector('table');
                 if (!table || !App.dom.tabContainer.querySelector(`[data-tab="${tabKey}"]`)) {
@@ -1218,7 +1233,13 @@
                 App.state.currentActiveTab = tabKey;
                 App.dom.tabContainer.querySelectorAll('.tab-button').forEach(b => {
                     const isActive = b.dataset.tab === tabKey;
-                    b.classList.toggle('bg-white', isActive); b.classList.toggle('dark:bg-gray-800/50', isActive); b.classList.toggle('border-gray-300', isActive); b.classList.toggle('dark:border-gray-700', isActive); b.classList.toggle('border-b-white', isActive); b.classList.toggle('dark:border-b-gray-800/50', isActive); b.classList.toggle('text-blue-600', isActive); b.classList.toggle('dark:text-blue-400', isActive); b.classList.toggle('bg-gray-100', !isActive); b.classList.toggle('dark:bg-transparent', !isActive); b.classList.toggle('text-gray-500', !isActive); b.classList.toggle('dark:text-gray-400', !isActive); b.classList.toggle('hover:text-gray-700', !isActive); b.classList.toggle('dark:hover:text-gray-200', !isActive);
+                    b.classList.toggle('bg-white', isActive); b.classList.toggle('dark:bg-gray-800/50', isActive); b.classList.toggle('border-gray-300', isActive); b.classList.toggle('dark:border-gray-700', isActive); b.classList.toggle('border-b-white', isActive); b.classList.toggle('dark:border-b-gray-800/50', isActive); b.classList.toggle('text-blue-600', isActive); b.classList.toggle('dark:text-blue-400', isActive);
+                    b.classList.toggle('bg-gray-100', !isActive); b.classList.toggle('dark:bg-transparent', !isActive); b.classList.toggle('text-gray-500', !isActive); b.classList.toggle('dark:text-gray-400', !isActive); b.classList.toggle('hover:text-gray-700', !isActive); b.classList.toggle('dark:hover:text-gray-200', !isActive);
+                    
+                    if (b.dataset.tab === 'pe') {
+                        const assignBtn = b.querySelector('#assign-pe-btn');
+                        if (assignBtn) assignBtn.classList.toggle('hidden', !isActive);
+                    }
                 });
                 
                 this.updateColumnVisibility();
@@ -1231,6 +1252,7 @@
                 const tabKey = App.state.currentActiveTab;
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
                 let bundledParentCodes = null;
+
                 if (App.state.isPeBundleMode && planner) {
                     bundledParentCodes = new Set();
                     const assignedPes = (planner.assignedPes || []).map(p => p.id);
@@ -1249,18 +1271,55 @@
                     });
                 }
                 
-                table.querySelectorAll('th, td').forEach(cell => {
-                    const cellTabGroup = cell.dataset.tabGroup;
-                    if(cellTabGroup) {
-                        const isVisibleForTab = cellTabGroup === tabKey;
-                        let isVisibleForBundle = true; 
-                        if (bundledParentCodes !== null && cellTabGroup !== 'pe') {
-                            const code = cell.dataset.code || cell.dataset.parentCode;
-                            isVisibleForBundle = bundledParentCodes.has(code);
-                        }
-                        const isVisibleForCollapse = !App.state.collapsedSections.has(cell.dataset.groupParent);
-                        cell.style.display = (isVisibleForTab && isVisibleForBundle && isVisibleForCollapse) ? '' : 'none';
+                // Update Colgroup
+                table.querySelectorAll('colgroup col[data-code]').forEach(col => {
+                    const colTab = col.dataset.tabGroup;
+                    const colCode = col.dataset.code;
+                    const colParentGroup = col.dataset.groupParent;
+
+                    let isVisible = (colTab === tabKey);
+                    if (bundledParentCodes !== null && colTab !== 'pe') {
+                        isVisible = isVisible && bundledParentCodes.has(colCode);
                     }
+                    if (App.state.collapsedSections.has(colParentGroup)) {
+                        isVisible = false;
+                    }
+                    col.classList.toggle('collapsed', !isVisible);
+                });
+
+                // Update Group Headers
+                table.querySelectorAll('th[data-group-toggle]').forEach(th => {
+                    const groupTab = th.dataset.tabGroup;
+                    const fullGroupKey = th.dataset.groupToggle;
+                    let isVisible = (groupTab === tabKey);
+                    if (bundledParentCodes !== null) {
+                        const hasVisibleChild = Array.from(table.querySelectorAll(`col[data-group-parent="${fullGroupKey}"]`))
+                            .some(col => bundledParentCodes.has(col.dataset.code));
+                        isVisible = isVisible && hasVisibleChild;
+                    }
+                    th.style.display = isVisible ? '' : 'none';
+                });
+
+                 // Update main header cells and body cells
+                table.querySelectorAll('th[data-code], td[data-code]').forEach(cell => {
+                    const cellCol = table.querySelector(`col[data-code="${cell.dataset.code}"]`);
+                    if (cellCol) {
+                         cell.style.display = cellCol.classList.contains('collapsed') ? 'none' : '';
+                    }
+                });
+
+                // Update placeholder cells for collapsed groups
+                table.querySelectorAll('.collapsed-placeholder').forEach(ph => {
+                    const groupKey = ph.dataset.groupToggle;
+                    const groupTab = ph.dataset.tabGroup;
+                    let isVisible = (groupTab === tabKey) && App.state.collapsedSections.has(groupKey);
+                    
+                    if (bundledParentCodes !== null) {
+                         const hasVisibleChild = Array.from(table.querySelectorAll(`col[data-group-parent="${groupKey}"]`))
+                            .some(col => bundledParentCodes.has(col.dataset.code));
+                        isVisible = isVisible && hasVisibleChild;
+                    }
+                    ph.style.display = isVisible ? '' : 'none';
                 });
             },
             updateTableHeaderHighlights() {
@@ -1834,17 +1893,15 @@
                 const groupToggle = target.closest('[data-group-toggle]');
                 if (groupToggle) {
                     const groupKey = groupToggle.dataset.groupToggle;
-                    const originalColspan = groupToggle.dataset.originalColspan;
 
                     if (App.state.collapsedSections.has(groupKey)) {
                         App.state.collapsedSections.delete(groupKey);
                         groupToggle.querySelector('.toggle-icon').textContent = '▼';
-                        groupToggle.setAttribute('colspan', originalColspan);
                         groupToggle.classList.remove('collapsed-placeholder');
+
                     } else {
                         App.state.collapsedSections.add(groupKey);
                         groupToggle.querySelector('.toggle-icon').textContent = '▶';
-                        groupToggle.setAttribute('colspan', '1');
                         groupToggle.classList.add('collapsed-placeholder');
                     }
                     App.render.updateColumnVisibility();
@@ -1867,14 +1924,14 @@
                 const copyBtn = target.closest('.copy-row-btn');
                 if (copyBtn) { App.utils.copyRow(rowId); return; }
 
-                const peCell = target.closest('[data-pe-code]');
-                if (peCell) { App.utils.cyclePeStatus(rowId, peCell.dataset.peCode); return; }
+                const peCell = target.closest('[data-code]');
+                if (peCell && peCell.dataset.tabGroup === 'pe') { App.utils.cyclePeStatus(rowId, peCell.dataset.code); return; }
 
                 const scopeCell = target.closest('[data-scope-cell]');
                 if(scopeCell) { App.utils.cycleScopeStatus(rowId); return; }
 
-                const trackingCell = target.closest('[data-parent-code]'); 
-                if (trackingCell) { App.popover.show(trackingCell, trackingCell.dataset.parentCode, rowId); return; }
+                const trackingCell = target.closest('[data-code]'); 
+                if (trackingCell && trackingCell.dataset.tabGroup !== 'pe') { App.popover.show(trackingCell, trackingCell.dataset.code, rowId); return; }
 
                 const headerCell = target.closest('th[data-code]'); 
                 if (headerCell) { App.utils.openElementDetailModal(headerCell.dataset.code); return; }
@@ -2455,10 +2512,6 @@
                 this.closeAllModals();
             },
 
-            performSearch(query) {
-                this.render.renderPlannerContent(); 
-            },
-
             clonePlannerWithNewIds(planner) {
                 const newPlanner = JSON.parse(JSON.stringify(planner));
                 newPlanner.id = `planner-${Date.now()}`;
@@ -2491,23 +2544,10 @@
 
         App.export = {
             showExportOptions() {
-                const planner = App.utils.findPlanner(App.state.currentPlannerId);
-                if (!planner) { alert('Please select a planner to export.'); return; }
-                
                 const optionsContainer = document.getElementById('export-master-options-list');
                 optionsContainer.innerHTML = `
                     <label class="block p-4 border rounded-lg has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 has-[:checked]:border-blue-500 cursor-pointer">
-                        <input type="checkbox" name="export-option" value="json" class="mr-2 accent-purple-600">
-                        <strong>JSON File</strong>
-                        <small class="block text-gray-500 dark:text-gray-400">For backup and re-importing.</small>
-                    </label>
-                    <label class="block p-4 border rounded-lg has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 has-[:checked]:border-blue-500 cursor-pointer">
-                        <input type="checkbox" name="export-option" value="html" class="mr-2 accent-purple-600">
-                        <strong>HTML File</strong>
-                        <small class="block text-gray-500 dark:text-gray-400">Self-contained webpage of the planner view.</small>
-                    </label>
-                    <label class="block p-4 border rounded-lg has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 has-[:checked]:border-blue-500 cursor-pointer">
-                        <input type="checkbox" name="export-option" value="xlsx-dim" class="mr-2 accent-purple-600">
+                        <input type="checkbox" name="export-option" value="xlsx-dim" class="mr-2 accent-purple-600" checked>
                         <strong>XLSX (by Dimension)</strong>
                         <small class="block text-gray-500 dark:text-gray-400">Creates a sheet for each dimension (PEs, DCIs, etc.).</small>
                     </label>
@@ -2519,12 +2559,12 @@
                     <label class="block p-4 border rounded-lg has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 has-[:checked]:border-blue-500 cursor-pointer">
                         <input type="checkbox" name="export-option" value="progression" class="mr-2 accent-purple-600">
                         <strong>Progression View (XLSX)</strong>
-                        <small class="block text-gray-500 dark:text-gray-400">Exports the current Progression View.</small>
+                        <small class="block text-gray-500 dark:text-gray-400">Exports the Progression by Element view.</small>
                     </label>
                     <label class="block p-4 border rounded-lg has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 has-[:checked]:border-blue-500 cursor-pointer">
-                        <input type="checkbox" name="export-option" value="summary" class="mr-2 accent-purple-600">
-                        <strong>Summary View (HTML)</strong>
-                        <small class="block text-gray-500 dark:text-gray-400">Exports the current Summary analytics page.</small>
+                        <input type="checkbox" name="export-option" value="storyline" class="mr-2 accent-purple-600">
+                        <strong>Storyline View (XLSX)</strong>
+                        <small class="block text-gray-500 dark:text-gray-400">Exports the Progression by Lesson view.</small>
                     </label>
                 `;
                 
@@ -2542,29 +2582,24 @@
                 }
 
                 const workbook = XLSX.utils.book_new();
-                let hasXlsxSheets = false;
-
+                
                 if (selectedOptions.includes('xlsx-dim')) {
                     this.addDimensionSheetsToWorkbook(workbook, planner);
-                    hasXlsxSheets = true;
                 }
                 if (selectedOptions.includes('xlsx-combined')) {
                     const worksheet = this.createCombinedSheet(planner);
                     XLSX.utils.book_append_sheet(workbook, worksheet, 'Combined View');
-                    hasXlsxSheets = true;
                 }
                 if (selectedOptions.includes('progression')) {
-                    this.addProgressionSheetToWorkbook(workbook);
-                    hasXlsxSheets = true;
+                    this.addProgressionSheetToWorkbook(workbook, 'element');
+                }
+                if (selectedOptions.includes('storyline')) {
+                    this.addProgressionSheetToWorkbook(workbook, 'lesson');
                 }
 
-                if(hasXlsxSheets) {
+                if(workbook.SheetNames.length > 0) {
                     XLSX.writeFile(workbook, `${planner.title}_Export.xlsx`);
                 }
-
-                if (selectedOptions.includes('json')) this.asJson(planner);
-                if (selectedOptions.includes('html')) this.asHtml(planner);
-                if (selectedOptions.includes('summary')) this.exportSummaryView();
                 
                 App.utils.closeAllModals();
             },
@@ -2579,12 +2614,16 @@
                 document.body.removeChild(a);
             },
 
-            asJson(planner) {
+            asJson() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                if (!planner) { alert('No active planner to export.'); return; }
                 const jsonString = JSON.stringify(planner, null, 2);
                 this.downloadFile(`${planner.title}.json`, jsonString, 'application/json');
             },
 
-            asHtml(planner) {
+            asHtml() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                if (!planner) { alert('No active planner to export.'); return; }
                 const tableContainer = document.getElementById('planner-table-container').cloneNode(true);
                 tableContainer.querySelectorAll('[contenteditable]').forEach(el => el.setAttribute('contenteditable', 'false'));
                 tableContainer.querySelectorAll('.drag-handle, .delete-btn, .add-below-btn, .copy-row-btn, .notes-btn').forEach(el => el.remove());
@@ -2596,17 +2635,18 @@
                         body { overflow: auto; height: auto; display: block; font-family: sans-serif; }
                         table { table-layout: fixed; border-collapse: collapse; min-width: 100%; border-spacing: 0; }
                         th, td { border: 1px solid #e5e7eb; }
-                        th[data-tab-group], td[data-tab-group] { display: none; }
+                        col.collapsed { width: 0 !important; min-width: 0 !important; }
+                        th[data-tab-group], td[data-tab-group], col[data-tab-group] { display: none; }
                         
                         thead th { height: 160px; vertical-align: bottom; padding: 4px; }
                         .vertical-header-text { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; text-align: left; max-height: 140px; width: 100%; display: flex; align-items: center; justify-content: flex-start; }
 
-                        .sticky-col-1 { position: sticky; left: 0; z-index: 5; width: 120px; min-width: 120px; background-color: #f3f4f6; overflow: hidden; }
-                        .sticky-col-2 { position: sticky; left: 120px; z-index: 4; width: 80px; min-width: 80px; background-color: #f3f4f6; overflow: hidden; }
-                        .sticky-col-3 { position: sticky; left: 200px; z-index: 3; width: 400px; min-width: 400px; background-color: #f3f4f6; box-shadow: 4px 0 5px -2px rgba(0,0,0,0.1); overflow: hidden; }
+                        .sticky-col-1 { position: sticky; left: 0; z-index: 5; background-color: #f3f4f6; }
+                        .sticky-col-2 { position: sticky; left: 65px; z-index: 4; background-color: #f3f4f6; }
+                        .sticky-col-3 { position: sticky; left: 105px; z-index: 3; background-color: #f3f4f6; box-shadow: 4px 0 5px -2px rgba(0,0,0,0.1); }
                         
                         thead th.sticky-col-1, thead th.sticky-col-2, thead th.sticky-col-3 { height: auto; vertical-align: middle; z-index: 10; padding: 10px; }
-                        .group-toggle-header { display: none; }
+                        .group-toggle-header { display: table-cell !important; }
                     <\/style>
                     </head><body class="bg-gray-50 p-8"><main>
                     <div class="mb-6">
@@ -2620,7 +2660,8 @@
                             const firstTab = document.querySelector('.tab-button');
                             if (firstTab) { activateTab(firstTab); }
                             document.getElementById('tab-container').addEventListener('click', e => {
-                                if (e.target.matches('.tab-button')) { activateTab(e.target); }
+                                const tabButton = e.target.closest('.tab-button');
+                                if (tabButton) { activateTab(tabButton); }
                             });
                             function activateTab(tabButton) {
                                 document.querySelectorAll('.tab-button').forEach(btn => {
@@ -2630,8 +2671,8 @@
                                 tabButton.classList.remove('bg-gray-100', 'text-gray-500');
                                 tabButton.classList.add('bg-white', 'border-gray-300', 'border-b-white', 'text-blue-600');
                                 const tabKey = tabButton.dataset.tab;
-                                document.querySelectorAll('th[data-tab-group], td[data-tab-group]').forEach(cell => {
-                                    cell.style.display = cell.dataset.tabGroup === tabKey ? 'table-cell' : 'none';
+                                document.querySelectorAll('th[data-tab-group], td[data-tab-group], col[data-tab-group]').forEach(cell => {
+                                    cell.style.display = cell.dataset.tabGroup === tabKey ? '' : 'none';
                                 });
                             }
                         });
@@ -2866,7 +2907,7 @@
 
             exportProgressionView() {
                 const workbook = XLSX.utils.book_new();
-                this.addProgressionSheetToWorkbook(workbook);
+                this.addProgressionSheetToWorkbook(workbook, App.state.progressionViewType);
                 if (workbook.SheetNames.length > 0) {
                     XLSX.writeFile(workbook, 'NGSS_Progression_Export.xlsx');
                 } else {
@@ -2874,12 +2915,12 @@
                 }
             },
 
-            addProgressionSheetToWorkbook(workbook) {
+            addProgressionSheetToWorkbook(workbook, viewType) {
                 const selectedPlannerIds = Array.from(App.dom.navigatorList.querySelectorAll('.planner-checkbox:checked')).map(cb => cb.closest('.planner-item').dataset.plannerId);
                 if (selectedPlannerIds.length === 0) return;
                 const selectedPlanners = selectedPlannerIds.map(id => App.utils.findPlanner(id));
 
-                if (App.state.progressionViewType === 'element') {
+                if (viewType === 'element') {
                     this._addProgressionByElementSheet(workbook, selectedPlanners);
                 } else {
                     this._addProgressionByLessonSheet(workbook, selectedPlanners);
