@@ -1232,18 +1232,20 @@
                     const scope = rowData.scope || '';
                     const scopeClass = App.constants.scopeClasses[scope] || '';
                     const editableSpan = `<span class="editable hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="true">${rowData.title}</span>`;
-                    const notesIcon = `<span class="notes-btn cursor-pointer text-base" title="Edit Notes & Links">📝</span>`;
-                    
+                    const deleteIcon = `<span class="delete-btn cursor-pointer font-bold hover:text-red-500 transition-colors" title="Delete Lesson">✖</span>`;
+					const notesIcon = `<span class="notes-btn cursor-pointer text-base" title="Edit Notes & Links">📝</span>`;
+					const addRowIcon = `<span class="add-below-btn cursor-pointer hover:text-green-500 transition-colors" title="Add Lesson Below">+</span>`;
+					const copyRowIcon = `<span class="copy-row-btn cursor-pointer hover:text-blue-500 transition-colors" title="Duplicate Lesson">❐</span>`;
                     let cellsHTML = `
                         <td class="sticky-col-1 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle">
                             <div class="flex items-center justify-start gap-2 text-gray-400 w-full overflow-hidden">
                                 <span class="drag-handle cursor-grab">⠿</span>
                                 <div class="flex items-center gap-2 invisible group-hover/row:visible">
-                                    ${notesIcon}
-                                    <span class="delete-btn cursor-pointer font-bold hover:text-red-500 transition-colors" title="Delete Lesson">✖</span>
-                                    <span class="add-below-btn cursor-pointer hover:text-green-500 transition-colors" title="Add Lesson Below">+</span>
-                                    <span class="copy-row-btn cursor-pointer hover:text-blue-500 transition-colors" title="Duplicate Lesson">❐</span>
-                                </div>
+                                    ${deleteIcon}
+									${notesIcon}
+									${addRowIcon}
+									${copyRowIcon}
+							   </div>
                             </div>
                         </td>
                         <td data-scope-cell="true" class="sticky-col-2 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle font-bold text-center cursor-pointer ${scopeClass}" data-tooltip="Click to cycle Assessment Scope">${scope}</td>
