@@ -30,7 +30,7 @@
             --row-bg-override: transparent;
         }
 
-        /* FIX 1: Ensure body takes full height and prevents overscroll bounce */
+        /* LAYOUT ENGINE: Flexbox with fixed viewport height */
         body, html {
             height: 100%;
             width: 100%;
@@ -42,14 +42,13 @@
             overscroll-behavior: none;
         }
 
-        /* FIX 2: Switch View Section to Flex Column layout */
         .view-section { 
             display: none; 
             opacity: 0; 
             transition: opacity 0.2s ease; 
-            height: 100dvh; /* Use dynamic viewport height for mobile browsers */
+            height: 100dvh; 
             width: 100vw;
-            overflow: hidden; /* Prevent the container itself from scrolling */
+            overflow: hidden; 
             flex-direction: column; 
         }
         
@@ -58,21 +57,14 @@
             opacity: 1; 
         }
 
-        /* Dashboard specific: needs scrolling internally */
-        #dashboardView {
-            overflow-y: auto;
-        }
-
-        #editorView { 
-            overflow: hidden; 
-        }
+        #dashboardView { overflow-y: auto; }
+        #editorView { overflow: hidden; }
 
         .hero-section { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 1rem .75rem 1.25rem; border-radius: 0 0 2.5rem 2.5rem; color: white; box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.3); margin-bottom: 0px; flex: 0 0 auto; }
         .sheet-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
         .sheet-card:active { transform: scale(0.98); }
         .sheet-card:hover { border-color: var(--primary); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.05); }
         
-        /* FIX 3: Header and Toolbar are flex items that don't shrink */
         .glass-header { 
             background: var(--surface); 
             border-bottom: 1px solid var(--border); 
@@ -99,6 +91,7 @@
 
         .search-container-desktop { display: block; }
         .search-trigger-mobile { display: none; }
+        
         .mobile-search-bar { 
             display: none; 
             background: #f1f5f9; 
@@ -108,7 +101,7 @@
             height: 0; 
             opacity: 0;
             transition: height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
-            flex: 0 0 auto; /* Don't stretch */
+            flex: 0 0 auto; 
             width: 100%;
         }
         .mobile-search-bar.show { 
@@ -125,17 +118,15 @@
             .search-container-desktop { display: none; }
             .search-trigger-mobile { display: flex; }
             .mobile-search-bar { display: block; }
-            
             #btnSync, #btnDiscard { padding: 0.25rem 0.75rem; font-size: 0.8rem; }
             .counter-group { gap: 8px !important; }
             .counter-badge b { font-size: 0.8rem; }
         }
 
-        /* FIX 4: Table Container fills remaining space automatically */
+        /* AUTO-FILL TABLE CONTAINER */
         .table-container { 
             background: var(--surface); 
-            /* Remove calc height, use flex-grow */
-            flex: 1 1 auto;
+            flex: 1 1 auto; /* Fills remaining height */
             overflow: auto; 
             position: relative; 
             width: 100%;
@@ -155,7 +146,7 @@
             vertical-align: top;
         }
 
-        /* FIX 5: Reduce first column width on mobile from 170px to 50px */
+        /* STICKY ACTIONS COLUMN (Reduced width on mobile) */
         th:first-child, td:first-child { 
             position: sticky; left: 0; z-index: 20; 
             background: var(--row-bg-override, var(--surface)); 
@@ -185,6 +176,7 @@
 
         .tree-wrap { display: flex; height: 100%; align-items: flex-start; padding-top: 12px; padding-left: 8px; }
         
+        /* MODAL LAYOUT FIX */
         #setupModal .modal-body { display: flex; flex-direction: column; overflow: hidden; }
         #setupModal .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         #setupModal .tab-pane { display: none; }
@@ -213,8 +205,23 @@
         .dragging-parent::after { content: ""; position: absolute; bottom: -4px; left: 4px; right: 4px; height: 6px; background: white; border: 1px solid #cbd5e1; border-radius: 0 0 4px 4px; z-index: -1; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .badge-cell { padding: 12px 8px; height: 100%; display: flex; align-items: flex-start; gap: 4px; overflow: hidden; cursor: pointer; white-space: normal; position: relative; flex-wrap: wrap;}
         .badge-pill { background: var(--primary-soft); color: var(--primary-dark); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
-        #multiPopover { display: none; position: absolute; z-index: 1050; background: white; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 300px; max-height: 350px; overflow: hidden; display: flex; flex-direction: column; }
-        #multiPopover.show { display: flex; }
+        
+        /* POPOVER FIX: Fixed positioning to handle overflow:hidden on body */
+        #multiPopover { 
+            display: none; 
+            position: fixed; /* Changed from absolute to fixed */
+            z-index: 1050; 
+            background: white; 
+            border: 1px solid var(--border); 
+            border-radius: 12px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1); 
+            width: 300px; 
+            max-height: 350px; 
+            overflow: hidden; 
+            flex-direction: column; 
+        }
+        #multiPopover.show { display: flex !important; } /* Force display when shown */
+        
         #multiPopover .popover-content { padding: 8px; overflow-y: auto; flex-grow: 1; }
         #multiPopover .popover-footer { padding: 8px; border-top: 1px solid var(--border); }
         #multiPopover .form-check { padding: 8px 12px; border-radius: 6px; }
@@ -249,7 +256,7 @@
             .modal.bottom-sheet .modal-dialog { position: fixed; bottom: 0; margin: 0; width: 100%; max-width: 100%; } 
             .modal.bottom-sheet .modal-content { border-radius: 24px 24px 0 0; border: none; min-height: 40vh; max-height: 85vh; } 
             
-            /* Apply reduced width to the Actions column on mobile */
+            /* Reduced width to the Actions column on mobile */
             th:first-child, td:first-child { width: 50px !important; min-width: 50px !important; max-width: 50px !important; } 
             
             .mobile-toggle-btn { display: flex; justify-content: center; align-items: center; cursor: pointer; } 
@@ -330,7 +337,9 @@
 <div class="modal fade" id="rawDataModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-lg-down"><div class="modal-content"><div class="modal-header bg-light border-bottom"><h5 class="modal-title font-monospace fw-bold"><i class="bi bi-database me-2 text-primary"></i>Raw Data Inspector</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 position-relative"><div class="table-container" style="height: 100%;"><table id="rawTable" style="width:100%"><thead id="rawHead"></thead><tbody id="rawBody"></tbody></table></div></div></div></div></div>
 <div id="loader" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center;"><div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div><h6 class="fw-bold text-dark">Processing...</h6></div>
 <div class="toast-container" id="toastArea"></div>
-<div id="multiPopover"><div class="popover-content" id="multiOptions"></div><div class="popover-footer"><button class="btn btn-primary btn-sm w-100" onclick="saveMultiFromPopover()">Apply</button></div></div>
+
+<!-- POPOVER FIX: Added style="display:none" to prevent phantom rendering -->
+<div id="multiPopover" style="display:none"><div class="popover-content" id="multiOptions"></div><div class="popover-footer"><button class="btn btn-primary btn-sm w-100" onclick="saveMultiFromPopover()">Apply</button></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -387,7 +396,13 @@ function restoreRow(id) { STATE.dels.delete(parseInt(id)); renderTable(); update
 function hasChanges() { return Object.keys(STATE.edits).length > 0 || STATE.adds.length > 0 || STATE.dels.size > 0 || Object.keys(STATE.hierarchyChanges).length > 0; }
 function getCellHtml(rid, col, val) { const safeVal = String(val || '').replace(/</g, "&lt;").replace(/>/g, "&gt;"); if(col.type === 'CHECKBOX') { const checked = (val === true || val === 'true'); return `<div class="d-flex justify-content-center align-items-center h-100"><input type="checkbox" class="form-check-input" ${checked?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)" style="transform:scale(1.2); cursor:pointer;"></div>`; } const isMulti = col.type.includes('MULTI') || (col.type === 'TEXT_NUMBER' && col.options && col.options.length > 0); if(isMulti) { let arr = []; if(Array.isArray(val)) arr = val; else if(val) arr = String(val).split(',').map(s=>s.trim()).filter(s=>s!==''); let badges = ''; if(arr.length === 0) badges = `<span class="text-muted small ps-1 opacity-50 fst-italic">Select...</span>`; else { arr.forEach(t => badges += `<span class="badge-pill">${t}</span>`); } const safeArr = encodeURIComponent(JSON.stringify(arr)); return `<div class="badge-cell" onclick="openMultiPopover(event, '${rid}', ${col.id}, '${safeArr}')">${badges}</div>`; } if(col.options && col.options.length > 0) { let opts = `<option value=""></option>`; col.options.forEach(o => { const sel = String(val) === String(o) ? 'selected' : ''; opts += `<option value="${o}">${o}</option>`; }); return `<select class="cell-textarea" onchange="edit('${rid}', ${col.id}, this.value)">${opts}</select>`; } return `<textarea class="cell-textarea" oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" onchange="edit('${rid}', ${col.id}, this.value)">${safeVal}</textarea>`;}
 function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); const col = STATE.cols.find(c => c.id === cid); if(col && (col.type.includes('MULTI') || col.options)) renderTable(); }
-function openMultiPopover(event, rid, cid, encoded) { event.stopPropagation(); const popover = document.getElementById('multiPopover'); const cell = event.currentTarget; const vals = JSON.parse(decodeURIComponent(encoded)); const col = STATE.cols.find(c => c.id === cid); STATE.tempMulti = { rid, cid }; const box = document.getElementById('multiOptions'); box.innerHTML = ''; const opts = Array.from(new Set([...(col.options || []), ...vals])); opts.forEach((o, i) => { if (!o) return; const checked = vals.includes(o) ? 'checked' : ''; const safeVal = String(o).replace(/"/g, '&quot;'); const uId = `opt_${i}`; box.innerHTML += `<div class="form-check"><input class="form-check-input" type="checkbox" value="${safeVal}" id="${uId}" ${checked}><label class="form-check-label w-100" for="${uId}">${o}</label></div>`; }); const rect = cell.getBoundingClientRect(); popover.style.top = `${rect.bottom + window.scrollY}px`; popover.style.left = `${rect.left + window.scrollX}px`; popover.classList.add('show'); }
+function openMultiPopover(event, rid, cid, encoded) { event.stopPropagation(); const popover = document.getElementById('multiPopover'); const cell = event.currentTarget; const vals = JSON.parse(decodeURIComponent(encoded)); const col = STATE.cols.find(c => c.id === cid); STATE.tempMulti = { rid, cid }; const box = document.getElementById('multiOptions'); box.innerHTML = ''; const opts = Array.from(new Set([...(col.options || []), ...vals])); opts.forEach((o, i) => { if (!o) return; const checked = vals.includes(o) ? 'checked' : ''; const safeVal = String(o).replace(/"/g, '&quot;'); const uId = `opt_${i}`; box.innerHTML += `<div class="form-check"><input class="form-check-input" type="checkbox" value="${safeVal}" id="${uId}" ${checked}><label class="form-check-label w-100" for="${uId}">${o}</label></div>`; }); 
+    const rect = cell.getBoundingClientRect(); 
+    // UPDATED POSITIONING: Fixed position based on viewport rect, no scroll offset needed due to overflow:hidden on body
+    popover.style.top = `${rect.bottom}px`; 
+    popover.style.left = `${rect.left}px`; 
+    popover.classList.add('show'); 
+}
 function saveMultiFromPopover() { if (!STATE.tempMulti) return; const { rid, cid } = STATE.tempMulti; const selected = Array.from(document.querySelectorAll('#multiOptions input:checked')).map(cb => cb.value); const val = selected.join(', '); edit(rid, cid, val); document.getElementById('multiPopover').classList.remove('show'); STATE.tempMulti = null; }
 function closeMultiPopoverOnClickOutside(event) { const popover = document.getElementById('multiPopover'); if (popover.classList.contains('show')) { if (!popover.contains(event.target) && !event.target.closest('.badge-cell')) { popover.classList.remove('show'); STATE.tempMulti = null; } } }
 function _createAndInsertRow(parentId, insertionIndex, siblingId = null) { const tempId = 'NEW_' + Date.now(); const newRow = { id: tempId, cells: [], parentId, siblingId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", }; STATE.adds.push(newRow); STATE.activeRows.splice(insertionIndex, 0, newRow); calcAllDepth(); renderTable(); updateSyncUI(); setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${tempId}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100); }
