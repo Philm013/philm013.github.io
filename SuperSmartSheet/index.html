@@ -109,7 +109,6 @@
             box-sizing: border-box;
         }
         
-        /* <!-- MODIFICATION --> Styles for primary header cell to contain outline buttons */
         thead th.primary-header-cell {
             position: relative;
             padding-bottom: 34px; /* Make space for buttons */
@@ -244,7 +243,6 @@
         #setupModal .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         #setupModal .tab-pane { height: 100%; width: 100%; overflow-y: auto; }
         
-        /* <!-- MODIFICATION --> Styles for outline controls inside setup modal tree */
         .setup-tree-controls {
             padding: 4px 8px 12px;
             margin-bottom: 8px;
@@ -260,7 +258,6 @@
         .btn-outline-xs { padding: 0.15rem 0.5rem; font-size: 0.75rem; border: 1px solid var(--border); color: var(--text-muted); }
         .btn-outline-xs:hover { background: var(--primary-soft); color: var(--primary-dark); border-color: var(--primary); }
 
-        /* <!-- MODIFICATION --> Styles for outline buttons embedded in header */
         .header-outline-btns {
             position: absolute;
             bottom: 4px;
@@ -286,6 +283,20 @@
             color: var(--primary);
             background-color: var(--primary-soft);
         }
+        
+        .outline-scroll-group {
+            display: flex; gap: 0; overflow-x: auto;
+            border-radius: 4px; background: white;
+            scrollbar-width: none; /* Firefox */
+        }
+        .outline-scroll-group::-webkit-scrollbar { display: none; }
+        .outline-scroll-group .btn {
+            border-radius: 0; border: none; border-right: 1px solid var(--border); 
+            font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+            flex: 0 0 auto; width: 30px;
+        }
+        .outline-scroll-group .btn:last-child { border-right: none; width: auto; padding: 0 8px; }
+        .outline-scroll-group .btn:hover { background: #f8fafc; color: var(--primary); }
 
 
         @media (max-width: 768px) {
@@ -354,7 +365,6 @@
     </div>
 
     <!-- Toolbar (Sync & Filter) -->
-    <!-- <!-- MODIFICATION --> Toolbar layout changed -->
     <div class="toolbar">
         <div class="d-flex align-items-center gap-3 flex-wrap">
             <input type="text" id="search" class="form-control form-control-sm border-0 bg-white shadow-sm" placeholder="Filter..." style="max-width: 120px;" onkeyup="renderTable()">
@@ -397,7 +407,6 @@
                 </ul>
                 <div class="tab-content flex-grow-1">
                     <div class="tab-pane fade show active" id="tabRows">
-                        <!-- <!-- MODIFICATION --> Row setup header layout changed -->
                         <div class="d-flex gap-2 mb-2 align-items-center">
                             <input type="text" id="setupRowSearch" class="form-control form-control-sm" placeholder="Search rows..." onkeyup="renderSetupTree()">
                             <div class="vr"></div>
@@ -547,18 +556,15 @@ function setOutline(level, context) {
     else renderTable();
 }
 
-// <!-- MODIFICATION --> Function now returns HTML instead of injecting it
 function generateOutlineButtonsHTML(context) {
     let max = 0;
     Object.values(STATE.meta.depth).forEach(d => max = Math.max(max, d));
     const maxLevel = max + 1;
     let html = '';
     
-    // Create numeric buttons 1..maxLevel
     for(let i = 1; i <= maxLevel; i++) {
         html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`;
     }
-    // Add "All" button
     html += `<button class="btn" onclick="setOutline(99, '${context}')">All</button>`;
     return html;
 };
@@ -688,10 +694,15 @@ async function fetchData() {
 
 function calcAllDepth() {
     STATE.meta.depth = {}; 
-    const map = new Map(); STATE.allRows.forEach(r => map.set(r.id, r));
-    STATE.allRows.forEach(r => { 
+    const map = new Map(); 
+    const allRowsForDepth = [...STATE.allRows, ...STATE.adds];
+    allRowsForDepth.forEach(r => map.set(r.id, r));
+    allRowsForDepth.forEach(r => { 
         let d=0, curr=r; 
-        while(curr.parentId && map.has(curr.parentId) && d<20) { d++; curr=map.get(curr.parentId); } 
+        while(curr && curr.parentId && map.has(curr.parentId) && d<20) { 
+            d++; 
+            curr=map.get(curr.parentId); 
+        } 
         STATE.meta.depth[r.id]=d; 
     });
 }
@@ -715,7 +726,6 @@ function renderSetupTree() {
     const primId = STATE.cols.find(c => c.primary)?.id;
     const rowMap = new Map(STATE.allRows.map(r => [r.id, r]));
     
-    // <!-- MODIFICATION --> Generate controls and main content separately
     const controlsHTML = `<div class="setup-tree-controls outline-scroll-group">${generateOutlineButtonsHTML('SETUP')}</div>`;
     let mainHTML = '';
 
@@ -827,7 +837,6 @@ function renderTable() {
         if(STATE.visibleCols.has(c.id)) {
             const w = STATE.colWidths[c.id] ? `${STATE.colWidths[c.id]}px` : (c.id === primColId ? '250px' : '150px');
             const selClass = STATE.selectedCol === c.id ? 'selected' : '';
-            // <!-- MODIFICATION --> Add primary header class and outline buttons
             const isPrimary = c.id === primColId;
             const primaryClass = isPrimary ? 'primary-header-cell' : '';
             const outlineBtns = isPrimary ? `<div class="header-outline-btns">${generateOutlineButtonsHTML('MAIN')}</div>` : '';
@@ -841,15 +850,22 @@ function renderTable() {
     });
     h += `</tr>`; th.innerHTML = h;
 
-    const all = [...STATE.adds, ...STATE.activeRows];
+    // <!-- BUG FIX --> Use only activeRows for rendering order.
+    const all = STATE.activeRows;
     const term = document.getElementById('search').value.toLowerCase();
-    const activeIds = new Set(all.map(r => r.id));
+    
+    // Recalculate view-specific depths based on the current `activeRows`
     const viewDepth = {};
+    const activeIds = new Set(all.map(r => r.id));
     all.forEach(r => {
         let d = 0, curr = r;
-        while(curr.parentId && activeIds.has(curr.parentId) && d < 20) { d++; curr = all.find(x => x.id === curr.parentId) || curr; }
+        while(curr && curr.parentId && activeIds.has(curr.parentId) && d < 20) { 
+            d++; 
+            curr = all.find(x => x.id === curr.parentId);
+        }
         viewDepth[r.id] = d;
     });
+
 
     all.forEach((r, idx) => {
         if(isHidden(r, activeIds) && !term) return;
@@ -916,8 +932,8 @@ function isHidden(r, activeSet) {
     if(!r.parentId) return false;
     if(!activeSet.has(r.parentId)) return false; 
     if(STATE.meta.collapsed.has(r.parentId)) return true;
-    const p = STATE.activeRows.find(x => x.id === r.parentId);
-    if(p) return isHidden(p, activeSet);
+    const parentInActive = STATE.activeRows.find(x => x.id === r.parentId);
+    if(parentInActive) return isHidden(parentInActive, activeSet);
     return false;
 }
 function toggle(id) { const realId = isNaN(id) ? id : parseInt(id); if(STATE.meta.collapsed.has(realId)) STATE.meta.collapsed.delete(realId); else STATE.meta.collapsed.add(realId); renderTable(); }
@@ -1007,12 +1023,17 @@ function initSortable() {
             } else {
                 toTop = true;
             }
-
-            const rowToMove = STATE.allRows.find(r => r.id === rid);
-            if(rowToMove) rowToMove.parentId = newParentId;
+            
+            const allAndNewRows = [...STATE.allRows, ...STATE.adds];
+            const rowToUpdate = allAndNewRows.find(r => r.id === rid);
+            if(rowToUpdate) rowToUpdate.parentId = newParentId;
 
             STATE.hierarchyChanges[rid] = { type: 'MOVE', parentId: newParentId, siblingId, toTop };
             
+            // Re-order the activeRows array to reflect the DOM change
+            const newOrderIds = Array.from(evt.to.children).map(tr => isNaN(tr.dataset.id) ? tr.dataset.id : parseInt(tr.dataset.id));
+            STATE.activeRows.sort((a,b) => newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
+
             calcAllDepth(); 
             renderTable(); 
             updateSyncUI();
@@ -1022,10 +1043,11 @@ function initSortable() {
 
 // --- SYNC ENGINE & UI ---
 function updateSyncUI() {
-    const m = Object.keys(STATE.edits).length + Object.keys(STATE.hierarchyChanges).length; 
-    const a = STATE.adds.length; const d = STATE.dels.size;
-    document.getElementById('cntMod').innerText = m; document.getElementById('cntAdd').innerText = a; document.getElementById('cntDel').innerText = d;
-    const has = (m+a+d) > 0;
+    const modifiedCount = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]).size;
+    document.getElementById('cntMod').innerText = modifiedCount; 
+    document.getElementById('cntAdd').innerText = STATE.adds.length; 
+    document.getElementById('cntDel').innerText = STATE.dels.size;
+    const has = (modifiedCount + STATE.adds.length + STATE.dels.size) > 0;
     document.getElementById('btnSync').disabled = !has;
     document.getElementById('btnDiscard').disabled = !has;
     document.getElementById('btnSync').className = has ? "btn btn-sm btn-primary rounded-pill px-3 fw-bold" : "btn btn-sm btn-secondary rounded-pill px-3";
@@ -1113,13 +1135,11 @@ async function sync() {
             }
         }
 
-        // Final re-fetch to ensure perfect state sync and get all new IDs
         const freshData = await api(`/sheets/${STATE.sheetId}?includeAll=true`);
         STATE.allRows = freshData.rows;
         STATE.serverRows = JSON.parse(JSON.stringify(freshData.rows));
         STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id));
         
-        // Clear all local changes
         STATE.adds = [];
         STATE.dels.clear();
         STATE.edits = {};
@@ -1135,12 +1155,13 @@ async function sync() {
 // --- ROW ACTIONS ---
 function indentRow(id) {
     const rid = isNaN(id) ? id : parseInt(id);
-    const rowList = String(id).startsWith('NEW') ? STATE.adds : STATE.activeRows;
+    const rowList = STATE.activeRows;
     const idx = rowList.findIndex(r => r.id === rid);
     if(idx <= 0) return;
     const prev = rowList[idx-1];
     
-    const rowToUpdate = STATE.allRows.find(r => r.id === rid) || STATE.adds.find(r => r.id === rid);
+    const allAndNewRows = [...STATE.allRows, ...STATE.adds];
+    const rowToUpdate = allAndNewRows.find(r => r.id === rid);
     if(rowToUpdate) rowToUpdate.parentId = prev.id;
     
     STATE.hierarchyChanges[rid] = { type: 'INDENT', parentId: prev.id };
@@ -1148,10 +1169,11 @@ function indentRow(id) {
 }
 function outdentRow(id) {
     const rid = isNaN(id) ? id : parseInt(id);
-    const row = STATE.allRows.find(r => r.id === rid) || STATE.adds.find(r => r.id === rid);
+    const allAndNewRows = [...STATE.allRows, ...STATE.adds];
+    const row = allAndNewRows.find(r => r.id === rid);
     if(!row || !row.parentId) return;
     
-    const parent = STATE.allRows.find(p => p.id === row.parentId) || STATE.adds.find(p => p.id === row.parentId);
+    const parent = allAndNewRows.find(p => p.id === row.parentId);
     const newPid = parent ? parent.parentId : undefined;
     
     row.parentId = newPid;
@@ -1160,7 +1182,10 @@ function outdentRow(id) {
 }
 
 function delRow(id) { 
-    if(String(id).startsWith('NEW')) STATE.adds = STATE.adds.filter(r => r.id !== id); 
+    if(String(id).startsWith('NEW')) {
+        STATE.adds = STATE.adds.filter(r => r.id !== id);
+        STATE.activeRows = STATE.activeRows.filter(r => r.id !== id);
+    } 
     else STATE.dels.add(parseInt(id)); 
     renderTable(); updateSyncUI(); 
 }
@@ -1243,28 +1268,52 @@ function closeMultiPopoverOnClickOutside(event) {
     }
 }
 
-
+// <!-- BUG FIX --> Rewritten to insert rows directly into activeRows for correct visual positioning.
 function addNewRowInline(parentId = null) {
     const tempId = 'NEW_' + Date.now();
     const newRow = {
         id: tempId,
         cells: [],
         parentId: parentId ? (isNaN(parentId) ? parentId : parseInt(parentId)) : undefined,
-        rowNumber: 9999,
-        format: ",,,,,,,,,,,,,,22,,,,,,",
+        rowNumber: 9999, // Placeholder
+        format: ",,,,,,,,,,,,,,22,,,,,,", // Default highlight
     };
-    STATE.adds.unshift(newRow);
+
+    // Add to adds array for syncing
+    STATE.adds.push(newRow);
+    
+    // Insert into activeRows array for rendering
+    if (parentId) {
+        const parentIndex = STATE.activeRows.findIndex(r => r.id === parentId);
+        if (parentIndex !== -1) {
+            // Find where to insert: after the parent and all its descendants
+            const parentDepth = STATE.meta.depth[parentId] || 0;
+            let insertionIndex = parentIndex + 1;
+            while (insertionIndex < STATE.activeRows.length && (STATE.meta.depth[STATE.activeRows[insertionIndex].id] || 0) > parentDepth) {
+                insertionIndex++;
+            }
+            STATE.activeRows.splice(insertionIndex, 0, newRow);
+        } else {
+            // Parent not in view, add to top as a fallback
+            STATE.activeRows.unshift(newRow);
+        }
+    } else {
+        // No parent, add to top
+        STATE.activeRows.unshift(newRow);
+    }
+
+    // Recalculate all depths to include the new row, then render
+    calcAllDepth();
     renderTable();
     updateSyncUI();
 
+    // Scroll and focus
     setTimeout(() => {
         const newRowEl = document.querySelector(`tr[data-id="${tempId}"]`);
         if (newRowEl) {
             newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             const firstInput = newRowEl.querySelector('input, select');
-            if (firstInput) {
-                firstInput.focus();
-            }
+            if (firstInput) firstInput.focus();
         }
     }, 100);
 }
