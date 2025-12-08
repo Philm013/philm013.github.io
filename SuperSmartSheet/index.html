@@ -102,11 +102,18 @@
             padding: 12px 8px; border-bottom: 1px solid var(--border);
             border-right: 1px solid var(--border);
             position: sticky; top: 0; z-index: 10; 
-            white-space: nowrap; overflow: visible;
+            white-space: nowrap; overflow: hidden; /* Changed from visible */
             text-overflow: ellipsis;
             user-select: none; cursor: pointer;
             transition: background-color 0.2s;
             box-sizing: border-box;
+        }
+        
+        /* <!-- MODIFICATION --> Styles for primary header cell to contain outline buttons */
+        thead th.primary-header-cell {
+            position: relative;
+            padding-bottom: 34px; /* Make space for buttons */
+            overflow: visible; /* Allow buttons to show */
         }
 
         thead th.selected {
@@ -237,6 +244,14 @@
         #setupModal .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         #setupModal .tab-pane { height: 100%; width: 100%; overflow-y: auto; }
         
+        /* <!-- MODIFICATION --> Styles for outline controls inside setup modal tree */
+        .setup-tree-controls {
+            padding: 4px 8px 12px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            background: #f8fafc;
+        }
+
         /* Utils */
         .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; }
         .log-line { font-family: monospace; font-size: 0.7rem; border-bottom: 1px solid #333; padding: 6px; color: #a5b4fc; }
@@ -245,20 +260,32 @@
         .btn-outline-xs { padding: 0.15rem 0.5rem; font-size: 0.75rem; border: 1px solid var(--border); color: var(--text-muted); }
         .btn-outline-xs:hover { background: var(--primary-soft); color: var(--primary-dark); border-color: var(--primary); }
 
-        /* Dynamic Outline Buttons Scroll */
-        .outline-scroll-group {
-            display: flex; gap: 0; overflow-x: auto; max-width: 200px;
-            border-radius: 4px; border: 1px solid var(--border); background: white;
-            scrollbar-width: none; /* Firefox */
+        /* <!-- MODIFICATION --> Styles for outline buttons embedded in header */
+        .header-outline-btns {
+            position: absolute;
+            bottom: 4px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
         }
-        .outline-scroll-group::-webkit-scrollbar { display: none; }
-        .outline-scroll-group .btn {
-            border-radius: 0; border: none; border-right: 1px solid var(--border); 
-            font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
-            flex: 0 0 auto; width: 30px;
+        .header-outline-btns .btn {
+            --bs-btn-padding-y: .1rem;
+            --bs-btn-padding-x: .4rem;
+            --bs-btn-font-size: .65rem;
+            border-radius: 4px;
+            background: white;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
-        .outline-scroll-group .btn:last-child { border-right: none; width: auto; padding: 0 8px; }
-        .outline-scroll-group .btn:hover { background: #f8fafc; color: var(--primary); }
+        .header-outline-btns .btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background-color: var(--primary-soft);
+        }
 
 
         @media (max-width: 768px) {
@@ -327,22 +354,22 @@
     </div>
 
     <!-- Toolbar (Sync & Filter) -->
+    <!-- <!-- MODIFICATION --> Toolbar layout changed -->
     <div class="toolbar">
         <div class="d-flex align-items-center gap-3 flex-wrap">
             <input type="text" id="search" class="form-control form-control-sm border-0 bg-white shadow-sm" placeholder="Filter..." style="max-width: 120px;" onkeyup="renderTable()">
-            
-            <!-- Dynamic Outline Buttons Container -->
-            <div id="mainOutlineBtns" class="outline-scroll-group shadow-sm"></div>
-
+        </div>
+        <div class="d-flex align-items-center gap-3 mt-2 mt-md-0">
             <div class="d-flex gap-3 small text-muted">
                 <span title="Modified"><i class="bi bi-pencil text-warning"></i> <b class="text-dark" id="cntMod">0</b></span>
                 <span title="Added"><i class="bi bi-plus-circle text-success"></i> <b class="text-dark" id="cntAdd">0</b></span>
                 <span title="Deleted"><i class="bi bi-trash text-danger"></i> <b class="text-dark" id="cntDel">0</b></span>
             </div>
-        </div>
-        <div class="d-flex gap-2 mt-2 mt-md-0">
-            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="discard()" id="btnDiscard" disabled>Discard</button>
-            <button class="btn btn-sm btn-primary rounded-pill px-3 fw-bold" onclick="sync()" id="btnSync" disabled>Sync Changes</button>
+            <div class="vr"></div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="discard()" id="btnDiscard" disabled>Discard</button>
+                <button class="btn btn-sm btn-primary rounded-pill px-3 fw-bold" onclick="sync()" id="btnSync" disabled>Sync Changes</button>
+            </div>
         </div>
     </div>
 
@@ -370,14 +397,10 @@
                 </ul>
                 <div class="tab-content flex-grow-1">
                     <div class="tab-pane fade show active" id="tabRows">
+                        <!-- <!-- MODIFICATION --> Row setup header layout changed -->
                         <div class="d-flex gap-2 mb-2 align-items-center">
                             <input type="text" id="setupRowSearch" class="form-control form-control-sm" placeholder="Search rows..." onkeyup="renderSetupTree()">
-                            
-                            <!-- Dynamic Outline Buttons for Setup -->
-                            <div id="setupOutlineBtns" class="outline-scroll-group border-secondary-subtle"></div>
-                            
                             <div class="vr"></div>
-                            
                             <button class="btn btn-outline-xs" onclick="toggleAllSetupRows(true)">All</button>
                             <button class="btn btn-outline-xs" onclick="toggleAllSetupRows(false)">None</button>
                         </div>
@@ -524,23 +547,21 @@ function setOutline(level, context) {
     else renderTable();
 }
 
-function updateOutlineButtons() {
+// <!-- MODIFICATION --> Function now returns HTML instead of injecting it
+function generateOutlineButtonsHTML(context) {
     let max = 0;
     Object.values(STATE.meta.depth).forEach(d => max = Math.max(max, d));
     const maxLevel = max + 1;
-
-    const generateBtns = (context) => {
-        let html = '';
-        for(let i=1; i<=maxLevel; i++) {
-             html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`;
-        }
-        html += `<button class="btn" onclick="setOutline(99, '${context}')">All</button>`;
-        return html;
-    };
-
-    document.getElementById('mainOutlineBtns').innerHTML = generateBtns('MAIN');
-    document.getElementById('setupOutlineBtns').innerHTML = generateBtns('SETUP');
-}
+    let html = '';
+    
+    // Create numeric buttons 1..maxLevel
+    for(let i = 1; i <= maxLevel; i++) {
+        html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`;
+    }
+    // Add "All" button
+    html += `<button class="btn" onclick="setOutline(99, '${context}')">All</button>`;
+    return html;
+};
 
 // --- RAW DATA INSPECTOR ---
 function viewRawData() {
@@ -661,7 +682,6 @@ async function fetchData() {
         STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id));
         STATE.visibleCols = new Set(STATE.cols.map(c => c.id));
         calcAllDepth();
-        updateOutlineButtons();
         openSetup(false);
     } catch(e) { if(e!=='PROXY_LOCK') showToast(e, 'danger'); } finally { showLoader(false); }
 }
@@ -691,10 +711,14 @@ function renderSetupCols() {
 }
 function renderSetupTree() {
     const term = document.getElementById('setupRowSearch').value.toLowerCase();
-    const tree = document.getElementById('setupRowTree'); tree.innerHTML = '';
+    const tree = document.getElementById('setupRowTree');
     const primId = STATE.cols.find(c => c.primary)?.id;
     const rowMap = new Map(STATE.allRows.map(r => [r.id, r]));
-    let html = '';
+    
+    // <!-- MODIFICATION --> Generate controls and main content separately
+    const controlsHTML = `<div class="setup-tree-controls outline-scroll-group">${generateOutlineButtonsHTML('SETUP')}</div>`;
+    let mainHTML = '';
+
     STATE.allRows.forEach(r => {
         if(isSetupHidden(r, rowMap)) return;
         const txt = (r.cells.find(c => c.columnId === primId)?.displayValue || r.cells.find(c => c.columnId === primId)?.value || `Row ${r.rowNumber}`);
@@ -710,13 +734,14 @@ function renderSetupTree() {
             ? `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggleSetup(${r.id})"><i class="bi bi-caret-right-fill"></i></div>`
             : `<div style="width:28px"></div>`;
 
-        html += `<div class="setup-tree-item" style="padding-left: ${padding}px">
+        mainHTML += `<div class="setup-tree-item" style="padding-left: ${padding}px">
                     ${toggleIcon}
                     <input type="checkbox" class="form-check-input me-2" onchange="toggleSetupRow(${r.id}, this.checked)" ${checked}>
                     <span class="text-truncate">${txt}</span>
                  </div>`;
     });
-    tree.innerHTML = html;
+
+    tree.innerHTML = controlsHTML + mainHTML;
     updateSetupBadges();
 }
 
@@ -795,13 +820,21 @@ function renderTable() {
     const tb = document.getElementById('tBody'); const th = document.getElementById('tHead');
     tb.innerHTML = ''; th.innerHTML = '';
     
+    const primColId = STATE.cols.find(c => c.primary)?.id;
     let h = `<tr><th class="text-center">Actions</th>`;
+
     STATE.cols.forEach(c => { 
         if(STATE.visibleCols.has(c.id)) {
-            const w = STATE.colWidths[c.id] ? `${STATE.colWidths[c.id]}px` : '150px';
+            const w = STATE.colWidths[c.id] ? `${STATE.colWidths[c.id]}px` : (c.id === primColId ? '250px' : '150px');
             const selClass = STATE.selectedCol === c.id ? 'selected' : '';
-            h += `<th style="width:${w}" class="${selClass}" data-col-id="${c.id}" onclick="selectColumn(event, ${c.id})">
+            // <!-- MODIFICATION --> Add primary header class and outline buttons
+            const isPrimary = c.id === primColId;
+            const primaryClass = isPrimary ? 'primary-header-cell' : '';
+            const outlineBtns = isPrimary ? `<div class="header-outline-btns">${generateOutlineButtonsHTML('MAIN')}</div>` : '';
+
+            h += `<th style="width:${w}" class="${selClass} ${primaryClass}" data-col-id="${c.id}" onclick="selectColumn(event, ${c.id})">
                     ${c.title}
+                    ${outlineBtns}
                     <div class="resizer" onmousedown="startResize(event, this)" ontouchstart="startResize(event, this)"></div>
                   </th>`; 
         }
@@ -942,7 +975,6 @@ function initSortable() {
             const badge = document.getElementById('dragBadge');
             if(badge) badge.remove();
             
-            // <!-- BUG FIX -->: If no move happened, un-hide children and exit.
             if (evt.oldIndex === evt.newIndex) {
                 const descendants = getAllDescendants(rid, STATE.activeRows);
                 descendants.forEach(d => {
@@ -976,12 +1008,9 @@ function initSortable() {
                 toTop = true;
             }
 
-            const allRows = STATE.activeRows;
-            const sourceIndex = allRows.findIndex(r => r.id === rid);
-            if (sourceIndex === -1) { renderTable(); return; }
+            const rowToMove = STATE.allRows.find(r => r.id === rid);
+            if(rowToMove) rowToMove.parentId = newParentId;
 
-            const rowToMove = allRows[sourceIndex];
-            STATE.allRows.find(r => r.id === rid).parentId = newParentId;
             STATE.hierarchyChanges[rid] = { type: 'MOVE', parentId: newParentId, siblingId, toTop };
             
             calcAllDepth(); 
@@ -1013,7 +1042,6 @@ function discard() {
     STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id));
     
     calcAllDepth();
-    updateOutlineButtons();
     renderTable();
     updateSyncUI();
     showToast('Changes discarded', 'success');
@@ -1025,13 +1053,10 @@ async function sync() {
     try {
         if(STATE.dels.size > 0) {
             await api(`/sheets/${STATE.sheetId}/rows?ids=${Array.from(STATE.dels).join(',')}&ignoreRowsNotFound=true`, 'DELETE');
-            STATE.allRows = STATE.allRows.filter(r => !STATE.dels.has(r.id));
-            STATE.activeRows = STATE.activeRows.filter(r => !STATE.dels.has(r.id));
-            STATE.dels.clear();
         }
         
         if (STATE.adds.length > 0) {
-            const newRows = STATE.adds.map(r => {
+            const newRowsPayload = STATE.adds.map(r => {
                 const editsForNewRow = STATE.edits[r.id] || {};
                 const finalCells = (r.cells || []).map(c => ({ ...c }));
                 Object.keys(editsForNewRow).forEach(cid => {
@@ -1054,22 +1079,13 @@ async function sync() {
                 else o.toTop=true; 
                 return o;
             });
-            // The API must be called sequentially for new rows, so we do it one by one for simplicity
-            for (const newRow of newRows) {
-                const res = await api(`/sheets/${STATE.sheetId}/rows`, 'POST', [newRow]);
-                 if(res.result) {
-                    STATE.allRows.push(...res.result);
-                    STATE.activeRows.push(...res.result);
-                    res.result.forEach(r => STATE.selectedRowIds.add(r.id));
-                }
-            }
-            STATE.adds = [];
+            await api(`/sheets/${STATE.sheetId}/rows`, 'POST', newRowsPayload);
         }
 
         const updateIds = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]);
         if(updateIds.size > 0) {
             const updates = Array.from(updateIds)
-                .filter(rid => !String(rid).startsWith("NEW")) // Filter out edits for new rows as they are handled above
+                .filter(rid => !String(rid).startsWith("NEW"))
                 .map(rid => {
                 const payload = { id: parseInt(rid) };
                 if(STATE.edits[rid]) {
@@ -1093,20 +1109,22 @@ async function sync() {
                 return payload;
             });
             if (updates.length > 0) {
-                for(let i=0; i<updates.length; i+=100) {
-                    const batch = updates.slice(i, i+100);
-                    await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', batch);
-                }
+                await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', updates);
             }
-            STATE.edits = {}; STATE.hierarchyChanges = {};
         }
 
-        // Final re-fetch to ensure perfect state sync after all operations
+        // Final re-fetch to ensure perfect state sync and get all new IDs
         const freshData = await api(`/sheets/${STATE.sheetId}?includeAll=true`);
         STATE.allRows = freshData.rows;
         STATE.serverRows = JSON.parse(JSON.stringify(freshData.rows));
         STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id));
         
+        // Clear all local changes
+        STATE.adds = [];
+        STATE.dels.clear();
+        STATE.edits = {};
+        STATE.hierarchyChanges = {};
+
         calcAllDepth(); 
         renderTable(); 
         updateSyncUI(); 
@@ -1117,22 +1135,26 @@ async function sync() {
 // --- ROW ACTIONS ---
 function indentRow(id) {
     const rid = isNaN(id) ? id : parseInt(id);
-    const idx = STATE.activeRows.findIndex(r => r.id === rid);
+    const rowList = String(id).startsWith('NEW') ? STATE.adds : STATE.activeRows;
+    const idx = rowList.findIndex(r => r.id === rid);
     if(idx <= 0) return;
-    const prev = STATE.activeRows[idx-1];
-    STATE.activeRows.find(r => r.id === rid).parentId = prev.id;
-    STATE.allRows.find(r => r.id === rid).parentId = prev.id;
+    const prev = rowList[idx-1];
+    
+    const rowToUpdate = STATE.allRows.find(r => r.id === rid) || STATE.adds.find(r => r.id === rid);
+    if(rowToUpdate) rowToUpdate.parentId = prev.id;
+    
     STATE.hierarchyChanges[rid] = { type: 'INDENT', parentId: prev.id };
     calcAllDepth(); renderTable(); updateSyncUI();
 }
 function outdentRow(id) {
     const rid = isNaN(id) ? id : parseInt(id);
-    const row = STATE.activeRows.find(r => r.id === rid);
+    const row = STATE.allRows.find(r => r.id === rid) || STATE.adds.find(r => r.id === rid);
     if(!row || !row.parentId) return;
-    const parent = STATE.activeRows.find(p => p.id === row.parentId);
+    
+    const parent = STATE.allRows.find(p => p.id === row.parentId) || STATE.adds.find(p => p.id === row.parentId);
     const newPid = parent ? parent.parentId : undefined;
+    
     row.parentId = newPid;
-    STATE.allRows.find(r => r.id === rid).parentId = newPid;
     STATE.hierarchyChanges[rid] = { type: 'OUTDENT', parentId: newPid, siblingId: parent.id };
     calcAllDepth(); renderTable(); updateSyncUI();
 }
