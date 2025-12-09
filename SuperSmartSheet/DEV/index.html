@@ -932,13 +932,20 @@ function renderTable() {
     // Apply Filtering
     const activeRowsToRender = getFilteredRows();
     STATE.activeRows = activeRowsToRender; // Update global state reference for drag/drop
-    const activeIds = new Set(activeRowsToRender.map(r => r.id));
+    const rowMap = new Map(activeRowsToRender.map(r => [r.id, r])); // Create map for fast lookups
 
     activeRowsToRender.forEach((r, idx) => { 
-        if(isHidden(r, activeIds)) return; 
-
         const tr = document.createElement('tr'); 
         tr.setAttribute('data-id', r.id); 
+        if (r.parentId) {
+            tr.setAttribute('data-parent-id', r.parentId);
+        }
+        
+        // Apply initial hidden state for performance
+        if (isHidden(r, rowMap)) {
+            tr.style.display = 'none';
+        }
+
         if(STATE.dels.has(r.id)) tr.className = 'row-deleted'; 
         else if(String(r.id).startsWith('NEW')) tr.className = 'row-new'; 
         else if(STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) tr.className = 'row-modified'; 
@@ -973,8 +980,8 @@ function renderTable() {
                 for(let i=0; i<depth; i++) html += `<div class="tree-indent"></div>`; 
                 const hasChild = activeRowsToRender.some(x => x.parentId === r.id); 
                 if(hasChild) { 
-                    const col = STATE.meta.collapsed.has(r.id); 
-                    html += `<div class="tree-toggle ${col?'':'expanded'}" onclick="toggle('${r.id}')"><i class="bi bi-caret-right-fill"></i></div>`; 
+                    const isCollapsed = STATE.meta.collapsed.has(r.id); 
+                    html += `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggle('${r.id}', event)"><i class="bi bi-caret-right-fill"></i></div>`; 
                 } else { html += `<div style="width:28px"></div>`; } 
             } 
             
@@ -991,15 +998,55 @@ function renderTable() {
     Array.from(tb.querySelectorAll('textarea')).forEach(ta => { ta.style.height='auto'; ta.style.height=(ta.scrollHeight)+'px'; }); 
 }
 
-function isHidden(r, activeSet) { 
-    if(!r.parentId) return false; 
-    if(!activeSet.has(r.parentId)) return false; 
-    if(STATE.meta.collapsed.has(r.parentId)) return true; 
-    const parentInActive = STATE.activeRows.find(x => x.id === r.parentId); 
-    if(parentInActive) return isHidden(parentInActive, activeSet); 
-    return false; 
+function isHidden(r, rowMap) {
+    // Fast, iterative check up the hierarchy
+    let current = r;
+    while (current && current.parentId) {
+        // If any ancestor is in the collapsed set, this row is hidden.
+        if (STATE.meta.collapsed.has(current.parentId)) {
+            return true;
+        }
+        // Move up to the parent. The rowMap makes this lookup O(1).
+        current = rowMap.get(current.parentId);
+    }
+    return false;
 }
-function toggle(id) { const realId = isNaN(id) ? id : parseInt(id); if(STATE.meta.collapsed.has(realId)) STATE.meta.collapsed.delete(realId); else STATE.meta.collapsed.add(realId); renderTable(); }
+
+function toggle(id, event) {
+    const realId = isNaN(id) ? id : parseInt(id);
+    const isCollapsing = !STATE.meta.collapsed.has(realId);
+    const toggleButton = event.currentTarget;
+
+    // Update state and button class
+    if (isCollapsing) {
+        STATE.meta.collapsed.add(realId);
+        toggleButton.classList.remove('expanded');
+    } else {
+        STATE.meta.collapsed.delete(realId);
+        toggleButton.classList.add('expanded');
+    }
+
+    // This function recursively shows/hides descendants in the DOM without re-rendering
+    const toggleChildren = (parentId, show) => {
+        const children = document.querySelectorAll(`#tBody tr[data-parent-id='${parentId}']`);
+        children.forEach(child => {
+            child.style.display = show ? '' : 'none';
+            const childId = isNaN(child.dataset.id) ? child.dataset.id : parseInt(child.dataset.id);
+            
+            // If we are showing children, we must respect their own collapsed state.
+            // If a child is NOT collapsed, we can recurse to show its children too.
+            // If we are hiding, we always recurse to hide all descendants.
+            if (show && !STATE.meta.collapsed.has(childId)) {
+                toggleChildren(childId, true);
+            } else if (!show) {
+                toggleChildren(childId, false);
+            }
+        });
+    };
+
+    toggleChildren(realId, !isCollapsing);
+}
+
 function toggleMobileActions(btn) { const wrap = btn.nextElementSibling; if (wrap.classList.contains('show')) wrap.classList.remove('show'); else { document.querySelectorAll('.actions-wrapper.show').forEach(el => el.classList.remove('show')); wrap.classList.add('show'); } }
 
 // --- ROW OPERATIONS ---
