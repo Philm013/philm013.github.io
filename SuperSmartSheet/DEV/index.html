@@ -518,17 +518,149 @@ function convertDeletedRowToNew(oldId) { const edits = STATE.edits[oldId]; if(!e
 function generateOutlineButtonsHTML(context) { let max = 0; Object.values(STATE.meta.depth).forEach(d => max = Math.max(max, d)); const maxLevel = max + 1; let html = ''; for(let i = 1; i <= maxLevel; i++) { html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`; } html += `<button class="btn" onclick="setOutline(99, '${context}')">All</button>`; return `<div class="header-outline-btns">${html}</div>`; };
 function setOutline(level, context) { const targetSet = context === 'SETUP' ? STATE.meta.setupCollapsed : STATE.meta.collapsed; targetSet.clear(); if(level < 99) { STATE.allRows.forEach(r => { const d = STATE.meta.depth[r.id] || 0; if(d >= level - 1) targetSet.add(r.id); }); } if(context === 'SETUP') renderSetupTree(); else renderTable(); }
 function renderSetupTree() { const term = document.getElementById('setupRowSearch').value.toLowerCase(); const tree = document.getElementById('setupRowTree'); const primId = STATE.cols.find(c => c.primary)?.id; const rowMap = new Map(STATE.allRows.map(r => [r.id, r])); let mainHTML = ''; STATE.allRows.forEach(r => { if(isSetupHidden(r, rowMap)) return; const txt = (r.cells.find(c => c.columnId === primId)?.displayValue || `Row ${r.rowNumber}`); if(term && !String(txt).toLowerCase().includes(term)) return; const d = STATE.meta.depth[r.id] || 0; const checked = STATE.selectedRowIds.has(r.id) ? 'checked' : ''; const padding = d * 20; const hasChild = STATE.allRows.some(x => x.parentId === r.id); const isCollapsed = STATE.meta.setupCollapsed.has(r.id); let toggleIcon = hasChild ? `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggleSetup(${r.id})"><i class="bi bi-caret-right-fill"></i></div>` : `<div style="width:28px"></div>`; mainHTML += `<div style="display:flex; align-items-center; padding:4px 0; border-bottom:1px solid var(--border); padding-left:${padding}px">${toggleIcon}<input type="checkbox" class="form-check-input me-2" onchange="toggleSetupRow(${r.id}, this.checked)" ${checked}><span class="text-truncate small">${txt}</span></div>`; }); tree.innerHTML = mainHTML; }
-function openSetup(isEdit = false) { renderSetupCols(); renderSetupTree(); new bootstrap.Modal('#setupModal').show(); }
+function openSetup(isEdit = false) { renderSetupTree(); renderSetupCols(); new bootstrap.Modal('#setupModal').show(); }
 function isSetupHidden(r, map) { if(!r.parentId) return false; if(STATE.meta.setupCollapsed.has(r.parentId)) return true; const p = map.get(r.parentId); if(p) return isSetupHidden(p, map); return false; }
 function toggleSetup(id) { if(STATE.meta.setupCollapsed.has(id)) STATE.meta.setupCollapsed.delete(id); else STATE.meta.setupCollapsed.add(id); renderSetupTree(); }
 function toggleSetupRow(id, status) { if(status) STATE.selectedRowIds.add(id); else STATE.selectedRowIds.delete(id); const children = STATE.allRows.filter(r => r.parentId === id); children.forEach(c => toggleSetupRow(c.id, status)); renderSetupTree(); }
 function toggleAllSetupRows(status) { if(status) STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); else STATE.selectedRowIds.clear(); renderSetupTree(); }
 function toggleAllCols(status) { document.querySelectorAll('#setupColList input:not([disabled])').forEach(cb => cb.checked = status); }
-function renderSetupCols() { const list = document.getElementById('setupColList'); if(!list) return; const currentView = STATE.views.find(v => v.id === STATE.currentViewId); const visibleSet = new Set(currentView ? currentView.visibleCols : STATE.cols.map(c=>c.id)); const primaryColId = STATE.cols.find(c => c.primary)?.id; let html = ''; STATE.cols.forEach(c => { const isPrimary = c.id === primaryColId; const checked = (visibleSet.has(c.id) || isPrimary) ? 'checked' : ''; const disabled = isPrimary ? 'disabled' : ''; const opacity = isPrimary ? 'opacity-75' : ''; const badge = isPrimary ? '<span class="badge bg-primary-subtle text-primary border ms-2">Primary</span>' : ''; html += `<div class="d-flex align-items-center p-2 border rounded bg-white mb-1 ${opacity}"><input class="form-check-input m-0" type="checkbox" value="${c.id}" id="col_${c.id}" ${checked} ${disabled} style="cursor:pointer"><label class="form-check-label flex-grow-1 ms-3 fw-bold small" for="col_${c.id}" style="cursor:pointer">${c.title}${badge}</label></div>`; }); list.innerHTML = html; }
+function renderSetupCols() {
+    const list = document.getElementById('setupColList');
+    if(!list) return;
+    const currentView = STATE.views.find(v => v.id === STATE.currentViewId);
+    const visibleSet = new Set(currentView ? currentView.visibleCols : STATE.cols.map(c=>c.id));
+    const primaryColId = STATE.cols.find(c => c.primary)?.id;
+    let html = '';
+    STATE.cols.forEach(c => {
+        const isPrimary = c.id === primaryColId;
+        const checked = (visibleSet.has(c.id) || isPrimary) ? 'checked' : '';
+        const disabled = isPrimary ? 'disabled' : '';
+        const opacity = isPrimary ? 'opacity-75' : '';
+        const badge = isPrimary ? '<span class="badge bg-primary-subtle text-primary border ms-2">Primary</span>' : '';
+        html += `<div class="d-flex align-items-center p-2 border rounded bg-white mb-1 ${opacity}"><input class="form-check-input m-0" type="checkbox" value="${c.id}" id="col_${c.id}" ${checked} ${disabled} style="cursor:pointer"><label class="form-check-label flex-grow-1 ms-3 fw-bold small" for="col_${c.id}" style="cursor:pointer">${c.title}${badge}</label></div>`;
+    });
+    list.innerHTML = html;
+    // --- ADD THIS LINE ---
+    document.getElementById('badgeCols').innerText = visibleSet.size;
+}
 function applySetup() { const curView = STATE.views.find(v => v.id === STATE.currentViewId); if (!curView) return; const checkboxes = document.querySelectorAll('#setupColList input:checked'); let newVisible = Array.from(checkboxes).map(cb => parseInt(cb.value)); const primaryColId = STATE.cols.find(c => c.primary)?.id; if (primaryColId && !newVisible.includes(primaryColId)) { newVisible.unshift(primaryColId); } curView.visibleCols = newVisible; saveViewsToStorage(); bootstrap.Modal.getInstance('#setupModal').hide(); renderTable(); }
 function startResize(e, resizer) { e.preventDefault(); e.stopPropagation(); let x = e.touches ? e.touches[0].clientX : e.clientX; let th = resizer.parentElement; let w = th.getBoundingClientRect().width; resizer.classList.add('resizing'); const onMove = (evt) => { if(evt.cancelable) evt.preventDefault(); const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX; const newWidth = Math.max(50, w + (clientX - x)); th.style.width = `${newWidth}px`; }; const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp); if(th.dataset.colId) updateViewColState(parseInt(th.dataset.colId), parseInt(th.style.width)); resizer.classList.remove('resizing'); }; document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); document.addEventListener('touchmove', onMove, { passive: false }); document.addEventListener('touchend', onUp); }
 function getFilteredRows() { let rows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id)); rows = [...rows, ...STATE.adds]; const currentView = STATE.views.find(v => v.id === STATE.currentViewId); if (currentView && currentView.filters && currentView.filters.length > 0) { const matchingIds = new Set(); rows.forEach(r => { let pass = true; for (const f of currentView.filters) { const cell = r.cells.find(c => c.columnId === f.colId); let val = ''; if (STATE.edits[r.id] && STATE.edits[r.id][f.colId] !== undefined) { val = String(STATE.edits[r.id][f.colId]); } else if (cell) { val = String(cell.displayValue || cell.value || ''); } val = val.toLowerCase(); const filterVal = (f.value || '').toLowerCase(); if (f.operator === 'contains' && !val.includes(filterVal)) pass = false; if (f.operator === 'eq' && val !== filterVal) pass = false; if (f.operator === 'empty' && val !== '') pass = false; if (f.operator === 'notempty' && val === '') pass = false; if (!pass) break; } if (pass) matchingIds.add(r.id); }); const finalIds = new Set(); const rowMap = new Map(rows.map(r => [r.id, r])); matchingIds.forEach(id => { finalIds.add(id); let curr = rowMap.get(id); while(curr && curr.parentId) { finalIds.add(curr.parentId); curr = rowMap.get(curr.parentId); } }); rows = rows.filter(r => finalIds.has(r.id)); } const term = document.getElementById('search').value.toLowerCase(); if (term) { const searchIds = new Set(rows.filter(r => (r.cells || []).map(c=>c.displayValue||c.value||'').join(' ').toLowerCase().includes(term)).map(r => r.id)); const rowMap = new Map([...STATE.allRows, ...STATE.adds].map(r => [r.id, r])); const finalSearchIds = new Set(); searchIds.forEach(id => { finalSearchIds.add(id); let curr = rowMap.get(id); while(curr && curr.parentId) { finalSearchIds.add(curr.parentId); curr = rowMap.get(curr.parentId); } }); rows = [...STATE.allRows, ...STATE.adds].filter(r => finalSearchIds.has(r.id)); } return rows; }
-function renderTable() { const tb = document.getElementById('tBody'); const th = document.getElementById('tHead'); tb.innerHTML = ''; th.innerHTML = ''; const curView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView(); const visibleSet = new Set(curView.visibleCols); const colWidths = curView.colWidths || {}; const filters = curView.filters || []; const primColId = STATE.cols.find(c => c.primary)?.id; let h = `<tr><th class="text-center">Actions</th>`; STATE.cols.forEach(c => { if(visibleSet.has(c.id)) { const w = colWidths[c.id] ? `${colWidths[c.id]}px` : (c.id === primColId ? '250px' : '150px'); const selClass = STATE.selectedCol === c.id ? 'selected' : ''; const isPrimary = c.id === primColId; const primaryClass = isPrimary ? 'primary-header-cell' : ''; const outlineBtns = isPrimary ? generateOutlineButtonsHTML('MAIN') : ''; const isFiltered = filters.some(f => f.colId === c.id); const filterBtn = `<button class="col-filter-btn ${isFiltered ? 'active' : ''}" onclick="openColumnFilterPopover(event, ${c.id})"><i class="bi bi-funnel-fill"></i></button>`; h += `<th style="width:${w}" class="${selClass} ${primaryClass}" data-col-id="${c.id}" onclick="selectColumn(event, ${c.id})"><div class="col-title-wrap"><span>${c.title}</span>${filterBtn}</div>${outlineBtns}<div class="resizer" onmousedown="startResize(event, this)" ontouchstart="startResize(event, this)"></div></th>`; } }); h += `</tr>`; th.innerHTML = h; const activeRowsToRender = getFilteredRows(); STATE.activeRows = activeRowsToRender; const rowMap = new Map(activeRowsToRender.map(r => [r.id, r])); activeRowsToRender.forEach((r) => { const tr = document.createElement('tr'); tr.setAttribute('data-id', r.id); if (r.parentId) tr.setAttribute('data-parent-id', r.parentId); if (isHidden(r, rowMap)) tr.style.display = 'none'; if(STATE.dels.has(r.id)) tr.className = 'row-deleted'; else if(String(r.id).startsWith('NEW')) tr.className = 'row-new'; else if(STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) tr.className = 'row-modified'; if (r.format) { const formatParts = r.format.split(','); const bgColorCode = formatParts[15]; const cssColor = SMARTSHEET_COLORS[bgColorCode]; if (cssColor) tr.style.setProperty('--row-bg-override', cssColor); } let html = `<td class="text-center border-end p-0">`; if(STATE.dels.has(r.id)) { html += `<button class="btn btn-sm border-0 text-secondary" onclick="restoreRow('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>`; } else { html += `<button class="mobile-toggle-btn" onclick="toggleMobileActions(this)"><i class="bi bi-three-dots"></i></button><div class="actions-wrapper"><button class="action-btn drag-handle"><i class="bi bi-grip-vertical"></i></button><button class="action-btn" onclick="indentRow('${r.id}')"><i class="bi bi-text-indent-left"></i></button><button class="action-btn" onclick="outdentRow('${r.id}')"><i class="bi bi-text-indent-right"></i></button><div class="add-btn-group"><button class="add-btn-part" onclick="addNewRowAbove('${r.id}')"><i class="bi bi-chevron-up"></i></button><button class="add-btn-part" onclick="addNewRowBelow('${r.id}')"><i class="bi bi-chevron-down"></i></button></div><button class="action-btn btn-del" onclick="delRow('${r.id}')"><i class="bi bi-trash"></i></button></div>`; } html += `</td>`; STATE.cols.forEach(c => { if(!visibleSet.has(c.id)) return; const cid = c.id; let val = STATE.edits[r.id]?.[cid]; if(val === undefined) { const cell = (r.cells || []).find(x => x.columnId === cid); val = cell ? (cell.displayValue ?? cell.value ?? '') : ''; } html += `<td>`; if(c.primary) { html += `<div class="tree-wrap">`; const depth = STATE.meta.depth[r.id] || 0; for(let i=0; i<depth; i++) html += `<div class="tree-indent"></div>`; const hasChild = activeRowsToRender.some(x => x.parentId === r.id); if(hasChild) { const isCollapsed = STATE.meta.collapsed.has(r.id); html += `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggle('${r.id}', event)"><i class="bi bi-caret-right-fill"></i></div>`; } else { html += `<div style="width:28px"></div>`; } } if(STATE.dels.has(r.id)) html += `<div class="p-2 small text-muted">${val}</div>`; else html += getCellHtml(r.id, c, val); if(c.primary) html += `</div>`; html += `</td>`; }); tr.innerHTML = html; tb.appendChild(tr); }); initSortable(); Array.from(tb.querySelectorAll('textarea')).forEach(ta => { ta.style.height='auto'; ta.style.height=(ta.scrollHeight)+'px'; }); }
+function renderTable() {
+    const tb = document.getElementById('tBody');
+    const th = document.getElementById('tHead');
+    // Clear headers and prepare for new content
+    th.innerHTML = '';
+
+    const curView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView();
+    const visibleSet = new Set(curView.visibleCols);
+    const colWidths = curView.colWidths || {};
+    const filters = curView.filters || [];
+    const primColId = STATE.cols.find(c => c.primary)?.id;
+
+    // 1. Build Header HTML (no changes here, this is fast)
+    let h = `<tr><th class="text-center">Actions</th>`;
+    STATE.cols.forEach(c => {
+        if (visibleSet.has(c.id)) {
+            const w = colWidths[c.id] ? `${colWidths[c.id]}px` : (c.id === primColId ? '250px' : '150px');
+            const selClass = STATE.selectedCol === c.id ? 'selected' : '';
+            const isPrimary = c.id === primColId;
+            const primaryClass = isPrimary ? 'primary-header-cell' : '';
+            const outlineBtns = isPrimary ? generateOutlineButtonsHTML('MAIN') : '';
+            const isFiltered = filters.some(f => f.colId === c.id);
+            const filterBtn = `<button class="col-filter-btn ${isFiltered ? 'active' : ''}" onclick="openColumnFilterPopover(event, ${c.id})"><i class="bi bi-funnel-fill"></i></button>`;
+            h += `<th style="width:${w}" class="${selClass} ${primaryClass}" data-col-id="${c.id}" onclick="selectColumn(event, ${c.id})"><div class="col-title-wrap"><span>${c.title}</span>${filterBtn}</div>${outlineBtns}<div class="resizer" onmousedown="startResize(event, this)" ontouchstart="startResize(event, this)"></div></th>`;
+        }
+    });
+    h += `</tr>`;
+    th.innerHTML = h;
+
+    // 2. Get rows and prepare for optimized body rendering
+    const activeRowsToRender = getFilteredRows();
+    STATE.activeRows = activeRowsToRender;
+    const rowMap = new Map(activeRowsToRender.map(r => [r.id, r]));
+    
+    // --- OPTIMIZATION START ---
+    let bodyHtml = []; // Array to hold HTML strings for each row
+    const hiddenByParent = new Set(); // Tracks rows hidden because their parent is collapsed
+
+    activeRowsToRender.forEach((r) => {
+        // More efficient check for visibility
+        if (r.parentId && hiddenByParent.has(r.parentId)) {
+            hiddenByParent.add(r.id); // Mark this row as hidden so its children are also hidden
+            return; // Skip rendering this row entirely
+        }
+
+        // Determine row state classes
+        let rowClass = '';
+        if (STATE.dels.has(r.id)) rowClass = 'row-deleted';
+        else if (String(r.id).startsWith('NEW')) rowClass = 'row-new';
+        else if (STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) rowClass = 'row-modified';
+        
+        // Handle row background color override
+        let rowStyle = '';
+        if (r.format) {
+            const formatParts = r.format.split(',');
+            const bgColorCode = formatParts[15];
+            const cssColor = SMARTSHEET_COLORS[bgColorCode];
+            if (cssColor) rowStyle = `style="--row-bg-override: ${cssColor}"`;
+        }
+        
+        let rowHtml = `<tr data-id="${r.id}" ${r.parentId ? `data-parent-id="${r.parentId}"` : ''} class="${rowClass}" ${rowStyle}>`;
+        
+        // Actions cell
+        rowHtml += `<td class="text-center border-end p-0">`;
+        if (STATE.dels.has(r.id)) {
+            rowHtml += `<button class="btn btn-sm border-0 text-secondary" onclick="restoreRow('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>`;
+        } else {
+            rowHtml += `<button class="mobile-toggle-btn" onclick="toggleMobileActions(this)"><i class="bi bi-three-dots"></i></button><div class="actions-wrapper"><button class="action-btn drag-handle"><i class="bi bi-grip-vertical"></i></button><button class="action-btn" onclick="indentRow('${r.id}')"><i class="bi bi-text-indent-left"></i></button><button class="action-btn" onclick="outdentRow('${r.id}')"><i class="bi bi-text-indent-right"></i></button><div class="add-btn-group"><button class="add-btn-part" onclick="addNewRowAbove('${r.id}')"><i class="bi bi-chevron-up"></i></button><button class="add-btn-part" onclick="addNewRowBelow('${r.id}')"><i class="bi bi-chevron-down"></i></button></div><button class="action-btn btn-del" onclick="delRow('${r.id}')"><i class="bi bi-trash"></i></button></div>`;
+        }
+        rowHtml += `</td>`;
+        
+        // Data cells
+        STATE.cols.forEach(c => {
+            if (!visibleSet.has(c.id)) return;
+            const cid = c.id;
+            let val = STATE.edits[r.id]?.[cid];
+            if (val === undefined) {
+                const cell = (r.cells || []).find(x => x.columnId === cid);
+                val = cell ? (cell.displayValue ?? cell.value ?? '') : '';
+            }
+            rowHtml += `<td>`;
+            if (c.primary) {
+                rowHtml += `<div class="tree-wrap">`;
+                const depth = STATE.meta.depth[r.id] || 0;
+                for (let i = 0; i < depth; i++) rowHtml += `<div class="tree-indent"></div>`;
+                const hasChild = activeRowsToRender.some(x => x.parentId === r.id);
+                if (hasChild) {
+                    const isCollapsed = STATE.meta.collapsed.has(r.id);
+                    if (isCollapsed) hiddenByParent.add(r.id); // Mark for children to be hidden
+                    rowHtml += `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggle('${r.id}', event)"><i class="bi bi-caret-right-fill"></i></div>`;
+                } else {
+                    rowHtml += `<div style="width:28px"></div>`;
+                }
+            }
+            if (STATE.dels.has(r.id)) rowHtml += `<div class="p-2 small text-muted">${String(val || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`;
+            else rowHtml += getCellHtml(r.id, c, val);
+            if (c.primary) rowHtml += `</div>`;
+            rowHtml += `</td>`;
+        });
+        
+        rowHtml += `</tr>`;
+        bodyHtml.push(rowHtml); // Add the complete row string to the array
+    });
+
+    // 3. Set the entire table body HTML in a single operation
+    tb.innerHTML = bodyHtml.join('');
+    // --- OPTIMIZATION END ---
+
+    // 4. Post-render initializations
+    initSortable();
+    Array.from(tb.querySelectorAll('textarea')).forEach(ta => {
+        ta.style.height = 'auto';
+        ta.style.height = (ta.scrollHeight) + 'px';
+    });
+}
 function isHidden(r, rowMap) { let current = r; while (current && current.parentId) { if (STATE.meta.collapsed.has(current.parentId)) return true; current = rowMap.get(current.parentId); } return false; }
 function toggle(id, event) { const realId = isNaN(id) ? id : parseInt(id); const isCollapsing = !STATE.meta.collapsed.has(realId); const toggleButton = event.currentTarget; if (isCollapsing) { STATE.meta.collapsed.add(realId); toggleButton.classList.remove('expanded'); } else { STATE.meta.collapsed.delete(realId); toggleButton.classList.add('expanded'); } const toggleChildren = (parentId, show) => { const children = document.querySelectorAll(`#tBody tr[data-parent-id='${parentId}']`); children.forEach(child => { child.style.display = show ? '' : 'none'; const childId = isNaN(child.dataset.id) ? child.dataset.id : parseInt(child.dataset.id); if (show && !STATE.meta.collapsed.has(childId)) { toggleChildren(childId, true); } else if (!show) { toggleChildren(childId, false); } }); }; toggleChildren(realId, !isCollapsing); }
 function toggleMobileActions(btn) { const wrap = btn.nextElementSibling; if (wrap.classList.contains('show')) wrap.classList.remove('show'); else { document.querySelectorAll('.actions-wrapper.show').forEach(el => el.classList.remove('show')); wrap.classList.add('show'); } }
