@@ -135,7 +135,7 @@
         .drag-handle { cursor: grab; color: #94a3b8; }
         .drag-handle:active { cursor: grabbing; color: var(--primary); }
 
-        .cell-textarea { width: 100%; height: 100%; min-height: 48px; border: none; background: transparent; padding: 12px; font-family: inherit; color: inherit; resize: none; overflow-y: hidden; line-height: 1.5; }
+        .cell-textarea { width: 100%; height: 100%; min-height: 48px; border: none; font-family: inherit; color: inherit; resize: none; overflow-y: hidden; line-height: 1.5; }
         .cell-textarea:focus { outline: none; background: var(--surface); box-shadow: inset 0 0 0 2px var(--primary); }
         
         /* Dark mode inputs */
@@ -178,7 +178,7 @@
         .tree-toggle i { transition: transform 0.2s; font-size: 0.8rem; }
         .expanded i { transform: rotate(90deg); }
         
-        .header-outline-btns { position: absolute; bottom: 0; left: 0; right: 0; height: 18px; display: flex; justify-content: center; align-items: center; gap: 0; background: var(--bg); border-top: 1px solid var(--border); }
+        .header-outline-btns { position: absolute; bottom: 0; left: 0; right: 0; height: 18px; display: flex; align-items: center; gap: 0; background: var(--bg); border-top: 1px solid var(--border); }
         .header-outline-btns .btn { border-radius: 0; background: transparent; border: none; border-right: 1px solid var(--border); color: var(--text-muted); font-size: 0.6rem; font-weight: 700; padding: 0 10px; height: 100%; display: flex; align-items: center; }
         .header-outline-btns .btn:first-child { border-left: 1px solid var(--border); }
         .header-outline-btns .btn:hover { color: var(--primary); background-color: var(--surface); }
@@ -250,11 +250,6 @@
         </div>
     </div>
     
-    <!-- Views Bar -->
-    <div class="views-bar" id="viewsContainer">
-        <!-- Tabs injected here -->
-    </div>
-
     <!-- Toolbar -->
     <div class="toolbar">
         <div class="d-flex align-items-center gap-2">
@@ -284,6 +279,10 @@
                 <button class="btn btn-sm btn-primary rounded-pill fw-bold" onclick="sync()" id="btnSync" disabled>Sync</button>
             </div>
         </div>
+    </div>
+     <!-- Views Bar -->
+    <div class="views-bar" id="viewsContainer">
+        <!-- Tabs injected here -->
     </div>
 
     <div id="mobileSearchBar" class="mobile-search-bar">
@@ -1177,7 +1176,7 @@ function openMultiPopover(event, rid, cid, encoded) {
     box.innerHTML = ''; 
     box.onchange = saveMultiFromPopover; // Attach event listener
     const opts = Array.from(new Set([...(col.options || []), ...vals])); 
-    opts.forEach((o, i) => { if (!o) return; const checked = vals.includes(o) ? 'checked' : ''; const safeVal = String(o).replace(/"/g, '&quot;'); const uId = `opt_${i}`; box.innerHTML += `<div class="form-check p-2"><input class="form-check-input" type="checkbox" value="${safeVal}" id="${uId}" ${checked}><label class="form-check-label w-100 ps-2" for="${uId}">${o}</label></div>`; }); 
+    opts.forEach((o, i) => { if (!o) return; const checked = vals.includes(o) ? 'checked' : ''; const safeVal = String(o).replace(/"/g, '&quot;'); const uId = `opt_${i}`; box.innerHTML += `<div class="form-check"><input class="form-check-input" type="checkbox" value="${safeVal}" id="${uId}" ${checked}><label class="form-check-label w-100 ps-2" for="${uId}">${o}</label></div>`; }); 
     repositionPopover(popover, cell); 
     popover.classList.add('show'); 
 }
