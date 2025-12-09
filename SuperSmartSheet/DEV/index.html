@@ -27,7 +27,8 @@
             --row-mod: #fff7ed;
             --row-new: #f0fdf4;
             --row-del: #fef2f2;
-            --row-bg-override: transparent; /* Default to transparent so surface shows through */
+            /* Default row override is transparent so we can see the selection/hover states */
+            --row-bg-override: transparent; 
             --th-bg: #f8fafc;
             --th-border: #e2e8f0;
         }
@@ -101,7 +102,11 @@
         thead th.primary-header-cell { position: sticky; padding-bottom: 22px; overflow: visible; z-index: 12; }
         thead th.selected { background-color: var(--primary-soft) !important; color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
         
-        /* Key Fix: Use variable for background to allow overrides */
+        /* 
+           KEY FIX: The 'td' background defaults to the CSS variable.
+           If the row sets the variable, the cells inherit it.
+           If a specific cell has a background, it is set inline via style attribute, overriding this.
+        */
         td {
             border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0;
             background-color: var(--row-bg-override, var(--surface));
@@ -418,23 +423,52 @@
 <script>
 const CONFIG = { proxy: "https://cors-anywhere.herokuapp.com/", api: "https://api.smartsheet.com/2.0" };
 
-// SMARTSHEET COLORS MAPPING
-const SMARTSHEET_COLORS = {
-    '0': '#FFFFFF', '1': '#FFFFFF', '2': '#F0F0F0', '3': '#D9D9D9', '4': '#BDBDBD', '5': '#9E9E9E', '6': '#808080', '7': '#616161', '8': '#424242', '9': '#212121', '10': '#000000',
-    '11': '#FFCDD2', '12': '#EF9A9A', '13': '#E57373', '14': '#EF5350', '15': '#F44336', '16': '#E53935', '17': '#D32F2F', '18': '#C62828', '19': '#B71C1C',
-    '20': '#FFE0B2', '21': '#FFCC80', '22': '#FFB74D', '23': '#FFA726', '24': '#FF9800', '25': '#FB8C00', '26': '#F57C00', '27': '#EF6C00', '28': '#E65100',
-    '29': '#FFF9C4', '30': '#FFF59D', '31': '#FFF176', '32': '#FFEE58', '33': '#FFEB3B', '34': '#FDD835', '35': '#FBC02D', '36': '#F9A825', '37': '#F57F17',
-    '38': '#F0F4C3', '39': '#E6EE9C', '40': '#DCE775', '41': '#D4E157', '42': '#CDDC39', '43': '#C0CA33', '44': '#AFB42B', '45': '#9E9D24', '46': '#827717',
-    '47': '#DCEDC8', '48': '#C5E1A5', '49': '#AED581', '50': '#9CCC65', '51': '#8BC34A', '52': '#7CB342', '53': '#689F38', '54': '#558B2F', '55': '#33691E',
-    '56': '#C8E6C9', '57': '#A5D6A7', '58': '#81C784', '59': '#66BB6A', '60': '#4CAF50', '61': '#43A047', '62': '#388E3C', '63': '#2E7D32', '64': '#1B5E20',
-    '65': '#B2DFDB', '66': '#80CBC4', '67': '#4DB6AC', '68': '#26A69A', '69': '#009688', '70': '#00897B', '71': '#00796B', '72': '#00695C', '73': '#004D40',
-    '74': '#B2EBF2', '75': '#80DEEA', '76': '#4DD0E1', '77': '#26C6DA', '78': '#00BCD4', '79': '#00ACC1', '80': '#0097A7', '81': '#00838F', '82': '#006064',
-    '83': '#B3E5FC', '84': '#81D4FA', '85': '#4FC3F7', '86': '#29B6F6', '87': '#03A9F4', '88': '#039BE5', '89': '#0288D1', '90': '#0277BD', '91': '#01579B',
-    '92': '#BBDEFB', '93': '#90CAF9', '94': '#64B5F6', '95': '#42A5F5', '96': '#2196F3', '97': '#1E88E5', '98': '#1976D2', '99': '#1565C0', '100': '#0D47A1',
-    '101': '#C5CAE9', '102': '#9FA8DA', '103': '#7986CB', '104': '#5C6BC0', '105': '#3F51B5', '106': '#3949AB', '107': '#303F9F', '108': '#283593', '109': '#1A237E',
-    '110': '#D1C4E9', '111': '#B39DDB', '112': '#9575CD', '113': '#7E57C2', '114': '#673AB7', '115': '#5E35B1', '116': '#512DA8', '117': '#4527A0', '118': '#311B92',
-    '119': '#E1BEE7', '120': '#CE93D8', '121': '#BA68C8', '122': '#AB47BC', '123': '#9C27B0', '124': '#8E24AA', '125': '#7B1FA2', '126': '#6A1B9A', '127': '#4A148C'
-};
+// --- CORRECT COLOR PALETTE BASED ON SMARTSHEET SERVERINFO ---
+// This array maps exactly to the indices used in the format string.
+const SMARTSHEET_PALETTE = [
+  "none",          // 0
+  "transparent",   // 1
+  "#000000",       // 2
+  "#0B347D",       // 3
+  "#1061C3",       // 4
+  "#237F2E",       // 5
+  "#40B14B",       // 6
+  "#592C00",       // 7
+  "#5FB3F9",       // 8
+  "#61058B",       // 9
+  "#757575",       // 10
+  "#7ED085",       // 11
+  "#9210AD",       // 12
+  "#974C00",       // 13
+  "#991310",       // 14
+  "#B9DDFC",       // 15
+  "#BDBDBD",       // 16
+  "#C6E7C8",       // 17
+  "#D0AF8F",       // 18
+  "#D190DA",       // 19
+  "#E2F2FE",       // 20
+  "#E5E5E5",       // 21
+  "#E7F5E9",       // 22
+  "#EA352E",       // 23
+  "#EA5000",       // 24
+  "#EBC700",       // 25
+  "#EBC7EF",       // 26
+  "#EEDCCA",       // 27
+  "#F2E8DE",       // 28
+  "#F4E4F5",       // 29
+  "#F87E7D",       // 30
+  "#FEFF00",       // 31
+  "#FEFF85",       // 32  <-- This is the Yellow highlight you mentioned
+  "#FF8D00",       // 33
+  "#FFCCD2",       // 34
+  "#FFCD7A",       // 35
+  "#FFE1AF",       // 36
+  "#FFEBEE",       // 37
+  "#FFED00",       // 38
+  "#FFF3DF",       // 39
+  "#FFFEE6",       // 40
+  "#FFFFFF"        // 41
+];
 
 // GLOBAL STATE
 let STATE = { 
@@ -443,7 +477,7 @@ let STATE = {
     allRows: [], 
     activeRows: [], 
     cols: [], 
-    selectedCol: null,
+    selectedCol: null, 
     selectedRowIds: new Set(), 
     adds: [], 
     dels: new Set(), 
@@ -457,7 +491,6 @@ let STATE = {
     autoRefresh: false, 
     autoRefreshInterval: 60, 
     conflicts: [],
-    // VIEW STATE
     views: [],
     currentViewId: null
 };
@@ -520,10 +553,8 @@ function resetState() { STATE.serverRows = []; STATE.allRows=[]; STATE.activeRow
 async function fetchData() { 
     showLoader(true); 
     try { 
-        // Explicitly requesting formatting info to be safe
         const d = await api(`/sheets/${STATE.sheetId}?include=format,objectValue,writerInfo,attachments,discussions`); 
         
-        // --- ADDED LOGGING HERE ---
         console.log("Full Sheet Response:", d);
         if(d.rows && d.rows.length > 0) {
             console.log("First Row Format String:", d.rows[0].format);
@@ -531,7 +562,6 @@ async function fetchData() {
                 console.log("First Cell Format String:", d.rows[0].cells[0].format);
             }
         }
-        // --------------------------
 
         STATE.serverRows = JSON.parse(JSON.stringify(d.rows)); 
         STATE.allRows = JSON.parse(JSON.stringify(d.rows)); 
@@ -574,13 +604,30 @@ function getFormatInfo(fmt) {
     let s = '';
     let bg = null;
     
-    // Bg Color (Index 15)
-    if (p[15] && SMARTSHEET_COLORS[p[15]]) {
-        bg = SMARTSHEET_COLORS[p[15]];
+    // Smartsheet Format String Schema:
+    // ... index 14 = Text Color
+    // ... index 15 = Background Color
+    
+    if (p.length > 15) {
+        // Background Color (Index 15)
+        const bgIdx = parseInt(p[15]);
+        if (!isNaN(bgIdx) && SMARTSHEET_PALETTE[bgIdx]) {
+            // 'none' (0) and 'transparent' (1) should result in null to let CSS variable work
+            if(bgIdx > 1) {
+                bg = SMARTSHEET_PALETTE[bgIdx];
+            }
+        }
     }
     
-    // Text Color (Index 14)
-    if (p[14] && SMARTSHEET_COLORS[p[14]]) s += `color: ${SMARTSHEET_COLORS[p[14]]} !important;`;
+    if (p.length > 14) {
+        // Text Color (Index 14)
+        const txtIdx = parseInt(p[14]);
+        if (!isNaN(txtIdx) && SMARTSHEET_PALETTE[txtIdx]) {
+            if(txtIdx > 1) {
+                s += `color: ${SMARTSHEET_PALETTE[txtIdx]} !important;`;
+            }
+        }
+    }
     
     // Font Styles
     if (p[2] === '1') s += 'font-weight: bold;';
