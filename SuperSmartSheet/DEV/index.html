@@ -27,7 +27,7 @@
             --row-mod: #fff7ed;
             --row-new: #f0fdf4;
             --row-del: #fef2f2;
-            --row-bg-override: transparent;
+            --row-bg-override: transparent; /* Default to transparent so surface shows through */
             --th-bg: #f8fafc;
             --th-border: #e2e8f0;
         }
@@ -101,15 +101,16 @@
         thead th.primary-header-cell { position: sticky; padding-bottom: 22px; overflow: visible; z-index: 12; }
         thead th.selected { background-color: var(--primary-soft) !important; color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
         
+        /* Key Fix: Use variable for background to allow overrides */
         td {
             border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0;
-            background: var(--row-bg-override, var(--surface));
+            background-color: var(--row-bg-override, var(--surface));
             white-space: normal; height: auto; min-height: 50px; vertical-align: top;
         }
 
         th:first-child, td:first-child { 
             position: sticky; left: 0; z-index: 20; 
-            background: var(--row-bg-override, var(--surface)); 
+            background-color: var(--row-bg-override, var(--surface));
             border-right: 2px solid var(--border); 
             width: 170px; min-width: 170px; max-width: 170px; 
             box-shadow: 2px 0 5px rgba(0,0,0,0.05); overflow: visible; 
@@ -515,7 +516,39 @@ async function api(ep, method='GET', body=null) { const t = localStorage.getItem
 function loadFromDash() { const id = document.getElementById('dashSheetId').value.trim(); if(id) loadSheet(id); }
 function loadSheet(id) { STATE.sheetId = id; document.getElementById('dashboardView').classList.remove('active'); document.getElementById('editorView').classList.add('active'); resetState(); fetchData().then(() => { loadViews(); if(STATE.autoRefresh) startAutoRefresh(); openSetup(false); }); }
 function resetState() { STATE.serverRows = []; STATE.allRows=[]; STATE.activeRows=[]; STATE.adds=[]; STATE.dels=new Set(); STATE.edits={}; STATE.hierarchyChanges={}; STATE.selectedRowIds.clear(); STATE.meta.collapsed.clear(); STATE.meta.setupCollapsed.clear(); STATE.meta.rawCollapsed.clear(); STATE.lastModifiedAt = null; STATE.conflicts = []; updateSyncUI(); document.getElementById('tBody').innerHTML=''; document.getElementById('sheetName').innerText='Loading...'; stopAutoRefresh(); }
-async function fetchData() { showLoader(true); try { const d = await api(`/sheets/${STATE.sheetId}?includeAll=true`); STATE.serverRows = JSON.parse(JSON.stringify(d.rows)); STATE.allRows = JSON.parse(JSON.stringify(d.rows)); STATE.cols = d.columns; STATE.lastModifiedAt = d.modifiedAt; document.getElementById('sheetName').innerText = d.name; document.getElementById('sheetIdDisplay').innerText = d.id; addToLib(d.id, d.name); STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); calcAllDepth(); } catch(e) { if(e!=='PROXY_LOCK') showToast(e, 'danger'); } finally { showLoader(false); } }
+
+async function fetchData() { 
+    showLoader(true); 
+    try { 
+        // Explicitly requesting formatting info to be safe
+        const d = await api(`/sheets/${STATE.sheetId}?include=format,objectValue,writerInfo,attachments,discussions`); 
+        
+        // --- ADDED LOGGING HERE ---
+        console.log("Full Sheet Response:", d);
+        if(d.rows && d.rows.length > 0) {
+            console.log("First Row Format String:", d.rows[0].format);
+            if(d.rows[0].cells && d.rows[0].cells.length > 0) {
+                console.log("First Cell Format String:", d.rows[0].cells[0].format);
+            }
+        }
+        // --------------------------
+
+        STATE.serverRows = JSON.parse(JSON.stringify(d.rows)); 
+        STATE.allRows = JSON.parse(JSON.stringify(d.rows)); 
+        STATE.cols = d.columns; 
+        STATE.lastModifiedAt = d.modifiedAt; 
+        document.getElementById('sheetName').innerText = d.name; 
+        document.getElementById('sheetIdDisplay').innerText = d.id; 
+        addToLib(d.id, d.name); 
+        STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); 
+        calcAllDepth(); 
+    } catch(e) { 
+        if(e!=='PROXY_LOCK') showToast(e, 'danger'); 
+    } finally { 
+        showLoader(false); 
+    } 
+}
+
 function calcAllDepth() { STATE.meta.depth = {}; const map = new Map(); const allRowsForDepth = [...STATE.allRows, ...STATE.adds]; allRowsForDepth.forEach(r => map.set(r.id, r)); allRowsForDepth.forEach(r => { let d=0, curr=r; while(curr && curr.parentId && map.has(curr.parentId) && d<20) { d++; curr=map.get(curr.parentId); } STATE.meta.depth[r.id]=d; }); }
 function toDash() { if(hasChanges() && !confirm("Unsaved changes. Exit?")) return; stopAutoRefresh(); document.getElementById('editorView').classList.remove('active'); document.getElementById('dashboardView').classList.add('active'); renderLibrary(); }
 function toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(console.log); else document.exitFullscreen(); }
@@ -534,13 +567,18 @@ function resolveAll(choice) { const snapshot = [...STATE.conflicts]; snapshot.fo
 function checkConflictsDone() { if(STATE.conflicts.length === 0) { bootstrap.Modal.getInstance('#conflictModal').hide(); updateBaseDataSafe(STATE.serverRows); updateSyncUI(); if(STATE.autoRefresh) startAutoRefresh(); } else { showConflictModal(); } }
 function convertDeletedRowToNew(oldId) { const edits = STATE.edits[oldId]; if(!edits) return; const tempId = 'NEW_REC_' + Date.now(); const newRow = { id: tempId, cells: [], rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", toTop: true }; STATE.edits[tempId] = {...edits}; delete STATE.edits[oldId]; STATE.adds.push(newRow); STATE.activeRows.unshift(newRow); }
 
-// --- FORMATTING HELPER ---
-function getFormatStyle(fmt) {
-    if (!fmt) return '';
+// --- UPDATED FORMATTING HELPER ---
+function getFormatInfo(fmt) {
+    if (!fmt) return { style: '', bg: null };
     const p = fmt.split(',');
     let s = '';
+    let bg = null;
+    
     // Bg Color (Index 15)
-    if (p[15] && SMARTSHEET_COLORS[p[15]]) s += `background-color: ${SMARTSHEET_COLORS[p[15]]} !important;`;
+    if (p[15] && SMARTSHEET_COLORS[p[15]]) {
+        bg = SMARTSHEET_COLORS[p[15]];
+    }
+    
     // Text Color (Index 14)
     if (p[14] && SMARTSHEET_COLORS[p[14]]) s += `color: ${SMARTSHEET_COLORS[p[14]]} !important;`;
     
@@ -554,7 +592,7 @@ function getFormatStyle(fmt) {
     if (p[5] === '1') d.push('line-through');
     if (d.length) s += `text-decoration: ${d.join(' ')};`;
     
-    return s;
+    return { style: s, bg: bg };
 }
 
 // --- SETUP MODAL & TABLE RENDERING ---
@@ -639,10 +677,13 @@ function renderTable() {
         else if (String(r.id).startsWith('NEW')) rowClass += 'row-new ';
         else if (STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) rowClass += 'row-modified ';
         
-        // ROW FORMATTING
-        let rowStyle = getFormatStyle(r.format);
+        // ROW FORMATTING (Fixed)
+        // We split the info: 'bg' is used for the variable override, 'style' is used for font/weight
+        const fmtInfo = getFormatInfo(r.format);
+        const rowBgStyle = fmtInfo.bg ? `--row-bg-override: ${fmtInfo.bg};` : '';
+        const rowTextStyle = fmtInfo.style;
         
-        let rowHtml = `<tr data-id="${r.id}" ${r.parentId ? `data-parent-id="${r.parentId}"` : ''} class="${rowClass}" style="${rowStyle}">`;
+        let rowHtml = `<tr data-id="${r.id}" ${r.parentId ? `data-parent-id="${r.parentId}"` : ''} class="${rowClass}" style="${rowBgStyle} ${rowTextStyle}">`;
         
         // Actions cell
         rowHtml += `<td class="text-center border-end p-0">`;
@@ -865,11 +906,19 @@ function restoreRow(id) { STATE.dels.delete(parseInt(id)); renderTable(); update
 function hasChanges() { return Object.keys(STATE.edits).length > 0 || STATE.adds.length > 0 || STATE.dels.size > 0 || Object.keys(STATE.hierarchyChanges).length > 0; }
 function getCellHtml(rid, col, val, fmt) { 
     const safeVal = String(val || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const style = getFormatStyle(fmt);
+    const fmtInfo = getFormatInfo(fmt);
+    
+    // Combine background (override) and text styles
+    // If Cell has a BG color, we use it directly. If not, it stays transparent 
+    // and lets the Row BG (CSS variable) show through.
+    let inlineStyle = fmtInfo.style;
+    if (fmtInfo.bg) {
+        inlineStyle += `background-color: ${fmtInfo.bg} !important;`;
+    }
 
     if(col.type === 'CHECKBOX') { 
         const checked = (val === true || val === 'true'); 
-        return `<div class="d-flex justify-content-center align-items-center h-100" style="${style}"><input type="checkbox" class="form-check-input" ${checked?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)" style="transform:scale(1.2); cursor:pointer;"></div>`; 
+        return `<div class="d-flex justify-content-center align-items-center h-100" style="${inlineStyle}"><input type="checkbox" class="form-check-input" ${checked?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)" style="transform:scale(1.2); cursor:pointer;"></div>`; 
     } 
     const isMulti = col.type.includes('MULTI') || (col.type === 'TEXT_NUMBER' && col.options && col.options.length > 0); 
     if(isMulti) { 
@@ -880,14 +929,14 @@ function getCellHtml(rid, col, val, fmt) {
         if(arr.length === 0) badges = `<span class="text-muted small ps-1 opacity-50 fst-italic">Select...</span>`; 
         else { arr.forEach(t => badges += `<span class="badge-pill">${t}</span>`); } 
         const safeArr = encodeURIComponent(JSON.stringify(arr)); 
-        return `<div class="badge-cell" onclick="openMultiPopover(event, '${rid}', ${col.id}, '${safeArr}')" style="${style}">${badges}</div>`; 
+        return `<div class="badge-cell" onclick="openMultiPopover(event, '${rid}', ${col.id}, '${safeArr}')" style="${inlineStyle}">${badges}</div>`; 
     } 
     if(col.options && col.options.length > 0) { 
         let opts = `<option value=""></option>`; 
         col.options.forEach(o => { const sel = String(val) === String(o) ? 'selected' : ''; opts += `<option value="${o}" ${sel}>${o}</option>`; }); 
-        return `<select class="cell-textarea form-select" style="${style}" onchange="edit('${rid}', ${col.id}, this.value)">${opts}</select>`; 
+        return `<select class="cell-textarea form-select" style="${inlineStyle}" onchange="edit('${rid}', ${col.id}, this.value)">${opts}</select>`; 
     } 
-    return `<textarea class="cell-textarea" style="${style}" onfocus="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" onchange="edit('${rid}', ${col.id}, this.value)">${safeVal}</textarea>`;
+    return `<textarea class="cell-textarea" style="${inlineStyle}" onfocus="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" onchange="edit('${rid}', ${col.id}, this.value)">${safeVal}</textarea>`;
 }
 function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); const row = document.querySelector(`tr[data-id="${rid}"]`); if(row && !row.classList.contains('row-modified') && !String(rid).startsWith('NEW')) { row.classList.add('row-modified'); } }
 function _createAndInsertRow(parentId, insertionIndex, siblingId = null) { const tempId = 'NEW_' + Date.now(); const newRow = { id: tempId, cells: [], parentId, siblingId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", }; STATE.adds.push(newRow); STATE.activeRows.splice(insertionIndex, 0, newRow); calcAllDepth(); renderTable(); updateSyncUI(); setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${tempId}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100); }
