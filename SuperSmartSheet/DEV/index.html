@@ -517,7 +517,7 @@ function convertDeletedRowToNew(oldId) { const edits = STATE.edits[oldId]; if(!e
 // --- SETUP MODAL & TABLE RENDERING ---
 function generateOutlineButtonsHTML(context) { let max = 0; Object.values(STATE.meta.depth).forEach(d => max = Math.max(max, d)); const maxLevel = max + 1; let html = ''; for(let i = 1; i <= maxLevel; i++) { html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`; } html += `<button class="btn" onclick="setOutline(99, '${context}')">All</button>`; return `<div class="header-outline-btns">${html}</div>`; };
 function setOutline(level, context) { const targetSet = context === 'SETUP' ? STATE.meta.setupCollapsed : STATE.meta.collapsed; targetSet.clear(); if(level < 99) { STATE.allRows.forEach(r => { const d = STATE.meta.depth[r.id] || 0; if(d >= level - 1) targetSet.add(r.id); }); } if(context === 'SETUP') renderSetupTree(); else renderTable(); }
-function renderSetupTree() { const term = document.getElementById('setupRowSearch').value.toLowerCase(); const tree = document.getElementById('setupRowTree'); const primId = STATE.cols.find(c => c.primary)?.id; const rowMap = new Map(STATE.allRows.map(r => [r.id, r])); let mainHTML = ''; STATE.allRows.forEach(r => { if(isSetupHidden(r, rowMap)) return; const txt = (r.cells.find(c => c.columnId === primId)?.displayValue || `Row ${r.rowNumber}`); if(term && !String(txt).toLowerCase().includes(term)) return; const d = STATE.meta.depth[r.id] || 0; const checked = STATE.selectedRowIds.has(r.id) ? 'checked' : ''; const padding = d * 20; const hasChild = STATE.allRows.some(x => x.parentId === r.id); const isCollapsed = STATE.meta.setupCollapsed.has(r.id); let toggleIcon = hasChild ? `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggleSetup(${r.id})"><i class="bi bi-caret-right-fill"></i></div>` : `<div style="width:28px"></div>`; mainHTML += `<div style="display:flex; align-items:center; padding:4px 0; border-bottom:1px solid var(--border); padding-left:${padding}px">${toggleIcon}<input type="checkbox" class="form-check-input me-2" onchange="toggleSetupRow(${r.id}, this.checked)" ${checked}><span class="text-truncate small">${txt}</span></div>`; }); tree.innerHTML = mainHTML; }
+function renderSetupTree() { const term = document.getElementById('setupRowSearch').value.toLowerCase(); const tree = document.getElementById('setupRowTree'); const primId = STATE.cols.find(c => c.primary)?.id; const rowMap = new Map(STATE.allRows.map(r => [r.id, r])); let mainHTML = ''; STATE.allRows.forEach(r => { if(isSetupHidden(r, rowMap)) return; const txt = (r.cells.find(c => c.columnId === primId)?.displayValue || `Row ${r.rowNumber}`); if(term && !String(txt).toLowerCase().includes(term)) return; const d = STATE.meta.depth[r.id] || 0; const checked = STATE.selectedRowIds.has(r.id) ? 'checked' : ''; const padding = d * 20; const hasChild = STATE.allRows.some(x => x.parentId === r.id); const isCollapsed = STATE.meta.setupCollapsed.has(r.id); let toggleIcon = hasChild ? `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggleSetup(${r.id})"><i class="bi bi-caret-right-fill"></i></div>` : `<div style="width:28px"></div>`; mainHTML += `<div style="display:flex; align-items-center; padding:4px 0; border-bottom:1px solid var(--border); padding-left:${padding}px">${toggleIcon}<input type="checkbox" class="form-check-input me-2" onchange="toggleSetupRow(${r.id}, this.checked)" ${checked}><span class="text-truncate small">${txt}</span></div>`; }); tree.innerHTML = mainHTML; }
 function openSetup(isEdit = false) { renderSetupCols(); renderSetupTree(); new bootstrap.Modal('#setupModal').show(); }
 function isSetupHidden(r, map) { if(!r.parentId) return false; if(STATE.meta.setupCollapsed.has(r.parentId)) return true; const p = map.get(r.parentId); if(p) return isSetupHidden(p, map); return false; }
 function toggleSetup(id) { if(STATE.meta.setupCollapsed.has(id)) STATE.meta.setupCollapsed.delete(id); else STATE.meta.setupCollapsed.add(id); renderSetupTree(); }
@@ -533,9 +533,109 @@ function isHidden(r, rowMap) { let current = r; while (current && current.parent
 function toggle(id, event) { const realId = isNaN(id) ? id : parseInt(id); const isCollapsing = !STATE.meta.collapsed.has(realId); const toggleButton = event.currentTarget; if (isCollapsing) { STATE.meta.collapsed.add(realId); toggleButton.classList.remove('expanded'); } else { STATE.meta.collapsed.delete(realId); toggleButton.classList.add('expanded'); } const toggleChildren = (parentId, show) => { const children = document.querySelectorAll(`#tBody tr[data-parent-id='${parentId}']`); children.forEach(child => { child.style.display = show ? '' : 'none'; const childId = isNaN(child.dataset.id) ? child.dataset.id : parseInt(child.dataset.id); if (show && !STATE.meta.collapsed.has(childId)) { toggleChildren(childId, true); } else if (!show) { toggleChildren(childId, false); } }); }; toggleChildren(realId, !isCollapsing); }
 function toggleMobileActions(btn) { const wrap = btn.nextElementSibling; if (wrap.classList.contains('show')) wrap.classList.remove('show'); else { document.querySelectorAll('.actions-wrapper.show').forEach(el => el.classList.remove('show')); wrap.classList.add('show'); } }
 
-// --- ROW OPERATIONS (from SuperSmartSheet) ---
+// --- ROW OPERATIONS (MERGED & REFACTORED) ---
 function getAllDescendants(parentId, allRows) { const children = allRows.filter(r => r.parentId === parentId); let results = [...children]; children.forEach(child => { results = [...results, ...getAllDescendants(child.id, allRows)]; }); return results; }
-function initSortable() { if(sortableInstance) sortableInstance.destroy(); const tbody = document.getElementById('tBody'); sortableInstance = new Sortable(tbody, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', onStart: function(evt) { const rid = isNaN(evt.item.dataset.id) ? evt.item.dataset.id : parseInt(evt.item.dataset.id); const descendants = getAllDescendants(rid, STATE.activeRows); descendants.forEach(d => { const row = document.querySelector(`tr[data-id="${d.id}"]`); if(row) row.style.display = 'none'; }); if(descendants.length > 0) { evt.item.classList.add('dragging-parent'); const primaryCol = STATE.cols.find(c => c.primary); if(primaryCol) { const cell = evt.item.querySelector('.tree-wrap'); if(cell) { const badge = document.createElement('span'); badge.className = "badge bg-primary rounded-pill ms-2 fw-normal"; badge.innerText = `+ ${descendants.length} sub-rows`; badge.id = "dragBadge"; cell.appendChild(badge); } } } }, onEnd: function (evt) { const item = evt.item; const rid = isNaN(item.dataset.id) ? item.dataset.id : parseInt(item.dataset.id); item.classList.remove('dragging-parent'); const badge = document.getElementById('dragBadge'); if(badge) badge.remove(); if (evt.oldIndex === evt.newIndex) { getAllDescendants(rid, STATE.activeRows).forEach(d => { const row = document.querySelector(`tr[data-id="${d.id}"]`); if (row) row.style.display = ''; }); return; } const prevRow = item.previousElementSibling; let targetPrevId = null; if (prevRow) targetPrevId = isNaN(prevRow.dataset.id) ? prevRow.dataset.id : parseInt(prevRow.dataset.id); let newParentId = undefined; let siblingId = undefined; let toTop = false; if (targetPrevId) { const prevRowObj = STATE.allRows.find(r => r.id === targetPrevId); const isCollapsed = STATE.meta.collapsed.has(targetPrevId); const hasChildren = STATE.allRows.some(r => r.parentId === targetPrevId); if (prevRowObj && hasChildren && !isCollapsed) { newParentId = targetPrevId; toTop = true; } else if (prevRowObj) { newParentId = prevRowObj.parentId; siblingId = targetPrevId; } } else { toTop = true; } const allAndNewRows = [...STATE.allRows, ...STATE.adds]; const rowToUpdate = allAndNewRows.find(r => r.id === rid); if(rowToUpdate) rowToUpdate.parentId = newParentId; STATE.hierarchyChanges[rid] = { type: 'MOVE', parentId: newParentId, siblingId, toTop }; calcAllDepth(); renderTable(); updateSyncUI(); }, }); }
+function initSortable() { 
+    if(sortableInstance) sortableInstance.destroy(); 
+    const tbody = document.getElementById('tBody'); 
+    sortableInstance = new Sortable(tbody, { 
+        handle: '.drag-handle', 
+        animation: 150, 
+        ghostClass: 'sortable-ghost', 
+        onStart: function(evt) { 
+            const rid = isNaN(evt.item.dataset.id) ? evt.item.dataset.id : parseInt(evt.item.dataset.id); 
+            const descendants = getAllDescendants(rid, STATE.activeRows); 
+            descendants.forEach(d => { const row = document.querySelector(`tr[data-id="${d.id}"]`); if(row) row.style.display = 'none'; }); 
+            if(descendants.length > 0) { 
+                evt.item.classList.add('dragging-parent'); 
+                const primaryCol = STATE.cols.find(c => c.primary); 
+                if(primaryCol) { 
+                    const cell = evt.item.querySelector('.tree-wrap'); 
+                    if(cell) { 
+                        const badge = document.createElement('span'); 
+                        badge.className = "badge bg-primary rounded-pill ms-2 fw-normal"; 
+                        badge.innerText = `+ ${descendants.length} sub-rows`; 
+                        badge.id = "dragBadge"; 
+                        cell.appendChild(badge); 
+                    } 
+                } 
+            } 
+        }, 
+        onEnd: function (evt) {
+            const item = evt.item;
+            const rid = isNaN(item.dataset.id) ? item.dataset.id : parseInt(item.dataset.id);
+
+            // Visual cleanup first
+            item.classList.remove('dragging-parent');
+            const badge = document.getElementById('dragBadge');
+            if (badge) badge.remove();
+
+            // Fix: Handle no-op drag correctly to prevent row disappearance
+            if (evt.oldIndex === evt.newIndex) {
+                getAllDescendants(rid, STATE.activeRows).forEach(d => {
+                    const rowEl = document.querySelector(`tr[data-id="${d.id}"]`);
+                    if (rowEl) rowEl.style.display = '';
+                });
+                return;
+            }
+
+            const activeRowsMap = new Map(STATE.activeRows.map(r => [String(r.id), r]));
+            const allRowsMap = new Map([...STATE.allRows, ...STATE.adds].map(r => [r.id, r]));
+
+            const prevEl = item.previousElementSibling;
+            const nextEl = item.nextElementSibling;
+
+            let newParentId = undefined;
+            let siblingId = undefined;
+            let toTop = false;
+
+            // Fix: New, predictable parent/sibling logic
+            if (prevEl) {
+                const prevRowIdStr = String(isNaN(prevEl.dataset.id) ? prevEl.dataset.id : parseInt(prevEl.dataset.id));
+                const prevRowObj = activeRowsMap.get(prevRowIdStr);
+                
+                if (prevRowObj) {
+                    const nextRowIdStr = nextEl ? String(isNaN(nextEl.dataset.id) ? nextEl.dataset.id : parseInt(nextEl.dataset.id)) : null;
+                    const nextRowObj = nextRowIdStr ? activeRowsMap.get(nextRowIdStr) : null;
+
+                    // Check for intentional indent: dropping as the first child of the previous element
+                    if (nextRowObj && nextRowObj.parentId === prevRowObj.id) {
+                        newParentId = prevRowObj.id;
+                        toTop = true;
+                    } else {
+                        // Default: become a sibling
+                        newParentId = prevRowObj.parentId;
+                        siblingId = prevRowObj.id;
+                    }
+                }
+            } else {
+                // Dropped at the top of a context, use next element to find the parent
+                if (nextEl) {
+                    const nextRowIdStr = String(isNaN(nextEl.dataset.id) ? nextEl.dataset.id : parseInt(nextEl.dataset.id));
+                    const nextRowObj = activeRowsMap.get(nextRowIdStr);
+                    if (nextRowObj) newParentId = nextRowObj.parentId;
+                }
+                toTop = true;
+            }
+
+            const rowToUpdate = allRowsMap.get(rid);
+            if (rowToUpdate) {
+                rowToUpdate.parentId = newParentId;
+            }
+            
+            STATE.hierarchyChanges[rid] = {
+                type: 'MOVE',
+                parentId: newParentId,
+                siblingId: toTop ? undefined : siblingId,
+                toTop: toTop
+            };
+            
+            calcAllDepth();
+            renderTable();
+            updateSyncUI();
+        }
+    }); 
+}
 function updateSyncUI() { const modifiedCount = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]).size; document.getElementById('cntMod').innerText = modifiedCount; document.getElementById('cntAdd').innerText = STATE.adds.length; document.getElementById('cntDel').innerText = STATE.dels.size; const has = (modifiedCount + STATE.adds.length + STATE.dels.size) > 0; document.getElementById('btnSync').disabled = !has; document.getElementById('btnDiscard').disabled = !has; document.getElementById('btnSync').className = has ? "btn btn-sm btn-primary rounded-pill px-3 fw-bold" : "btn btn-sm btn-secondary rounded-pill px-3"; }
 function discard() { if(!confirm('Discard all unsaved changes?')) return; STATE.allRows = JSON.parse(JSON.stringify(STATE.serverRows)); STATE.adds = []; STATE.dels.clear(); STATE.edits = {}; STATE.hierarchyChanges = {}; STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id)); calcAllDepth(); renderTable(); updateSyncUI(); showToast('Changes discarded', 'success'); }
 async function sync() { if(!confirm('Sync to Smartsheet?')) return; showLoader(true); try { if(STATE.dels.size > 0) { await api(`/sheets/${STATE.sheetId}/rows?ids=${Array.from(STATE.dels).join(',')}&ignoreRowsNotFound=true`, 'DELETE'); } if (STATE.adds.length > 0) { const newRowsPayload = STATE.adds.map(r => { const editsForNewRow = STATE.edits[r.id] || {}; const finalCells = (r.cells || []).map(c => ({ ...c })); Object.keys(editsForNewRow).forEach(cid => { const existingCellIndex = finalCells.findIndex(cell => cell.columnId == cid); if (existingCellIndex > -1) finalCells[existingCellIndex].value = editsForNewRow[cid]; else finalCells.push({ columnId: parseInt(cid), value: editsForNewRow[cid] }); }); const cleanCells = finalCells.map(c => { const colDef = STATE.cols.find(col => col.id === c.columnId); const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(c.value).includes(','))); if(isMulti) { const arr = String(c.value).split(/,\s*/).filter(s => s !== ''); return { columnId: c.columnId, objectValue: { objectType: "MULTI_PICKLIST", values: arr } }; } return { columnId: c.columnId, value: c.value }; }); const o={cells:cleanCells}; if(r.parentId) o.parentId=r.parentId; else o.toTop=true; if(r.siblingId) o.siblingId = r.siblingId; return o; }); await api(`/sheets/${STATE.sheetId}/rows`, 'POST', newRowsPayload); } const updateIds = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]); if(updateIds.size > 0) { const updates = Array.from(updateIds) .filter(rid => !String(rid).startsWith("NEW")) .map(rid => { const payload = { id: parseInt(rid) }; if(STATE.edits[rid]) { payload.cells = Object.keys(STATE.edits[rid]).map(cid => { const colDef = STATE.cols.find(c => c.id === parseInt(cid)); let rawVal = STATE.edits[rid][cid]; const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(rawVal).includes(','))); if(isMulti) { const arr = String(rawVal).split(/,\s*/).filter(s => s !== ''); return { columnId: parseInt(cid), objectValue: { objectType: "MULTI_PICKLIST", values: arr } }; } return { columnId: parseInt(cid), value: rawVal }; }); } if(STATE.hierarchyChanges[rid]) { const change = STATE.hierarchyChanges[rid]; if(change.toTop) payload.toTop = true; else if(change.siblingId) payload.siblingId = change.siblingId; if(change.parentId !== undefined) payload.parentId = change.parentId; } return payload; }); if (updates.length > 0) { await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', updates); } } const freshData = await api(`/sheets/${STATE.sheetId}?includeAll=true`); STATE.allRows = freshData.rows; STATE.serverRows = JSON.parse(JSON.stringify(freshData.rows)); STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id)); STATE.adds = []; STATE.dels.clear(); STATE.edits = {}; STATE.hierarchyChanges = {}; calcAllDepth(); renderTable(); updateSyncUI(); showToast('Sync Successful!', 'success'); } catch(e) { showToast('Sync Failed: ' + e, 'danger'); } finally { showLoader(false); } }
