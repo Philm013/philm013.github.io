@@ -30,7 +30,7 @@
             --row-bg-override: transparent;
             --th-bg: #f8fafc;
             --th-border: #e2e8f0;
-            --virtual-row-base-height: 50px;
+            --virtual-row-base-height: 48px;
         }
 
         /* DARK MODE VARS */
@@ -109,7 +109,7 @@
         thead th.primary-header-cell { position: sticky; padding-bottom: 22px; overflow: visible; z-index: 12; }
         thead th.selected { background-color: var(--primary-soft) !important; color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
         
-        /* FIX: Remove absolute positioning from TRs to allow natural growth and alignment */
+        /* TABLE & CELL STYLING FIXES */
         #mainTable tbody tr {
             position: relative; 
             height: auto;
@@ -122,7 +122,7 @@
             padding: 0;
             background-color: var(--row-bg-override, var(--surface)) !important; 
             white-space: nowrap; 
-            height: auto; /* Allow cells to grow */
+            height: 1px; /* FIX: CSS Hack to force children with height:100% to fill the cell */
             vertical-align: top;
         }
 
@@ -132,6 +132,7 @@
             border-right: 2px solid var(--border); 
             width: 170px; min-width: 170px; max-width: 170px; 
             box-shadow: 2px 0 5px rgba(0,0,0,0.05); overflow: visible; 
+            height: auto !important; /* Action cell handles its own height */
         }
         thead th:first-child { z-index: 30; background: var(--th-bg); }
         
@@ -154,16 +155,31 @@
         .drag-handle { cursor: grab; color: #94a3b8; }
         .drag-handle:active { cursor: grabbing; color: var(--primary); }
 
-        .cell-textarea { 
-            width: 100%; height: 100%; min-height: 48px; 
-            border: none; font-family: inherit; color: inherit; resize: none; overflow-y: hidden; line-height: 1.5; 
-            background-color: transparent !important; 
+        /* INPUT STYLING FIXES */
+        .cell-textarea, .form-select { 
+            width: 100%; 
+            height: 100%; 
+            min-height: 100%; /* Force fill */
+            border: none; 
+            font-family: inherit; 
+            color: inherit; 
+            resize: none; 
+            overflow: hidden; 
+            line-height: 1.5; 
+            background-color: transparent !important; /* FIX: Transparent to show TD color */
+            display: block;
+            border-radius: 0;
+            padding: 4px 6px;
         }
-        .cell-textarea:focus { outline: none; background: var(--surface) !important; box-shadow: inset 0 0 0 2px var(--primary); }
         
-        .form-select.cell-textarea { background-color: transparent !important; border: none; }
-
-        [data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background-color: var(--surface); border-color: var(--border); color: var(--text-main); }
+        /* FIX: Remove default outline and use inset shadow for focus */
+        .cell-textarea:focus, .form-select:focus { 
+            outline: none; 
+            box-shadow: inset 0 0 0 2px var(--primary); 
+            background-color: transparent !important;
+        }
+        
+        [data-theme="dark"] .form-control, [data-theme="dark"] .form-select { border-color: var(--border); color: var(--text-main); }
         [data-theme="dark"] .form-select {
             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f8fafc' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
         }
@@ -185,7 +201,7 @@
         tr.row-modified td { --row-bg-override: var(--row-mod); }
         tr.row-deleted td { background-color: var(--row-del) !important; opacity: 0.5; text-decoration: line-through; pointer-events: none; }
         
-        .badge-cell { padding: 12px 8px; height: 100%; display: flex; align-items: flex-start; gap: 4px; overflow: hidden; cursor: pointer; white-space: normal; position: relative; flex-wrap: wrap;}
+        .badge-cell { padding: 12px 8px; height: 100%; min-height: 100%; display: flex; align-items: flex-start; gap: 4px; overflow: hidden; cursor: pointer; white-space: normal; position: relative; flex-wrap: wrap;}
         .badge-pill { background: var(--primary-soft); color: var(--primary-dark); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
         
         #multiPopover { display: none; position: fixed; z-index: 1050; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); min-width: 150px; max-height: 350px; overflow: hidden; flex-direction: column; color: var(--text-main); }
@@ -218,6 +234,8 @@
             visibility: hidden;
             border: none;
         }
+        
+        .log-line { font-family: monospace; font-size: 0.8rem; border-bottom: 1px solid #333; padding: 4px; }
 
         @media (max-width: 768px) {
             .glass-header { padding: 0.5rem; }
@@ -246,6 +264,9 @@
             <div class="d-flex gap-2">
                 <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="toggleTheme()">
                     <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="showLogs()">
+                    <i class="bi bi-terminal"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="openSettings()">
                     <i class="bi bi-gear-fill"></i>
@@ -279,6 +300,7 @@
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-white border shadow-sm" onclick="viewRawData()" title="View Raw Data Table"><i class="bi bi-table"></i></button>
+            <button class="btn btn-white border shadow-sm" onclick="showLogs()"><i class="bi bi-terminal"></i> Logs</button>
             <button class="btn btn-white border shadow-sm" onclick="toggleFullScreen()"><i class="bi bi-arrows-fullscreen"></i></button>
             <button class="btn btn-white border shadow-sm fw-bold" onclick="openSetup(true)"><i class="bi bi-sliders"></i> Setup</button>
         </div>
@@ -406,10 +428,10 @@
 <!-- API TOKEN MODAL -->
 <div class="modal fade" id="settingsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content rounded-4 border-0 p-4"><h5 class="fw-bold mb-3">Configuration</h5><label class="form-label small fw-bold text-muted">ACCESS TOKEN</label><input type="password" id="apiToken" class="form-control form-control-lg bg-light border-0 mb-3" placeholder="Token..."><button class="btn btn-primary w-100 rounded-pill" onclick="saveSettings()">Save</button></div></div></div>
 
-<!-- CONFLICT MODAL (from SuperSmartSheet) -->
+<!-- CONFLICT MODAL -->
 <div class="modal fade" id="conflictModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger-subtle"><h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Sync Conflict Detected</h5></div><div class="modal-body"><p class="small text-muted mb-3">Remote changes conflict with your unsaved edits. Please resolve:</p><div id="conflictList"></div></div><div class="modal-footer"><button class="btn btn-outline-secondary" onclick="resolveAll('MINE')">Keep All Mine</button><button class="btn btn-danger" onclick="resolveAll('THEIRS')">Accept All Theirs</button></div></div></div></div>
 
-<!-- LOGS & RAW DATA MODALS (from SuperSmartSheet) -->
+<!-- LOGS & RAW DATA MODALS -->
 <div class="modal fade" id="logsModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content bg-dark text-light"><div class="modal-header border-secondary"><h5 class="modal-title">System Logs</h5><button class="btn btn-sm btn-outline-light ms-auto me-2" onclick="copyLogs()">Copy</button><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 bg-black" id="logContent" style="min-height:300px;"></div></div></div></div>
 <div class="modal fade" id="rawDataModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-lg-down"><div class="modal-content"><div class="modal-header bg-light border-bottom"><h5 class="modal-title font-monospace fw-bold"><i class="bi bi-database me-2 text-primary"></i>Raw Data Inspector</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 position-relative"><div class="table-container" style="height: 100%;"><table id="rawTable" style="width:100%"><thead id="rawHead"></thead><tbody id="rawBody"></tbody></table></div></div></div></div></div>
 
@@ -525,7 +547,7 @@ async function fetchData() {
         addToLib(d.id, d.name); 
         STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); 
         indexAllData();
-        flattenTree(); // Calculate depth initially
+        flattenTree(); 
     } catch(e) { 
         if(e!=='PROXY_LOCK') showToast(e, 'danger'); 
     } finally { 
@@ -535,6 +557,11 @@ async function fetchData() {
 
 function toDash() { if(hasChanges() && !confirm("Unsaved changes. Exit?")) return; stopAutoRefresh(); document.getElementById('editorView').classList.remove('active'); document.getElementById('dashboardView').classList.add('active'); renderLibrary(); }
 function toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(console.log); else document.exitFullscreen(); }
+
+// --- LOGGING ---
+function sysLog(msg, data) { const line = document.createElement('div'); line.className = 'log-line'; line.innerHTML = `<span>[${new Date().toLocaleTimeString()}]</span> ${msg}`; if(data) line.innerHTML += `<br><span style="color:#666">${JSON.stringify(data).substring(0,200)}...</span>`; STATE.logs.push({time:Date.now(), msg, data}); }
+function showLogs() { const lc = document.getElementById('logContent'); lc.innerHTML = ''; STATE.logs.forEach(l => { const line = document.createElement('div'); line.className = 'log-line'; line.innerHTML = `<span>[${new Date(l.time).toLocaleTimeString()}]</span> ${l.msg}`; if(l.data) line.innerHTML += `<br><span style="color:#666">${JSON.stringify(l.data).substring(0,200)}...</span>`; lc.prepend(line); }); new bootstrap.Modal('#logsModal').show(); }
+function copyLogs() { navigator.clipboard.writeText(JSON.stringify(STATE.logs, null, 2)); showToast('Logs Copied'); }
 
 // --- AUTO REFRESH & CONFLICT LOGIC ---
 function toggleAutoRefresh(checked) { STATE.autoRefresh = checked; localStorage.setItem('smAutoRefresh', checked); document.getElementById('setupAutoSyncCheck').checked = checked; if(checked && STATE.sheetId) startAutoRefresh(); else stopAutoRefresh(); }
@@ -570,7 +597,6 @@ function getFormatInfo(fmt) {
 
 // --- SETUP MODAL ---
 function generateOutlineButtonsHTML(context) { 
-    // FIX: Use STATE.meta.maxDepth which is calculated from ALL rows, not just visible ones
     const maxLevel = STATE.meta.maxDepth + 1; 
     let html = ''; 
     for(let i = 1; i <= maxLevel; i++) { 
@@ -584,29 +610,11 @@ function setOutline(level, context) {
     const targetSet = context === 'SETUP' ? STATE.meta.setupCollapsed : STATE.meta.collapsed; 
     targetSet.clear(); 
     if(level < 99) { 
-        // We need to re-traverse or check depths. Since we calculate depth in flattenTree/indexing,
-        // we can iterate all rows and check their cached depth if we stored it, or re-calculate.
-        // For efficiency, let's assume we can determine depth easily.
-        // Re-index to be safe and get depths.
         indexAllData();
         const allRowsAndAdds = [...STATE.allRows, ...STATE.adds];
         const rowMap = new Map(allRowsAndAdds.map(r => [r.id, r]));
-        
-        // Helper to get depth
-        const getDepth = (id) => {
-            let d = 0;
-            let curr = rowMap.get(id);
-            while(curr && curr.parentId) {
-                d++;
-                curr = rowMap.get(curr.parentId);
-            }
-            return d;
-        };
-
-        allRowsAndAdds.forEach(r => { 
-            const d = getDepth(r.id);
-            if(d >= level - 1) targetSet.add(r.id); 
-        }); 
+        const getDepth = (id) => { let d = 0; let curr = rowMap.get(id); while(curr && curr.parentId) { d++; curr = rowMap.get(curr.parentId); } return d; };
+        allRowsAndAdds.forEach(r => { const d = getDepth(r.id); if(d >= level - 1) targetSet.add(r.id); }); 
     } 
     if(context === 'SETUP') renderSetupTree(); 
     else renderTable(); 
@@ -707,7 +715,7 @@ function flattenTree() {
     }
     rootNodes.forEach(node => traverse(node.id, 0));
     STATE.flatRenderList = flatList;
-    STATE.meta.maxDepth = maxGlobalDepth; // Store for buttons
+    STATE.meta.maxDepth = maxGlobalDepth; 
 }
 
 // --- TABLE RENDERING (VIRTUALIZED) ---
@@ -717,10 +725,6 @@ function renderTable() {
     indexAllData();
     renderHeader();
     flattenTree();
-    
-    // We do NOT set explicit scroller height here anymore because we are using spacer rows
-    // which push the container scroll naturally.
-    
     renderVisibleRows();
     initSortable();
     STATE.isRendering = false;
@@ -760,25 +764,14 @@ function renderVisibleRows() {
         const endIndex = Math.min(totalRows, Math.ceil((scrollTop + clientHeight) / CONFIG.virtualScroll.rowHeight) + CONFIG.virtualScroll.buffer);
         
         let html = [];
-        
-        // FIX: Spacer Row Top
-        if (startIndex > 0) {
-            html.push(`<tr class="virtual-spacer" style="height: ${startIndex * CONFIG.virtualScroll.rowHeight}px"><td colspan="100%"></td></tr>`);
-        }
-
+        if (startIndex > 0) html.push(`<tr class="virtual-spacer" style="height: ${startIndex * CONFIG.virtualScroll.rowHeight}px"><td colspan="100%"></td></tr>`);
         for (let i = startIndex; i < endIndex; i++) {
             const item = STATE.flatRenderList[i];
             const r = STATE.rowMap.get(item.id);
             if (!r) continue;
-            // No top position calculation needed for static rows
             html.push(generateRowHtml(r, item.depth));
         }
-
-        // FIX: Spacer Row Bottom
-        if (endIndex < totalRows) {
-            html.push(`<tr class="virtual-spacer" style="height: ${(totalRows - endIndex) * CONFIG.virtualScroll.rowHeight}px"><td colspan="100%"></td></tr>`);
-        }
-
+        if (endIndex < totalRows) html.push(`<tr class="virtual-spacer" style="height: ${(totalRows - endIndex) * CONFIG.virtualScroll.rowHeight}px"><td colspan="100%"></td></tr>`);
         tbody.innerHTML = html.join('');
     });
 }
@@ -794,7 +787,6 @@ function generateRowHtml(r, depth) {
     const rowFmtInfo = getFormatInfo(r.format);
     const rowBgStyle = rowFmtInfo.bg ? `--row-bg-override: ${rowFmtInfo.bg};` : '';
     const rowTextStyle = rowFmtInfo.style;
-    // FIX: Removed position style
     
     let rowHtml = `<tr data-id="${r.id}" ${r.parentId ? `data-parent-id="${r.parentId}"` : ''} class="${rowClass}" style="${rowBgStyle} ${rowTextStyle}">`;
     
@@ -976,9 +968,6 @@ function syncSearch(val) { document.getElementById('desktopSearch').value = val;
 function viewRawData() { renderRawTable(); new bootstrap.Modal('#rawDataModal').show(); }
 function renderRawTable() { const th = document.getElementById('rawHead'); const tb = document.getElementById('rawBody'); th.innerHTML = ''; tb.innerHTML = ''; let h = `<tr><th>Row ID</th><th>Parent ID</th><th>#</th>`; STATE.cols.forEach(c => { h += `<th>${c.title}</th>`; }); h += '</tr>'; th.innerHTML = h; STATE.allRows.forEach(r => { if(isRawHidden(r)) return; const tr = document.createElement('tr'); let html = `<td>${r.id}</td><td>${r.parentId||'-'}</td><td>${r.rowNumber}</td>`; STATE.cols.forEach(c => { const val = r.cells.find(x => x.columnId === c.id)?.displayValue ?? r.cells.find(x => x.columnId === c.id)?.value ?? ''; html += `<td>${val}</td>`; }); tr.innerHTML = html; tb.appendChild(tr); }); }
 function isRawHidden(r) { if(!r.parentId) return false; if(STATE.meta.rawCollapsed.has(r.parentId)) return true; const p = STATE.allRows.find(x => x.id === r.parentId); if(p) return isRawHidden(p); return false; }
-function sysLog(msg, data) { const line = document.createElement('div'); line.className = 'log-line'; line.innerHTML = `<span>[${new Date().toLocaleTimeString()}]</span> ${msg}`; if(data) line.innerHTML += `<br><span style="color:#666">${JSON.stringify(data).substring(0,200)}...</span>`; STATE.logs.push({time:Date.now(), msg, data}); }
-function showLogs() { const lc = document.getElementById('logContent'); lc.innerHTML = ''; STATE.logs.forEach(l => { const line = document.createElement('div'); line.className = 'log-line'; line.innerHTML = `<span>[${new Date(l.time).toLocaleTimeString()}]</span> ${l.msg}`; if(l.data) line.innerHTML += `<br><span style="color:#666">${JSON.stringify(l.data).substring(0,200)}...</span>`; lc.prepend(line); }); new bootstrap.Modal('#logsModal').show(); }
-function copyLogs() { navigator.clipboard.writeText(JSON.stringify(STATE.logs, null, 2)); showToast('Logs Copied'); }
 </script>
 </body>
 </html>
