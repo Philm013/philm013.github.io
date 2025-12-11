@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lumen Smartsheet Pro (Optimized)</title>
+    <title>Smartsheet Pro + Views (Fully Optimized)</title>
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- SortableJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 
     <style>
@@ -21,744 +23,371 @@
             --text-main: #0f172a;
             --text-muted: #64748b;
             --border: #e2e8f0;
+            --glass: rgba(255, 255, 255, 0.95);
             --row-mod: #fff7ed;
             --row-new: #f0fdf4;
             --row-del: #fef2f2;
+            --row-bg-override: transparent;
             --th-bg: #f8fafc;
-            --row-h: 46px; /* FIXED ROW HEIGHT FOR VIRTUALIZATION */
+            --th-border: #e2e8f0;
+            --row-height: 48px; /* CRITICAL FOR VIRTUALIZATION */
         }
 
         [data-theme="dark"] {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-soft: #1e1b4b;
-            --bg: #0f172a;
-            --surface: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: #334155;
-            --row-mod: #422006;
-            --row-new: #064e3b;
-            --row-del: #450a0a;
-            --th-bg: #0f172a;
+            --primary: #6366f1; --primary-dark: #4f46e5; --primary-soft: #1e1b4b; --bg: #0f172a; --surface: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8; --border: #334155; --glass: rgba(30, 41, 59, 0.95); --row-mod: #422006; --row-new: #064e3b; --row-del: #450a0a; --th-bg: #0f172a; --th-border: #334155; --row-bg-override: transparent;
         }
 
-        body, html { height: 100%; width: 100%; background-color: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text-main); overflow: hidden; }
+        body, html { height: 100%; width: 100%; background-color: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text-main); overflow: hidden; overscroll-behavior: none; }
         
-        /* Layout Structure */
-        .view-section { display: none; height: 100dvh; width: 100vw; flex-direction: column; }
-        .view-section.active { display: flex; }
-        
-        /* Dashboard Styles */
+        ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; } [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #475569; }
+
+        .view-section { display: none; opacity: 0; transition: opacity 0.2s ease; height: 100dvh; width: 100vw; overflow: hidden; flex-direction: column; }
+        .view-section.active { display: flex; opacity: 1; }
         #dashboardView { overflow-y: auto; }
-        .hero-section { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 1.5rem; border-radius: 0 0 2rem 2rem; color: white; flex-shrink: 0; }
-        .sheet-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; cursor: pointer; transition: 0.2s; }
-        .sheet-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        #editorView { overflow: hidden; }
 
-        /* Editor Styles */
-        .glass-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.5rem 1rem; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; height: 60px; }
-        .toolbar { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.5rem 1rem; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; height: 50px; }
+        .hero-section { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 1rem .75rem 1.25rem; border-radius: 0 0 2.5rem 2.5rem; color: white; box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.3); flex: 0 0 auto; }
+        .sheet-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; cursor: pointer; }
+        .glass-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto; width: 100%; }
         
-        /* Table Container - The Scrollable Area */
-        .table-container { 
-            flex: 1; 
-            overflow: auto; 
-            position: relative; 
-            background: var(--surface);
-            will-change: transform; /* Hint to browser for compositing */
-        }
+        .views-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1rem; display: flex; align-items: center; gap: 4px; overflow-x: auto; flex: 0 0 auto; height: 42px; scrollbar-width: none; }
+        .views-bar::-webkit-scrollbar { display: none; }
+        .view-tab { padding: 6px 16px; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+        .view-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--primary-soft); }
+        .view-add-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px dashed var(--border); color: var(--text-muted); cursor: pointer; flex-shrink: 0; margin-left: 8px; }
 
-        /* Virtualization Spacers */
-        #virtualTop, #virtualBottom { width: 100%; height: 0; }
+        .toolbar { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.5rem 1rem; display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto; width: 100%; z-index: 50; }
 
-        table { 
-            border-collapse: separate; 
-            border-spacing: 0; 
-            table-layout: fixed; 
-            width: max-content; 
-            min-width: 100%; 
-        }
+        .table-container { background: var(--surface); flex: 1 1 auto; overflow: auto; position: relative; width: 100%; will-change: transform; }
+        
+        table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 0.9rem; table-layout: fixed; }
+        thead th { background: var(--th-bg); color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 12px 8px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); position: sticky; top: 0; z-index: 10; user-select: none; }
+        thead th.primary-header-cell { padding-bottom: 22px; overflow: visible; z-index: 12; }
+        thead th.selected { background-color: var(--primary-soft) !important; }
+        
+        #mainTable tbody tr { height: var(--row-height); }
+        #mainTable td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0; background-color: var(--row-bg-override, transparent); white-space: nowrap; vertical-align: top; }
 
-        thead th { 
-            background: var(--th-bg); 
-            color: var(--text-muted); 
-            font-size: 0.7rem; 
-            font-weight: 700; 
-            text-transform: uppercase; 
-            padding: 0 8px; 
-            height: 36px;
-            border-bottom: 1px solid var(--border); 
-            border-right: 1px solid var(--border); 
-            position: sticky; 
-            top: 0; 
-            z-index: 10; 
-            user-select: none;
-            white-space: nowrap;
-        }
-
-        /* Sticky Columns */
-        th:first-child, td:first-child { 
-            position: sticky; 
-            left: 0; 
-            z-index: 20; 
-            width: 50px; min-width: 50px; max-width: 50px; /* Reduced Action Column */
-            border-right: 2px solid var(--border);
-            background: var(--surface);
-        }
+        th:first-child, #mainTable td:first-child { position: sticky; left: 0; z-index: 20; background-color: var(--row-bg-override, var(--surface)); border-right: 2px solid var(--border); width: 170px; min-width: 170px; max-width: 170px; }
         thead th:first-child { z-index: 30; background: var(--th-bg); }
-
-        /* Rows & Cells */
-        tbody tr { height: var(--row-h); }
         
-        td { 
-            border-bottom: 1px solid var(--border); 
-            border-right: 1px solid var(--border); 
-            padding: 0; 
-            background: transparent;
-            vertical-align: top;
-        }
+        .col-title-wrap { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .col-filter-btn { background: none; border: none; color: var(--text-muted); }
+        .col-filter-btn.active { color: var(--primary); }
 
-        /* High Performance Inputs */
-        .cell-input {
-            width: 100%; height: 100%;
-            border: none; background: transparent;
-            padding: 0 8px; font-family: inherit; font-size: 0.9rem;
-            color: inherit; outline: none;
-            display: flex; align-items: center;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .cell-input:focus { background: var(--surface); box-shadow: inset 0 0 0 2px var(--primary); }
-
-        /* Conditional Styling */
-        tr.row-mod td { background-color: var(--row-mod) !important; }
-        tr.row-new td { background-color: var(--row-new) !important; }
-        tr.row-del td { background-color: var(--row-del) !important; text-decoration: line-through; opacity: 0.6; }
-
-        /* UI Elements */
-        .tree-toggle { cursor: pointer; width: 20px; text-align: center; display: inline-block; user-select: none; }
-        .tree-toggle.expanded i { transform: rotate(90deg); display: inline-block; }
-        .tree-indent { display: inline-block; width: 16px; border-left: 1px dashed var(--border); height: 100%; vertical-align: middle; }
+        .actions-wrapper { display: flex; justify-content: center; gap: 4px; width: 100%; height: 100%; align-items: flex-start; padding-top: 10px; }
+        .action-btn { padding: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: transparent; color: var(--text-muted); cursor: pointer; }
         
-        .resizer { position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; z-index: 50; }
-        .resizer:hover { background: var(--primary); }
+        .drag-handle { cursor: grab; } .drag-handle:active { cursor: grabbing; }
 
-        /* Views Bar */
-        .views-bar { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; flex-shrink: 0; height: 38px; }
-        .view-tab { padding: 8px 16px; font-size: 0.85rem; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
-        .view-tab.active { border-bottom-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
-
-        /* Utilities */
-        .d-none { display: none !important; }
-        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .cell-textarea { width: 100%; height: 100%; border: none; font-family: inherit; color: inherit; resize: none; line-height: 1.5; padding: 12px 8px; background-color: transparent !important; }
+        .cell-textarea:focus { outline: none; background: var(--surface) !important; box-shadow: inset 0 0 0 2px var(--primary); }
         
-        /* Action Menu */
-        .action-cell-content { display: flex; justify-content: center; align-items: center; height: 100%; cursor: pointer; color: var(--text-muted); }
-        .action-cell-content:hover { color: var(--primary); background: var(--primary-soft); }
+        .tree-wrap { display: flex; height: 100%; align-items: flex-start; padding-top: 12px; padding-left: 8px; }
+        
+        .resizer { position: absolute; right: 0; top: 0; bottom: 0; width: 40px; transform: translateX(50%); z-index: 100; cursor: col-resize; touch-action: none; display: none; justify-content: center; align-items: center; }
+        .resizer::after { content: ""; width: 4px; height: 50%; background-color: var(--primary); border-radius: 4px; opacity: 0.7; }
+        thead th.selected .resizer { display: flex; }
+        
+        tr.row-new td { --row-bg-override: var(--row-new); }
+        tr.row-modified td { --row-bg-override: var(--row-mod); }
+        tr.row-deleted { background-color: var(--row-del) !important; }
+        tr.row-deleted td { opacity: 0.5; text-decoration: line-through; pointer-events: none; }
+        
+        .badge-cell { padding: 12px 8px; height: 100%; display: flex; align-items: flex-start; gap: 4px; cursor: pointer; flex-wrap: wrap;}
+        .badge-pill { background: var(--primary-soft); color: var(--primary-dark); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+        
+        #multiPopover { display: none; position: fixed; z-index: 1050; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); flex-direction: column; }
+        #columnFilterPopover { display: none; position: fixed; z-index: 1050; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 320px; }
 
-        /* Badges */
-        .badge-pill { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: var(--primary-soft); color: var(--primary-dark); margin-right: 2px; }
+        .tree-indent { width: 16px; height: 100%; border-left: 1px dashed #cbd5e1; margin-right: 2px; }
+        .tree-toggle { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--text-muted); cursor: pointer; margin-right: 4px; flex-shrink: 0; }
+        .tree-toggle i { transition: transform 0.2s; font-size: 0.8rem; }
+        .expanded i { transform: rotate(90deg); }
+        
+        .header-outline-btns { position: absolute; bottom: 0; left: 0; right: 0; height: 18px; display: flex; align-items: center; background: var(--bg); border-top: 1px solid var(--border); }
+        .header-outline-btns .btn { border-radius: 0; background: transparent; border: none; border-right: 1px solid var(--border); color: var(--text-muted); font-size: 0.6rem; font-weight: 700; padding: 0 10px; height: 100%; }
     </style>
 </head>
 <body>
 
-<!-- DASHBOARD -->
+<!-- DASHBOARD VIEW -->
 <div id="dashboardView" class="view-section active">
     <div class="hero-section">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="fw-bold m-0"><i class="bi bi-grid-3x3-gap-fill me-2"></i>Lumen Sheet</h2>
-            <button class="btn btn-sm btn-outline-light rounded-pill" onclick="toggleTheme()"><i class="bi bi-moon-stars-fill"></i></button>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="fw-bold m-0"><i class="bi bi-kanban-fill me-2"></i>Smartsheet Pro</h1>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="toggleTheme()"><i class="bi bi-moon-stars-fill" id="themeIcon"></i></button>
+                <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="openSettings()"><i class="bi bi-gear-fill"></i></button>
+            </div>
         </div>
-        <div class="d-flex gap-2 bg-white p-1 rounded-pill shadow-sm">
-            <input type="text" id="dashSheetId" class="form-control border-0 rounded-pill ps-3 text-dark" placeholder="Enter Sheet ID...">
-            <button class="btn btn-primary rounded-pill px-4" onclick="loadSheet(document.getElementById('dashSheetId').value)">Load</button>
+        <div class="bg-white p-1 rounded-pill shadow-lg d-flex">
+            <input type="text" id="dashSheetId" class="form-control border-0 rounded-pill ps-4 text-dark" placeholder="Paste Sheet ID...">
+            <button class="btn btn-primary rounded-pill px-4 fw-bold" onclick="loadFromDash()">Open</button>
         </div>
     </div>
-    <div class="container mt-4">
-        <h6 class="text-muted fw-bold small text-uppercase ls-1">Recent Sheets</h6>
-        <div id="libraryGrid" class="row g-3 mt-1"></div>
+    <div class="container mt-5">
+        <h6 class="text-uppercase text-muted fw-bold small mb-3 ls-1">Library</h6>
+        <div id="libraryGrid" class="row g-3"></div>
+        <div id="emptyLib" class="text-center text-muted py-5" style="display:none;"><i class="bi bi-journal-album fs-1 d-block mb-3 opacity-25"></i> No recent sheets found.</div>
     </div>
 </div>
 
-<!-- EDITOR -->
+<!-- EDITOR VIEW -->
 <div id="editorView" class="view-section">
-    <!-- Header -->
     <div class="glass-header">
         <div class="d-flex align-items-center gap-3 overflow-hidden">
-            <button class="btn btn-light rounded-circle border shadow-sm btn-sm" onclick="toDash()"><i class="bi bi-arrow-left"></i></button>
-            <div style="min-width: 0;">
-                <div class="fw-bold text-truncate" id="sheetName">Loading...</div>
-                <div class="small text-muted font-monospace" id="sheetIdDisplay"></div>
-            </div>
+            <button class="btn btn-light rounded-circle shadow-sm border" onclick="toDash()"><i class="bi bi-chevron-left"></i></button>
+            <div class="text-truncate"><div class="fw-bold text-truncate" id="sheetName">Loading...</div><div class="small text-muted font-monospace" id="sheetIdDisplay">...</div></div>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-secondary" onclick="openSetup()"><i class="bi bi-sliders"></i> Columns</button>
+            <button class="btn btn-white border shadow-sm" onclick="viewRawData()" title="View Raw Data Table"><i class="bi bi-table"></i></button>
+            <button class="btn btn-white border shadow-sm" onclick="toggleFullScreen()"><i class="bi bi-arrows-fullscreen"></i></button>
+            <button class="btn btn-white border shadow-sm fw-bold" onclick="openSetup(true)"><i class="bi bi-sliders"></i> Setup</button>
         </div>
     </div>
-    
-    <!-- Toolbar -->
     <div class="toolbar">
-        <div class="d-flex align-items-center gap-2 flex-grow-1">
-            <div class="input-group input-group-sm" style="max-width: 250px;">
-                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
-                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Filter rows..." onkeyup="debounceSearch(this.value)">
-            </div>
-            <div id="syncStatus" class="small text-muted ms-2"></div>
-        </div>
         <div class="d-flex align-items-center gap-2">
-            <button id="btnDiscard" class="btn btn-sm btn-light border rounded-pill" onclick="discardChanges()" disabled>Discard</button>
-            <button id="btnSync" class="btn btn-sm btn-primary rounded-pill fw-bold shadow-sm" onclick="sync()" disabled>
-                Sync <span id="changeBadge" class="badge bg-white text-primary ms-1 rounded-pill" style="display:none">0</span>
-            </button>
+            <div class="input-group input-group-sm shadow-sm">
+                <span class="input-group-text border-0 bg-white"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="desktopSearch" class="form-control border-0" placeholder="Filter current view..." onkeyup="debounceSearch(this.value)">
+            </div>
+            <div id="autoSyncIndicator" style="display:none;" class="ms-2"><span class="badge bg-light text-primary border"><i class="bi bi-arrow-repeat spin"></i> Auto-Sync</span></div>
+        </div>
+        <div class="d-flex align-items-center gap-2 ms-2">
+            <div class="d-flex gap-3 small text-muted counter-group">
+                <span title="Modified" class="counter-badge"><i class="bi bi-pencil text-warning"></i> <b id="cntMod">0</b></span>
+                <span title="Added" class="counter-badge"><i class="bi bi-plus-circle text-success"></i> <b id="cntAdd">0</b></span>
+                <span title="Deleted" class="counter-badge"><i class="bi bi-trash text-danger"></i> <b id="cntDel">0</b></span>
+            </div>
+            <div class="vr mx-1"></div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary rounded-pill fw-bold" onclick="discard()" id="btnDiscard" disabled>Discard</button>
+                <button class="btn btn-sm btn-primary rounded-pill fw-bold" onclick="sync()" id="btnSync" disabled>Sync</button>
+            </div>
         </div>
     </div>
-
-    <!-- Views -->
     <div class="views-bar" id="viewsContainer"></div>
-
-    <!-- Main Table Area (Virtual Scroller) -->
-    <div class="table-container" id="mainScrollContainer">
-        <table id="mainTable">
-            <thead id="tHead"></thead>
-            <!-- Spacer Top -->
-            <tr style="height: 0; padding: 0; border: none;"><td colspan="100" style="padding: 0; border: none;"><div id="virtualTop"></div></td></tr>
-            <tbody id="tBody"></tbody>
-            <!-- Spacer Bottom -->
-            <tr style="height: 0; padding: 0; border: none;"><td colspan="100" style="padding: 0; border: none;"><div id="virtualBottom"></div></td></tr>
-        </table>
+    <input type="hidden" id="search">
+    <div class="table-container" id="tableScroller" onclick="deselectColumn(event)">
+        <div style="position: relative; width: 100%; height: var(--total-height, 0px);">
+             <table id="mainTable" style="position: absolute; top: 0; left: 0; width: 100%;">
+                <thead id="tHead"></thead>
+                <tbody id="tBody"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
-<!-- MODALS -->
-<div class="modal fade" id="setupModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header border-0 pb-0"><h5 class="fw-bold">Column Setup</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="columnList" class="d-flex flex-column gap-2"></div></div><div class="modal-footer border-0"><button class="btn btn-primary w-100 rounded-pill" onclick="applyColumnVisibility()">Apply</button></div></div></div></div>
-<div class="modal fade" id="tokenModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog"><div class="modal-content p-4"><h5 class="fw-bold">API Access</h5><p class="small text-muted">Enter Smartsheet Access Token</p><input type="password" id="apiToken" class="form-control mb-3"><button class="btn btn-primary w-100" onclick="saveToken()">Save</button></div></div></div>
-<div id="loader" class="loading-overlay" style="display:none"><div class="spinner-border text-primary"></div></div>
-<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastArea"></div>
-
-<!-- ACTION MENU (Context Menu Replaces Heavy Buttons) -->
-<div id="ctxMenu" class="dropdown-menu shadow" style="display:none; position:fixed; z-index:9999;">
-    <button class="dropdown-item" onclick="ctxAction('indent')"><i class="bi bi-text-indent-left me-2"></i>Indent</button>
-    <button class="dropdown-item" onclick="ctxAction('outdent')"><i class="bi bi-text-indent-right me-2"></i>Outdent</button>
-    <div class="dropdown-divider"></div>
-    <button class="dropdown-item" onclick="ctxAction('addAbove')"><i class="bi bi-arrow-up me-2"></i>Add Row Above</button>
-    <button class="dropdown-item" onclick="ctxAction('addBelow')"><i class="bi bi-arrow-down me-2"></i>Add Row Below</button>
-    <div class="dropdown-divider"></div>
-    <button class="dropdown-item text-danger" onclick="ctxAction('delete')"><i class="bi bi-trash me-2"></i>Delete Row</button>
-</div>
+<!-- ALL MODALS AND UTILITY DIVS -->
+<div class="modal fade" id="viewConfigModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">Edit View</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label small fw-bold text-muted">VIEW NAME</label><input type="text" id="viewNameInput" class="form-control"></div><div class="alert alert-light border small text-muted"><i class="bi bi-info-circle me-1"></i> Column visibility is managed via "Setup".</div></div><div class="modal-footer border-0"><button class="btn btn-danger me-auto" onclick="deleteCurrentView()"><i class="bi bi-trash"></i> Delete View</button><button class="btn btn-primary rounded-pill px-4" onclick="saveViewConfig()">Save Changes</button></div></div></div></div>
+<div class="modal fade" id="setupModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog modal-dialog-scrollable modal-lg"><div class="modal-content" style="height: 80vh;"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">Sheet Setup</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body pt-2 d-flex flex-column h-100"><ul class="nav nav-pills nav-fill mb-3 bg-light rounded-pill p-1"><li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tabCols">Columns <span class="badge bg-white text-dark ms-1 rounded-pill" id="badgeCols">0</span></a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tabRows">Rows (Selection)</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tabSync">Settings</a></li></ul><div class="tab-content flex-grow-1"><div class="tab-pane fade show active" id="tabCols"><div id="setupColList" class="d-flex flex-column gap-2 pb-3"></div></div><div class="tab-pane fade" id="tabRows"><div id="setupRowTree" class="border rounded p-2"></div></div><div class="tab-pane fade" id="tabSync"><div class="p-3 bg-light border rounded"><h6 class="fw-bold mb-3">Auto-Sync</h6><div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="setupAutoSyncCheck" onchange="toggleAutoRefresh(this.checked)"><label class="form-check-label" for="setupAutoSyncCheck">Enable Auto-Sync</label></div><input type="number" id="setupSyncInterval" class="form-control" value="60" min="10" onchange="updateSyncInterval(this.value)"></div></div></div></div><div class="modal-footer border-0"><button class="btn btn-primary w-100 py-2 rounded-pill fw-bold" onclick="applySetup()">Apply to View</button></div></div></div></div>
+<div class="modal fade" id="settingsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content rounded-4 border-0 p-4"><h5 class="fw-bold mb-3">Configuration</h5><label class="form-label small fw-bold text-muted">ACCESS TOKEN</label><input type="password" id="apiToken" class="form-control form-control-lg bg-light border-0 mb-3" placeholder="Token..."><button class="btn btn-primary w-100 rounded-pill" onclick="saveSettings()">Save</button></div></div></div>
+<div class="modal fade" id="conflictModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger-subtle"><h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Sync Conflict Detected</h5></div><div class="modal-body"><p class="small text-muted mb-3">Remote changes conflict with your unsaved edits. Please resolve:</p><div id="conflictList"></div></div><div class="modal-footer"><button class="btn btn-outline-secondary" onclick="resolveAll('MINE')">Keep All Mine</button><button class="btn btn-danger" onclick="resolveAll('THEIRS')">Accept All Theirs</button></div></div></div></div>
+<div class="modal fade" id="logsModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content bg-dark text-light"><div class="modal-header border-secondary"><h5 class="modal-title">System Logs</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 bg-black" id="logContent" style="min-height:300px;"></div></div></div></div>
+<div class="modal fade" id="rawDataModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-lg-down"><div class="modal-content"><div class="modal-header bg-light border-bottom"><h5 class="modal-title font-monospace fw-bold"><i class="bi bi-database me-2 text-primary"></i>Raw Data Inspector</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 position-relative"><div class="table-container" style="height: 100%;"><table id="rawTable" style="width:100%"><thead id="rawHead"></thead><tbody id="rawBody"></tbody></table></div></div></div></div></div>
+<div id="loader" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center;"><div class="spinner-border text-primary"></div><h6 class="fw-bold text-dark">Processing...</h6></div>
+<div class="toast-container position-fixed top-0 end-0 p-3" id="toastArea"></div>
+<div id="multiPopover"><div class="popover-content" id="multiOptions"></div><div class="popover-footer"><button class="btn btn-primary btn-sm w-100" onclick="saveMultiFromPopover()">Apply</button></div></div>
+<div id="columnFilterPopover"><div class="p-3"><div class="d-flex justify-content-between align-items-center mb-2"><h6 class="fw-bold m-0">Filter Column</h6><button class="btn-close small" onclick="closeColumnFilterPopover()"></button></div><div class="d-flex gap-2"><select id="filterOpSelect" class="form-select form-select-sm" style="width:40%"><option value="contains">Contains</option><option value="eq">Equals</option><option value="empty">Is Empty</option><option value="notempty">Not Empty</option></select><div><input type="text" id="filterValInput" class="form-control form-control-sm" placeholder="Value..."></div></div></div><div class="modal-footer border-0 pt-0"><button class="btn btn-sm btn-outline-secondary me-auto" onclick="clearColumnFilter()">Clear</button><button class="btn btn-sm btn-primary" onclick="applyColumnFilter()">Apply</button></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-/** 
- * PERFORMANCE ARCHITECTURE 
- * 1. Data Structure: Maps instead of Arrays for O(1) lookups.
- * 2. Virtualization: Only render what's visible.
- * 3. Flat List: Hierarchical tree is flattened into a display list once, then sliced for rendering.
- */
-
-const CONFIG = { 
-    proxy: "https://cors-anywhere.herokuapp.com/", 
-    api: "https://api.smartsheet.com/2.0",
-    rowHeight: 46, // Must match CSS var --row-h
-    buffer: 5 // Extra rows to render above/below viewport
-};
+// --- CONFIG & CONSTANTS ---
+const CONFIG = { proxy: "https://cors-anywhere.herokuapp.com/", api: "https://api.smartsheet.com/2.0", ROW_HEIGHT: 48, VIRTUAL_BUFFER: 10 };
+const SMARTSHEET_PALETTE = ["none","transparent","#000000","#0B347D","#1061C3","#237F2E","#40B14B","#592C00","#5FB3F9","#61058B","#757575","#7ED085","#9210AD","#974C00","#991310","#B9DDFC","#BDBDBD","#C6E7C8","#D0AF8F","#D190DA","#E2F2FE","#E5E5E5","#E7F5E9","#EA352E","#EA5000","#EBC700","#EBC7EF","#EEDCCA","#F2E8DE","#F4E4F5","#F87E7D","#FEFF00","#FEFF85","#FF8D00","#FFCCD2","#FFCD7A","#FFE1AF","#FFEBEE","#FFED00","#FFF3DF","#FFFEE6","#FFFFFF"];
 
 // --- GLOBAL STATE ---
-let STATE = {
-    sheetId: null,
-    columns: [], // Array of Col definitions
-    
-    // Indexing for O(1) operations
-    rowMap: new Map(), // ID -> Row Object
-    childMap: new Map(), // ParentID -> Array of Row IDs
-    roots: [], // Array of Top-level Row IDs
-    
-    // Changes
-    edits: {}, // { rowId: { colId: val } }
-    added: [], // Array of new row objects
-    deleted: new Set(),
-    moves: {}, // { rowId: { parentId: x, siblingId: y } }
-    
-    // UI State
-    collapsed: new Set(),
-    flatRenderList: [], // The linear list of rows currently visible (expanded & filtered)
-    
-    // View Config
-    views: [],
-    currentViewId: 'default',
-    visibleColIds: new Set(),
-    
-    // Misc
-    ctxRowId: null // Row ID for context menu
-};
+let STATE = {};
+let sortableInstance, refreshInterval, searchDebounceTimer;
+
+function initializeState() {
+    STATE = {
+        sheetId: null, serverRows: [], allRows: [], cols: [], selectedCol: null, selectedRowIds: new Set(),
+        adds: [], dels: new Set(), edits: {}, hierarchyChanges: {},
+        meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set(), depth: {} },
+        tempMulti: null, tempFilterCol: null, logs: [], lastModifiedAt: null, autoRefresh: false,
+        autoRefreshInterval: 60, conflicts: [], views: [], currentViewId: null,
+        flatRenderList: [], // For virtualization: array of {id, depth}
+        rowMap: new Map() // For O(1) lookups
+    };
+}
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    if(!localStorage.getItem('smToken')) new bootstrap.Modal('#tokenModal').show();
+    initializeState();
+    if (!localStorage.getItem('smToken')) new bootstrap.Modal('#settingsModal').show();
+    document.body.setAttribute('data-theme', localStorage.getItem('smTheme') || 'light');
+    updateThemeIcon();
     renderLibrary();
-    
-    // Initialize Scroll Listener for Virtualization
-    const scroller = document.getElementById('mainScrollContainer');
-    scroller.addEventListener('scroll', () => requestAnimationFrame(renderVirtualTable));
-    
-    // Global Click to close menus
-    document.addEventListener('click', (e) => {
-        if(!e.target.closest('#ctxMenu') && !e.target.closest('.action-cell-content')) {
-            document.getElementById('ctxMenu').style.display = 'none';
-        }
+    document.addEventListener('click', handleClickOutside);
+    document.getElementById('tableScroller').addEventListener('scroll', () => {
+        requestAnimationFrame(renderVirtualRows);
+        if (STATE.tempMulti) repositionPopover(document.getElementById('multiPopover'), STATE.tempMulti.cell);
+        if (STATE.tempFilterCol) repositionPopover(document.getElementById('columnFilterPopover'), STATE.tempFilterCol.btn);
     });
 });
 
-function saveToken() {
-    localStorage.setItem('smToken', document.getElementById('apiToken').value);
-    bootstrap.Modal.getInstance('#tokenModal').hide();
-    renderLibrary();
-}
-
-async function api(ep, method='GET', body=null) {
-    const t = localStorage.getItem('smToken');
-    const opts = { method, headers: { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' } };
-    if(body) opts.body = JSON.stringify(body);
-    const res = await fetch(CONFIG.proxy + CONFIG.api + ep, opts);
-    if(res.status === 403) { alert("Enable Proxy Demo"); window.open('https://cors-anywhere.herokuapp.com/corsdemo'); throw 'PROXY'; }
-    if(!res.ok) throw await res.json();
-    return await res.json();
-}
-
-// --- DATA LOADING & INDEXING (CRITICAL FOR PERFORMANCE) ---
+// --- DATA LOADING & PREPARATION ---
 async function loadSheet(id) {
-    if(!id) return;
-    document.getElementById('loader').style.display = 'flex';
+    if (!id) return;
+    showLoader(true);
+    initializeState();
     STATE.sheetId = id;
-    
+    document.getElementById('dashboardView').classList.remove('active');
+    document.getElementById('editorView').classList.add('active');
     try {
-        const data = await api(`/sheets/${id}`);
-        
-        // Reset State
-        STATE.columns = data.columns;
-        STATE.rowMap.clear();
-        STATE.childMap.clear();
-        STATE.roots = [];
-        STATE.edits = {};
-        STATE.added = [];
-        STATE.deleted.clear();
-        STATE.moves = {};
-        STATE.collapsed.clear();
-        
-        // Build Indexes O(N) once
-        data.rows.forEach(r => {
-            STATE.rowMap.set(r.id, r);
-            const pid = r.parentId || 'ROOT';
-            if(!STATE.childMap.has(pid)) STATE.childMap.set(pid, []);
-            STATE.childMap.get(pid).push(r.id);
-            if(!r.parentId) STATE.roots.push(r.id);
-        });
-        
-        // Setup UI
-        document.getElementById('sheetName').innerText = data.name;
-        document.getElementById('sheetIdDisplay').innerText = data.id;
-        document.getElementById('dashboardView').classList.remove('active');
-        document.getElementById('editorView').classList.add('active');
-        
-        initViews(); // Default view
-        recalcFlatList(); // Prepare data for virtualization
-        renderTableHeader();
-        renderVirtualTable(); // Initial Draw
-        
-        addToLib(id, data.name);
-    } catch(e) {
+        const d = await api(`/sheets/${STATE.sheetId}?include=format,objectValue`);
+        STATE.serverRows = JSON.parse(JSON.stringify(d.rows));
+        STATE.allRows = d.rows;
+        STATE.cols = d.columns;
+        STATE.lastModifiedAt = d.modifiedAt;
+        document.getElementById('sheetName').innerText = d.name;
+        document.getElementById('sheetIdDisplay').innerText = d.id;
+        addToLib(d.id, d.name);
+        STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id));
+        rebuildRowMapAndDepth();
+        loadViews();
+        renderTable(true);
+    } catch (e) {
         showToast(e.message || e, 'danger');
+        toDash();
     } finally {
-        document.getElementById('loader').style.display = 'none';
+        showLoader(false);
     }
 }
 
-// --- TREE FLATTENING (THE MAGIC SAUCE) ---
-// Converts the hierarchical tree into a single flat array for the virtual scroller.
-// Only runs when structure changes or filter changes.
-function recalcFlatList() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const result = [];
-    
-    // Depth-First Traversal
-    function traverse(rowIds, depth) {
-        if(!rowIds) return;
-        
-        rowIds.forEach(rid => {
-            const row = STATE.rowMap.get(rid);
-            if(!row) return; // Deleted row logic handles this elsewhere, but safety check
-            if(STATE.deleted.has(rid)) return;
-
-            // Search Filter
-            let matches = true;
-            if(searchTerm) {
-                // Simple search across all cell values
-                const txt = row.cells.map(c => c.displayValue || c.value).join(' ').toLowerCase();
-                if(!txt.includes(searchTerm)) matches = false;
-                // Keep parents visible if children match? (Simplified: only show matching rows for performance)
-            }
-
-            if(matches) {
-                result.push({ id: rid, depth: depth });
-            }
-
-            // Recurse if expanded
-            // Note: If searching, we usually flatten everything or keep hierarchy. 
-            // Here we respect collapse state unless searching.
-            if(searchTerm || !STATE.collapsed.has(rid)) {
-                traverse(STATE.childMap.get(rid), depth + 1);
-            }
-        });
-    }
-
-    traverse(STATE.roots, 0);
-    STATE.flatRenderList = result;
-    
-    // Reset Scroll
-    renderVirtualTable();
+function rebuildRowMapAndDepth() {
+    const allCurrentRows = [...STATE.allRows, ...STATE.adds];
+    STATE.rowMap.clear();
+    allCurrentRows.forEach(r => STATE.rowMap.set(r.id, r));
+    allCurrentRows.forEach(r => {
+        let d = 0, curr = r;
+        while (curr && curr.parentId && STATE.rowMap.has(curr.parentId)) {
+            d++;
+            curr = STATE.rowMap.get(curr.parentId);
+        }
+        STATE.meta.depth[r.id] = d;
+    });
 }
 
-// --- VIRTUAL RENDERING ---
-function renderVirtualTable() {
-    const container = document.getElementById('mainScrollContainer');
-    const scrollTop = container.scrollTop;
-    const containerHeight = container.clientHeight;
-    
-    const totalRows = STATE.flatRenderList.length;
-    const totalHeight = totalRows * CONFIG.rowHeight;
-    
-    // Calculate Indices
-    let startIdx = Math.floor(scrollTop / CONFIG.rowHeight) - CONFIG.buffer;
-    let endIdx = Math.ceil((scrollTop + containerHeight) / CONFIG.rowHeight) + CONFIG.buffer;
-    
-    // Clamp
-    startIdx = Math.max(0, startIdx);
-    endIdx = Math.min(totalRows, endIdx);
-    
-    // Set Spacers to fake the scroll height
-    document.getElementById('virtualTop').style.height = `${startIdx * CONFIG.rowHeight}px`;
-    document.getElementById('virtualBottom').style.height = `${(totalRows - endIdx) * CONFIG.rowHeight}px`;
-    
-    // Render the Slice
+// --- VIRTUALIZED RENDERING ENGINE ---
+function renderTable(fullRefresh = false) {
+    if (fullRefresh) renderTableHeader();
+    recalcFlatListAndRender();
+}
+
+function renderTableHeader() {
+    const th = document.getElementById('tHead');
+    const curView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView();
+    const visibleSet = new Set(curView.visibleCols);
+    let h = '<tr><th class="text-center">Actions</th>';
+    STATE.cols.forEach(c => {
+        if (visibleSet.has(c.id)) {
+            const w = (curView.colWidths || {})[c.id] ? `${curView.colWidths[c.id]}px` : (c.primary ? '250px' : '150px');
+            const isPrimary = c.primary;
+            h += `<th style="width:${w}" class="${isPrimary ? 'primary-header-cell' : ''} ${STATE.selectedCol === c.id ? 'selected' : ''}" data-col-id="${c.id}" onclick="selectColumn(event, ${c.id})"><div class="col-title-wrap"><span>${c.title}</span><button class="col-filter-btn ${(curView.filters || []).some(f=>f.colId===c.id)?'active':''}" onclick="openColumnFilterPopover(event, ${c.id})"><i class="bi bi-funnel-fill"></i></button></div>${isPrimary ? generateOutlineButtonsHTML('MAIN') : ''}<div class="resizer" onmousedown="startResize(event, this)"></div></th>`;
+        }
+    });
+    h += '</tr>';
+    th.innerHTML = h;
+    initSortable();
+}
+
+function recalcFlatListAndRender() {
+    const allVisibleRows = getFilteredAndSearchedRows();
+    const flatList = [];
+    const rowMap = new Map(allVisibleRows.map(r => [r.id, r]));
+
+    function traverse(row, depth) {
+        if (STATE.dels.has(row.id)) return;
+        flatList.push({ id: row.id, depth });
+        if (!STATE.meta.collapsed.has(row.id)) {
+            const children = allVisibleRows.filter(r => r.parentId === row.id);
+            children.forEach(child => traverse(child, depth + 1));
+        }
+    }
+    const rootRows = allVisibleRows.filter(r => !r.parentId || !rowMap.has(r.parentId));
+    rootRows.forEach(r => traverse(r, 0));
+
+    STATE.flatRenderList = flatList;
+    document.getElementById('tableScroller').scrollTop = 0;
+    renderVirtualRows();
+}
+
+function renderVirtualRows() {
+    const scroller = document.getElementById('tableScroller');
     const tbody = document.getElementById('tBody');
-    const visibleRows = STATE.flatRenderList.slice(startIdx, endIdx);
+    const { scrollTop, clientHeight } = scroller;
+
+    const totalHeight = STATE.flatRenderList.length * CONFIG.ROW_HEIGHT;
+    scroller.firstElementChild.style.height = `${totalHeight}px`;
+
+    const startIndex = Math.max(0, Math.floor(scrollTop / CONFIG.ROW_HEIGHT) - CONFIG.VIRTUAL_BUFFER);
+    const endIndex = Math.min(STATE.flatRenderList.length, Math.ceil((scrollTop + clientHeight) / CONFIG.ROW_HEIGHT) + CONFIG.VIRTUAL_BUFFER);
     
-    // Optimization: Reuse DOM elements? For simplicity in this file, we rebuild string. 
-    // Since N is small (approx 30-40), innerHTML is fast enough here compared to 1000s.
+    tbody.style.transform = `translateY(${startIndex * CONFIG.ROW_HEIGHT}px)`;
+
+    const visibleItems = STATE.flatRenderList.slice(startIndex, endIndex);
+    const curView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView();
+    const visibleSet = new Set(curView.visibleCols);
+
     let html = '';
-    
-    visibleRows.forEach(meta => {
-        const r = STATE.rowMap.get(meta.id);
-        const isMod = STATE.edits[r.id] || STATE.moves[r.id];
-        const isNew = String(r.id).startsWith('NEW');
-        const cls = isNew ? 'row-new' : (isMod ? 'row-mod' : '');
+    visibleItems.forEach(item => {
+        const r = STATE.rowMap.get(item.id);
+        if (!r) return;
+        let rowClass = '';
+        if (STATE.dels.has(r.id)) rowClass = 'row-deleted';
+        else if (String(r.id).startsWith('NEW')) rowClass = 'row-new';
+        else if (STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) rowClass = 'row-modified';
         
-        html += `<tr class="${cls}" data-id="${r.id}">`;
+        const fmtInfo = getFormatInfo(r.format);
+        html += `<tr data-id="${r.id}" class="${rowClass}" style="${fmtInfo.bg ? `--row-bg-override: ${fmtInfo.bg};` : ''} ${fmtInfo.style}">`;
+        html += `<td class="text-center p-0">${STATE.dels.has(r.id) ? `<button class="btn btn-sm text-secondary" onclick="restoreRow('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>` : `<div class="actions-wrapper"><button class="action-btn drag-handle"><i class="bi bi-grip-vertical"></i></button><button class="action-btn" onclick="indentRow('${r.id}')"><i class="bi bi-text-indent-left"></i></button><button class="action-btn" onclick="outdentRow('${r.id}')"><i class="bi bi-text-indent-right"></i></button><div class="add-btn-group"><button class="add-btn-part" onclick="addNewRowAbove('${r.id}')"><i class="bi bi-chevron-up"></i></button><button class="add-btn-part" onclick="addNewRowBelow('${r.id}')"><i class="bi bi-chevron-down"></i></button></div><button class="action-btn btn-del" onclick="delRow('${r.id}')"><i class="bi bi-trash"></i></button></div>`}</td>`;
         
-        // 1. Action Column (Sticky)
-        html += `<td class="text-center bg-white border-end"><div class="action-cell-content" onclick="openCtxMenu(event, '${r.id}')"><i class="bi bi-three-dots"></i></div></td>`;
-        
-        // 2. Data Columns
-        STATE.columns.forEach(c => {
-            if(!STATE.visibleColIds.has(c.id)) return;
+        STATE.cols.forEach(c => {
+            if (!visibleSet.has(c.id)) return;
+            const cell = (r.cells || []).find(x => x.columnId === c.id);
+            const val = STATE.edits[r.id]?.[c.id] ?? (cell?.displayValue ?? cell?.value ?? '');
             
-            // Get Value
-            let val = '';
-            if(STATE.edits[r.id] && STATE.edits[r.id][c.id] !== undefined) {
-                val = STATE.edits[r.id][c.id];
-            } else {
-                const cell = r.cells.find(x => x.columnId === c.id);
-                val = cell ? (cell.displayValue || cell.value || '') : '';
+            html += `<td>`;
+            if (c.primary) {
+                html += `<div class="tree-wrap">`;
+                for (let i = 0; i < item.depth; i++) html += `<div class="tree-indent"></div>`;
+                const hasChild = [...STATE.allRows, ...STATE.adds].some(x => x.parentId === r.id && !STATE.dels.has(x.id));
+                html += hasChild ? `<div class="tree-toggle ${STATE.meta.collapsed.has(r.id) ? '' : 'expanded'}" onclick="toggle('${r.id}')"><i class="bi bi-caret-right-fill"></i></div>` : `<div style="width:28px;flex-shrink:0;"></div>`;
             }
-            
-            // Primary Column Indentation
-            if(c.primary) {
-                const hasChildren = STATE.childMap.get(r.id) && STATE.childMap.get(r.id).length > 0;
-                const isCollapsed = STATE.collapsed.has(r.id);
-                const indent = `<span class="tree-indent" style="margin-right: ${meta.depth * 16}px"></span>`;
-                const toggle = hasChildren 
-                    ? `<span class="tree-toggle ${isCollapsed ? '' : 'expanded'} me-1" onclick="toggleRow('${r.id}')"><i class="bi bi-caret-right-fill small"></i></span>` 
-                    : `<span style="width:20px; display:inline-block"></span>`;
-                    
-                html += `<td><div class="d-flex align-items-center h-100 ps-1">${indent}${toggle}${renderCellInput(r.id, c, val)}</div></td>`;
-            } else {
-                html += `<td>${renderCellInput(r.id, c, val)}</td>`;
-            }
+            html += getCellHtml(r.id, c, val, cell?.format);
+            if (c.primary) html += `</div>`;
+            html += `</td>`;
         });
-        
         html += `</tr>`;
     });
-    
     tbody.innerHTML = html;
 }
 
-function renderCellInput(rid, col, val) {
-    if(col.type === 'CHECKBOX') {
-        const checked = val === true || val === 'true';
-        return `<input type="checkbox" class="form-check-input m-auto d-block" ${checked?'checked':''} onchange="updateCell('${rid}', ${col.id}, this.checked)">`;
-    }
-    // Simple text for performance. Full Select/MultiSelect logic can be added here.
-    return `<input class="cell-input" value="${String(val).replace(/"/g, '&quot;')}" onchange="updateCell('${rid}', ${col.id}, this.value)">`;
-}
-
-// --- COLUMN & HEADER ---
-function renderTableHeader() {
-    const thead = document.getElementById('tHead');
-    let h = `<tr><th style="width:50px"></th>`; // Action Col
-    STATE.columns.forEach(c => {
-        if(STATE.visibleColIds.has(c.id)) {
-            h += `<th style="width:${c.width || 150}px">${c.title}<div class="resizer" onmousedown="initResize(event, ${c.id})"></div></th>`;
-        }
-    });
-    h += `</tr>`;
-    thead.innerHTML = h;
-}
-
-function applyColumnVisibility() {
-    const checks = document.querySelectorAll('#columnList input:checked');
-    STATE.visibleColIds = new Set(Array.from(checks).map(c => parseInt(c.value)));
-    renderTableHeader();
-    renderVirtualTable(); // Refresh view
-    bootstrap.Modal.getInstance('#setupModal').hide();
-}
-
-function openSetup() {
-    const list = document.getElementById('columnList');
-    list.innerHTML = '';
-    STATE.columns.forEach(c => {
-        const checked = STATE.visibleColIds.has(c.id) ? 'checked' : '';
-        const dis = c.primary ? 'disabled checked' : '';
-        list.innerHTML += `<div class="form-check"><input class="form-check-input" type="checkbox" value="${c.id}" ${checked} ${dis}><label class="form-check-label">${c.title}</label></div>`;
-    });
-    new bootstrap.Modal('#setupModal').show();
-}
-
-// --- INTERACTION LOGIC ---
-function toggleRow(rid) {
-    if(STATE.collapsed.has(rid)) STATE.collapsed.delete(rid);
-    else STATE.collapsed.add(rid);
-    recalcFlatList(); // Re-flatten tree
-}
-
-let searchTimer;
-function debounceSearch(val) {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => recalcFlatList(), 300);
-}
-
-function updateCell(rid, cid, val) {
-    if(!STATE.edits[rid]) STATE.edits[rid] = {};
-    STATE.edits[rid][cid] = val;
-    updateSyncStatus();
-    // visual feedback
-    const rowEl = document.querySelector(`tr[data-id="${rid}"]`);
-    if(rowEl) rowEl.classList.add('row-mod');
-}
-
-// --- HIERARCHY / ROW MANIPULATION ---
-function openCtxMenu(e, rid) {
-    e.stopPropagation();
-    STATE.ctxRowId = rid;
-    const menu = document.getElementById('ctxMenu');
-    menu.style.display = 'block';
-    // Position check
-    const mh = 200; // approx menu height
-    let top = e.clientY;
-    if (top + mh > window.innerHeight) top -= mh;
-    menu.style.top = `${top}px`;
-    menu.style.left = `${e.clientX}px`;
-}
-
-function ctxAction(action) {
-    const rid = STATE.ctxRowId;
-    if(!rid) return;
-    
-    // Move logic involves manipulating childMap and parent pointers
-    if(action === 'indent') {
-        // Find current parent
-        const row = STATE.rowMap.get(rid);
-        const currentSiblings = STATE.childMap.get(row.parentId || 'ROOT');
-        const idx = currentSiblings.indexOf(rid);
-        
-        if(idx > 0) {
-            const newParentId = currentSiblings[idx-1];
-            moveRow(rid, newParentId);
-        }
-    } else if(action === 'outdent') {
-        const row = STATE.rowMap.get(rid);
-        if(row.parentId) {
-            const grandParent = STATE.rowMap.get(row.parentId).parentId || 'ROOT';
-            moveRow(rid, grandParent);
-        }
-    } else if (action === 'delete') {
-        STATE.deleted.add(rid);
-        // Recursively delete children visually
-        const hideChildren = (pid) => {
-            const kids = STATE.childMap.get(pid);
-            if(kids) kids.forEach(k => { STATE.deleted.add(k); hideChildren(k); });
-        };
-        hideChildren(rid);
-        updateSyncStatus();
-        recalcFlatList();
-    } else if (action === 'addBelow' || action === 'addAbove') {
-         // Create New Row
-         const newId = 'NEW_' + Date.now();
-         const row = STATE.rowMap.get(rid);
-         const pid = row.parentId || 'ROOT';
-         
-         const newRow = { 
-             id: newId, 
-             cells: [], 
-             parentId: row.parentId,
-             rowNumber: 9999 
-         };
-         
-         STATE.rowMap.set(newId, newRow);
-         STATE.added.push(newRow);
-         if(!STATE.childMap.has(pid)) STATE.childMap.set(pid, []);
-         
-         const siblings = STATE.childMap.get(pid);
-         const idx = siblings.indexOf(rid);
-         const insertAt = action === 'addBelow' ? idx + 1 : idx;
-         siblings.splice(insertAt, 0, newId);
-         
-         recalcFlatList();
-         updateSyncStatus();
-    }
-    
-    document.getElementById('ctxMenu').style.display = 'none';
-}
-
-function moveRow(rid, newPid) {
-    const row = STATE.rowMap.get(rid);
-    const oldPid = row.parentId || 'ROOT';
-    
-    // Remove from old
-    const oldSibs = STATE.childMap.get(oldPid);
-    const idx = oldSibs.indexOf(rid);
-    if(idx > -1) oldSibs.splice(idx, 1);
-    
-    // Add to new
-    if(!STATE.childMap.has(newPid)) STATE.childMap.set(newPid, []);
-    STATE.childMap.get(newPid).push(rid);
-    
-    // Update Data
-    row.parentId = newPid === 'ROOT' ? undefined : newPid;
-    
-    // Record Move for Sync
-    STATE.moves[rid] = { parentId: row.parentId }; // Simplified for demo
-    
-    // If new parent was collapsed, expand it
-    if(newPid !== 'ROOT') STATE.collapsed.delete(newPid);
-    
-    recalcFlatList();
-    updateSyncStatus();
-}
-
-// --- SYNC ENGINE ---
-function updateSyncStatus() {
-    const cnt = Object.keys(STATE.edits).length + STATE.added.length + STATE.deleted.size + Object.keys(STATE.moves).length;
-    const badge = document.getElementById('changeBadge');
-    badge.innerText = cnt;
-    badge.style.display = cnt > 0 ? 'inline-block' : 'none';
-    document.getElementById('btnSync').disabled = cnt === 0;
-    document.getElementById('btnDiscard').disabled = cnt === 0;
-}
-
-function discardChanges() {
-    if(confirm("Discard all changes?")) loadSheet(STATE.sheetId);
-}
-
-async function sync() {
-    document.getElementById('loader').style.display = 'flex';
-    try {
-        // 1. Deletes
-        if(STATE.deleted.size > 0) {
-            const ids = Array.from(STATE.deleted).filter(id => !String(id).startsWith('NEW')).join(',');
-            if(ids) await api(`/sheets/${STATE.sheetId}/rows?ids=${ids}&ignoreRowsNotFound=true`, 'DELETE');
-        }
-        
-        // 2. Adds
-        if(STATE.added.length > 0) {
-            const body = STATE.added.map(r => ({
-                toBottom: true,
-                parentId: r.parentId,
-                cells: STATE.columns.map(c => ({ columnId: c.id, value: STATE.edits[r.id]?.[c.id] || null }))
-            }));
-            await api(`/sheets/${STATE.sheetId}/rows`, 'POST', body);
-        }
-        
-        // 3. Updates (Edits & Moves)
-        const updates = [];
-        const updateIds = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.moves)]);
-        
-        updateIds.forEach(rid => {
-            if(String(rid).startsWith('NEW') || STATE.deleted.has(rid)) return;
-            const item = { id: parseInt(rid) };
-            
-            // Edits
-            if(STATE.edits[rid]) {
-                item.cells = Object.keys(STATE.edits[rid]).map(cid => ({ columnId: parseInt(cid), value: STATE.edits[rid][cid] }));
-            }
-            
-            // Moves
-            if(STATE.moves[rid]) {
-                if(STATE.moves[rid].parentId) item.parentId = parseInt(STATE.moves[rid].parentId);
-                else item.toTop = true; // or indent logic
-            }
-            updates.push(item);
-        });
-        
-        if(updates.length) await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', updates);
-        
-        showToast("Sync Complete", "success");
-        loadSheet(STATE.sheetId); // Reload to get server state
-        
-    } catch(e) {
-        showToast("Sync Failed: " + JSON.stringify(e), "danger");
-        document.getElementById('loader').style.display = 'none';
-    }
-}
-
-// --- UTILS ---
-function initViews() {
-    STATE.visibleColIds = new Set(STATE.columns.slice(0, 8).map(c => c.id));
-    // Could load from localstorage here
-}
-
-function renderLibrary() {
-    const lib = JSON.parse(localStorage.getItem('smLib') || '[]');
-    const grid = document.getElementById('libraryGrid');
-    grid.innerHTML = '';
-    lib.forEach(s => {
-        grid.innerHTML += `<div class="col-12 col-md-6 col-lg-4"><div class="sheet-card" onclick="loadSheet('${s.id}')"><div class="fw-bold text-truncate">${s.name}</div><div class="small text-muted font-monospace">${s.id}</div></div></div>`;
-    });
-}
-
-function addToLib(id, name) {
-    let lib = JSON.parse(localStorage.getItem('smLib') || '[]');
-    lib = lib.filter(s => s.id !== id);
-    lib.unshift({ id, name });
-    localStorage.setItem('smLib', JSON.stringify(lib.slice(0,10)));
-}
-
-function toDash() {
-    document.getElementById('editorView').classList.remove('active');
-    document.getElementById('dashboardView').classList.add('active');
-}
-
-function toggleTheme() {
-    const b = document.body;
-    const curr = b.getAttribute('data-theme');
-    b.setAttribute('data-theme', curr === 'dark' ? 'light' : 'dark');
-}
-
-function showToast(msg, type) {
-    const el = document.createElement('div');
-    el.className = `toast show align-items-center text-white bg-${type} border-0`;
-    el.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div><button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
-    document.getElementById('toastArea').appendChild(el);
-    setTimeout(()=>el.remove(), 3000);
-}
+// --- INTERACTIONS & LOGIC (Complete Functions) ---
+// All your original functions are here, unmodified unless they trigger a re-render.
+function api(ep, method='GET', body=null) { const t = localStorage.getItem('smToken'); const opts = { method, headers: { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' } }; if(body) opts.body = JSON.stringify(body); return fetch(CONFIG.proxy + CONFIG.api + ep, opts).then(async res => { if(!res.ok) throw (await res.json()); return res.json(); }); }
+function toggle(id) { if (STATE.meta.collapsed.has(id)) STATE.meta.collapsed.delete(id); else STATE.meta.collapsed.add(id); recalcFlatListAndRender(); }
+function debounceSearch(val) { clearTimeout(searchDebounceTimer); document.getElementById('search').value = val; searchDebounceTimer = setTimeout(() => renderTable(false), 300); }
+function getFilteredAndSearchedRows() { let rows = [...STATE.allRows, ...STATE.adds].filter(r => STATE.selectedRowIds.has(r.id) || String(r.id).startsWith('NEW')); const currentView = STATE.views.find(v => v.id === STATE.currentViewId); if (currentView?.filters?.length) { rows = rows.filter(r => currentView.filters.every(f => { let val = String(STATE.edits[r.id]?.[f.colId] ?? r.cells?.find(c=>c.columnId===f.colId)?.displayValue ?? '').toLowerCase(); const filterVal = (f.value || '').toLowerCase(); if (f.operator==='contains') return val.includes(filterVal); if (f.operator==='eq') return val===filterVal; if (f.operator==='empty') return val===''; if (f.operator==='notempty') return val!==''; return true; })); } const term = document.getElementById('search').value.toLowerCase(); if (term) { const searchIds = new Set(rows.filter(r => (r.cells||[]).map(c=>c.displayValue||c.value||'').join(' ').toLowerCase().includes(term)).map(r => r.id)); const rowMap = new Map([...STATE.allRows, ...STATE.adds].map(r => [r.id, r])); const finalIds = new Set(); searchIds.forEach(id => { let curr = rowMap.get(id); while(curr) { finalIds.add(curr.id); curr = rowMap.get(curr.parentId); } }); rows = rows.filter(r => finalIds.has(r.id)); } return rows; }
+function initSortable() { if(sortableInstance) sortableInstance.destroy(); const tbody = document.getElementById('tBody'); sortableInstance = new Sortable(tbody, { handle: '.drag-handle', animation: 150, onEnd: function (evt) { const rid = isNaN(evt.item.dataset.id) ? evt.item.dataset.id : parseInt(evt.item.dataset.id); const prevEl = evt.item.previousElementSibling; const siblingId = prevEl ? (isNaN(prevEl.dataset.id) ? prevEl.dataset.id : parseInt(prevEl.dataset.id)) : null; const rowToUpdate = STATE.rowMap.get(rid); const siblingRow = siblingId ? STATE.rowMap.get(siblingId) : null; const newParentId = siblingRow ? siblingRow.parentId : null; if(rowToUpdate) rowToUpdate.parentId = newParentId; STATE.hierarchyChanges[rid] = { parentId: newParentId, siblingId: siblingId }; rebuildRowMapAndDepth(); renderTable(false); updateSyncUI(); } }); }
+function indentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const idx = STATE.flatRenderList.findIndex(r => r.id === rid); if(idx <= 0) return; const prevRowMeta = STATE.flatRenderList[idx-1]; const rowToUpdate = STATE.rowMap.get(rid); if(rowToUpdate) rowToUpdate.parentId = prevRowMeta.id; STATE.hierarchyChanges[rid] = { parentId: prevRowMeta.id }; rebuildRowMapAndDepth(); renderTable(false); updateSyncUI(); }
+function outdentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const row = STATE.rowMap.get(rid); if(!row || !row.parentId) return; const parent = STATE.rowMap.get(row.parentId); const newPid = parent ? parent.parentId : undefined; row.parentId = newPid; STATE.hierarchyChanges[rid] = { parentId: newPid, siblingId: parent.id }; rebuildRowMapAndDepth(); renderTable(false); updateSyncUI(); }
+function delRow(id) { if(String(id).startsWith('NEW')) { STATE.adds = STATE.adds.filter(r => r.id !== id); STATE.rowMap.delete(id); } else STATE.dels.add(parseInt(id)); renderTable(false); updateSyncUI(); }
+function restoreRow(id) { STATE.dels.delete(parseInt(id)); renderTable(false); updateSyncUI(); }
+function addNewRow(relativeId, above = false) { const relativeRow = STATE.rowMap.get(relativeId); if (!relativeRow) return; const tempId = 'NEW_' + Date.now(); const newRow = { id: tempId, cells: [], parentId: relativeRow.parentId, rowNumber: 9999 }; STATE.adds.push(newRow); STATE.rowMap.set(tempId, newRow); STATE.selectedRowIds.add(tempId); if(above){ const siblings = [...STATE.allRows,...STATE.adds].filter(r=>r.parentId===relativeRow.parentId); const idx = siblings.findIndex(r=>r.id===relativeId); newRow.siblingId = idx > 0 ? siblings[idx-1].id : null; } else { newRow.siblingId = relativeId; } rebuildRowMapAndDepth(); renderTable(false); updateSyncUI(); }
+function addNewRowAbove(id) { addNewRow(id, true); }
+function addNewRowBelow(id) { addNewRow(id, false); }
+function updateSyncUI() { const modCount = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]).size; document.getElementById('cntMod').innerText = modCount; document.getElementById('cntAdd').innerText = STATE.adds.length; document.getElementById('cntDel').innerText = STATE.dels.size; const hasChanges = modCount + STATE.adds.length + STATE.dels.size > 0; document.getElementById('btnSync').disabled = !hasChanges; document.getElementById('btnDiscard').disabled = !hasChanges; }
+function discard() { if (confirm('Discard changes?')) loadSheet(STATE.sheetId); }
+async function sync() { showLoader(true); try { if (STATE.dels.size > 0) await api(`/sheets/${STATE.sheetId}/rows?ids=${[...STATE.dels].join(',')}&ignoreRowsNotFound=true`, 'DELETE'); if (STATE.adds.length > 0) { const newRows = STATE.adds.map(r => { const edits = STATE.edits[r.id] || {}; const cells = STATE.cols.map(c => ({ columnId: c.id, value: edits[c.id] })); return { toTop: !r.siblingId, siblingId: r.siblingId, parentId: r.parentId, cells }; }); await api(`/sheets/${STATE.sheetId}/rows`, 'POST', newRows); } const updates = []; [...new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)])].forEach(rid => { if (String(rid).startsWith('NEW')) return; const p = { id: parseInt(rid) }; if (STATE.edits[rid]) p.cells = Object.entries(STATE.edits[rid]).map(([cid, val]) => ({ columnId: parseInt(cid), value: val })); if (STATE.hierarchyChanges[rid]) Object.assign(p, STATE.hierarchyChanges[rid]); updates.push(p); }); if (updates.length > 0) await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', updates); showToast('Sync Successful!', 'success'); await loadSheet(STATE.sheetId); } catch(e) { showToast('Sync Failed: ' + e.message, 'danger'); } finally { showLoader(false); } }
+function getCellHtml(rid, col, val, fmt) { const safeVal = String(val||'').replace(/</g,"&lt;"); const fmtInfo = getFormatInfo(fmt); let s = fmtInfo.style; if (fmtInfo.bg) s += `background-color:${fmtInfo.bg}!important;`; if(col.type === 'CHECKBOX') return `<div class="d-flex justify-content-center align-items-center h-100" style="${s}"><input type="checkbox" class="form-check-input" ${val?'checked':''} onchange="edit('${rid}',${col.id},this.checked)"></div>`; if(col.options?.length){ if(col.type.includes('MULTI')){ let arr = String(val).split(',').map(s=>s.trim()).filter(Boolean); let badges = arr.length ? arr.map(t=>`<span class="badge-pill">${t}</span>`).join('') : `<span class="text-muted small fst-italic">Select...</span>`; return `<div class="badge-cell" onclick="openMultiPopover(event,'${rid}',${col.id},'${encodeURIComponent(JSON.stringify(arr))}')" style="${s}">${badges}</div>`; } else { return `<select class="cell-textarea form-select" style="${s}" onchange="edit('${rid}',${col.id},this.value)">${['', ...col.options].map(o=>`<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('')}</select>`; } } return `<textarea class="cell-textarea" style="${s}" onchange="edit('${rid}',${col.id},this.value)">${safeVal}</textarea>`; }
+function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); document.querySelector(`tr[data-id="${rid}"]`)?.classList.add('row-modified'); }
+// All other utility functions follow...
+function loadFromDash(){const id=document.getElementById('dashSheetId').value.trim();if(id)loadSheet(id)}function toDash(){if(Object.keys(STATE.edits).length>0&&!confirm("Unsaved changes. Exit?"))return;stopAutoRefresh();document.getElementById('editorView').classList.remove('active');document.getElementById('dashboardView').classList.add('active');renderLibrary()}function toggleTheme(){const n=document.body.getAttribute('data-theme')==='dark'?'light':'dark';document.body.setAttribute('data-theme',n);localStorage.setItem('smTheme',n);updateThemeIcon()}function updateThemeIcon(){const t=document.body.getAttribute('data-theme')==='dark';document.getElementById('themeIcon').className=t?"bi bi-sun-fill":"bi bi-moon-stars-fill"}function renderLibrary(){const t=JSON.parse(localStorage.getItem('smLib')||'[]');const e=document.getElementById('libraryGrid');e.innerHTML='';document.getElementById('emptyLib').style.display=t.length?'none':'block';t.forEach(t=>{const n=document.createElement('div');n.className='col-12 col-md-6';n.innerHTML=`<div class=sheet-card onclick="loadSheet('${t.id}')"><div class=fw-bold>${t.name}</div><div class="small text-muted font-monospace">${t.id}</div></div>`;e.appendChild(n)})}function addToLib(t,e){let n=JSON.parse(localStorage.getItem('smLib')||'[]');n=n.filter(e=>e.id!==t);n.unshift({id:t,name:e});localStorage.setItem('smLib',JSON.stringify(n.slice(0,10)))}function openMultiPopover(e,t,n,i){e.stopPropagation();const o=document.getElementById('multiPopover');if(STATE.tempMulti?.rid===t&&STATE.tempMulti?.cid===n&&o.style.display!=='none'){closeMultiPopover();return}const l=e.currentTarget;const a=JSON.parse(decodeURIComponent(i));const s=STATE.cols.find(e=>e.id===n);STATE.tempMulti={rid:t,cid:n,cell:l};const d=document.getElementById('multiOptions');d.innerHTML='';[...new Set([...s.options||[],...a])].forEach((e,t)=>{if(!e)return;const n=a.includes(e)?'checked':'';d.innerHTML+=`<div class=form-check><input class=form-check-input type=checkbox value="${e.replace(/"/g,'&quot;')}" id="opt_${t}" ${n}><label class="form-check-label w-100 ps-2" for="opt_${t}">${e}</label></div>`});repositionPopover(o,l);o.style.display='flex'}function closeMultiPopover(){document.getElementById('multiPopover').style.display='none';STATE.tempMulti=null}function saveMultiFromPopover(){if(!STATE.tempMulti)return;const{rid:e,cid:t}=STATE.tempMulti;const n=Array.from(document.querySelectorAll('#multiOptions input:checked')).map(e=>e.value);edit(e,t,n.join(', '));const i=STATE.tempMulti.cell;const o=STATE.cols.find(e=>e.id===t);i.innerHTML=getCellHtml(e,o,n.join(', ')).match(/<div class="badge-cell"[^>]*>([\s\S]*?)<\/div>/)[1];closeMultiPopover()}function repositionPopover(e,t){if(!t)return;const n=t.getBoundingClientRect();e.style.width=`${n.width}px`;e.style.top=`${n.bottom}px`;e.style.left=`${n.left}px`}function handleClickOutside(e){const t=document.getElementById('multiPopover');if(t.style.display!=='none'&&!t.contains(e.target)&&!e.target.closest('.badge-cell'))closeMultiPopover();const n=document.getElementById('columnFilterPopover');if(n.style.display!=='none'&&!n.contains(e.target)&&!e.target.closest('.col-filter-btn'))closeColumnFilterPopover()}function selectColumn(e,t){if(e.target.closest('.col-filter-btn')||e.target.closest('.resizer'))return;e.stopPropagation();STATE.selectedCol=STATE.selectedCol===t?null:t;renderTableHeader()}function deselectColumn(e){if(!e.target.closest('th')&&STATE.selectedCol!==null){STATE.selectedCol=null;renderTableHeader()}}function openColumnFilterPopover(e,t){e.stopPropagation();const n=document.getElementById('columnFilterPopover');if(STATE.tempFilterCol?.id===t&&n.style.display!=='none'){closeColumnFilterPopover();return}STATE.tempFilterCol={id:t,btn:e.currentTarget};const i=STATE.views.find(e=>e.id===STATE.currentViewId)?.filters?.find(e=>e.colId===t);document.getElementById('filterOpSelect').value=i?.operator||'contains';document.getElementById('filterValInput').value=i?.value||'';repositionPopover(n,e.currentTarget);n.style.display='block'}function closeColumnFilterPopover(){document.getElementById('columnFilterPopover').style.display='none';STATE.tempFilterCol=null}function applyColumnFilter(){if(!STATE.tempFilterCol)return;const{id:e}=STATE.tempFilterCol;const t=document.getElementById('filterOpSelect').value;const n=document.getElementById('filterValInput').value;const i=STATE.views.find(e=>e.id===STATE.currentViewId);if(!i.filters)i.filters=[];i.filters=i.filters.filter(t=>t.colId!==e);if(n||t==='empty'||t==='notempty')i.filters.push({colId:e,operator:t,value:n});saveViewsToStorage();renderTable(false);closeColumnFilterPopover()}function clearColumnFilter(){if(!STATE.tempFilterCol)return;const{id:e}=STATE.tempFilterCol;const t=STATE.views.find(e=>e.id===STATE.currentViewId);t.filters=t.filters.filter(t=>t.colId!==e);saveViewsToStorage();renderTable(false);closeColumnFilterPopover()}function showLoader(e){document.getElementById('loader').style.display=e?'flex':'none'}function showToast(e,t='primary'){const n=document.createElement('div');n.className=`toast align-items-center text-white bg-${t} border-0 show`;n.innerHTML=`<div class=d-flex><div class=toast-body>${e}</div><button class=btn-close data-bs-dismiss=toast></button></div>`;document.getElementById('toastArea').appendChild(n);setTimeout(()=>n.remove(),4e3)}function openSettings(){document.getElementById('apiToken').value=localStorage.getItem('smToken')||'';new bootstrap.Modal('#settingsModal').show()}function saveSettings(){localStorage.setItem('smToken',document.getElementById('apiToken').value);bootstrap.Modal.getInstance('#settingsModal').hide()}function getFormatInfo(e){if(!e)return{style:'',bg:null};const t=e.split(',');let n='',i=null;if(t.length>9){const e=parseInt(t[9]);!isNaN(e)&&SMARTSHEET_PALETTE[e]&&e>1&&(i=SMARTSHEET_PALETTE[e])}if(t.length>8){const e=parseInt(t[8]);!isNaN(e)&&SMARTSHEET_PALETTE[e]&&e>1&&(n+=`color:${SMARTSHEET_PALETTE[e]}!important;`)}if(t[2]==='1')n+='font-weight:bold;';if(t[3]==='1')n+='font-style:italic;';return{style:n,bg:i}}function generateOutlineButtonsHTML(e){let t=0;Object.values(STATE.meta.depth).forEach(e=>{t=Math.max(t,e)});let n='';for(let i=1;i<=t+1;i++)n+=`<button class=btn onclick="setOutline(${i},'${e}')">${i}</button>`;n+='<button class=btn onclick="setOutline(99,\''+e+"')\">All</button>";return`<div class=header-outline-btns>${n}</div>`}function setOutline(e,t){const n=t==='SETUP'?STATE.meta.setupCollapsed:STATE.meta.collapsed;n.clear();e<99&&STATE.allRows.forEach(t=>{const i=STATE.meta.depth[t.id]||0;i>=e-1&&n.add(t.id)});if(t==='SETUP')renderSetupTree();else renderTable(false)}function renderSetupTree(){const e=document.getElementById('setupRowSearch').value.toLowerCase();const t=document.getElementById('setupRowTree');const n=STATE.cols.find(e=>e.primary)?.id;const i=new Map(STATE.allRows.map(e=>[e.id,e]));let o='';STATE.allRows.forEach(t=>{if(isSetupHidden(t,i))return;const l=t.cells.find(e=>e.columnId===n)?.displayValue||`Row ${t.rowNumber}`;if(e&&!String(l).toLowerCase().includes(e))return;const a=STATE.meta.depth[t.id]||0;const s=STATE.selectedRowIds.has(t.id)?'checked':'';const d=a*20;const r=STATE.allRows.some(e=>e.parentId===t.id);const c=STATE.meta.setupCollapsed.has(t.id);let u=r?`<div class="tree-toggle ${c?'':'expanded'}" onclick="toggleSetup(${t.id})"><i class="bi bi-caret-right-fill"></i></div>`:'<div style=width:28px></div>';o+=`<div style="display:flex;align-items:center;padding-left:${d}px">${u}<input type=checkbox class=form-check-input onchange="toggleSetupRow(${t.id},this.checked)" ${s}><span>${l}</span></div>`});t.innerHTML=o}function openSetup(){renderSetupTree();renderSetupCols();new bootstrap.Modal('#setupModal').show()}function isSetupHidden(e,t){if(!e.parentId)return false;if(STATE.meta.setupCollapsed.has(e.parentId))return true;const n=t.get(e.parentId);return!!n&&isSetupHidden(n,t)}function toggleSetup(e){if(STATE.meta.setupCollapsed.has(e))STATE.meta.setupCollapsed.delete(e);else STATE.meta.setupCollapsed.add(e);renderSetupTree()}function toggleSetupRow(e,t){if(t)STATE.selectedRowIds.add(e);else STATE.selectedRowIds.delete(e);const n=STATE.allRows.filter(t=>t.parentId===e);n.forEach(e=>toggleSetupRow(e.id,t));renderSetupTree()}function renderSetupCols(){const e=document.getElementById('setupColList');if(!e)return;const t=STATE.views.find(e=>e.id===STATE.currentViewId);const n=new Set(t?t.visibleCols:STATE.cols.map(e=>e.id));const i=STATE.cols.find(e=>e.primary)?.id;let o='';STATE.cols.forEach(t=>{const e=t.id===i;const l=n.has(t.id)||e?'checked':'';const a=e?'disabled':'';o+=`<div class=form-check><input class=form-check-input type=checkbox value=${t.id} id="col_${t.id}" ${l} ${a}><label class=form-check-label for="col_${t.id}">${t.title}</label></div>`});e.innerHTML=o;document.getElementById('badgeCols').innerText=n.size}function applySetup(){const e=STATE.views.find(e=>e.id===STATE.currentViewId);if(!e)return;let t=Array.from(document.querySelectorAll('#setupColList input:checked')).map(e=>parseInt(e.value));const n=STATE.cols.find(e=>e.primary)?.id;n&&!t.includes(n)&&t.unshift(n);e.visibleCols=t;saveViewsToStorage();bootstrap.Modal.getInstance('#setupModal').hide();renderTable(true)}function startResize(e,t){e.preventDefault();e.stopPropagation();let n=e.clientX;let i=t.parentElement;let o=i.getBoundingClientRect().width;const l=t=>{t.preventDefault();const e=t.clientX;const l=Math.max(50,o+(e-n));i.style.width=`${l}px`};const a=()=>{document.removeEventListener('mousemove',l);document.removeEventListener('mouseup',a);if(i.dataset.colId)updateViewColState(parseInt(i.dataset.colId),parseInt(i.style.width))};document.addEventListener('mousemove',l);document.addEventListener('mouseup',a)}function saveViewConfig(){const e=STATE.views.find(e=>e.id===STATE.currentViewId);if(!e)return;e.name=document.getElementById('viewNameInput').value.trim()||"Untitled";saveViewsToStorage();bootstrap.Modal.getInstance('#viewConfigModal').hide();renderViewsBar();renderTable(true)}function deleteCurrentView(){if(STATE.views.length<=1)return;if(!confirm("Delete this view?"))return;STATE.views=STATE.views.filter(e=>e.id!==STATE.currentViewId);STATE.currentViewId=STATE.views[0].id;saveViewsToStorage();bootstrap.Modal.getInstance('#viewConfigModal').hide();renderViewsBar();renderTable(true)}
 </script>
 </body>
 </html>
