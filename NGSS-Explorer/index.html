@@ -1105,7 +1105,7 @@
                 if (!cleanLine) return ''; 
                 
                 let processedLine = line;
-                let codeDisplay = ''; 
+                let codeDisplay = ''; // New variable to hold the code HTML
                 
                 // 2. Attempt to link text to 3D element codes
                 const code = findBestMatchingSpecificElement(line, pe.gradeLabel); 
@@ -1113,8 +1113,7 @@
                 if (code) { 
                     const el = specificElementMap.get(code); 
                     if (el) {
-                        // FIX: Added style="color: inherit" to keep text black like the others, while keeping functionality
-                        processedLine = `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}" style="color: inherit; text-decoration: underline; text-decoration-color: #aaa; cursor: pointer;">${line}</span>`; 
+                        processedLine = `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; 
                         codeDisplay = `<strong style="font-family: monospace; color: #888;  font-size: 0.9em;">(${code})</strong> `;
                     }
                 } 
@@ -1122,8 +1121,9 @@
                 // 3. Smart Bullet Detection
                 const hasExistingBullet = cleanLine.startsWith('•') || cleanLine.startsWith('*') || cleanLine.startsWith('-');
                 const isHeader = cleanLine.endsWith(':');
-                const isSpecificItem = !!code; 
+                const isSpecificItem = !!code; // It matched a progression/element
                 
+                // Logic: It's a bullet if it already has one, OR if it's a specific element, OR if it's item 2+ in a list, UNLESS it looks like a header.
                 let shouldBeBullet = hasExistingBullet || ((isSpecificItem || (lines.length > 1 && index > 0)) && !isHeader);
 
                 let className = 'pe-details-paragraph';
@@ -1131,6 +1131,7 @@
                 
                 if (shouldBeBullet) {
                     className += ' is-bullet';
+                    // If the bullet character is missing from the text (because of the JSON cleanup), add it visually here.
                     if (!hasExistingBullet) {
                         finalHtml = `• ${finalHtml}`; 
                     }
@@ -1178,7 +1179,7 @@
                     const code = nameToCodeMap.get(item.id.replace(' (secondary)', '').trim());
                     const el = code ? elementMap.get(code) : null;
                     return `<li>
-                        <span class="clickable-element-link" ${code ? `data-component-code="${code}" data-pe-id="${pe.id}"` : ''} ${el ? `title="${el.name.replace(/"/g, '&quot;')}"` : ''} style="color: inherit; cursor: pointer;">
+                        <span class="clickable-element-link" ${code ? `data-component-code="${code}" data-pe-id="${pe.id}"` : ''} ${el ? `title="${el.name.replace(/"/g, '&quot;')}"` : ''}>
                             <strong class="copyable">${item.id}</strong>
                         </span>
                         <div class="copyable">${processAndLinkPeText(item.text, pe.id)}</div>
@@ -1189,40 +1190,15 @@
                 if (connectionItems.length > 0) {
                     connectionItemsHtml += `<div class="pe-details-col-connections-wrapper">`;
                     connectionItems.forEach(item => {
-                        // FIX: Explicitly check for the Section Header ID first to ensure it renders as a centered header
-                        if (item.id.startsWith('Connections to')) {
+                        const textContent = Array.isArray(item.text) ? item.text.join('') : (item.text || '');
+                        if (textContent.trim() === '') {
                             connectionItemsHtml += `<strong class="connection-header">${item.id}</strong>`;
-                            return; 
-                        }
-
-                        let lines = Array.isArray(item.text) ? [...item.text] : (typeof item.text === 'string' ? item.text.split('\n') : []);
-                        
-                        // Fallback: If lines are empty (and not caught by the check above), render as header
-                        if (lines.length === 0 || lines.join('').trim() === '') {
-                            connectionItemsHtml += `<strong class="connection-header">${item.id}</strong>`;
-                            return;
-                        }
-
-                        // Content Item: Extract first line as the "Element Name"
-                        const elementName = lines.shift().trim(); 
-                        const cleanName = elementName.replace(' (secondary)', '').replace(':', '').trim();
-                        let code = nameToCodeMap.get(cleanName);
-                        
-                        let elementHeaderHtml;
-                        if (code) {
-                             const el = elementMap.get(code);
-                             // Styled with color: inherit to stay black/grey
-                             elementHeaderHtml = `<span class="clickable-element-link" data-component-code="${code}" data-pe-id="${pe.id}" ${el ? `title="${el.name.replace(/"/g, '&quot;')}"` : ''} style="display:block; font-weight:700; color:inherit; cursor:pointer; margin-top:0.5rem; margin-bottom:0.25rem;">${elementName}</span>`;
                         } else {
-                             elementHeaderHtml = `<strong style="display:block; margin-top:0.5rem; margin-bottom:0.25rem; color:#000;">${elementName}</strong>`;
+                            connectionItemsHtml += `<div class="connection-item-block">
+                                <strong class="connection-subheader">${item.id}</strong>
+                                <div class="connection-text">${processAndLinkPeText(item.text, pe.id)}</div>
+                            </div>`;
                         }
-                        
-                        const bodyHtml = processAndLinkPeText(lines, pe.id);
-
-                        connectionItemsHtml += `<div class="connection-item-block">
-                            ${elementHeaderHtml}
-                            <div class="connection-text" style="padding-left: 1rem; border-left: 3px solid rgba(0,0,0,0.1); margin-left: 0.25rem;">${bodyHtml}</div>
-                        </div>`;
                     });
                     connectionItemsHtml += `</div>`;
                 }
@@ -1262,8 +1238,11 @@
             const boundary = pe.details.assessmentBoundary ? `<div class="pe-details-info-box boundary"><h4>Assessment Boundary</h4><p class="copyable">${pe.details.assessmentBoundary}</p></div>` : '';
             
             const esBtn = (pe.details.evidenceStatements && pe.details.evidenceStatements.length) ? `<button class="filter-btn view-evidence-btn" data-pe-id="${pe.id}">View Evidence Statements</button>` : '';
-            
+            const analyzeBtn = inBundle ? '' : `<div class="ai-controls"><button class="filter-btn active analyze-pe-desc-btn" data-pe-id="${pe.id}">Analyze with Full Context</button><button class="filter-btn reset-btn reset-analysis-btn">Reset</button></div>`;
+
+            // MODIFIED LAYOUT STRUCTURE: Removed pe-description-header (ID, Description, Buttons)
             return `<div class="pe-details-wrapper">
+                
                 <div style="margin-top:0;">${clarification}${boundary}</div>
                 <div class="pe-details-container" style="margin-top:1rem;">
                     ${createCol('sep', 'Science & Engineering Practices')}
