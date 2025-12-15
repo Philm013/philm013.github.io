@@ -1186,22 +1186,45 @@
                     </li>`;
                 }).join('');
 
+                // --- UPDATED CONNECTIONS RENDERING LOGIC ---
                 let connectionItemsHtml = '';
                 if (connectionItems.length > 0) {
                     connectionItemsHtml += `<div class="pe-details-col-connections-wrapper">`;
                     connectionItems.forEach(item => {
-                        const textContent = Array.isArray(item.text) ? item.text.join('') : (item.text || '');
-                        if (textContent.trim() === '') {
+                        let lines = Array.isArray(item.text) ? [...item.text] : (typeof item.text === 'string' ? item.text.split('\n') : []);
+                        
+                        // Case 1: Section Header (e.g., "Connections to Engineering...") has no text usually
+                        if (lines.length === 0 || lines.join('').trim() === '') {
                             connectionItemsHtml += `<strong class="connection-header">${item.id}</strong>`;
-                        } else {
-                            connectionItemsHtml += `<div class="connection-item-block">
-                                <strong class="connection-subheader">${item.id}</strong>
-                                <div class="connection-text">${processAndLinkPeText(item.text, pe.id)}</div>
-                            </div>`;
+                            return;
                         }
+
+                        // Case 2: Content Item. Extract first line as the "Element Name" to be the header/link.
+                        const elementName = lines.shift().trim(); 
+                        const cleanName = elementName.replace(' (secondary)', '').replace(':', '').trim();
+                        let code = nameToCodeMap.get(cleanName);
+                        
+                        let elementHeaderHtml;
+                        if (code) {
+                             const el = elementMap.get(code);
+                             // Styled to match the clickable headers in the regular columns
+                             elementHeaderHtml = `<span class="clickable-element-link" data-component-code="${code}" data-pe-id="${pe.id}" ${el ? `title="${el.name.replace(/"/g, '&quot;')}"` : ''} style="display:block; font-weight:700; color:#004488; cursor:pointer; margin-top:0.5rem; margin-bottom:0.25rem;">${elementName}</span>`;
+                        } else {
+                             // Fallback if we can't link it (plain bold)
+                             elementHeaderHtml = `<strong style="display:block; margin-top:0.5rem; margin-bottom:0.25rem; color:#000;">${elementName}</strong>`;
+                        }
+                        
+                        // Remaining lines are the bullet points
+                        const bodyHtml = processAndLinkPeText(lines, pe.id);
+
+                        connectionItemsHtml += `<div class="connection-item-block">
+                            ${elementHeaderHtml}
+                            <div class="connection-text" style="padding-left: 1rem; border-left: 3px solid rgba(0,0,0,0.1); margin-left: 0.25rem;">${bodyHtml}</div>
+                        </div>`;
                     });
                     connectionItemsHtml += `</div>`;
                 }
+                // -------------------------------------------
 
                 const colClass = `pe-col-${dim}`;
                 return `<div class="pe-details-column ${colClass}">
@@ -1238,9 +1261,8 @@
             const boundary = pe.details.assessmentBoundary ? `<div class="pe-details-info-box boundary"><h4>Assessment Boundary</h4><p class="copyable">${pe.details.assessmentBoundary}</p></div>` : '';
             
             const esBtn = (pe.details.evidenceStatements && pe.details.evidenceStatements.length) ? `<button class="filter-btn view-evidence-btn" data-pe-id="${pe.id}">View Evidence Statements</button>` : '';
-            const analyzeBtn = inBundle ? '' : `<div class="ai-controls"><button class="filter-btn active analyze-pe-desc-btn" data-pe-id="${pe.id}">Analyze with Full Context</button><button class="filter-btn reset-btn reset-analysis-btn">Reset</button></div>`;
-
-            // MODIFIED LAYOUT STRUCTURE: Removed pe-description-header (ID, Description, Buttons)
+            
+            // MODIFIED RETURN: Removed the Header (ID/Text) and AI Buttons
             return `<div class="pe-details-wrapper">
                 
                 <div style="margin-top:0;">${clarification}${boundary}</div>
