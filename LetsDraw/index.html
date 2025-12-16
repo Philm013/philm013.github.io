@@ -6,21 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff" id="theme-color-meta">
     
-    <!-- Tldraw CSS -->
-    <link rel="stylesheet" href="https://esm.sh/tldraw@2.1.0/tldraw.css" />
+    <!-- Tldraw CSS (Updated to v3.5.0) -->
+    <link rel="stylesheet" href="https://esm.sh/tldraw@3.5.0/tldraw.css" />
     
     <!-- QR Code & PeerJS Libraries -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     
-    <!-- Import Map -->
+    <!-- Import Map (Updated to Tldraw v3.5.0) -->
     <script type="importmap">
     { "imports": {
         "react": "https://esm.sh/react@18.2.0",
         "react-dom": "https://esm.sh/react-dom@18.2.0",
         "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
         "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-        "tldraw": "https://esm.sh/tldraw@2.1.0?external=react,react-dom",
+        "tldraw": "https://esm.sh/tldraw@3.5.0?external=react,react-dom",
         "peerjs": "https://esm.sh/peerjs@1.5.2"
     }}
     </script>
@@ -37,7 +37,13 @@
         
         * { box-sizing: border-box; }
 
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; touch-action: none; overflow: hidden; }
+        /* Prevent browser scrolling/overscroll to ensure wheel events go to canvas */
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background-color: var(--bg); color: var(--text); 
+            font-family: system-ui, -apple-system, sans-serif; 
+            touch-action: none; overflow: hidden; overscroll-behavior: none;
+        }
 
         .layer { position: absolute; inset: 0; transition: transform 0.3s ease, opacity 0.3s ease; }
         .hidden { pointer-events: none; opacity: 0; transform: scale(0.95); }
@@ -61,12 +67,26 @@
         .board-item:last-child { border-bottom: none; }
         .board-item:hover { background-color: rgba(128,128,128,0.1); }
 
-        #workspace { z-index: 10; height: 100vh; width: 100vw; }
+        #workspace { z-index: 10; height: 100vh; width: 100vw; overflow: hidden; }
         
+        /* Top Left Controls */
         .custom-share-panel { display: flex; gap: 8px; align-items: center; pointer-events: all; }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; }
         .status-dot.connected { background: var(--success); box-shadow: 0 0 8px var(--success); }
         .status-dot.error { background: var(--error); }
+
+        /* User List (Top Right) */
+        .user-list-container {
+            position: absolute; top: 10px; right: 10px; z-index: 200; display: flex; gap: -8px; pointer-events: auto; flex-direction: row-reverse;
+        }
+        .user-avatar {
+            width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--card); margin-left: -10px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: white; cursor: pointer; font-size: 14px;
+            transition: transform 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .user-avatar:hover { transform: scale(1.1) translateY(-2px); z-index: 5; }
+        .user-avatar.following { border-color: var(--primary); transform: scale(1.1); z-index: 10; box-shadow: 0 0 0 2px var(--primary); }
 
         .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { background: var(--card); padding: 24px; border-radius: 20px; width: 90%; max-width: 400px; text-align: center; color: var(--text); }
@@ -123,38 +143,35 @@
     <div id="toast">Notification</div>
 
     <script type="module">
-        import React, { useState, useEffect, useCallback, useRef } from 'react';
+        import React, { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Tldraw, createTLStore, defaultShapeUtils, uniqueId } from 'tldraw';
+        import { Tldraw, createTLStore, defaultShapeUtils, uniqueId, useEditor } from 'tldraw';
         import { Peer } from 'peerjs';
 
+        // --- Utils ---
         function throttle(func, limit) {
-            let timeout;
-            let lastArgs;
-            let lastContext;
+            let lastFunc;
             let lastRan;
-
             return function() {
-                lastContext = this;
-                lastArgs = arguments;
-
+                const context = this;
+                const args = arguments;
                 if (!lastRan) {
-                    func.apply(lastContext, lastArgs);
+                    func.apply(context, args);
                     lastRan = Date.now();
                 } else {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(function() {
+                    clearTimeout(lastFunc);
+                    lastFunc = setTimeout(function() {
                         if ((Date.now() - lastRan) >= limit) {
-                            func.apply(lastContext, lastArgs);
+                            func.apply(context, args);
                             lastRan = Date.now();
                         }
                     }, limit - (Date.now() - lastRan));
                 }
-            };
+            }
         }
 
         const DB = {
-            dbName: 'PeerDrawDB_v2',
+            dbName: 'PeerDrawDB_v3',
             async init() {
                 return new Promise((resolve, reject) => {
                     const req = indexedDB.open(this.dbName, 1);
@@ -183,6 +200,62 @@
             set: (p) => localStorage.setItem('peerdraw-user', JSON.stringify(p))
         };
 
+        // --- Components ---
+
+        function UserList() {
+            const editor = useEditor();
+            const [peers, setPeers] = useState([]);
+            
+            useEffect(() => {
+                const getList = () => editor.store.allRecords()
+                    .filter(r => r.typeName === 'instance_presence' && r.userId !== editor.user.getId())
+                    .map(r => ({
+                        id: r.id,
+                        userId: r.userId,
+                        name: r.meta?.userName || 'Anonymous',
+                        color: r.meta?.color || '#999'
+                    }));
+
+                setPeers(getList());
+
+                return editor.store.listen((e) => {
+                    const changes = e.changes;
+                    const isRelevant = (
+                        Object.values(changes.added).some(r => r.typeName === 'instance_presence') ||
+                        Object.values(changes.removed).some(r => r.typeName === 'instance_presence') ||
+                        Object.values(changes.updated).some(([before, after]) => 
+                            after.typeName === 'instance_presence' && (
+                                JSON.stringify(before.meta) !== JSON.stringify(after.meta)
+                            )
+                        )
+                    );
+                    if (isRelevant) setPeers(getList());
+                }, { scope: 'all', source: 'remote' });
+            }, [editor]);
+
+            const followingUserId = useSyncExternalStore(
+                cb => editor.store.listen(cb, { scope: 'all', source: 'user' }), 
+                () => editor.getInstanceState().followingUserId
+            );
+
+            if (peers.length === 0) return null;
+
+            return React.createElement('div', { className: 'user-list-container' },
+                peers.map(p => {
+                    return React.createElement('div', {
+                        key: p.userId,
+                        className: `user-avatar ${followingUserId === p.userId ? 'following' : ''}`,
+                        style: { backgroundColor: p.color },
+                        title: `Follow ${p.name}`,
+                        onClick: () => {
+                            if (followingUserId === p.userId) editor.stopFollowingUser();
+                            else editor.startFollowingUser(p.userId);
+                        }
+                    }, p.name.charAt(0).toUpperCase());
+                })
+            );
+        }
+
         const uiOverrides = {
             actions(editor, actions) {
                 actions['toggle-fullscreen'] = {
@@ -190,11 +263,8 @@
                     label: 'Toggle Fullscreen',
                     readonlyOk: true,
                     onSelect() {
-                        if (!document.fullscreenElement) {
-                            document.documentElement.requestFullscreen().catch(err => console.error(err));
-                        } else if (document.exitFullscreen) {
-                            document.exitFullscreen();
-                        }
+                        if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => console.error(err));
+                        else if (document.exitFullscreen) document.exitFullscreen();
                     },
                 };
                 return actions;
@@ -219,13 +289,86 @@
             });
             const [connections, setConnections] = useState(new Map());
             const [status, setStatus] = useState(isHost ? 'online' : 'connecting');
+            const [editor, setEditor] = useState(null);
+            
+            // Ref for the wrapper div to intercept events before Tldraw
+            const containerRef = useRef(null);
+
             const user = UserPrefs.get();
             const connectionsRef = useRef(connections);
+            useEffect(() => { connectionsRef.current = connections; }, [connections]);
 
+            // --- Right Click Pan Logic ---
             useEffect(() => {
-                connectionsRef.current = connections;
-            }, [connections]);
+                const container = containerRef.current;
+                if (!container || !editor) return;
 
+                let isPanning = false;
+                let lastX = 0;
+                let lastY = 0;
+
+                const onPointerDown = (e) => {
+                    // Right Click (Button 2)
+                    if (e.button === 2) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation(); // Block Tldraw menu
+                        
+                        isPanning = true;
+                        lastX = e.clientX;
+                        lastY = e.clientY;
+                        
+                        // Capture pointer to ensure we get moves even outside the div
+                        container.setPointerCapture(e.pointerId);
+                        editor.stopCameraAnimation();
+                    }
+                };
+
+                const onPointerMove = (e) => {
+                    if (isPanning) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        
+                        const deltaX = e.clientX - lastX;
+                        const deltaY = e.clientY - lastY;
+                        lastX = e.clientX;
+                        lastY = e.clientY;
+
+                        // Apply pan
+                        editor.pan({ x: deltaX, y: deltaY });
+                    }
+                };
+
+                const onPointerUp = (e) => {
+                    if (isPanning) {
+                        isPanning = false;
+                        container.releasePointerCapture(e.pointerId);
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                    }
+                };
+                
+                // Prevent Context Menu explicitly
+                const onContextMenu = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                };
+
+                // Add listeners with capture: true to intercept BEFORE Tldraw (React/Internal) handlers
+                container.addEventListener('pointerdown', onPointerDown, { capture: true });
+                container.addEventListener('pointermove', onPointerMove, { capture: true });
+                container.addEventListener('pointerup', onPointerUp, { capture: true });
+                container.addEventListener('contextmenu', onContextMenu, { capture: true });
+
+                return () => {
+                    container.removeEventListener('pointerdown', onPointerDown, { capture: true });
+                    container.removeEventListener('pointermove', onPointerMove, { capture: true });
+                    container.removeEventListener('pointerup', onPointerUp, { capture: true });
+                    container.removeEventListener('contextmenu', onContextMenu, { capture: true });
+                };
+            }, [editor]);
+
+            // --- PeerJS Networking ---
             useEffect(() => {
                 const newPeer = new Peer(isHost ? boardId : undefined);
                 newPeer.on('open', (id) => {
@@ -260,61 +403,51 @@
                     store.mergeRemoteChanges(() => {
                         const { added, updated, removed } = msg.changes;
                         if (added) Object.values(added).forEach(record => store.put([record]));
-                        
-                        // THE DEFINITIVE FIX: 'updated' provides a [before, after] tuple.
-                        // We must use the 'after' value (the second element).
                         if (updated) Object.values(updated).forEach(([before, after]) => store.put([after]));
-
                         if (removed) Object.values(removed).forEach(record => store.remove([record.id]));
                     });
                 }
             };
 
+            // --- Tldraw Sync Logic ---
             useEffect(() => {
-                // Define which record types should be synced across clients.
-                // We exclude instance-specific states like camera, tool selection, etc.
                 const SYNCED_TYPES = new Set(['shape', 'asset', 'page', 'instance_presence']);
 
                 const filterChanges = (changes) => {
                     const filtered = { added: {}, updated: {}, removed: {} };
 
+                    const attachMeta = (record) => {
+                        if (record.typeName === 'instance_presence') {
+                            return { 
+                                ...record, 
+                                meta: { ...record.meta, userName: user.name, color: user.color } 
+                            };
+                        }
+                        return record;
+                    };
+
                     for (const id in changes.added) {
                         const record = changes.added[id];
-                        if (SYNCED_TYPES.has(record.typeName)) {
-                            filtered.added[id] = record;
-                        }
+                        if (SYNCED_TYPES.has(record.typeName)) filtered.added[id] = attachMeta(record);
                     }
 
                     for (const id in changes.updated) {
                         const [before, after] = changes.updated[id];
-                        if (SYNCED_TYPES.has(after.typeName)) {
-                            // Add user's name and color to their presence state before sending
-                            if (after.typeName === 'instance_presence') {
-                                after.userName = user.name;
-                                after.color = user.color;
-                            }
-                            filtered.updated[id] = [before, after];
-                        }
+                        if (SYNCED_TYPES.has(after.typeName)) filtered.updated[id] = [before, attachMeta(after)];
                     }
                     
                     for (const id in changes.removed) {
                         const record = changes.removed[id];
-                        if (SYNCED_TYPES.has(record.typeName)) {
-                            filtered.removed[id] = record;
-                        }
+                        if (SYNCED_TYPES.has(record.typeName)) filtered.removed[id] = record;
                     }
                     return filtered;
                 };
 
                 const broadcast = (changes) => {
                     const filteredChanges = filterChanges(changes);
-
-                    // Don't broadcast if there are no relevant changes
                     if (Object.keys(filteredChanges.added).length === 0 &&
                         Object.keys(filteredChanges.updated).length === 0 &&
-                        Object.keys(filteredChanges.removed).length === 0) {
-                        return;
-                    }
+                        Object.keys(filteredChanges.removed).length === 0) return;
                     
                     const payload = JSON.stringify({ type: 'changes', changes: filteredChanges });
                     connectionsRef.current.forEach(conn => { if (conn.open) conn.send(payload); });
@@ -344,14 +477,19 @@
                 React.createElement('button', { className: 'btn-secondary', style: { padding: '8px', width: 'auto' }, onClick: onClose, title: 'Home' }, '🏠')
             );
             
-            return React.createElement('div', { style: { position: 'fixed', inset: 0 } },
+            return React.createElement('div', { 
+                ref: containerRef,
+                style: { position: 'fixed', inset: 0 }
+            },
                 React.createElement(Tldraw, {
                     store: store,
                     overrides: uiOverrides,
-                    components: { SharePanel },
-                    onMount: (editor) => {
-                        editor.user.updateUserPreferences({ name: user.name, color: user.color });
-                        if(window.innerWidth < 600) editor.updateInstanceState({ isGridMode: false });
+                    cameraOptions: { wheelBehavior: 'zoom' },
+                    components: { SharePanel, InFrontOfTheCanvas: UserList },
+                    onMount: (e) => {
+                        setEditor(e);
+                        e.user.updateUserPreferences({ name: user.name, color: user.color });
+                        if(window.innerWidth < 600) e.updateInstanceState({ isGridMode: false });
                     },
                     onAssetUpload: handleAssetUpload
                 })
@@ -368,7 +506,7 @@
                 toast(msg, type='info') {
                     const t = document.getElementById('toast');
                     t.textContent = msg;
-                    t.style.backgroundColor = type === 'error' ? 'var(--error)' : '#333';
+                    t.style.backgroundColor = type === 'error' ? 'var(--error)' : type === 'success' ? 'var(--success)' : '#333';
                     t.classList.add('visible');
                     setTimeout(() => t.classList.remove('visible'), 3000);
                 },
@@ -411,10 +549,12 @@
                 });
                 document.getElementById('user-name').onchange = (e) => UserPrefs.set({ ...UserPrefs.get(), name: e.target.value });
                 document.getElementById('btn-new').onclick = () => this.startBoard(uniqueId(), true);
+                
                 document.getElementById('btn-join-manual').onclick = () => {
                     const id = document.getElementById('manual-join-id').value.trim();
                     if(id) this.startBoard(id, false);
                 };
+
                 document.getElementById('btn-join-scan').onclick = () => {
                     document.getElementById('scan-modal').classList.remove('hidden');
                     this.scanner = new Html5Qrcode("qr-reader");
@@ -422,12 +562,21 @@
                         try {
                             const url = new URL(decoded);
                             const joinId = url.searchParams.get('join');
-                            if(joinId) { App.ui.closeModals(); this.startBoard(joinId, false); }
+                            if(joinId) { 
+                                App.ui.closeModals(); 
+                                document.getElementById('manual-join-id').value = joinId;
+                                App.ui.toast('ID Scanned! Set your name and Join.', 'success');
+                            }
                         } catch(e) { console.error(e); }
                     }, (errorMessage) => {}).catch(err => { App.ui.toast('Camera error', 'error'); });
                 };
+
                 const params = new URLSearchParams(window.location.search);
-                if (params.get('join')) { this.startBoard(params.get('join'), false); window.history.replaceState({}, '', window.location.pathname); }
+                if (params.get('join')) { 
+                    document.getElementById('manual-join-id').value = params.get('join');
+                    window.history.replaceState({}, '', window.location.pathname);
+                    App.ui.toast('Board detected. Set name and click Join.', 'info');
+                }
             },
             async renderRecent() {
                 const list = document.getElementById('recent-list');
