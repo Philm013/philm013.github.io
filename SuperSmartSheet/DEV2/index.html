@@ -200,6 +200,14 @@
         tr.row-new td { --row-bg-override: var(--row-new); }
         tr.row-modified td { --row-bg-override: var(--row-mod); }
         tr.row-deleted td { background-color: var(--row-del) !important; opacity: 0.5; text-decoration: line-through; pointer-events: none; }
+
+        #sheetLink:hover #sheetName {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+        #sheetLink:hover #sheetIdDisplay {
+            color: var(--primary-dark);
+        }
         
         .badge-cell { padding: 12px 8px; height: 100%; min-height: 100%; display: flex; align-items: flex-start; gap: 4px; overflow: hidden; cursor: pointer; white-space: normal; position: relative; flex-wrap: wrap;}
         .badge-pill { background: var(--primary-soft); color: var(--primary-dark); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
@@ -558,8 +566,15 @@ async function fetchData() {
         STATE.allRows = JSON.parse(JSON.stringify(d.rows)); 
         STATE.cols = d.columns; 
         STATE.lastModifiedAt = d.modifiedAt; 
+        
+        // UI UPDATES
         document.getElementById('sheetName').innerText = d.name; 
         document.getElementById('sheetIdDisplay').innerText = d.id; 
+        
+        // UPDATE THE LINK HERE
+        const sheetLink = document.getElementById('sheetLink');
+        if(sheetLink) sheetLink.href = `https://app.smartsheet.com/sheets/${d.id}`;
+
         addToLib(d.id, d.name); 
         STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); 
         indexAllData();
