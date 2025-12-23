@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v5.4.0</title>
+    <title>Bank Explorer Pro v5.4.1</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -592,7 +592,7 @@
 </div>
 
 <!-- DRILL DOWN MODAL -->
-<div id="drillModal" class="modal-overlay" style="z-index: 100;">
+<div id="drillModal" class="modal-overlay" style="z-index: 1000;">
     <div class="modal-sheet">
         <div class="modal-header">
             <div>
@@ -607,14 +607,14 @@
             <button class="sub-nav-btn" onclick="ui.switchDrillTab('upload')">Add Data</button>
         </div>
         <div class="modal-body">
-            <div id="drill-tab-list" style="padding:20px;">
+            <div id="drill-tab-list" style="padding:20px 20px 60px 20px;">
                 <div id="drill-actions" style="margin-bottom:15px; display:none; justify-content:flex-end; gap:10px;">
                     <button class="btn btn-sm btn-outline" onclick="app.toggleAllRecurring(document.getElementById('drillTitle').innerText, true)">Mark All</button>
                     <button class="btn btn-sm btn-outline" onclick="app.toggleAllRecurring(document.getElementById('drillTitle').innerText, false)">Unmark All</button>
                 </div>
                 <div id="drillList"></div>
             </div>
-            <div id="drill-tab-analysis" class="hidden" style="padding:20px;">
+            <div id="drill-tab-analysis" class="hidden" style="padding:20px 20px 60px 20px;">
                 <div class="card"><h4>Monthly Trend</h4><div class="chart-container"><canvas id="chartSubTime"></canvas></div></div>
                 <div class="card"><h4>Sub-Category Distribution</h4><div class="chart-container" style="height:250px;"><canvas id="chartSubCat"></canvas></div></div>
                 <h4>Patterns</h4><div id="drillAnalysisList"></div>
@@ -631,7 +631,7 @@
 </div>
 
 <!-- DETAIL MODAL (Higher Z-Index) -->
-<div id="detailModal" class="modal-overlay" style="z-index: 150;">
+<div id="detailModal" class="modal-overlay" style="z-index: 1050;">
     <div class="modal-sheet" style="height:auto" onclick="event.stopPropagation()">
         <div class="modal-header">
             <h3>Details</h3>
