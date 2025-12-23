@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v5.3.0</title>
+    <title>Bank Explorer Pro v5.4.0</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -260,6 +260,24 @@
         .badge { background: var(--bg); border: 1px solid var(--border); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--text-sub); }
         
         .profile-card { background: var(--bg); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .calc-toggle-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-sub);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            margin-right: 5px;
+            cursor: pointer;
+            width: 35px;
+        }
+        .calc-toggle-btn.active {
+            background: var(--bg);
+            color: var(--accent);
+            border-color: var(--accent);
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -928,10 +946,8 @@
             // Fuzzy match the group name to find targets
             const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
             const matchingItems = fuse.search(descGroup).map(r => r.item);
-            // Also include exact matches if fuse missed any (unlikely with low threshold, but safe)
             const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
             
-            // Combine unique items
             const targets = new Set([...matchingItems, ...exactMatches]);
             
             for(const t of targets) {
@@ -945,6 +961,32 @@
             if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(descGroup, true);
             ui.refresh();
             ui.toast(state ? `Marked all (${count})` : `Unmarked all (${count})`);
+        },
+        
+        async toggleAvgMode(descGroup) {
+            let count = 0;
+            const all = [...this.data.transactions];
+            for(let key in this.data.subData) all.push(...this.data.subData[key]);
+            
+            const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
+            const matchingItems = fuse.search(descGroup).map(r => r.item);
+            const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
+            const targets = new Set([...matchingItems, ...exactMatches]);
+            
+            // Determine new mode based on the first item found
+            let newMode = 'avg'; // Default
+            if (targets.size > 0) {
+                 const first = [...targets][0];
+                 newMode = (first.recMode === '12mo') ? 'avg' : '12mo';
+            }
+
+            for(const t of targets) {
+                t.recMode = newMode;
+                const store = this.data.transactions.find(x => x.id === t.id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                count++;
+            }
+            ui.refresh();
         },
 
         async confirmPotential(descGroup) { await this.toggleAllRecurring(descGroup, true); ui.toast(`Confirmed transactions as recurring`); },
@@ -1163,7 +1205,7 @@
                 if(statementDateContext && amt > 0 && !desc.toLowerCase().includes('payment') && !desc.toLowerCase().includes('deposit')) { amt = -amt; }
                 const finalDate = statementDateContext ? this.inferYear(rawDate, statementDateContext) : new Date(rawDate);
                 const isIgnored = transferRegex.test(desc);
-                out.push({ id: crypto.randomUUID(), date: finalDate, rawDateStr: rawDate, desc: desc, amount: amt, cleanName: this.clean(desc), signature: `${rawDate}|${desc}|${amt}`, type: amt >= 0 ? 'inc' : 'exp', isIgnored: isIgnored, needsYearAdjustment: false });
+                out.push({ id: crypto.randomUUID(), date: finalDate, rawDateStr: rawDate, desc: desc, amount: amt, cleanName: this.clean(desc), signature: `${rawDate}|${desc}|${amt}`, type: amt >= 0 ? 'inc' : 'exp', isIgnored: isIgnored, needsYearAdjustment: false, recMode: 'avg' });
             }
         },
         inferYear(mmdd, refDate) { const [m, d] = mmdd.split('/').map(Number); const refYear = refDate.getFullYear(); let candidate = new Date(refYear, m - 1, d); if (candidate > refDate) candidate.setFullYear(refYear - 1); return candidate; },
@@ -1379,12 +1421,30 @@
             const fGroups = app.getFuzzyGroups(recurringCandidates);
             const recEntries = Object.entries(fGroups).map(([name, items]) => {
                 const tot = items.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-                return { name: name, tot: tot, cnt: items.length };
+                const mode = items[0] ? (items[0].recMode || 'avg') : 'avg';
+                return { name: name, tot: tot, cnt: items.length, mode: mode };
             });
 
             if(recEntries.length > 0) {
                 recList.innerHTML = ''; let totalMonthly = 0;
-                recEntries.forEach(g => { const avgAmt = g.tot / g.cnt; totalMonthly += avgAmt; recList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600">${g.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(avgAmt)}/mo</small><span class="badge">${g.cnt}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`; });
+                recEntries.forEach(g => { 
+                    const monthlyCost = g.mode === '12mo' ? (g.tot / 12) : (g.tot / g.cnt);
+                    totalMonthly += monthlyCost; 
+                    
+                    recList.innerHTML += `
+                    <div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;">
+                        <div style="display:flex; flex-direction:column; gap:2px; margin-right:10px;">
+                            <button class="calc-toggle-btn ${g.mode === 'avg' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleAvgMode('${g.name.replace(/'/g, "\\'")}')">AVG</button>
+                            <button class="calc-toggle-btn ${g.mode === '12mo' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleAvgMode('${g.name.replace(/'/g, "\\'")}')">/12</button>
+                        </div>
+                        <div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}', true)">
+                            <div style="font-weight:600">${g.name}</div>
+                            <small class="neg" style="margin-right:10px;">${this.fmt(monthlyCost)}/mo</small>
+                            <span class="badge">${g.cnt}x</span>
+                        </div>
+                        <button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+                    </div>`; 
+                });
                 document.getElementById('recurringSum').innerText = this.fmt(totalMonthly);
             } else { recList.innerHTML = '<small style="color:var(--text-sub)">No recurring items tagged.</small>'; document.getElementById('recurringSum').innerText = "$0.00"; }
             
