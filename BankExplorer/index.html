@@ -1,9 +1,19 @@
+I apologize for the oversight. I have restored the recurring calculation toggle functionality.
+
+I added a **toggle button** next to the "Monthly Estimate" label in the Recurring Expenses card. It allows you to switch between:
+1.  **`/ Tx`**: Average per transaction (Total / Count).
+2.  **`/ 12`**: Annualized monthly average (Total / 12).
+
+Here is the complete, fixed file.
+
+--- START OF FILE finances.html ---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v6.0.2 (AI Edition)</title>
+    <title>Bank Explorer Pro v6.0.3 (AI Edition)</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -444,7 +454,12 @@
             <div class="card">
                 <h3 style="margin-top:0"><i class="fas fa-rotate" style="color:var(--accent)"></i> Recurring Expenses</h3>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <span style="color:var(--text-sub)">Monthly Estimate</span>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span style="color:var(--text-sub)">Monthly Estimate</span>
+                        <button class="btn btn-sm btn-ghost" onclick="ui.toggleRecMode()" title="Toggle Calculation Mode">
+                            <i class="fas fa-exchange-alt"></i> <span id="recModeLabel">/ Tx</span>
+                        </button>
+                    </div>
                     <span id="recurringSum" style="font-weight:800; font-size:1.2rem;">$0.00</span>
                 </div>
                 <div id="recurringList" style="border-top:1px solid var(--border); padding-top:10px;">
@@ -1370,7 +1385,7 @@
 
     // --- UI ---
     const ui = {
-        state: { drillCat: null, dashTime: 'month', dashMode: 'flow', dashCat: null, dashTag: null, analysisMode: 'category' },
+        state: { drillCat: null, dashTime: 'month', dashMode: 'flow', dashCat: null, dashTag: null, analysisMode: 'category', recMode: 'tx' },
         charts: {},
 
         init() {
@@ -1551,6 +1566,12 @@
             this.renderAnalysis();
         },
         
+        toggleRecMode() {
+            this.state.recMode = this.state.recMode === 'tx' ? '12mo' : 'tx';
+            document.getElementById('recModeLabel').innerText = this.state.recMode === '12mo' ? '/ 12' : '/ Tx';
+            this.renderAnalysis();
+        },
+
         renderAnalysis() {
             const list = document.getElementById('analysisList'); list.innerHTML='';
             const tx = app.data.viewTx.filter(t=>t.amount<0 && !t.isIgnored);
@@ -1559,7 +1580,7 @@
                 const grp={}; tx.forEach(t=>{ if(!grp[t.cleanName]) grp[t.cleanName]={tot:0,cnt:0}; grp[t.cleanName].tot += t.amount; grp[t.cleanName].cnt++; });
                 Object.entries(grp).sort((a,b)=>a[1].tot-b[1].tot).forEach(([name,d]) => { const hasSub = app.data.subData[name] && app.data.subData[name].length > 0; const div = document.createElement('div'); div.className = 'tx-row'; div.onclick = () => this.openDrill(name); div.innerHTML = `<div><div style="font-weight:600">${name} ${hasSub?'<i class="fas fa-check-circle" style="color:var(--accent);font-size:0.8rem"></i>':''}</div><div style="font-size:0.75rem;color:var(--text-sub)">${d.cnt} txns</div></div><div style="font-weight:700" class="neg">${this.fmt(d.tot)}</div>`; list.appendChild(div); });
                 
-                // Rec List & Potentials (Restored Original Logic)
+                // Rec List
                 const recList = document.getElementById('recurringList'); let allTx = [...app.data.transactions]; Object.values(app.data.subData).forEach(s => allTx = allTx.concat(s));
                 const recurringCandidates = allTx.filter(t => t.isRecurring && !t.isIgnored);
                 const fGroups = app.getFuzzyGroups(recurringCandidates);
@@ -1567,7 +1588,11 @@
 
                 if(recEntries.length > 0) {
                     recList.innerHTML = ''; let totalMonthly = 0;
-                    recEntries.forEach(g => { const avgAmt = g.tot / g.cnt; totalMonthly += avgAmt; recList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600">${g.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(avgAmt)}/mo</small><span class="badge">${g.cnt}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`; });
+                    recEntries.forEach(g => { 
+                        const avgAmt = this.state.recMode === '12mo' ? g.tot / 12 : g.tot / g.cnt;
+                        totalMonthly += avgAmt; 
+                        recList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600">${g.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(avgAmt)}/mo</small><span class="badge">${g.cnt}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`; 
+                    });
                     document.getElementById('recurringSum').innerText = this.fmt(totalMonthly);
                 } else { recList.innerHTML = '<small style="color:var(--text-sub)">No recurring items tagged.</small>'; document.getElementById('recurringSum').innerText = "$0.00"; }
                 
