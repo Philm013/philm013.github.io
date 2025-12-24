@@ -1,9 +1,3 @@
-The error occurs because the new Google GenAI SDK (`@google/genai`) uses the export **`Type`** for defining schema types, not `SchemaType` (which was used in the previous generation of the SDK).
-
-Here is the corrected file with the import fixed and `SchemaType` replaced with `Type`.
-
---- START OF FILE finances.html ---
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
