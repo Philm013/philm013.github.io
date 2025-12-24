@@ -1,9 +1,9 @@
-him<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v6.2 (AI Context Control)</title>
+    <title>Bank Explorer Pro v6.3 (AI Model Selection)</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -542,6 +542,15 @@ him<!DOCTYPE html>
             </div>
 
             <div class="input-group">
+                <label>Gemini Model</label>
+                <select id="aiModelSelect" class="form-control">
+                    <option value="gemini-flash-latest">Gemini Flash</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro</option> 
+                    <option value="gemini-3.0-pro-preview">Gemini 3.0 Pro</option> 
+                </select>
+            </div>
+
+            <div class="input-group">
                 <label>AI System Instructions (Persona)</label>
                 <textarea id="aiContextInput" class="form-control" rows="4" placeholder="You are a financial assistant..."></textarea>
                 <small style="color:var(--text-sub)">Define the AI's persona or specific goals.</small>
@@ -757,13 +766,20 @@ him<!DOCTYPE html>
 <script type="module">
     import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
 
+    // --- DEFINE ALL OBJECTS FIRST ---
+
+    const db = { /* ... DB logic ... */ };
+    const parser = { /* ... Parser logic ... */ };
+    const ui = { /* ... UI logic ... */ };
+    const aiManager = { /* ... AI logic ... */ };
+    const app = { /* ... App logic ... */ };
+
     // --- DATABASE ---
-    const DB_NAME = 'BankExplorerDB'; const DB_VER = 4;
-    const db = {
+    Object.assign(db, {
         _db: null,
         async init() {
             return new Promise((resolve) => {
-                const req = indexedDB.open(DB_NAME, DB_VER);
+                const req = indexedDB.open('BankExplorerDB', 4);
                 req.onupgradeneeded = (e) => {
                     const db = e.target.result;
                     const stores = { files:'id', tx:'id', subData:'category', rejected:'id', profiles:'id' };
@@ -784,7 +800,7 @@ him<!DOCTYPE html>
             });
         },
         async delete(store, id) {
-             return new Promise((resolve, reject) => {
+             return new Promise((resolve) => {
                 const tx = this._db.transaction(store, 'readwrite');
                 tx.objectStore(store).delete(id).onsuccess = resolve;
              });
@@ -803,7 +819,7 @@ him<!DOCTYPE html>
             });
         },
         async clear() {
-            return new Promise((resolve) => indexedDB.deleteDatabase(DB_NAME).onsuccess = resolve);
+            return new Promise((resolve) => indexedDB.deleteDatabase('BankExplorerDB').onsuccess = resolve);
         },
         async clearStore(store) {
             return new Promise((resolve) => {
@@ -811,10 +827,10 @@ him<!DOCTYPE html>
                  tx.objectStore(store).clear().onsuccess = resolve;
             });
         }
-    };
+    });
 
     // --- PARSER ---
-    const parser = {
+    Object.assign(parser, {
         async parsePdf(file, profile) {
             const buf = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument(buf).promise;
@@ -858,19 +874,22 @@ him<!DOCTYPE html>
         inferYear(mmdd, refDate) { const [m, d] = mmdd.split('/').map(Number); const refYear = refDate.getFullYear(); let candidate = new Date(refYear, m - 1, d); if (candidate > refDate) candidate.setFullYear(refYear - 1); return candidate; },
         parseNum(s) { return parseFloat(s.replace(/[$,]/g,'')); },
         clean(s) { return s.toUpperCase().replace(/WITHDRAWAL|DEPOSIT|ACH|POS|ATM|CHECK CARD|PURCHASE|BILL PAY|RECURRING/gi,'').replace(/[\d#*-]{4,}/g,'').trim(); }
-    };
+    });
 
     // --- AI MANAGER ---
-    const aiManager = {
+    Object.assign(aiManager, {
         client: null,
-        modelId: "gemini-flash-latest",
+        modelId: "gemini-2.0-flash",
         history: [],
         context: "You are a financial assistant. You can analyze spending, help categorize transactions with tags, and answer questions. When asked to analyze, retrieve transactions first. Be concise and friendly.",
 
         init() {
             const key = localStorage.getItem('geminiKey');
             const savedContext = localStorage.getItem('aiContext');
+            const savedModel = localStorage.getItem('geminiModel');
+
             if(savedContext) this.context = savedContext;
+            if(savedModel) this.modelId = savedModel;
             
             if(key) {
                 this.client = new GoogleGenAI({ apiKey: key });
@@ -878,6 +897,7 @@ him<!DOCTYPE html>
             }
             document.getElementById('apiKeyInput').value = key || '';
             document.getElementById('aiContextInput').value = this.context;
+            document.getElementById('aiModelSelect').value = this.modelId;
         },
 
         getDataSnapshot(scope) {
@@ -1021,509 +1041,10 @@ him<!DOCTYPE html>
                 console.error(e);
             }
         }
-    };
-
-    // --- APP ---
-    const app = {
-        data: { files: [], transactions: [], subData: {}, viewTx: [], rejected: [], profiles: [] },
-        filters: { text:'', start:'', end:'', min:'', max:'', type:'all', tag:'' },
-        settings: { minDays: 25, maxDays: 35, minCount: 2 },
-        fuse: null,
-        
-        async init() {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            await db.init();
-            await this.loadData();
-            await this.initProfiles();
-            this.cleanExistingTransfers();
-            aiManager.init();
-            document.addEventListener('click', (e) => {
-                if(!e.target.closest('.search-container')) document.getElementById('autocompleteList').style.display = 'none';
-            });
-            ui.init();
-        },
-
-        async loadData() {
-            this.data.files = await db.getAll('files');
-            this.data.transactions = await db.getAll('tx');
-            // Ensure tags array exists
-            this.data.transactions.forEach(t => { if(!t.tags) t.tags = []; });
-            
-            const subs = await db.getAll('subData');
-            this.data.subData = {};
-            subs.forEach(s => this.data.subData[s.category] = s.items);
-            this.data.rejected = await db.getAll('rejected');
-            
-            this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
-            this.data.viewTx = [...this.data.transactions];
-            this.initFuse();
-            ui.refresh();
-        },
-
-        async initProfiles() {
-            this.data.profiles = await db.getAll('profiles');
-            if(this.data.profiles.length === 0) {
-                const defaults = [
-                    { id: 'default_bank', name: 'Standard Bank (Date Desc Amt)', regex: '^(\\d{1,2}/\\d{1,2}/\\d{4})\\s+(?:\\d{1,2}/\\d{1,2}/\\d{4}\\s+)?(.*?)\\s+(-?\\$?[\\d,]+\\.\\d{2})\\s+(-?\\$?[\\d,]+\\.\\d{2})$', map: { date: 1, desc: 2, amt: 3 }, inferYear: false },
-                    { id: 'default_cc', name: 'Credit Card (No Year)', regex: '^(\\d{1,2}/\\d{1,2})\\s+(\\d{1,2}/\\d{1,2})\\s+(.*?)\\s+(-?\\$?[\\d,]+\\.\\d{2})$', map: { date: 1, desc: 3, amt: 4 }, inferYear: true }
-                ];
-                await db.save('profiles', defaults);
-                this.data.profiles = defaults;
-            }
-            ui.renderProfilesSelect();
-            ui.renderProfilesList();
-        },
-
-        async cleanExistingTransfers() {
-            const transferRegex = /(transfer (to|from) share)|(online transfer)|(transfer withdrawal)|(transfer deposit)|(transfer to .* share)|(transfer from .* share)/i;
-            let changes = 0;
-            for(let t of this.data.transactions) {
-                if(transferRegex.test(t.desc) && !t.isIgnored) {
-                    t.isIgnored = true;
-                    await db.save('tx', t);
-                    changes++;
-                }
-            }
-        },
-
-        initFuse() {
-            let allDocs = [...this.data.transactions];
-            Object.values(this.data.subData).forEach(items => allDocs = allDocs.concat(items));
-            this.fuse = new Fuse(allDocs, { keys: ['desc', 'cleanName', 'note', 'amount', 'tags'], threshold: 0.4, ignoreLocation: true });
-        },
-
-        // --- TAGGING ---
-        async addTag(id, tag) {
-            tag = tag.trim();
-            if(!tag) return;
-            let t = this.getTxById(id);
-            if(t) {
-                if(!t.tags) t.tags = [];
-                if(!t.tags.includes(tag)) {
-                    t.tags.push(tag);
-                    let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
-                    if(store === 'tx') await db.save('tx', t); 
-                    else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                    this.initFuse();
-                    ui.refresh();
-                    if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id); // Re-render detail
-                }
-            }
-        },
-
-        async removeTag(id, tag) {
-            let t = this.getTxById(id);
-            if(t && t.tags) {
-                t.tags = t.tags.filter(tg => tg !== tag);
-                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
-                if(store === 'tx') await db.save('tx', t); 
-                else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                this.initFuse();
-                ui.refresh();
-                if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
-            }
-        },
-
-        // --- PROFILES ---
-        editProfile(id) {
-            const p = id ? this.data.profiles.find(x => x.id === id) : { id:'', name:'', regex:'', map:{date:1,desc:2,amt:3}, inferYear:false };
-            document.getElementById('peId').value = p.id;
-            document.getElementById('peName').value = p.name;
-            document.getElementById('peRegex').value = p.regex;
-            document.getElementById('peMapDate').value = p.map.date;
-            document.getElementById('peMapDesc').value = p.map.desc;
-            document.getElementById('peMapAmt').value = p.map.amt;
-            document.getElementById('peInferYear').checked = p.inferYear;
-            document.getElementById('peTitle').innerText = id ? 'Edit Profile' : 'New Profile';
-            document.getElementById('peDeleteBtn').style.display = id ? 'block' : 'none';
-            document.getElementById('peTestResult').innerHTML = '';
-            ui.toggleModal('profileEditorModal');
-        },
-
-        async saveProfile() {
-            const id = document.getElementById('peId').value || crypto.randomUUID();
-            const profile = {
-                id: id,
-                name: document.getElementById('peName').value,
-                regex: document.getElementById('peRegex').value,
-                map: { date: parseInt(document.getElementById('peMapDate').value), desc: parseInt(document.getElementById('peMapDesc').value), amt: parseInt(document.getElementById('peMapAmt').value) },
-                inferYear: document.getElementById('peInferYear').checked
-            };
-            if(!profile.name || !profile.regex) return alert("Name and Regex are required");
-            await db.save('profiles', profile);
-            await this.initProfiles();
-            ui.toggleModal('profileEditorModal');
-            ui.toast("Profile Saved");
-        },
-
-        async deleteProfile() {
-            const id = document.getElementById('peId').value;
-            if(confirm("Delete this profile?")) { await db.delete('profiles', id); await this.initProfiles(); ui.toggleModal('profileEditorModal'); ui.toast("Profile Deleted"); }
-        },
-
-        testRegex() {
-            const regexStr = document.getElementById('peRegex').value;
-            const line = document.getElementById('peTestLine').value;
-            const map = { date: parseInt(document.getElementById('peMapDate').value), desc: parseInt(document.getElementById('peMapDesc').value), amt: parseInt(document.getElementById('peMapAmt').value) };
-            const out = document.getElementById('peTestResult');
-            try {
-                const re = new RegExp(regexStr);
-                const match = re.exec(line);
-                if(match) out.innerHTML = `<span class="pos">MATCH!</span> Date:${match[map.date]} | Desc:${match[map.desc]} | Amt:${match[map.amt]}`;
-                else out.innerHTML = `<span class="neg">NO MATCH</span>`;
-            } catch(e) { out.innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
-        },
-
-        // --- FILTER & SEARCH ---
-        handleSearchInput(e) {
-            const val = e.target.value.trim();
-            this.filters.text = val.toLowerCase();
-            this.renderAutocomplete(val);
-            this.applyFilters();
-        },
-
-        renderAutocomplete(val) {
-            const list = document.getElementById('autocompleteList');
-            if(val.length < 2) { list.style.display = 'none'; return; }
-            let allNames = new Set();
-            this.data.transactions.forEach(t => { allNames.add(t.desc); if(t.tags) t.tags.forEach(tg => allNames.add('#'+tg)); });
-            Object.values(this.data.subData).forEach(arr => arr.forEach(t => allNames.add(t.desc)));
-            const matches = Array.from(allNames).filter(name => name.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
-            if(matches.length === 0) { list.style.display = 'none'; return; }
-            list.innerHTML = matches.map(name => {
-                const regex = new RegExp(`(${val})`, 'gi');
-                const hl = name.replace(regex, '<span class="autocomplete-match">$1</span>');
-                return `<div class="autocomplete-item" onclick="app.selectAutocomplete('${name.replace(/'/g, "\\'")}')">${hl}</div>`;
-            }).join('');
-            list.style.display = 'block';
-        },
-
-        selectAutocomplete(name) {
-            document.getElementById('globalSearch').value = name;
-            this.filters.text = name.toLowerCase();
-            document.getElementById('autocompleteList').style.display = 'none';
-            this.applyFilters();
-        },
-
-        updateSettings() {
-            this.settings.minDays = parseInt(document.getElementById('setMinDays').value) || 25;
-            this.settings.maxDays = parseInt(document.getElementById('setMaxDays').value) || 35;
-            this.settings.minCount = parseInt(document.getElementById('setMinCount').value) || 2;
-            const key = document.getElementById('apiKeyInput').value;
-            const context = document.getElementById('aiContextInput').value;
-            
-            if(key) localStorage.setItem('geminiKey', key);
-            if(context) localStorage.setItem('aiContext', context);
-            
-            aiManager.init();
-            ui.toggleModal('settingsModal');
-            ui.refresh();
-            ui.toast("Settings updated");
-        },
-
-        async clearRejected() {
-            if(confirm("Restore all rejected suggestions?")) { await db.clearStore('rejected'); this.data.rejected = []; ui.refresh(); ui.toast("Rejected list cleared"); }
-        },
-
-        async processFiles(fileList, mode, categoryContext = null) {
-            const profileId = document.getElementById('importProfileSelect').value;
-            const profile = this.data.profiles.find(p => p.id === profileId);
-            if(!profile) return alert("Please select a parsing profile");
-
-            ui.toast(`Processing ${fileList.length} files...`);
-            const results = await Promise.all(Array.from(fileList).map(f => parser.parsePdf(f, profile)));
-            
-            let count = 0;
-            const newFiles = [], newTx = [], newSubData = {};
-            for (let i = 0; i < fileList.length; i++) {
-                const res = results[i];
-                if(res.items.length === 0) continue;
-                const fileId = crypto.randomUUID();
-                newFiles.push({ id: fileId, name: res.fileName, count: res.items.length, type: mode, context: categoryContext, date: new Date(), blob: fileList[i] });
-
-                if(mode === 'main') {
-                    res.items.forEach(item => {
-                        if(!this.data.transactions.some(t => t.signature === item.signature)) {
-                            item.sourceFile = res.fileName; item.sourceFileId = fileId; item.tags = [];
-                            this.data.transactions.push(item); newTx.push(item); count++;
-                        }
-                    });
-                } else if(mode === 'sub' && categoryContext) {
-                    if(!this.data.subData[categoryContext]) this.data.subData[categoryContext] = [];
-                    if(!newSubData[categoryContext]) newSubData[categoryContext] = [];
-                    res.items.forEach(item => {
-                        if(!this.data.subData[categoryContext].some(t => t.signature === item.signature)) {
-                            item.sourceFile = res.fileName; item.sourceFileId = fileId; item.isSub = true; item.cleanName = categoryContext; item.tags = [];
-                            this.data.subData[categoryContext].push(item); newSubData[categoryContext].push(item); count++;
-                        }
-                    });
-                }
-            }
-            if(newFiles.length) { this.data.files.push(...newFiles); await db.save('files', newFiles); }
-            if(newTx.length) await db.save('tx', newTx);
-            for(const cat in newSubData) { await db.save('subData', { category: cat, items: this.data.subData[cat] }); }
-            this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
-            this.initFuse();
-            this.clearFilters();
-            ui.toast(`Imported ${count} new transactions.`);
-        },
-
-        async toggleRecurring(id) {
-            let t = this.getTxById(id);
-            if(t) {
-                t.isRecurring = !t.isRecurring;
-                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
-                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                if(ui.state.drillCat) ui.renderDrillDown(ui.state.drillCat); else if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(document.getElementById('drillTitle').innerText, true);
-                ui.refresh(); 
-            }
-        },
-
-        async toggleIgnored(id) {
-            let t = this.getTxById(id);
-            if(t) {
-                t.isIgnored = !t.isIgnored;
-                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
-                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                ui.toast(t.isIgnored ? "Transaction Hidden" : "Transaction Unhidden");
-                this.applyFilters();
-                if(document.getElementById('detailModal').style.display === 'flex') ui.toggleModal('detailModal');
-            }
-        },
-        
-        async toggleAllRecurring(descGroup, state) {
-            let count = 0;
-            const all = [...this.data.transactions];
-            for(let key in this.data.subData) all.push(...this.data.subData[key]);
-            
-            // Fuzzy match the group name to find targets
-            const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
-            const matchingItems = fuse.search(descGroup).map(r => r.item);
-            const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
-            
-            const targets = new Set([...matchingItems, ...exactMatches]);
-            
-            for(const t of targets) {
-                if(t.isRecurring !== state) {
-                    t.isRecurring = state;
-                    const store = this.data.transactions.find(x => x.id === t.id) ? 'tx' : 'subData';
-                    if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                    count++;
-                }
-            }
-            if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(descGroup, true);
-            ui.refresh();
-            ui.toast(state ? `Marked all (${count})` : `Unmarked all (${count})`);
-        },
-        
-        async toggleAvgMode(descGroup) {
-            let count = 0;
-            const all = [...this.data.transactions];
-            for(let key in this.data.subData) all.push(...this.data.subData[key]);
-            
-            const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
-            const matchingItems = fuse.search(descGroup).map(r => r.item);
-            const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
-            const targets = new Set([...matchingItems, ...exactMatches]);
-            
-            // Determine new mode based on the first item found
-            let newMode = 'avg'; // Default
-            if (targets.size > 0) {
-                 const first = [...targets][0];
-                 newMode = (first.recMode === '12mo') ? 'avg' : '12mo';
-            }
-
-            for(const t of targets) {
-                t.recMode = newMode;
-                const store = this.data.transactions.find(x => x.id === t.id) ? 'tx' : 'subData';
-                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                count++;
-            }
-            ui.refresh();
-        },
-
-        async confirmPotential(descGroup) { await this.toggleAllRecurring(descGroup, true); ui.toast(`Confirmed transactions as recurring`); },
-        async rejectPotential(descGroup) { const entry = { id: descGroup, rejectedAt: new Date() }; this.data.rejected.push(entry); await db.save('rejected', entry); ui.refresh(); ui.toast("Recommendation rejected"); },
-        async unmarkGroup(descGroup) { if(!confirm(`Remove all recurring tags for '${descGroup}'?`)) return; await this.toggleAllRecurring(descGroup, false); },
-        async saveNote(id, text) {
-            let t = this.getTxById(id);
-            if(t) {
-                t.note = text;
-                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
-                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                ui.toast("Note Saved"); this.initFuse(); this.applyFilters(); 
-            }
-        },
-        getTxById(id) {
-            let found = this.data.transactions.find(t => t.id === id);
-            if(found) return found;
-            for(const cat in this.data.subData) { found = this.data.subData[cat].find(t => t.id === id); if(found) return found; }
-            return null;
-        },
-
-        applyFilters() {
-            this.filters.start = document.getElementById('filterStart').value;
-            this.filters.end = document.getElementById('filterEnd').value;
-            this.filters.min = document.getElementById('filterMin').value;
-            this.filters.max = document.getElementById('filterMax').value;
-            this.filters.type = document.getElementById('filterType').value;
-            this.filters.tag = document.getElementById('filterTag').value.trim();
-            
-            let baseList = this.data.transactions;
-            if (this.filters.text && this.fuse) { const results = this.fuse.search(this.filters.text); baseList = results.map(r => r.item).filter(i => !i.isSub); }
-            this.data.viewTx = baseList.filter(t => {
-                if(t.isIgnored) return false;
-                const d = new Date(t.date);
-                if(this.filters.start && d < new Date(this.filters.start)) return false;
-                if(this.filters.end && d > new Date(this.filters.end)) return false;
-                if(this.filters.min && Math.abs(t.amount) < parseFloat(this.filters.min)) return false;
-                if(this.filters.max && Math.abs(t.amount) > parseFloat(this.filters.max)) return false;
-                if(this.filters.type === 'inc' && t.amount < 0) return false;
-                if(this.filters.type === 'exp' && t.amount > 0) return false;
-                if(this.filters.tag && (!t.tags || !t.tags.some(tg => tg.toLowerCase().includes(this.filters.tag.toLowerCase())))) return false;
-                return true; 
-            });
-            const hasAdv = this.filters.start || this.filters.end || this.filters.min || this.filters.max || this.filters.type !== 'all' || this.filters.tag;
-            document.getElementById('filterDot').style.display = hasAdv ? 'inline' : 'none';
-            if(document.getElementById('filterModal').style.display === 'flex') { ui.toggleModal('filterModal'); ui.toast(`Found ${this.data.viewTx.length} matches`); }
-            ui.refresh();
-        },
-
-        clearFilters() {
-            document.getElementById('globalSearch').value = ''; this.filters.text = '';
-            document.getElementById('filterStart').value = ''; document.getElementById('filterEnd').value = '';
-            document.getElementById('filterMin').value = ''; document.getElementById('filterMax').value = '';
-            document.getElementById('filterType').value = 'all'; document.getElementById('filterTag').value = '';
-            this.applyFilters();
-            document.getElementById('filterDot').style.display = 'none'; ui.toggleModal('filterModal'); ui.refresh();
-        },
-
-        async exportXLSX() {
-            if (typeof XLSX === 'undefined') { return alert("XLSX Library not loaded."); }
-            ui.toast("Generating Excel File...");
-            const wb = XLSX.utils.book_new();
-            const headerStyle = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "3B82F6" } }, alignment: { horizontal: "center" } };
-            const subHeaderStyle = { font: { bold: true }, fill: { fgColor: { rgb: "E2E8F0" } } };
-            const currStyle = { numFmt: "$#,##0.00" };
-            const posStyle = { font: { color: { rgb: "10B981" } }, numFmt: "$#,##0.00" };
-            const negStyle = { font: { color: { rgb: "EF4444" } }, numFmt: "$#,##0.00" };
-            const dateStyle = { alignment: { horizontal: "center" } };
-
-            const tx = this.data.viewTx.filter(t => !t.isIgnored); // Strict filter
-            const inc = tx.filter(t=>t.amount>0).reduce((a,b)=>a+b.amount,0);
-            const exp = tx.filter(t=>t.amount<0).reduce((a,b)=>a+b.amount,0);
-            const cats = {}; tx.filter(t=>t.amount<0).forEach(t=>{ cats[t.cleanName] = (cats[t.cleanName]||0)+Math.abs(t.amount); });
-            const catRows = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
-
-            const dashData = [
-                [{ v: "FINANCIAL SUMMARY", s: { font: { bold: true, sz: 14 } } }], [],
-                [{ v: "METRIC", s: headerStyle }, { v: "VALUE", s: headerStyle }],
-                [{ v: "Total Income" }, { v: inc, s: posStyle }],
-                [{ v: "Total Expense" }, { v: exp, s: negStyle }],
-                [{ v: "Net Flow" }, { v: inc + exp, s: (inc+exp)>=0 ? posStyle : negStyle }], [],
-                [{ v: "EXPENSE BY CATEGORY", s: { font: { bold: true, sz: 12 } } }],
-                [{ v: "Category", s: headerStyle }, { v: "Amount", s: headerStyle }],
-                ...catRows.map(r => [{ v: r[0] }, { v: r[1], s: currStyle }])
-            ];
-            const wsDash = XLSX.utils.aoa_to_sheet(dashData); wsDash['!cols'] = [{ wch: 25 }, { wch: 15 }]; XLSX.utils.book_append_sheet(wb, wsDash, "Dashboard");
-
-            let allRec = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => allRec = allRec.concat(items));
-            allRec = allRec.filter(t => t.isRecurring && !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
-            const recGroups = {}; allRec.forEach(t => { const k = this.cleanSubDesc(t.desc); if(!recGroups[k]) recGroups[k] = []; recGroups[k].push(t); });
-            const recData = [[{ v: "Group / Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Note", s: headerStyle }]];
-            const rowProps = []; rowProps.push({});
-            Object.entries(recGroups).forEach(([name, items]) => {
-                const total = items.reduce((sum, t) => sum + t.amount, 0); const avg = total / items.length;
-                recData.push([{ v: name, s: subHeaderStyle }, { v: `${items.length} transactions - Avg: ${ui.fmt(avg)}`, s: subHeaderStyle }, { v: total, s: { ...subHeaderStyle, ...negStyle } }, { v: "", s: subHeaderStyle }]);
-                rowProps.push({ level: 0, collapsed: true });
-                items.forEach(t => { recData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.amount, s: negStyle }, { v: t.note || "" }]); rowProps.push({ level: 1, hidden: true }); });
-            });
-            const wsRec = XLSX.utils.aoa_to_sheet(recData); wsRec['!cols'] = [{ wch: 25 }, { wch: 40 }, { wch: 15 }, { wch: 30 }]; wsRec['!rows'] = rowProps; XLSX.utils.book_append_sheet(wb, wsRec, "Recurring Report");
-
-            const txData = [[{ v: "Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Category", s: headerStyle }, { v: "Tags", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Type", s: headerStyle }, { v: "Note", s: headerStyle }, { v: "Status", s: headerStyle }]];
-            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => {
-                txData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.cleanName }, { v: (t.tags||[]).join(', ') }, { v: t.amount, s: t.amount >= 0 ? posStyle : negStyle }, { v: t.amount >= 0 ? "Income" : "Expense" }, { v: t.note || "" }, { v: t.isRecurring ? "Recurring" : "" }]);
-            });
-            const wsTx = XLSX.utils.aoa_to_sheet(txData); wsTx['!cols'] = [{ wch: 12 }, { wch: 50 }, { wch: 30 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 30 }, { wch: 12 }]; XLSX.utils.book_append_sheet(wb, wsTx, "Transactions");
-
-            XLSX.writeFile(wb, "BankExplorer_Export.xlsx"); ui.toggleModal('exportModal');
-        },
-
-        exportCSV() {
-            const rows = [["Date","Description","Amount","Category","Tags","Note"]];
-            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => rows.push([t.rawDateStr, `"${t.desc.replace(/"/g,'""')}"`, t.amount, t.cleanName, `"${(t.tags||[]).join(',')}"`, `"${(t.note||'').replace(/"/g,'""')}"`]));
-            const csv = rows.map(r => r.join(',')).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'bank_export.csv'; a.click();
-        },
-        exportJSON() {
-            const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'bank_backup.json'; a.click();
-        },
-        cleanSubDesc(desc) { 
-            return desc.toUpperCase()
-                .replace(/WITHDRAWAL|DEPOSIT|ACH|POS|ATM|CHECK CARD|PURCHASE|BILL PAY|RECURRING/gi,' ')
-                .replace(/[\d#*-]+/g,' ') 
-                .replace(/\s+/g, ' ')
-                .trim(); 
-        },
-        getFuzzyGroups(txList) {
-            const strictMap = {};
-            txList.forEach(t => {
-                const k = this.cleanSubDesc(t.desc);
-                if (!strictMap[k]) strictMap[k] = [];
-                strictMap[k].push(t);
-            });
-            const groupNames = Object.keys(strictMap);
-            const fuse = new Fuse(groupNames.map(n => ({ name: n })), { keys: ['name'], threshold: 0.25 });
-            const merged = {};
-            const visited = new Set();
-            groupNames.sort((a,b) => a.length - b.length); 
-            for (const name of groupNames) {
-                if (visited.has(name)) continue;
-                const matches = fuse.search(name);
-                merged[name] = [];
-                let hasSelf = false;
-                matches.forEach(m => {
-                    const matchedName = m.item.name;
-                    if (!visited.has(matchedName)) {
-                        merged[name].push(...strictMap[matchedName]);
-                        visited.add(matchedName);
-                    }
-                    if(matchedName === name) hasSelf = true;
-                });
-                if(!hasSelf && !visited.has(name)) {
-                    merged[name].push(...strictMap[name]);
-                    visited.add(name);
-                }
-            }
-            return merged;
-        },
-        getHistory(desc) {
-            const clean = this.cleanSubDesc(desc); let all = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => all = all.concat(items));
-            const matches = all.filter(t => this.cleanSubDesc(t.desc) === clean && !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
-            const total = matches.reduce((sum, t) => sum + t.amount, 0); return { items: matches, total, avg: total / matches.length, count: matches.length };
-        },
-        getPotentialRecurring() {
-            let all = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => all = all.concat(items));
-            const candidates = all.filter(t => t.amount < 0 && !t.isRecurring && !t.isIgnored);
-            const groups = this.getFuzzyGroups(candidates);
-            const rejectedSet = new Set(this.data.rejected.map(r => r.id));
-            const potentials = [];
-            for(const [key, items] of Object.entries(groups)) {
-                if(rejectedSet.has(key)) continue;
-                if(items.length < this.settings.minCount) continue; 
-                items.sort((a,b) => new Date(b.date) - new Date(a.date)); 
-                const dates = items.map(i => new Date(i.date).getTime()); const intervals = [];
-                for(let i=0; i < dates.length - 1; i++) { intervals.push((dates[i] - dates[i+1]) / (1000 * 3600 * 24)); }
-                const avg = intervals.reduce((a,b)=>a+b,0) / intervals.length;
-                if(avg >= this.settings.minDays && avg <= this.settings.maxDays) { potentials.push({ name: key, avgAmt: items[0].amount, count: items.length, days: Math.round(avg), sampleId: items[0].id }); }
-            }
-            return potentials.sort((a,b) => a.days - b.days);
-        },
-        async clearAll() { if(confirm("Permanently delete all data?")) { await db.clear(); location.reload(); } }
-    };
+    });
 
     // --- UI ---
-    const ui = {
+    Object.assign(ui, {
         state: { drillCat: null, dashTime: 'month', dashMode: 'flow', dashCat: null },
         charts: {},
 
@@ -1862,7 +1383,506 @@ him<!DOCTYPE html>
             this.charts[id] = new Chart(document.getElementById(id), { type, data, options: opts });
         },
         fmt(n) { return n.toLocaleString('en-US', {style:'currency', currency:'USD'}); }
-    };
+    });
+
+    // --- APP ---
+    Object.assign(app, {
+        data: { files: [], transactions: [], subData: {}, viewTx: [], rejected: [], profiles: [] },
+        filters: { text:'', start:'', end:'', min:'', max:'', type:'all', tag:'' },
+        settings: { minDays: 25, maxDays: 35, minCount: 2 },
+        fuse: null,
+        
+        async init() {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            await db.init();
+            await this.loadData();
+            await this.initProfiles();
+            this.cleanExistingTransfers();
+            aiManager.init();
+            document.addEventListener('click', (e) => {
+                if(!e.target.closest('.search-container')) document.getElementById('autocompleteList').style.display = 'none';
+            });
+            ui.init();
+        },
+
+        async loadData() {
+            this.data.files = await db.getAll('files');
+            this.data.transactions = await db.getAll('tx');
+            // Ensure tags array exists
+            this.data.transactions.forEach(t => { if(!t.tags) t.tags = []; });
+            
+            const subs = await db.getAll('subData');
+            this.data.subData = {};
+            subs.forEach(s => this.data.subData[s.category] = s.items);
+            this.data.rejected = await db.getAll('rejected');
+            
+            this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
+            this.data.viewTx = [...this.data.transactions];
+            this.initFuse();
+            ui.refresh();
+        },
+
+        async initProfiles() {
+            this.data.profiles = await db.getAll('profiles');
+            if(this.data.profiles.length === 0) {
+                const defaults = [
+                    { id: 'default_bank', name: 'Standard Bank (Date Desc Amt)', regex: '^(\\d{1,2}/\\d{1,2}/\\d{4})\\s+(?:\\d{1,2}/\\d{1,2}/\\d{4}\\s+)?(.*?)\\s+(-?\\$?[\\d,]+\\.\\d{2})\\s+(-?\\$?[\\d,]+\\.\\d{2})$', map: { date: 1, desc: 2, amt: 3 }, inferYear: false },
+                    { id: 'default_cc', name: 'Credit Card (No Year)', regex: '^(\\d{1,2}/\\d{1,2})\\s+(\\d{1,2}/\\d{1,2})\\s+(.*?)\\s+(-?\\$?[\\d,]+\\.\\d{2})$', map: { date: 1, desc: 3, amt: 4 }, inferYear: true }
+                ];
+                await db.save('profiles', defaults);
+                this.data.profiles = defaults;
+            }
+            ui.renderProfilesSelect();
+            ui.renderProfilesList();
+        },
+
+        async cleanExistingTransfers() {
+            const transferRegex = /(transfer (to|from) share)|(online transfer)|(transfer withdrawal)|(transfer deposit)|(transfer to .* share)|(transfer from .* share)/i;
+            let changes = 0;
+            for(let t of this.data.transactions) {
+                if(transferRegex.test(t.desc) && !t.isIgnored) {
+                    t.isIgnored = true;
+                    await db.save('tx', t);
+                    changes++;
+                }
+            }
+        },
+
+        initFuse() {
+            let allDocs = [...this.data.transactions];
+            Object.values(this.data.subData).forEach(items => allDocs = allDocs.concat(items));
+            this.fuse = new Fuse(allDocs, { keys: ['desc', 'cleanName', 'note', 'amount', 'tags'], threshold: 0.4, ignoreLocation: true });
+        },
+
+        // --- TAGGING ---
+        async addTag(id, tag) {
+            tag = tag.trim();
+            if(!tag) return;
+            let t = this.getTxById(id);
+            if(t) {
+                if(!t.tags) t.tags = [];
+                if(!t.tags.includes(tag)) {
+                    t.tags.push(tag);
+                    let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+                    if(store === 'tx') await db.save('tx', t); 
+                    else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                    this.initFuse();
+                    ui.refresh();
+                    if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id); // Re-render detail
+                }
+            }
+        },
+
+        async removeTag(id, tag) {
+            let t = this.getTxById(id);
+            if(t && t.tags) {
+                t.tags = t.tags.filter(tg => tg !== tag);
+                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); 
+                else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                this.initFuse();
+                ui.refresh();
+                if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
+            }
+        },
+
+        // --- PROFILES ---
+        editProfile(id) {
+            const p = id ? this.data.profiles.find(x => x.id === id) : { id:'', name:'', regex:'', map:{date:1,desc:2,amt:3}, inferYear:false };
+            document.getElementById('peId').value = p.id;
+            document.getElementById('peName').value = p.name;
+            document.getElementById('peRegex').value = p.regex;
+            document.getElementById('peMapDate').value = p.map.date;
+            document.getElementById('peMapDesc').value = p.map.desc;
+            document.getElementById('peMapAmt').value = p.map.amt;
+            document.getElementById('peInferYear').checked = p.inferYear;
+            document.getElementById('peTitle').innerText = id ? 'Edit Profile' : 'New Profile';
+            document.getElementById('peDeleteBtn').style.display = id ? 'block' : 'none';
+            document.getElementById('peTestResult').innerHTML = '';
+            ui.toggleModal('profileEditorModal');
+        },
+
+        async saveProfile() {
+            const id = document.getElementById('peId').value || crypto.randomUUID();
+            const profile = {
+                id: id,
+                name: document.getElementById('peName').value,
+                regex: document.getElementById('peRegex').value,
+                map: { date: parseInt(document.getElementById('peMapDate').value), desc: parseInt(document.getElementById('peMapDesc').value), amt: parseInt(document.getElementById('peMapAmt').value) },
+                inferYear: document.getElementById('peInferYear').checked
+            };
+            if(!profile.name || !profile.regex) return alert("Name and Regex are required");
+            await db.save('profiles', profile);
+            await this.initProfiles();
+            ui.toggleModal('profileEditorModal');
+            ui.toast("Profile Saved");
+        },
+
+        async deleteProfile() {
+            const id = document.getElementById('peId').value;
+            if(confirm("Delete this profile?")) { await db.delete('profiles', id); await this.initProfiles(); ui.toggleModal('profileEditorModal'); ui.toast("Profile Deleted"); }
+        },
+
+        testRegex() {
+            const regexStr = document.getElementById('peRegex').value;
+            const line = document.getElementById('peTestLine').value;
+            const map = { date: parseInt(document.getElementById('peMapDate').value), desc: parseInt(document.getElementById('peMapDesc').value), amt: parseInt(document.getElementById('peMapAmt').value) };
+            const out = document.getElementById('peTestResult');
+            try {
+                const re = new RegExp(regexStr);
+                const match = re.exec(line);
+                if(match) out.innerHTML = `<span class="pos">MATCH!</span> Date:${match[map.date]} | Desc:${match[map.desc]} | Amt:${match[map.amt]}`;
+                else out.innerHTML = `<span class="neg">NO MATCH</span>`;
+            } catch(e) { out.innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+        },
+
+        // --- FILTER & SEARCH ---
+        handleSearchInput(e) {
+            const val = e.target.value.trim();
+            this.filters.text = val.toLowerCase();
+            this.renderAutocomplete(val);
+            this.applyFilters();
+        },
+
+        renderAutocomplete(val) {
+            const list = document.getElementById('autocompleteList');
+            if(val.length < 2) { list.style.display = 'none'; return; }
+            let allNames = new Set();
+            this.data.transactions.forEach(t => { allNames.add(t.desc); if(t.tags) t.tags.forEach(tg => allNames.add('#'+tg)); });
+            Object.values(this.data.subData).forEach(arr => arr.forEach(t => allNames.add(t.desc)));
+            const matches = Array.from(allNames).filter(name => name.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
+            if(matches.length === 0) { list.style.display = 'none'; return; }
+            list.innerHTML = matches.map(name => {
+                const regex = new RegExp(`(${val})`, 'gi');
+                const hl = name.replace(regex, '<span class="autocomplete-match">$1</span>');
+                return `<div class="autocomplete-item" onclick="app.selectAutocomplete('${name.replace(/'/g, "\\'")}')">${hl}</div>`;
+            }).join('');
+            list.style.display = 'block';
+        },
+
+        selectAutocomplete(name) {
+            document.getElementById('globalSearch').value = name;
+            this.filters.text = name.toLowerCase();
+            document.getElementById('autocompleteList').style.display = 'none';
+            this.applyFilters();
+        },
+
+        updateSettings() {
+            this.settings.minDays = parseInt(document.getElementById('setMinDays').value) || 25;
+            this.settings.maxDays = parseInt(document.getElementById('setMaxDays').value) || 35;
+            this.settings.minCount = parseInt(document.getElementById('setMinCount').value) || 2;
+            const key = document.getElementById('apiKeyInput').value;
+            const context = document.getElementById('aiContextInput').value;
+            const model = document.getElementById('aiModelSelect').value;
+            
+            if(key) localStorage.setItem('geminiKey', key);
+            if(context) localStorage.setItem('aiContext', context);
+            if(model) localStorage.setItem('geminiModel', model);
+            
+            aiManager.init();
+            ui.toggleModal('settingsModal');
+            ui.refresh();
+            ui.toast("Settings updated");
+        },
+
+        async clearRejected() {
+            if(confirm("Restore all rejected suggestions?")) { await db.clearStore('rejected'); this.data.rejected = []; ui.refresh(); ui.toast("Rejected list cleared"); }
+        },
+
+        async processFiles(fileList, mode, categoryContext = null) {
+            const profileId = document.getElementById('importProfileSelect').value;
+            const profile = this.data.profiles.find(p => p.id === profileId);
+            if(!profile) return alert("Please select a parsing profile");
+
+            ui.toast(`Processing ${fileList.length} files...`);
+            const results = await Promise.all(Array.from(fileList).map(f => parser.parsePdf(f, profile)));
+            
+            let count = 0;
+            const newFiles = [], newTx = [], newSubData = {};
+            for (let i = 0; i < fileList.length; i++) {
+                const res = results[i];
+                if(res.items.length === 0) continue;
+                const fileId = crypto.randomUUID();
+                newFiles.push({ id: fileId, name: res.fileName, count: res.items.length, type: mode, context: categoryContext, date: new Date(), blob: fileList[i] });
+
+                if(mode === 'main') {
+                    res.items.forEach(item => {
+                        if(!this.data.transactions.some(t => t.signature === item.signature)) {
+                            item.sourceFile = res.fileName; item.sourceFileId = fileId; item.tags = [];
+                            this.data.transactions.push(item); newTx.push(item); count++;
+                        }
+                    });
+                } else if(mode === 'sub' && categoryContext) {
+                    if(!this.data.subData[categoryContext]) this.data.subData[categoryContext] = [];
+                    if(!newSubData[categoryContext]) newSubData[categoryContext] = [];
+                    res.items.forEach(item => {
+                        if(!this.data.subData[categoryContext].some(t => t.signature === item.signature)) {
+                            item.sourceFile = res.fileName; item.sourceFileId = fileId; item.isSub = true; item.cleanName = categoryContext; item.tags = [];
+                            this.data.subData[categoryContext].push(item); newSubData[categoryContext].push(item); count++;
+                        }
+                    });
+                }
+            }
+            if(newFiles.length) { this.data.files.push(...newFiles); await db.save('files', newFiles); }
+            if(newTx.length) await db.save('tx', newTx);
+            for(const cat in newSubData) { await db.save('subData', { category: cat, items: this.data.subData[cat] }); }
+            this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
+            this.initFuse();
+            this.clearFilters();
+            ui.toast(`Imported ${count} new transactions.`);
+        },
+
+        async toggleRecurring(id) {
+            let t = this.getTxById(id);
+            if(t) {
+                t.isRecurring = !t.isRecurring;
+                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                if(ui.state.drillCat) ui.renderDrillDown(ui.state.drillCat); else if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(document.getElementById('drillTitle').innerText, true);
+                ui.refresh(); 
+            }
+        },
+
+        async toggleIgnored(id) {
+            let t = this.getTxById(id);
+            if(t) {
+                t.isIgnored = !t.isIgnored;
+                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                ui.toast(t.isIgnored ? "Transaction Hidden" : "Transaction Unhidden");
+                this.applyFilters();
+                if(document.getElementById('detailModal').style.display === 'flex') ui.toggleModal('detailModal');
+            }
+        },
+        
+        async toggleAllRecurring(descGroup, state) {
+            let count = 0;
+            const all = [...this.data.transactions];
+            for(let key in this.data.subData) all.push(...this.data.subData[key]);
+            
+            const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
+            const matchingItems = fuse.search(descGroup).map(r => r.item);
+            const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
+            
+            const targets = new Set([...matchingItems, ...exactMatches]);
+            
+            for(const t of targets) {
+                if(t.isRecurring !== state) {
+                    t.isRecurring = state;
+                    const store = this.data.transactions.find(x => x.id === t.id) ? 'tx' : 'subData';
+                    if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                    count++;
+                }
+            }
+            if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(descGroup, true);
+            ui.refresh();
+            ui.toast(state ? `Marked all (${count})` : `Unmarked all (${count})`);
+        },
+        
+        async toggleAvgMode(descGroup) {
+            let count = 0;
+            const all = [...this.data.transactions];
+            for(let key in this.data.subData) all.push(...this.data.subData[key]);
+            
+            const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
+            const matchingItems = fuse.search(descGroup).map(r => r.item);
+            const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
+            const targets = new Set([...matchingItems, ...exactMatches]);
+            
+            let newMode = 'avg'; // Default
+            if (targets.size > 0) {
+                 const first = [...targets][0];
+                 newMode = (first.recMode === '12mo') ? 'avg' : '12mo';
+            }
+
+            for(const t of targets) {
+                t.recMode = newMode;
+                const store = this.data.transactions.find(x => x.id === t.id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                count++;
+            }
+            ui.refresh();
+        },
+
+        async confirmPotential(descGroup) { await this.toggleAllRecurring(descGroup, true); ui.toast(`Confirmed transactions as recurring`); },
+        async rejectPotential(descGroup) { const entry = { id: descGroup, rejectedAt: new Date() }; this.data.rejected.push(entry); await db.save('rejected', entry); ui.refresh(); ui.toast("Recommendation rejected"); },
+        async unmarkGroup(descGroup) { if(!confirm(`Remove all recurring tags for '${descGroup}'?`)) return; await this.toggleAllRecurring(descGroup, false); },
+        async saveNote(id, text) {
+            let t = this.getTxById(id);
+            if(t) {
+                t.note = text;
+                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                ui.toast("Note Saved"); this.initFuse(); this.applyFilters(); 
+            }
+        },
+        getTxById(id) {
+            let found = this.data.transactions.find(t => t.id === id);
+            if(found) return found;
+            for(const cat in this.data.subData) { found = this.data.subData[cat].find(t => t.id === id); if(found) return found; }
+            return null;
+        },
+
+        applyFilters() {
+            this.filters.start = document.getElementById('filterStart').value;
+            this.filters.end = document.getElementById('filterEnd').value;
+            this.filters.min = document.getElementById('filterMin').value;
+            this.filters.max = document.getElementById('filterMax').value;
+            this.filters.type = document.getElementById('filterType').value;
+            this.filters.tag = document.getElementById('filterTag').value.trim();
+            
+            let baseList = this.data.transactions;
+            if (this.filters.text && this.fuse) { const results = this.fuse.search(this.filters.text); baseList = results.map(r => r.item).filter(i => !i.isSub); }
+            this.data.viewTx = baseList.filter(t => {
+                if(t.isIgnored) return false;
+                const d = new Date(t.date);
+                if(this.filters.start && d < new Date(this.filters.start)) return false;
+                if(this.filters.end && d > new Date(this.filters.end)) return false;
+                if(this.filters.min && Math.abs(t.amount) < parseFloat(this.filters.min)) return false;
+                if(this.filters.max && Math.abs(t.amount) > parseFloat(this.filters.max)) return false;
+                if(this.filters.type === 'inc' && t.amount < 0) return false;
+                if(this.filters.type === 'exp' && t.amount > 0) return false;
+                if(this.filters.tag && (!t.tags || !t.tags.some(tg => tg.toLowerCase().includes(this.filters.tag.toLowerCase())))) return false;
+                return true; 
+            });
+            const hasAdv = this.filters.start || this.filters.end || this.filters.min || this.filters.max || this.filters.type !== 'all' || this.filters.tag;
+            document.getElementById('filterDot').style.display = hasAdv ? 'inline' : 'none';
+            if(document.getElementById('filterModal').style.display === 'flex') { ui.toggleModal('filterModal'); ui.toast(`Found ${this.data.viewTx.length} matches`); }
+            ui.refresh();
+        },
+
+        clearFilters() {
+            document.getElementById('globalSearch').value = ''; this.filters.text = '';
+            document.getElementById('filterStart').value = ''; document.getElementById('filterEnd').value = '';
+            document.getElementById('filterMin').value = ''; document.getElementById('filterMax').value = '';
+            document.getElementById('filterType').value = 'all'; document.getElementById('filterTag').value = '';
+            this.applyFilters();
+            document.getElementById('filterDot').style.display = 'none'; ui.toggleModal('filterModal'); ui.refresh();
+        },
+
+        async exportXLSX() {
+            if (typeof XLSX === 'undefined') { return alert("XLSX Library not loaded."); }
+            ui.toast("Generating Excel File...");
+            const wb = XLSX.utils.book_new();
+            const headerStyle = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "3B82F6" } }, alignment: { horizontal: "center" } };
+            const subHeaderStyle = { font: { bold: true }, fill: { fgColor: { rgb: "E2E8F0" } } };
+            const currStyle = { numFmt: "$#,##0.00" };
+            const posStyle = { font: { color: { rgb: "10B981" } }, numFmt: "$#,##0.00" };
+            const negStyle = { font: { color: { rgb: "EF4444" } }, numFmt: "$#,##0.00" };
+            const dateStyle = { alignment: { horizontal: "center" } };
+
+            const tx = this.data.viewTx.filter(t => !t.isIgnored); // Strict filter
+            const inc = tx.filter(t=>t.amount>0).reduce((a,b)=>a+b.amount,0);
+            const exp = tx.filter(t=>t.amount<0).reduce((a,b)=>a+b.amount,0);
+            const cats = {}; tx.filter(t=>t.amount<0).forEach(t=>{ cats[t.cleanName] = (cats[t.cleanName]||0)+Math.abs(t.amount); });
+            const catRows = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+
+            const dashData = [
+                [{ v: "FINANCIAL SUMMARY", s: { font: { bold: true, sz: 14 } } }], [],
+                [{ v: "METRIC", s: headerStyle }, { v: "VALUE", s: headerStyle }],
+                [{ v: "Total Income" }, { v: inc, s: posStyle }],
+                [{ v: "Total Expense" }, { v: exp, s: negStyle }],
+                [{ v: "Net Flow" }, { v: inc + exp, s: (inc+exp)>=0 ? posStyle : negStyle }], [],
+                [{ v: "EXPENSE BY CATEGORY", s: { font: { bold: true, sz: 12 } } }],
+                [{ v: "Category", s: headerStyle }, { v: "Amount", s: headerStyle }],
+                ...catRows.map(r => [{ v: r[0] }, { v: r[1], s: currStyle }])
+            ];
+            const wsDash = XLSX.utils.aoa_to_sheet(dashData); wsDash['!cols'] = [{ wch: 25 }, { wch: 15 }]; XLSX.utils.book_append_sheet(wb, wsDash, "Dashboard");
+
+            let allRec = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => allRec = allRec.concat(items));
+            allRec = allRec.filter(t => t.isRecurring && !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
+            const recGroups = {}; allRec.forEach(t => { const k = this.cleanSubDesc(t.desc); if(!recGroups[k]) recGroups[k] = []; recGroups[k].push(t); });
+            const recData = [[{ v: "Group / Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Note", s: headerStyle }]];
+            const rowProps = []; rowProps.push({});
+            Object.entries(recGroups).forEach(([name, items]) => {
+                const total = items.reduce((sum, t) => sum + t.amount, 0); const avg = total / items.length;
+                recData.push([{ v: name, s: subHeaderStyle }, { v: `${items.length} transactions - Avg: ${ui.fmt(avg)}`, s: subHeaderStyle }, { v: total, s: { ...subHeaderStyle, ...negStyle } }, { v: "", s: subHeaderStyle }]);
+                rowProps.push({ level: 0, collapsed: true });
+                items.forEach(t => { recData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.amount, s: negStyle }, { v: t.note || "" }]); rowProps.push({ level: 1, hidden: true }); });
+            });
+            const wsRec = XLSX.utils.aoa_to_sheet(recData); wsRec['!cols'] = [{ wch: 25 }, { wch: 40 }, { wch: 15 }, { wch: 30 }]; wsRec['!rows'] = rowProps; XLSX.utils.book_append_sheet(wb, wsRec, "Recurring Report");
+
+            const txData = [[{ v: "Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Category", s: headerStyle }, { v: "Tags", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Type", s: headerStyle }, { v: "Note", s: headerStyle }, { v: "Status", s: headerStyle }]];
+            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => {
+                txData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.cleanName }, { v: (t.tags||[]).join(', ') }, { v: t.amount, s: t.amount >= 0 ? posStyle : negStyle }, { v: t.amount >= 0 ? "Income" : "Expense" }, { v: t.note || "" }, { v: t.isRecurring ? "Recurring" : "" }]);
+            });
+            const wsTx = XLSX.utils.aoa_to_sheet(txData); wsTx['!cols'] = [{ wch: 12 }, { wch: 50 }, { wch: 30 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 30 }, { wch: 12 }]; XLSX.utils.book_append_sheet(wb, wsTx, "Transactions");
+
+            XLSX.writeFile(wb, "BankExplorer_Export.xlsx"); ui.toggleModal('exportModal');
+        },
+
+        exportCSV() {
+            const rows = [["Date","Description","Amount","Category","Tags","Note"]];
+            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => rows.push([t.rawDateStr, `"${t.desc.replace(/"/g,'""')}"`, t.amount, t.cleanName, `"${(t.tags||[]).join(',')}"`, `"${(t.note||'').replace(/"/g,'""')}"`]));
+            const csv = rows.map(r => r.join(',')).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'bank_export.csv'; a.click();
+        },
+        exportJSON() {
+            const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'bank_backup.json'; a.click();
+        },
+        cleanSubDesc(desc) { 
+            return desc.toUpperCase()
+                .replace(/WITHDRAWAL|DEPOSIT|ACH|POS|ATM|CHECK CARD|PURCHASE|BILL PAY|RECURRING/gi,' ')
+                .replace(/[\d#*-]+/g,' ') 
+                .replace(/\s+/g, ' ')
+                .trim(); 
+        },
+        getFuzzyGroups(txList) {
+            const strictMap = {};
+            txList.forEach(t => {
+                const k = this.cleanSubDesc(t.desc);
+                if (!strictMap[k]) strictMap[k] = [];
+                strictMap[k].push(t);
+            });
+            const groupNames = Object.keys(strictMap);
+            const fuse = new Fuse(groupNames.map(n => ({ name: n })), { keys: ['name'], threshold: 0.25 });
+            const merged = {};
+            const visited = new Set();
+            groupNames.sort((a,b) => a.length - b.length); 
+            for (const name of groupNames) {
+                if (visited.has(name)) continue;
+                const matches = fuse.search(name);
+                merged[name] = [];
+                let hasSelf = false;
+                matches.forEach(m => {
+                    const matchedName = m.item.name;
+                    if (!visited.has(matchedName)) {
+                        merged[name].push(...strictMap[matchedName]);
+                        visited.add(matchedName);
+                    }
+                    if(matchedName === name) hasSelf = true;
+                });
+                if(!hasSelf && !visited.has(name)) {
+                    merged[name].push(...strictMap[name]);
+                    visited.add(name);
+                }
+            }
+            return merged;
+        },
+        getHistory(desc) {
+            const clean = this.cleanSubDesc(desc); let all = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => all = all.concat(items));
+            const matches = all.filter(t => this.cleanSubDesc(t.desc) === clean && !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
+            const total = matches.reduce((sum, t) => sum + t.amount, 0); return { items: matches, total, avg: total / matches.length, count: matches.length };
+        },
+        getPotentialRecurring() {
+            let all = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => all = all.concat(items));
+            const candidates = all.filter(t => t.amount < 0 && !t.isRecurring && !t.isIgnored);
+            const groups = this.getFuzzyGroups(candidates);
+            const rejectedSet = new Set(this.data.rejected.map(r => r.id));
+            const potentials = [];
+            for(const [key, items] of Object.entries(groups)) {
+                if(rejectedSet.has(key)) continue;
+                if(items.length < this.settings.minCount) continue; 
+                items.sort((a,b) => new Date(b.date) - new Date(a.date)); 
+                const dates = items.map(i => new Date(i.date).getTime()); const intervals = [];
+                for(let i=0; i < dates.length - 1; i++) { intervals.push((dates[i] - dates[i+1]) / (1000 * 3600 * 24)); }
+                const avg = intervals.reduce((a,b)=>a+b,0) / intervals.length;
+                if(avg >= this.settings.minDays && avg <= this.settings.maxDays) { potentials.push({ name: key, avgAmt: items[0].amount, count: items.length, days: Math.round(avg), sampleId: items[0].id }); }
+            }
+            return potentials.sort((a,b) => a.days - b.days);
+        },
+        async clearAll() { if(confirm("Permanently delete all data?")) { await db.clear(); location.reload(); } }
+    });
 
     // Expose app/ui to global scope for HTML event handlers
     window.app = app;
