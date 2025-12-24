@@ -1,9 +1,15 @@
+The error occurs because the new Google GenAI SDK (`@google/genai`) uses the export **`Type`** for defining schema types, not `SchemaType` (which was used in the previous generation of the SDK).
+
+Here is the corrected file with the import fixed and `SchemaType` replaced with `Type`.
+
+--- START OF FILE finances.html ---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v6.0.0 (AI Edition)</title>
+    <title>Bank Explorer Pro v6.0.1 (AI Edition)</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -722,7 +728,7 @@
 </div>
 
 <script type="module">
-    import { GoogleGenAI, SchemaType } from "https://esm.run/@google/genai";
+    import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
 
     // --- DATABASE ---
     const DB_NAME = 'BankExplorerDB'; const DB_VER = 5; // Inc version for new schema
@@ -1287,10 +1293,10 @@
             name: 'add_tags_to_transaction',
             description: 'Add a specific tag to a transaction by ID. Use this when the user asks to tag items.',
             parameters: {
-                type: SchemaType.OBJECT,
+                type: Type.OBJECT,
                 properties: {
-                    transactionId: { type: SchemaType.STRING, description: "The ID of the transaction to tag" },
-                    tag: { type: SchemaType.STRING, description: "The tag name (e.g. 'Groceries', 'Rent')" }
+                    transactionId: { type: Type.STRING, description: "The ID of the transaction to tag" },
+                    tag: { type: Type.STRING, description: "The tag name (e.g. 'Groceries', 'Rent')" }
                 },
                 required: ['transactionId', 'tag']
             }
