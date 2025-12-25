@@ -142,7 +142,9 @@
             display: flex; justify-content: space-between; align-items: center;
             padding: 12px; background: var(--surface); border-radius: 8px;
             margin-bottom: 8px; border: 1px solid var(--border); font-size: 0.9rem;
+            cursor: pointer;
         }
+        .file-list-item:active { background: rgba(0,0,0,0.05); }
 
         .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
         .metric-box { background: var(--surface); padding: 15px; border-radius: 12px; text-align: center; box-shadow: var(--card-shadow); border: 1px solid var(--border); }
@@ -1272,7 +1274,7 @@
         async openPdf(fileId) { if(!fileId) return alert("No File"); const f = await db.get('files',fileId); if(!f||!f.blob) return alert("Err"); const url = URL.createObjectURL(f.blob); document.getElementById('pdfTitle').innerText=f.name; document.getElementById('pdfContainer').innerHTML='Loading...'; ui.toggleModal('pdfModal'); const pdf = await pdfjsLib.getDocument(url).promise; document.getElementById('pdfContainer').innerHTML=''; for(let i=1;i<=pdf.numPages;i++){ const p=await pdf.getPage(i); const c=document.createElement('canvas'); const v=p.getViewport({scale:1.5}); c.width=v.width; c.height=v.height; c.style.marginBottom='10px'; await p.render({canvasContext:c.getContext('2d'), viewport:v}).promise; document.getElementById('pdfContainer').appendChild(c); } },
         switchView(id) { this.closeAllModals(); document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active')); document.getElementById('view-'+id).classList.add('active'); document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active')); document.querySelector(`.nav-item[onclick="ui.switchView('${id}')"]`).classList.add('active'); },
         toast(msg) { const d = document.createElement('div'); d.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 16px;border-radius:20px;z-index:999;font-size:0.85rem;"; d.innerText = msg; document.body.appendChild(d); setTimeout(()=>d.remove(), 2500); },
-        renderSources() { document.getElementById('fileListContainer').innerHTML = app.data.files.map(f => `<div class="file-list-item"><div><b>${f.name}</b><br><small>${f.count} txns</small></div><div>${f.context ? `<small style="display:block;color:var(--accent);text-align:right">${f.context}</small>` : ''}<button class="btn btn-ghost" onclick="ui.openPdf('${f.id}')" style="padding:5px; color:var(--accent)"><i class="fas fa-eye"></i></button></div></div>`).join('') || '<div style="padding:20px;text-align:center;color:#999">No files</div>'; },
+        renderSources() { document.getElementById('fileListContainer').innerHTML = app.data.files.map(f => `<div class="file-list-item" onclick="ui.showFileTransactions('${f.id}')"><div style="flex:1;"><b>${f.name}</b><br><small>${f.count} txns</small></div><div>${f.context ? `<small style="display:block;color:var(--accent);text-align:right">${f.context}</small>` : ''}<button class="btn btn-ghost" onclick="event.stopPropagation(); ui.openPdf('${f.id}')" style="padding:5px; color:var(--accent)"><i class="fas fa-eye"></i></button></div></div>`).join('') || '<div style="padding:20px;text-align:center;color:#999">No files</div>'; },
         renderTx() { const c = document.getElementById('txContainer'); const view = app.data.viewTx; document.getElementById('txCount').innerText = view.length; c.innerHTML = view.map(t => this.txHtml(t)).join(''); },
         
         renderAnalysis() {
@@ -1282,7 +1284,9 @@
             
             // Render Tags Cloud
             const tagCounts = {};
-            app.data.transactions.forEach(t => { if(t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag]||0)+1); });
+            app.data.transactions.forEach(t => { if (t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag] || 0) + 1); });
+            Object.values(app.data.subData).forEach(arr => arr.forEach(t => { if (t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag] || 0) + 1); }));
+
             const tagsCloud = document.getElementById('tagsCloud');
             if(Object.keys(tagCounts).length > 0) {
                 tagsCloud.innerHTML = Object.entries(tagCounts).map(([tag, count]) => 
@@ -1335,6 +1339,27 @@
 
         openDrill(cat) { this.state.drillCat = cat; document.getElementById('drillTitle').innerText = cat; this.renderDrillDown(cat); this.switchDrillTab('list'); this.toggleModal('drillModal'); },
         
+        showFileTransactions(fileId) {
+            const file = app.data.files.find(f => f.id === fileId);
+            if (!file) return;
+
+            let allTx = [...app.data.transactions];
+            Object.values(app.data.subData).forEach(items => all = all.concat(items));
+            const items = allTx.filter(t => t.sourceFileId === fileId).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            document.getElementById('drillTitle').innerText = `From: ${file.name}`;
+            document.getElementById('drillSubtitle').innerText = `${items.length} transactions extracted`;
+            document.getElementById('drillList').innerHTML = items.map(t => this.txHtml(t)).join('');
+            
+            // Hide irrelevant tabs and actions for this view
+            document.getElementById('drill-actions').style.display = 'none';
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'analysis\')"]').style.display = 'none';
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'upload\')"]').style.display = 'none';
+
+            this.switchDrillTab('list');
+            this.toggleModal('drillModal');
+        },
+
         openPatternDrill(name, useFuzzy = false) {
             this.state.drillCat = null; document.getElementById('drillTitle').innerText = name; document.getElementById('drill-actions').style.display = 'flex';
             let all = [...app.data.transactions]; Object.values(app.data.subData).forEach(items => all = all.concat(items));
@@ -1352,6 +1377,10 @@
             const byMonth = {}; items.forEach(t => { if(t.date && !t.isIgnored) { const k = new Date(t.date).toLocaleString('default', {month:'short', year:'2-digit'}); byMonth[k] = (byMonth[k]||0) + Math.abs(t.amount); } });
             const lbls = Object.keys(byMonth).reverse(); this.chart('chartSubTime', 'bar', { labels: lbls, datasets: [{ label: 'Spent', data: lbls.map(l=>byMonth[l]), backgroundColor:'#3b82f6' }] });
             this.chart('chartSubCat', 'doughnut', { labels: [], datasets: [] }); document.getElementById('drill-tab-upload').classList.add('hidden'); this.switchDrillTab('list');
+            
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'analysis\')"]').style.display = 'block';
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'upload\')"]').style.display = 'block';
+
             const modal = document.getElementById('drillModal'); if(modal.style.display !== 'flex') { this.toggleModal('drillModal'); }
         },
 
@@ -1368,6 +1397,9 @@
             const byMonth = {}; items.forEach(t => { if(t.date) { const k = new Date(t.date).toLocaleString('default', {month:'short', year:'2-digit'}); byMonth[k] = (byMonth[k]||0) + Math.abs(t.amount); } });
             const lbls = Object.keys(byMonth).reverse(); this.chart('chartSubTime', 'bar', { labels: lbls, datasets: [{ label: 'Spent', data: lbls.map(l=>byMonth[l]), backgroundColor:'#3b82f6' }] });
             const top5 = allSorted.slice(0,5); this.chart('chartSubCat', 'doughnut', { labels: top5.map(x=>x[0]), datasets: [{ data: top5.map(x=>Math.abs(x[1].tot)), backgroundColor:['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#64748b'] }] });
+            
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'analysis\')"]').style.display = 'block';
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'upload\')"]').style.display = 'block';
         },
 
         switchDrillTab(tab) { ['list','analysis','upload'].forEach(t => document.getElementById('drill-tab-'+t).classList.add('hidden')); document.querySelectorAll('.sub-nav-btn').forEach(b => b.classList.remove('active')); document.getElementById('drill-tab-'+tab).classList.remove('hidden'); const map = {list:0, analysis:1, upload:2}; document.querySelectorAll('.sub-nav-btn')[map[tab]].classList.add('active'); },
@@ -1380,7 +1412,7 @@
             const allTags = app.getAllUniqueTags();
             const datalistHtml = `<datalist id="tag-suggestions">${allTags.map(tag => `<option value="${tag}"></option>`).join('')}</datalist>`;
 
-            document.getElementById('detailContent').innerHTML = `<div style="text-align:center;margin-bottom:20px;"><h1 class="${t.amount>=0?'pos':'neg'}">${this.fmt(t.amount)}</h1><div style="color:var(--text-sub)">${new Date(t.date).toDateString()}</div></div><div style="background:var(--bg);padding:15px;border-radius:8px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">DESCRIPTION</label><div style="font-size:1.1rem;margin-bottom:10px">${t.desc}</div><div style="display:flex; gap:10px; margin-bottom:15px;"><label class="check-group" style="flex:1"><input type="checkbox" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"><span style="font-weight:600">Recurring</span></label><label class="check-group" style="flex:1"><input type="checkbox" ${t.isIgnored?'checked':''} onchange="app.toggleIgnored('${t.id}')"><span style="font-weight:600; color:var(--text-sub)">Ignore/Transfer</span></label></div><div><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">TAGS</label><div style="margin-bottom:5px;">${tagsHtml}</div><div class="tag-input-container"><input type="text" id="newTagInput" class="form-control" placeholder="Add tag..." list="tag-suggestions" onkeypress="if(event.key==='Enter') app.addTag('${t.id}', this.value)"><button class="btn btn-sm btn-outline" onclick="app.addTag('${t.id}', document.getElementById('newTagInput').value)"><i class="fas fa-plus"></i></button></div>${datalistHtml}</div><div style="margin-top:15px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">NOTES</label><textarea id="noteInput" class="form-control" rows="2" placeholder="Add details...">${t.note || ''}</textarea><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="app.saveNote('${t.id}', document.getElementById('noteInput').value)">Save Note</button></div><div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:0.8rem; color:var(--text-sub)">Source: ${t.sourceFile || 'N/A'}</span>${t.sourceFileId ? `<button class="btn btn-outline" style="padding:5px 10px; font-size:0.8rem;" onclick="ui.openPdf('${t.sourceFileId}')"><i class="fas fa-file-pdf"></i> View Source</button>` : ''}</div></div>${histHtml}`;
+            document.getElementById('detailContent').innerHTML = `<div style="text-align:center;margin-bottom:20px;"><h1 class="${t.amount>=0?'pos':'neg'}">${this.fmt(t.amount)}</h1><div style="color:var(--text-sub)">${new Date(t.date).toDateString()}</div></div><div style="background:var(--bg);padding:15px;border-radius:8px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">DESCRIPTION</label><div style="font-size:1.1rem;margin-bottom:10px">${t.desc}</div><div style="display:flex; gap:10px; margin-bottom:15px;"><label class="check-group" style="flex:1"><input type="checkbox" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"><span style="font-weight:600">Recurring</span></label><label class="check-group" style="flex:1"><input type="checkbox" ${t.isIgnored?'checked':''} onchange="app.toggleIgnored('${t.id}')"><span style="font-weight:600; color:var(--text-sub)">Ignore/Transfer</span></label></div><div><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">TAGS</label><div style="margin-bottom:5px;">${tagsHtml}</div><div class="tag-input-container"><input type="text" id="newTagInput" class="form-control" placeholder="Add tag..." list="tag-suggestions" onkeypress="if(event.key==='Enter') app.addTag('${t.id}', this.value)"><button class="btn btn-sm btn-outline" onclick="app.addTag('${t.id}', document.getElementById('newTagInput').value)"><i class="fas fa-plus"></i></button></div>${datalistHtml}</div><div style="margin-top:15px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">NOTES</label><textarea id="noteInput" class="form-control" rows="2" placeholder="Add details...">${t.note || ''}</textarea><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="app.saveNote('${t.id}', document.getElementById('noteInput').value)">Save Note</button></div><div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:0.8rem; color:var(--text-sub)">Source: ${t.sourceFile || 'N/A'}</span>${t.sourceFileId ? `<button class="btn btn-outline" style="padding:5px 10px; font-size:0.8rem;" onclick="event.stopPropagation(); ui.openPdf('${t.sourceFileId}')"><i class="fas fa-file-pdf"></i> View Source</button>` : ''}</div></div>${histHtml}`;
             
             // Ensure modal is open
             if(document.getElementById('detailModal').style.display !== 'flex') this.toggleModal('detailModal');
