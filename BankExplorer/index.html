@@ -890,7 +890,7 @@
 
             if (savedContext) this.context = savedContext;
             
-            this.modelId = savedModel || "gemini-2.0-flash"; // Set default if nothing is saved
+            this.modelId = savedModel || "gemini-flash-latest"; // Set default if nothing is saved
             
             if (key) {
                 this.client = new GoogleGenAI({ apiKey: key });
