@@ -582,6 +582,13 @@
                 <span><i class="fas fa-code"></i> Manage Parser Profiles</span>
                 <i class="fas fa-chevron-right"></i>
             </button>
+            <button class="btn btn-outline" style="width:100%; margin-bottom:15px; text-align:left; justify-content:space-between;" onclick="ui.toggleModal('tagRulesModal')">
+                <span><i class="fas fa-magic"></i> Manage Smart Tagging Rules</span>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <button class="btn btn-primary" style="width:100%; margin-bottom:15px;" onclick="app.applyTagRulesToAll()">
+                <i class="fas fa-sync-alt"></i> Apply All Tagging Rules
+            </button>
             
             <h4>Recurring Detection Thresholds</h4>
             <div style="display:flex; gap:10px;">
@@ -603,6 +610,19 @@
                  <br><br>
                  <button class="btn btn-outline" style="width:100%" onclick="app.clearRejected()">Reset Rejected Suggestions</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- TAG RULES MODAL -->
+<div id="tagRulesModal" class="modal-overlay" style="z-index:1100;">
+    <div class="modal-sheet" style="height:90vh;">
+        <div class="modal-header">
+            <h3>Smart Tagging Rules</h3>
+            <button class="btn btn-ghost" onclick="ui.toggleModal('tagRulesModal')">Close</button>
+        </div>
+        <div class="modal-body" style="padding:20px;">
+            <div id="tagRulesList"></div>
         </div>
     </div>
 </div>
@@ -801,10 +821,10 @@
         _db: null,
         async init() {
             return new Promise((resolve) => {
-                const req = indexedDB.open('BankExplorerDB', 5); // Version bump for new store
+                const req = indexedDB.open('BankExplorerDB', 6); // Version bump for new store
                 req.onupgradeneeded = (e) => {
                     const db = e.target.result;
-                    const stores = { files:'id', tx:'id', subData:'category', rejected:'id', profiles:'id', recurringTags: 'id' };
+                    const stores = { files:'id', tx:'id', subData:'category', rejected:'id', profiles:'id', recurringTags: 'id', tagRules: 'id' };
                     Object.entries(stores).forEach(([name, key]) => {
                         if(!db.objectStoreNames.contains(name)) db.createObjectStore(name, {keyPath: key});
                     });
@@ -1278,6 +1298,7 @@
         toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); },
         renderProfilesSelect() { document.getElementById('importProfileSelect').innerHTML = app.data.profiles.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); },
         renderProfilesList() { document.getElementById('profilesList').innerHTML = app.data.profiles.map(p => `<div class="profile-card"><div><strong>${p.name}</strong><br><small style="font-family:monospace; color:var(--text-sub)">${p.regex.substring(0,30)}...</small></div><button class="btn btn-sm btn-outline" onclick="app.editProfile('${p.id}')">Edit</button></div>`).join(''); },
+        renderTagRules() { document.getElementById('tagRulesList').innerHTML = app.data.tagRules.map(r => `<div class="profile-card"><div><strong>${r.id}</strong><br><small style="color:var(--accent)"> &rarr; #${r.tag}</small></div><button class="btn btn-sm btn-danger-soft" onclick="app.deleteTagRule('${r.id}')">Delete</button></div>`).join('') || '<div style="padding:20px;text-align:center;color:#999">No rules created yet.</div>'; },
         async openPdf(fileId) { if(!fileId) return alert("No File"); const f = await db.get('files',fileId); if(!f||!f.blob) return alert("Err"); const url = URL.createObjectURL(f.blob); document.getElementById('pdfTitle').innerText=f.name; document.getElementById('pdfContainer').innerHTML='Loading...'; ui.toggleModal('pdfModal'); const pdf = await pdfjsLib.getDocument(url).promise; document.getElementById('pdfContainer').innerHTML=''; for(let i=1;i<=pdf.numPages;i++){ const p=await pdf.getPage(i); const c=document.createElement('canvas'); const v=p.getViewport({scale:1.5}); c.width=v.width; c.height=v.height; c.style.marginBottom='10px'; await p.render({canvasContext:c.getContext('2d'), viewport:v}).promise; document.getElementById('pdfContainer').appendChild(c); } },
         switchView(id) { this.closeAllModals(); document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active')); document.getElementById('view-'+id).classList.add('active'); document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active')); document.querySelector(`.nav-item[onclick="ui.switchView('${id}')"]`).classList.add('active'); },
         toast(msg) { const d = document.createElement('div'); d.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 16px;border-radius:20px;z-index:999;font-size:0.85rem;"; d.innerText = msg; document.body.appendChild(d); setTimeout(()=>d.remove(), 2500); },
@@ -1441,7 +1462,7 @@
             const tags = (t.tags || []).map(tag => `<span class="tag-badge">#${tag}</span>`).join('');
             return `<div class="tx-row" onclick="ui.showDetail('${t.id}')"><div><div style="font-weight:600">${t.desc}</div><div style="font-size:0.75rem;color:var(--text-sub)">${t.rawDateStr} ${t.note ? '<i class="fas fa-sticky-note" style="color:var(--accent)"></i>' : ''} ${t.isRecurring ? '<i class="fas fa-rotate" style="color:var(--success)"></i>' : ''} ${t.isIgnored ? '<i class="fas fa-ban" style="color:var(--text-sub)"></i>' : ''} ${tags}</div></div><div class="${t.amount>=0?'pos':'neg'}" style="font-weight:700; ${t.isIgnored ? 'text-decoration:line-through; color:var(--text-sub);' : ''}">${this.fmt(t.amount)}</div></div>`; 
         },
-        toggleModal(id) { const el = document.getElementById(id); el.style.display = el.style.display==='flex'?'none':'flex'; },
+        toggleModal(id) { const el = document.getElementById(id); el.style.display = el.style.display==='flex'?'none':'flex'; if (id === 'tagRulesModal') this.renderTagRules(); },
         chart(id, type, data, options = {}) {
             if(this.charts[id]) this.charts[id].destroy();
             const opts = { responsive:true, maintainAspectRatio:false, plugins: { legend: {display: type==='doughnut'} }, scales: { x:{display:type!=='doughnut', grid:{display:false}}, y:{display:type!=='doughnut', border:{display:false}} }, ...options };
@@ -1452,7 +1473,7 @@
 
     // --- APP ---
     Object.assign(app, {
-        data: { files: [], transactions: [], subData: {}, viewTx: [], rejected: [], profiles: [], recurringTags: [] },
+        data: { files: [], transactions: [], subData: {}, viewTx: [], rejected: [], profiles: [], recurringTags: [], tagRules: [] },
         filters: { text:'', start:'', end:'', min:'', max:'', type:'all', tag:'' },
         settings: { minDays: 25, maxDays: 35, minCount: 2 },
         fuse: null,
@@ -1481,6 +1502,7 @@
 
             this.data.rejected = await db.getAll('rejected');
             this.data.recurringTags = await db.getAll('recurringTags');
+            this.data.tagRules = await db.getAll('tagRules');
             
             this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
             this.data.viewTx = [...this.data.transactions];
@@ -1544,6 +1566,16 @@
                     this.initFuse();
                     ui.refresh();
                     if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
+
+                    const cleanedName = this.cleanSubDesc(t.desc);
+                    if (cleanedName && !this.data.tagRules.find(r => r.id === cleanedName)) {
+                        if (confirm(`Create a rule to always tag '${cleanedName}' as '${tag}'?`)) {
+                            const newRule = { id: cleanedName, tag: tag };
+                            this.data.tagRules.push(newRule);
+                            await db.save('tagRules', newRule);
+                            ui.toast(`Rule created: ${cleanedName} -> #${tag}`);
+                        }
+                    }
                 }
             }
         },
@@ -1611,6 +1643,28 @@
             });
         },
 
+        async applyTagRulesToAll() {
+            let allTx = [...this.data.transactions, ...Object.values(this.data.subData).flat()];
+            let changedCount = 0;
+            for (const t of allTx) {
+                if (t.tags && t.tags.length > 0) continue;
+                const cleanedName = this.cleanSubDesc(t.desc);
+                const rule = this.data.tagRules.find(r => r.id === cleanedName);
+                if (rule) {
+                    await this.addTag(t.id, rule.tag);
+                    changedCount++;
+                }
+            }
+            ui.toast(`Applied ${changedCount} tags based on your rules.`);
+            ui.refresh();
+        },
+
+        async deleteTagRule(ruleId) {
+            this.data.tagRules = this.data.tagRules.filter(r => r.id !== ruleId);
+            await db.delete('tagRules', ruleId);
+            ui.renderTagRules();
+            ui.toast("Rule deleted.");
+        },
 
         // --- PROFILES ---
         editProfile(id) {
@@ -1738,10 +1792,18 @@
                 const fileId = crypto.randomUUID();
                 newFiles.push({ id: fileId, name: res.fileName, count: res.items.length, type: mode, context: categoryContext, date: new Date(), blob: fileList[i] });
 
+                res.items.forEach(item => {
+                    const cleanedName = this.cleanSubDesc(item.desc);
+                    const rule = this.data.tagRules.find(r => r.id === cleanedName);
+                    if (rule && !item.tags.includes(rule.tag)) {
+                        item.tags.push(rule.tag);
+                    }
+                });
+
                 if(mode === 'main') {
                     res.items.forEach(item => {
                         if(!this.data.transactions.some(t => t.signature === item.signature)) {
-                            item.sourceFile = res.fileName; item.sourceFileId = fileId; item.tags = [];
+                            item.sourceFile = res.fileName; item.sourceFileId = fileId;
                             this.data.transactions.push(item); newTx.push(item); count++;
                         }
                     });
@@ -1750,7 +1812,7 @@
                     if(!newSubData[categoryContext]) newSubData[categoryContext] = [];
                     res.items.forEach(item => {
                         if(!this.data.subData[categoryContext].some(t => t.signature === item.signature)) {
-                            item.sourceFile = res.fileName; item.sourceFileId = fileId; item.isSub = true; item.cleanName = categoryContext; item.tags = [];
+                            item.sourceFile = res.fileName; item.sourceFileId = fileId; item.isSub = true; item.cleanName = categoryContext;
                             this.data.subData[categoryContext].push(item); newSubData[categoryContext].push(item); count++;
                         }
                     });
@@ -1772,7 +1834,6 @@
                 let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
                 if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
                 
-                // Refresh the analysis view in the background, and the current modal if open
                 ui.renderAnalysis();
                 if(document.getElementById('drillModal').style.display === 'flex') {
                     ui.openPatternDrill(document.getElementById('drillTitle').innerText, true);
@@ -1961,7 +2022,7 @@
             const csv = rows.map(r => r.join(',')).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'bank_export.csv'; a.click();
         },
         exportJSON() {
-            const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles, recurringTags: this.data.recurringTags });
+            const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles, recurringTags: this.data.recurringTags, tagRules: this.data.tagRules });
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'bank_backup.json'; a.click();
         },
         
