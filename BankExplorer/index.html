@@ -490,7 +490,7 @@
             <hr style="border:none; border-top: 1px solid var(--border); margin: 20px 0;">
             <div id="recurringTagsList"></div>
             <div class="tag-input-container">
-                <input type="text" id="newRecurringTag" class="form-control" list="tag-suggestions" placeholder="Add tag to track monthly...">
+                <input type="text" id="newRecurringTag" class="form-control" list="recurringTagSuggestions" placeholder="Add tag to track monthly...">
                 <button class="btn btn-sm btn-outline" onclick="app.addRecurringTag(document.getElementById('newRecurringTag').value)"><i class="fas fa-plus"></i> Track</button>
             </div>
             <datalist id="recurringTagSuggestions"></datalist>
@@ -1523,6 +1523,7 @@
             const tagSet = new Set(DEFAULT_TAGS);
             this.data.transactions.forEach(t => { if (t.tags) t.tags.forEach(tag => tagSet.add(tag)); });
             for (const cat in this.data.subData) { this.data.subData[cat].forEach(t => { if (t.tags) t.tags.forEach(tag => tagSet.add(tag)); }); }
+            this.data.recurringTags.forEach(tagObj => tagSet.add(tagObj.id));
             return Array.from(tagSet).sort();
         },
 
