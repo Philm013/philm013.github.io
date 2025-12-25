@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v6.3 (AI Model Selection)</title>
+    <title>Bank Explorer Pro v6.4 (Interactive AI)</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> <!-- For Markdown Rendering -->
+
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -268,8 +270,19 @@
         .msg.user { align-self: flex-end; background: var(--accent); color: white; border-bottom-right-radius: 4px; }
         .msg.ai { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); color: var(--text-main); border-bottom-left-radius: 4px; }
         .msg.system { align-self: center; font-size: 0.75rem; color: var(--text-sub); background: rgba(0,0,0,0.05); padding: 4px 10px; border-radius: 10px; text-align:center;}
+        .msg.ai table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.8rem; }
+        .msg.ai th, .msg.ai td { border: 1px solid var(--border); padding: 6px; text-align: left; }
+        .msg.ai th { background-color: var(--bg); }
+        .msg.ai ul, .msg.ai ol { padding-left: 20px; }
+        .msg.ai strong { font-weight: 700; }
         
         .chat-input-area { padding: 10px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 8px; }
+
+        .suggestion-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-top: 10px; }
+        .suggestion-item { font-size: 0.85rem; border-bottom: 1px solid var(--border); padding: 8px 0; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item .desc { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: inline-block; vertical-align: middle;}
+        .suggestion-actions { margin-top: 15px; display: flex; gap: 10px; }
 
         /* PDF CANVAS STYLES */
         #pdfContainer {
@@ -881,16 +894,15 @@
         client: null,
         modelId: null,
         history: [],
-        context: "You are a financial assistant. You can analyze spending, help categorize transactions with tags, and answer questions. When asked to analyze, retrieve transactions first. Be concise and friendly.",
+        context: null,
 
         init() {
             const key = localStorage.getItem('geminiKey');
             const savedContext = localStorage.getItem('aiContext');
             const savedModel = localStorage.getItem('geminiModel');
 
-            if (savedContext) this.context = savedContext;
-            
-            this.modelId = savedModel || "gemini-flash-latest"; // Set default if nothing is saved
+            this.context = savedContext || "You are a financial assistant. You can analyze spending, help categorize transactions with tags, and answer questions. When asked to analyze, retrieve transactions first. Be concise and friendly.";
+            this.modelId = savedModel || "gemini-flash-latest";
             
             if (key) {
                 this.client = new GoogleGenAI({ apiKey: key });
@@ -909,7 +921,7 @@
                 txs = app.data.transactions.filter(t => !t.isIgnored);
             }
             // Lightweight CSV format for token efficiency
-            return txs.map(t => `${t.rawDateStr}|${t.desc}|${t.amount}|${(t.tags||[]).join(',')}`).join('\n');
+            return txs.map(t => `${t.id}|${t.rawDateStr}|${t.desc}|${t.amount}|${(t.tags||[]).join(',')}`).join('\n');
         },
 
         async sendMessage(text) {
@@ -921,52 +933,37 @@
             ui.appendChatMessage(text, "user");
             ui.showTypingIndicator();
 
-            // Handle Context Injection
             const scope = document.getElementById('aiContextScope').value;
             let finalPrompt = text;
             
             if (scope === 'view' || scope === 'all') {
                 const data = this.getDataSnapshot(scope);
                 const scopeName = scope === 'view' ? "Filtered View" : "Full Database";
-                finalPrompt = `[SYSTEM: The user has attached the following ${scopeName} data context to this message. Use this data to answer the request.]\nDATA_START\nDate|Description|Amount|Tags\n${data}\nDATA_END\n\nUSER REQUEST: ${text}`;
+                finalPrompt = `[SYSTEM: The user has attached the following ${scopeName} data context to this message. Use this data to answer the request.]\nDATA_START\nID|Date|Description|Amount|Tags\n${data}\nDATA_END\n\nUSER REQUEST: ${text}`;
             }
 
             try {
-                // Define Tools
                 const tools = [{
                     functionDeclarations: [
                         {
-                            name: "get_transactions",
-                            description: "Get recent transactions to analyze. Use before answering questions about spending history.",
+                            name: "suggest_tags",
+                            description: "Suggests one or more tags for one or more transactions based on analysis. Use this to propose categorizations to the user.",
                             parameters: {
                                 type: Type.OBJECT,
                                 properties: {
-                                    limit: { type: Type.NUMBER, description: "Number of transactions to retrieve (max 50)" }
-                                }
-                            }
-                        },
-                        {
-                            name: "add_tag",
-                            description: "Add a tag to a transaction.",
-                            parameters: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    transaction_id: { type: Type.STRING },
-                                    tag: { type: Type.STRING }
+                                    suggestions: {
+                                        type: Type.ARRAY,
+                                        description: "An array of tagging suggestions.",
+                                        items: {
+                                            type: Type.OBJECT,
+                                            properties: {
+                                                transaction_id: { type: Type.STRING, description: "The ID of the transaction to tag." },
+                                                tags: { type: Type.ARRAY, description: "An array of string tags to suggest for the transaction.", items: { type: Type.STRING } }
+                                            }
+                                        }
+                                    }
                                 },
-                                required: ["transaction_id", "tag"]
-                            }
-                        },
-                        {
-                            name: "remove_tag",
-                            description: "Remove a tag from a transaction.",
-                            parameters: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    transaction_id: { type: Type.STRING },
-                                    tag: { type: Type.STRING }
-                                },
-                                required: ["transaction_id", "tag"]
+                                required: ["suggestions"]
                             }
                         }
                     ]
@@ -974,66 +971,25 @@
 
                 let contents = [...this.history, { role: "user", parts: [{ text: finalPrompt }] }];
 
-                // Loop for function calling
-                while (true) {
-                    const response = await this.client.models.generateContent({
-                        model: this.modelId,
-                        contents: contents,
-                        config: {
-                            tools: tools,
-                            systemInstruction: this.context
-                        }
-                    });
-
-                    const funcCalls = response.functionCalls;
-                    
-                    if (funcCalls && funcCalls.length > 0) {
-                        // Store model's call in history
-                        contents.push(response.candidates[0].content);
-                        
-                        // Execute tool
-                        const funcCall = funcCalls[0]; // Handle first call
-                        const { name, args } = funcCall;
-                        let result;
-
-                        if (name === 'get_transactions') {
-                            const limit = args.limit || 20;
-                            // Sort by date desc
-                            let tx = app.data.transactions.filter(t => !t.isIgnored).slice(0, limit);
-                            result = JSON.stringify(tx.map(t => ({
-                                id: t.id,
-                                date: t.rawDateStr,
-                                desc: t.desc,
-                                amount: t.amount,
-                                tags: t.tags || []
-                            })));
-                        } else if (name === 'add_tag') {
-                            await app.addTag(args.transaction_id, args.tag);
-                            result = { status: "success", message: `Added tag ${args.tag}` };
-                        } else if (name === 'remove_tag') {
-                            await app.removeTag(args.transaction_id, args.tag);
-                            result = { status: "success", message: `Removed tag ${args.tag}` };
-                        }
-
-                        // Feed result back
-                        contents.push({
-                            role: "user",
-                            parts: [{
-                                functionResponse: {
-                                    name: name,
-                                    response: { result }
-                                }
-                            }]
-                        });
-                    } else {
-                        // Final text response
-                        const text = response.text;
-                        ui.removeTypingIndicator();
-                        ui.appendChatMessage(text, "ai");
-                        this.history.push({ role: "user", parts: [{ text: finalPrompt }] }); // Simple history tracking
-                        this.history.push(response.candidates[0].content);
-                        break;
+                const response = await this.client.models.generateContent({
+                    model: this.modelId,
+                    contents: contents,
+                    config: {
+                        tools: tools,
+                        systemInstruction: this.context
                     }
+                });
+
+                ui.removeTypingIndicator();
+                this.history.push({ role: "user", parts: [{ text: finalPrompt }] });
+                this.history.push(response.candidates[0].content);
+
+                const funcCalls = response.functionCalls;
+                if (funcCalls && funcCalls.length > 0 && funcCalls[0].name === 'suggest_tags') {
+                    ui.renderTagSuggestion(funcCalls[0].args.suggestions);
+                } else {
+                    const responseText = response.text;
+                    ui.appendChatMessage(responseText, "ai");
                 }
 
             } catch (e) {
@@ -1041,6 +997,24 @@
                 ui.appendChatMessage("Error: " + e.message, "system");
                 console.error(e);
             }
+        },
+        
+        async applySuggestions(suggestions, cardId) {
+            if (typeof suggestions === 'string') {
+                suggestions = JSON.parse(suggestions);
+            }
+            let count = 0;
+            for (const sug of suggestions) {
+                for (const tag of sug.tags) {
+                    await app.addTag(sug.transaction_id, tag);
+                    count++;
+                }
+            }
+            const card = document.getElementById(cardId);
+            if (card) {
+                card.innerHTML = `<div style="text-align:center; color: var(--success); font-weight: 600;"><i class="fas fa-check-circle"></i> Tags Applied!</div>`;
+            }
+            ui.toast(`${count} tags applied.`);
         }
     });
 
@@ -1067,7 +1041,11 @@
         appendChatMessage(text, role) {
             const d = document.createElement('div');
             d.className = `msg ${role}`;
-            d.innerHTML = text.replace(/\n/g, '<br>');
+            if (role === 'ai') {
+                d.innerHTML = marked.parse(text);
+            } else {
+                d.textContent = text;
+            }
             document.getElementById('chatMessages').appendChild(d);
             document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
         },
@@ -1076,6 +1054,7 @@
             d.id = 'typingIndicator'; d.className = 'msg ai';
             d.innerHTML = '<div class="typing-indicator"></div><div class="typing-indicator"></div><div class="typing-indicator"></div>';
             document.getElementById('chatMessages').appendChild(d);
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
         },
         removeTypingIndicator() {
             const el = document.getElementById('typingIndicator');
@@ -1087,6 +1066,36 @@
             if(!text) return;
             input.value = '';
             aiManager.sendMessage(text);
+        },
+        renderTagSuggestion(suggestions) {
+            const cardId = `suggestion-${crypto.randomUUID()}`;
+            let itemsHtml = '';
+            for (const sug of suggestions) {
+                const t = app.getTxById(sug.transaction_id);
+                if (t) {
+                    const tagsHtml = sug.tags.map(tag => `<span class="tag-badge" style="background: var(--accent); color: white;">#${tag}</span>`).join(' ');
+                    itemsHtml += `<div class="suggestion-item">
+                        <span class="desc">${t.desc}</span> &rarr; ${tagsHtml}
+                    </div>`;
+                }
+            }
+
+            const suggestionHtml = `
+            <div class="suggestion-card" id="${cardId}">
+                <h4 style="margin-top:0; margin-bottom:10px;">Tagging Suggestions</h4>
+                <div>${itemsHtml}</div>
+                <div class="suggestion-actions">
+                    <button class="btn btn-sm btn-primary" onclick="aiManager.applySuggestions('${JSON.stringify(suggestions).replace(/'/g, "\\'")}', '${cardId}')">Apply</button>
+                    <button class="btn btn-sm btn-outline" onclick="this.closest('.suggestion-card').style.display='none'">Dismiss</button>
+                </div>
+            </div>`;
+
+            const d = document.createElement('div');
+            d.className = 'msg ai';
+            d.style.cssText = 'padding: 0; background: transparent; border: none;';
+            d.innerHTML = suggestionHtml;
+            document.getElementById('chatMessages').appendChild(d);
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
         },
 
         // DASHBOARD CONTROLLER
