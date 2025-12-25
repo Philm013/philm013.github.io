@@ -1339,8 +1339,13 @@
             let all = [...app.data.transactions]; Object.values(app.data.subData).forEach(items => all = all.concat(items));
             let items = [];
             if (useFuzzy) {
-                const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
-                items = fuse.search(name).map(r => r.item);
+                // --- START OF FIX ---
+                // The original code performed a new, inconsistent fuzzy search here.
+                // The corrected code re-uses the exact same grouping logic that
+                // generated the suggestion in the first place, ensuring consistency.
+                const allGroups = app.getFuzzyGroups(all);
+                items = allGroups[name] || [];
+                // --- END OF FIX ---
             } else {
                 items = all.filter(t => app.cleanSubDesc(t.desc) === name);
             }
