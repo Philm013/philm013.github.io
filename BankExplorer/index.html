@@ -485,8 +485,15 @@
                 <span id="recurringSum" style="font-weight:800; font-size:1.2rem;">$0.00</span>
             </div>
             <div id="recurringList" style="border-top:1px solid var(--border); padding-top:10px;">
-                <small style="color:var(--text-sub)">Tag transactions as recurring in details to populate this list.</small>
+                <small style="color:var(--text-sub)">No recurring items tagged.</small>
             </div>
+            <hr style="border:none; border-top: 1px solid var(--border); margin: 20px 0;">
+            <div id="recurringTagsList"></div>
+            <div class="tag-input-container">
+                <input type="text" id="newRecurringTag" class="form-control" list="tag-suggestions" placeholder="Add tag to track monthly...">
+                <button class="btn btn-sm btn-outline" onclick="app.addRecurringTag(document.getElementById('newRecurringTag').value)"><i class="fas fa-plus"></i> Track</button>
+            </div>
+            <datalist id="recurringTagSuggestions"></datalist>
         </div>
 
         <h3 style="margin:0 0 15px 0;">Expense Breakdown</h3>
@@ -794,10 +801,10 @@
         _db: null,
         async init() {
             return new Promise((resolve) => {
-                const req = indexedDB.open('BankExplorerDB', 4);
+                const req = indexedDB.open('BankExplorerDB', 5); // Version bump for new store
                 req.onupgradeneeded = (e) => {
                     const db = e.target.result;
-                    const stores = { files:'id', tx:'id', subData:'category', rejected:'id', profiles:'id' };
+                    const stores = { files:'id', tx:'id', subData:'category', rejected:'id', profiles:'id', recurringTags: 'id' };
                     Object.entries(stores).forEach(([name, key]) => {
                         if(!db.objectStoreNames.contains(name)) db.createObjectStore(name, {keyPath: key});
                     });
@@ -1130,7 +1137,7 @@
 
         renderDash() {
             // KPIs
-            const tx = app.data.transactions.filter(t => !t.isIgnored);
+            const tx = app.data.viewTx.filter(t => !t.isIgnored);
             const inc = tx.filter(t=>t.amount>0).reduce((a,b)=>a+b.amount,0);
             const exp = tx.filter(t=>t.amount<0).reduce((a,b)=>a+b.amount,0);
             document.getElementById('kpi-net').innerText = this.fmt(inc+exp);
@@ -1159,7 +1166,7 @@
         },
 
         getAnalysisData(grouping) {
-            let data = app.data.transactions.filter(t => !t.isIgnored);
+            let data = app.data.viewTx.filter(t => !t.isIgnored);
             if (this.state.dashCat) {
                 data = data.filter(t => t.cleanName === this.state.dashCat);
             }
@@ -1296,8 +1303,13 @@
                 tagsCloud.innerHTML = '<small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>';
             }
 
-            // Rec List
-            const recList = document.getElementById('recurringList'); let allTx = [...app.data.transactions]; Object.values(app.data.subData).forEach(s => allTx = allTx.concat(s));
+            // --- Recurring Section ---
+            let totalMonthly = 0;
+
+            // Transaction-based recurring
+            const recList = document.getElementById('recurringList'); 
+            let allTx = [...app.data.transactions]; 
+            Object.values(app.data.subData).forEach(s => allTx = allTx.concat(s));
             const recurringCandidates = allTx.filter(t => t.isRecurring && !t.isIgnored);
             const fGroups = app.getFuzzyGroups(recurringCandidates);
             const recEntries = Object.entries(fGroups).map(([name, items]) => {
@@ -1307,27 +1319,32 @@
             });
 
             if(recEntries.length > 0) {
-                recList.innerHTML = ''; let totalMonthly = 0;
+                recList.innerHTML = ''; 
                 recEntries.forEach(g => { 
                     const monthlyCost = g.mode === '12mo' ? (g.tot / 12) : (g.tot / g.cnt);
                     totalMonthly += monthlyCost; 
-                    
-                    recList.innerHTML += `
-                    <div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;">
-                        <div style="display:flex; flex-direction:column; gap:2px; margin-right:10px;">
-                            <button class="calc-toggle-btn ${g.mode === 'avg' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleAvgMode('${g.name.replace(/'/g, "\\'")}')">AVG</button>
-                            <button class="calc-toggle-btn ${g.mode === '12mo' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleAvgMode('${g.name.replace(/'/g, "\\'")}')">/12</button>
-                        </div>
-                        <div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}', true)">
-                            <div style="font-weight:600">${g.name}</div>
-                            <small class="neg" style="margin-right:10px;">${this.fmt(monthlyCost)}/mo</small>
-                            <span class="badge">${g.cnt}x</span>
-                        </div>
-                        <button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
-                    </div>`; 
+                    recList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="display:flex; flex-direction:column; gap:2px; margin-right:10px;"><button class="calc-toggle-btn ${g.mode === 'avg' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleAvgMode('${g.name.replace(/'/g, "\\'")}')">AVG</button><button class="calc-toggle-btn ${g.mode === '12mo' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleAvgMode('${g.name.replace(/'/g, "\\'")}')">/12</button></div><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600">${g.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(monthlyCost)}/mo</small><span class="badge">${g.cnt}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`; 
                 });
-                document.getElementById('recurringSum').innerText = this.fmt(totalMonthly);
-            } else { recList.innerHTML = '<small style="color:var(--text-sub)">No recurring items tagged.</small>'; document.getElementById('recurringSum').innerText = "$0.00"; }
+            } else { 
+                recList.innerHTML = '<small style="color:var(--text-sub)">No recurring items tagged.</small>'; 
+            }
+
+            // Tag-based recurring
+            const recurringTagsList = document.getElementById('recurringTagsList');
+            const tagStats = app.calculateRecurringTagStats();
+            if (tagStats.length > 0) {
+                recurringTagsList.innerHTML = '';
+                tagStats.forEach(stat => {
+                    totalMonthly += stat.monthlyAvg;
+                    recurringTagsList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="flex:1; cursor:pointer;" onclick="app.searchByTag('${stat.name.replace(/'/g, "\\'")}')"><div style="font-weight:600">#${stat.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(stat.monthlyAvg)}/mo (avg)</small><span class="badge">${stat.count}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.removeRecurringTag('${stat.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`;
+                });
+            } else {
+                recurringTagsList.innerHTML = '';
+            }
+
+            document.getElementById('recurringSum').innerText = this.fmt(totalMonthly);
+            const allTags = app.getAllUniqueTags();
+            document.getElementById('recurringTagSuggestions').innerHTML = allTags.map(tag => `<option value="${tag}"></option>`).join('');
             
             // Potential
             const potList = document.getElementById('potentialList'); const potentials = app.getPotentialRecurring();
@@ -1432,7 +1449,7 @@
 
     // --- APP ---
     Object.assign(app, {
-        data: { files: [], transactions: [], subData: {}, viewTx: [], rejected: [], profiles: [] },
+        data: { files: [], transactions: [], subData: {}, viewTx: [], rejected: [], profiles: [], recurringTags: [] },
         filters: { text:'', start:'', end:'', min:'', max:'', type:'all', tag:'' },
         settings: { minDays: 25, maxDays: 35, minCount: 2 },
         fuse: null,
@@ -1453,13 +1470,14 @@
         async loadData() {
             this.data.files = await db.getAll('files');
             this.data.transactions = await db.getAll('tx');
-            // Ensure tags array exists
             this.data.transactions.forEach(t => { if(!t.tags) t.tags = []; });
             
             const subs = await db.getAll('subData');
             this.data.subData = {};
             subs.forEach(s => this.data.subData[s.category] = s.items);
+
             this.data.rejected = await db.getAll('rejected');
+            this.data.recurringTags = await db.getAll('recurringTags');
             
             this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
             this.data.viewTx = [...this.data.transactions];
@@ -1503,14 +1521,8 @@
         getAllUniqueTags() {
             const DEFAULT_TAGS = ['Groceries', 'Utilities', 'Rent', 'Mortgage', 'Gas', 'Dining', 'Entertainment', 'Shopping', 'Health', 'Travel', 'Subscription', 'Income', 'Transfer'];
             const tagSet = new Set(DEFAULT_TAGS);
-            this.data.transactions.forEach(t => {
-                if (t.tags) t.tags.forEach(tag => tagSet.add(tag));
-            });
-            for (const cat in this.data.subData) {
-                this.data.subData[cat].forEach(t => {
-                    if (t.tags) t.tags.forEach(tag => tagSet.add(tag));
-                });
-            }
+            this.data.transactions.forEach(t => { if (t.tags) t.tags.forEach(tag => tagSet.add(tag)); });
+            for (const cat in this.data.subData) { this.data.subData[cat].forEach(t => { if (t.tags) t.tags.forEach(tag => tagSet.add(tag)); }); }
             return Array.from(tagSet).sort();
         },
 
@@ -1527,7 +1539,7 @@
                     else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
                     this.initFuse();
                     ui.refresh();
-                    if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id); // Re-render detail
+                    if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
                 }
             }
         },
@@ -1544,6 +1556,48 @@
                 if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
             }
         },
+        
+        async addRecurringTag(tag) {
+            tag = tag.trim();
+            if (!tag || this.data.recurringTags.find(t => t.id === tag)) return;
+            const newTag = { id: tag };
+            this.data.recurringTags.push(newTag);
+            await db.save('recurringTags', newTag);
+            document.getElementById('newRecurringTag').value = '';
+            ui.refresh();
+        },
+
+        async removeRecurringTag(tag) {
+            this.data.recurringTags = this.data.recurringTags.filter(t => t.id !== tag);
+            await db.delete('recurringTags', tag);
+            ui.refresh();
+        },
+
+        calculateRecurringTagStats() {
+            if (this.data.recurringTags.length === 0) return [];
+            
+            let allTx = [...this.data.transactions];
+            Object.values(this.data.subData).forEach(items => allTx.push(...items));
+            
+            return this.data.recurringTags.map(tagObj => {
+                const tag = tagObj.id;
+                const taggedTx = allTx.filter(t => t.tags && t.tags.includes(tag) && t.amount < 0);
+                if (taggedTx.length === 0) return { name: tag, monthlyAvg: 0, total: 0, count: 0 };
+
+                taggedTx.sort((a, b) => new Date(a.date) - new Date(b.date));
+                const total = taggedTx.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+                const firstDate = new Date(taggedTx[0].date);
+                const lastDate = new Date(taggedTx[taggedTx.length - 1].date);
+                
+                let months = (lastDate.getFullYear() - firstDate.getFullYear()) * 12;
+                months -= firstDate.getMonth();
+                months += lastDate.getMonth();
+                const monthSpan = months <= 0 ? 1 : months + 1;
+
+                return { name: tag, monthlyAvg: total / monthSpan, total, count: taggedTx.length };
+            });
+        },
+
 
         // --- PROFILES ---
         editProfile(id) {
@@ -1597,23 +1651,15 @@
 
         // --- FILTER & SEARCH ---
         searchByTag(tag) {
-            let allTx = [...this.data.transactions];
-            Object.values(this.data.subData).forEach(items => allTx.push(...items));
-            const taggedTx = allTx.filter(t => t.tags && t.tags.includes(tag));
-            
             document.getElementById('globalSearch').value = `#${tag}`;
-            this.filters = { text:`#${tag}`, start:'', end:'', min:'', max:'', type:'all', tag:'' };
-            document.getElementById('filterDot').style.display = 'none';
-
-            this.data.viewTx = taggedTx.sort((a,b) => new Date(b.date) - new Date(a.date));
-            ui.renderTx();
+            this.handleSearchInput({ target: { value: `#${tag}` } });
             ui.switchView('transactions');
-            ui.toast(`Found ${taggedTx.length} transactions tagged with #${tag}`);
+            ui.toast(`Showing transactions tagged with #${tag}`);
         },
 
         handleSearchInput(e) {
             const val = e.target.value.trim();
-            this.filters.text = val.toLowerCase();
+            this.filters.text = val;
             this.renderAutocomplete(val);
             this.applyFilters();
         },
@@ -1636,7 +1682,7 @@
 
         selectAutocomplete(name) {
             document.getElementById('globalSearch').value = name;
-            this.filters.text = name.toLowerCase();
+            this.filters.text = name;
             document.getElementById('autocompleteList').style.display = 'none';
             this.applyFilters();
         },
@@ -1801,13 +1847,14 @@
             this.filters.tag = document.getElementById('filterTag').value.trim();
 
             let baseList;
-            
-            if (this.filters.text && this.filters.text.startsWith('#')) {
-                const tag = this.filters.text.substring(1);
+            const searchText = this.filters.text.toLowerCase();
+
+            if (searchText && searchText.startsWith('#')) {
+                const tag = searchText.substring(1);
                 let allTx = [...this.data.transactions];
                 Object.values(this.data.subData).forEach(items => allTx.push(...items));
                 baseList = allTx.filter(t => t.tags && t.tags.some(tg => tg.toLowerCase().includes(tag)));
-            } else if (this.filters.text && this.fuse) {
+            } else if (searchText && this.fuse) {
                 const results = this.fuse.search(this.filters.text);
                 baseList = results.map(r => r.item);
             } else {
@@ -1855,41 +1902,37 @@
             const negStyle = { font: { color: { rgb: "EF4444" } }, numFmt: "$#,##0.00" };
             const dateStyle = { alignment: { horizontal: "center" } };
 
-            const tx = this.data.viewTx.filter(t => !t.isIgnored); // Strict filter
+            const tx = this.data.viewTx.filter(t => !t.isIgnored);
             const inc = tx.filter(t=>t.amount>0).reduce((a,b)=>a+b.amount,0);
             const exp = tx.filter(t=>t.amount<0).reduce((a,b)=>a+b.amount,0);
             const cats = {}; tx.filter(t=>t.amount<0).forEach(t=>{ cats[t.cleanName] = (cats[t.cleanName]||0)+Math.abs(t.amount); });
             const catRows = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
 
-            const dashData = [
-                [{ v: "FINANCIAL SUMMARY", s: { font: { bold: true, sz: 14 } } }], [],
-                [{ v: "METRIC", s: headerStyle }, { v: "VALUE", s: headerStyle }],
-                [{ v: "Total Income" }, { v: inc, s: posStyle }],
-                [{ v: "Total Expense" }, { v: exp, s: negStyle }],
-                [{ v: "Net Flow" }, { v: inc + exp, s: (inc+exp)>=0 ? posStyle : negStyle }], [],
-                [{ v: "EXPENSE BY CATEGORY", s: { font: { bold: true, sz: 12 } } }],
-                [{ v: "Category", s: headerStyle }, { v: "Amount", s: headerStyle }],
-                ...catRows.map(r => [{ v: r[0] }, { v: r[1], s: currStyle }])
-            ];
+            const dashData = [[{ v: "FINANCIAL SUMMARY", s: { font: { bold: true, sz: 14 } } }], [], [{ v: "METRIC", s: headerStyle }, { v: "VALUE", s: headerStyle }], [{ v: "Total Income" }, { v: inc, s: posStyle }], [{ v: "Total Expense" }, { v: exp, s: negStyle }], [{ v: "Net Flow" }, { v: inc + exp, s: (inc+exp)>=0 ? posStyle : negStyle }], [], [{ v: "EXPENSE BY CATEGORY", s: { font: { bold: true, sz: 12 } } }], [{ v: "Category", s: headerStyle }, { v: "Amount", s: headerStyle }], ...catRows.map(r => [{ v: r[0] }, { v: r[1], s: currStyle }])];
             const wsDash = XLSX.utils.aoa_to_sheet(dashData); wsDash['!cols'] = [{ wch: 25 }, { wch: 15 }]; XLSX.utils.book_append_sheet(wb, wsDash, "Dashboard");
 
             let allRec = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => allRec = allRec.concat(items));
-            allRec = allRec.filter(t => t.isRecurring && !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
-            const recGroups = {}; allRec.forEach(t => { const k = this.cleanSubDesc(t.desc); if(!recGroups[k]) recGroups[k] = []; recGroups[k].push(t); });
+            const recGroups = this.getFuzzyGroups(allRec.filter(t => t.isRecurring && !t.isIgnored));
             const recData = [[{ v: "Group / Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Note", s: headerStyle }]];
             const rowProps = []; rowProps.push({});
             Object.entries(recGroups).forEach(([name, items]) => {
+                items.sort((a,b) => new Date(b.date) - new Date(a.date));
                 const total = items.reduce((sum, t) => sum + t.amount, 0); const avg = total / items.length;
                 recData.push([{ v: name, s: subHeaderStyle }, { v: `${items.length} transactions - Avg: ${ui.fmt(avg)}`, s: subHeaderStyle }, { v: total, s: { ...subHeaderStyle, ...negStyle } }, { v: "", s: subHeaderStyle }]);
                 rowProps.push({ level: 0, collapsed: true });
                 items.forEach(t => { recData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.amount, s: negStyle }, { v: t.note || "" }]); rowProps.push({ level: 1, hidden: true }); });
             });
-            const wsRec = XLSX.utils.aoa_to_sheet(recData); wsRec['!cols'] = [{ wch: 25 }, { wch: 40 }, { wch: 15 }, { wch: 30 }]; wsRec['!rows'] = rowProps; XLSX.utils.book_append_sheet(wb, wsRec, "Recurring Report");
+            const wsRec = XLSX.utils.aoa_to_sheet(recData); wsRec['!cols'] = [{ wch: 25 }, { wch: 40 }, { wch: 15 }, { wch: 30 }]; wsRec['!rows'] = rowProps; XLSX.utils.book_append_sheet(wb, wsRec, "Recurring Items");
+
+            const tagStats = this.calculateRecurringTagStats();
+            if (tagStats.length > 0) {
+                const tagData = [[{v: "Recurring Tag", s: headerStyle}, {v: "Monthly Average", s: headerStyle}, {v: "Total Spent", s: headerStyle}, {v: "# Transactions", s: headerStyle}]];
+                tagStats.forEach(s => tagData.push([s.name, {v: s.monthlyAvg, s: negStyle}, {v: s.total, s: currStyle}, s.count]));
+                const wsTags = XLSX.utils.aoa_to_sheet(tagData); wsTags['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 20 }]; XLSX.utils.book_append_sheet(wb, wsTags, "Recurring Tag Summary");
+            }
 
             const txData = [[{ v: "Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Category", s: headerStyle }, { v: "Tags", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Type", s: headerStyle }, { v: "Note", s: headerStyle }, { v: "Status", s: headerStyle }]];
-            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => {
-                txData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.cleanName }, { v: (t.tags||[]).join(', ') }, { v: t.amount, s: t.amount >= 0 ? posStyle : negStyle }, { v: t.amount >= 0 ? "Income" : "Expense" }, { v: t.note || "" }, { v: t.isRecurring ? "Recurring" : "" }]);
-            });
+            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => { txData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.cleanName }, { v: (t.tags||[]).join(', ') }, { v: t.amount, s: t.amount >= 0 ? posStyle : negStyle }, { v: t.amount >= 0 ? "Income" : "Expense" }, { v: t.note || "" }, { v: t.isRecurring ? "Recurring" : "" }]); });
             const wsTx = XLSX.utils.aoa_to_sheet(txData); wsTx['!cols'] = [{ wch: 12 }, { wch: 50 }, { wch: 30 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 30 }, { wch: 12 }]; XLSX.utils.book_append_sheet(wb, wsTx, "Transactions");
 
             XLSX.writeFile(wb, "BankExplorer_Export.xlsx"); ui.toggleModal('exportModal');
@@ -1901,7 +1944,7 @@
             const csv = rows.map(r => r.join(',')).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'bank_export.csv'; a.click();
         },
         exportJSON() {
-            const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles });
+            const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles, recurringTags: this.data.recurringTags });
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'bank_backup.json'; a.click();
         },
         
