@@ -804,6 +804,23 @@
     </div>
 </div>
 
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" class="modal-overlay" style="z-index: 3000; align-items: center;">
+    <div class="modal-sheet" style="max-width: 400px; height: auto;">
+        <div class="modal-header">
+            <h3 id="confirmTitle">Confirm Action</h3>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <p id="confirmMessage" style="margin-top: 0;"></p>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button id="confirmCancel" class="btn" style="background:var(--bg); color:var(--text-main); flex:1;">Cancel</button>
+                <button id="confirmOk" class="btn btn-primary" style="flex:1;">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <!-- SCRIPTS (MODULE TYPE FOR GEMINI) -->
 <script type="module">
     import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
@@ -1299,9 +1316,30 @@
         renderProfilesSelect() { document.getElementById('importProfileSelect').innerHTML = app.data.profiles.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); },
         renderProfilesList() { document.getElementById('profilesList').innerHTML = app.data.profiles.map(p => `<div class="profile-card"><div><strong>${p.name}</strong><br><small style="font-family:monospace; color:var(--text-sub)">${p.regex.substring(0,30)}...</small></div><button class="btn btn-sm btn-outline" onclick="app.editProfile('${p.id}')">Edit</button></div>`).join(''); },
         renderTagRules() { document.getElementById('tagRulesList').innerHTML = app.data.tagRules.map(r => `<div class="profile-card"><div><strong>${r.id}</strong><br><small style="color:var(--accent)"> &rarr; #${r.tag}</small></div><button class="btn btn-sm btn-danger-soft" onclick="app.deleteTagRule('${r.id}')">Delete</button></div>`).join('') || '<div style="padding:20px;text-align:center;color:#999">No rules created yet.</div>'; },
-        async openPdf(fileId) { if(!fileId) return alert("No File"); const f = await db.get('files',fileId); if(!f||!f.blob) return alert("Err"); const url = URL.createObjectURL(f.blob); document.getElementById('pdfTitle').innerText=f.name; document.getElementById('pdfContainer').innerHTML='Loading...'; ui.toggleModal('pdfModal'); const pdf = await pdfjsLib.getDocument(url).promise; document.getElementById('pdfContainer').innerHTML=''; for(let i=1;i<=pdf.numPages;i++){ const p=await pdf.getPage(i); const c=document.createElement('canvas'); const v=p.getViewport({scale:1.5}); c.width=v.width; c.height=v.height; c.style.marginBottom='10px'; await p.render({canvasContext:c.getContext('2d'), viewport:v}).promise; document.getElementById('pdfContainer').appendChild(c); } },
+        async openPdf(fileId) { if(!fileId) return ui.alert("No File ID provided."); const f = await db.get('files',fileId); if(!f||!f.blob) return ui.alert("File not found in database."); const url = URL.createObjectURL(f.blob); document.getElementById('pdfTitle').innerText=f.name; document.getElementById('pdfContainer').innerHTML='Loading...'; ui.toggleModal('pdfModal'); const pdf = await pdfjsLib.getDocument(url).promise; document.getElementById('pdfContainer').innerHTML=''; for(let i=1;i<=pdf.numPages;i++){ const p=await pdf.getPage(i); const c=document.createElement('canvas'); const v=p.getViewport({scale:1.5}); c.width=v.width; c.height=v.height; c.style.marginBottom='10px'; await p.render({canvasContext:c.getContext('2d'), viewport:v}).promise; document.getElementById('pdfContainer').appendChild(c); } },
         switchView(id) { this.closeAllModals(); document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active')); document.getElementById('view-'+id).classList.add('active'); document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active')); document.querySelector(`.nav-item[onclick="ui.switchView('${id}')"]`).classList.add('active'); },
-        toast(msg) { const d = document.createElement('div'); d.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 16px;border-radius:20px;z-index:999;font-size:0.85rem;"; d.innerText = msg; document.body.appendChild(d); setTimeout(()=>d.remove(), 2500); },
+        toast(msg) { const d = document.createElement('div'); d.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 16px;border-radius:20px;z-index:9999;font-size:0.85rem;"; d.innerText = msg; document.body.appendChild(d); setTimeout(()=>d.remove(), 2500); },
+        async confirm(title, message) {
+            return new Promise(resolve => {
+                const modal = document.getElementById('confirmModal');
+                document.getElementById('confirmTitle').innerText = title;
+                document.getElementById('confirmMessage').innerText = message;
+                modal.style.display = 'flex';
+                
+                const okBtn = document.getElementById('confirmOk');
+                const cancelBtn = document.getElementById('confirmCancel');
+
+                const cleanup = () => {
+                    okBtn.replaceWith(okBtn.cloneNode(true));
+                    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+                    modal.style.display = 'none';
+                };
+
+                document.getElementById('confirmOk').onclick = () => { cleanup(); resolve(true); };
+                document.getElementById('confirmCancel').onclick = () => { cleanup(); resolve(false); };
+            });
+        },
+        alert(message, title = "Alert") { this.confirm(title, message); },
         renderSources() { document.getElementById('fileListContainer').innerHTML = app.data.files.map(f => `<div class="file-list-item" onclick="ui.showFileTransactions('${f.id}')"><div style="flex:1;"><b>${f.name}</b><br><small>${f.count} txns</small></div><div>${f.context ? `<small style="display:block;color:var(--accent);text-align:right">${f.context}</small>` : ''}<button class="btn btn-ghost" onclick="event.stopPropagation(); ui.openPdf('${f.id}')" style="padding:5px; color:var(--accent)"><i class="fas fa-eye"></i></button></div></div>`).join('') || '<div style="padding:20px;text-align:center;color:#999">No files</div>'; },
         renderTx() { const c = document.getElementById('txContainer'); const view = app.data.viewTx; document.getElementById('txCount').innerText = view.length; c.innerHTML = view.map(t => this.txHtml(t)).join(''); },
         
@@ -1552,7 +1590,7 @@
             return Array.from(tagSet).sort();
         },
 
-        async addTag(id, tag) {
+        async addTag(id, tag, fromRule = false) {
             tag = tag.trim();
             if(!tag) return;
             let t = this.getTxById(id);
@@ -1568,12 +1606,14 @@
                     if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
 
                     const cleanedName = this.cleanSubDesc(t.desc);
-                    if (cleanedName && !this.data.tagRules.find(r => r.id === cleanedName)) {
-                        if (confirm(`Create a rule to always tag '${cleanedName}' as '${tag}'?`)) {
+                    if (!fromRule && cleanedName && !this.data.tagRules.find(r => r.id === cleanedName)) {
+                        const confirmed = await ui.confirm("Create Smart Rule?", `Create a rule to always tag '${cleanedName}' as '${tag}'?`);
+                        if (confirmed) {
                             const newRule = { id: cleanedName, tag: tag };
                             this.data.tagRules.push(newRule);
                             await db.save('tagRules', newRule);
-                            ui.toast(`Rule created: ${cleanedName} -> #${tag}`);
+                            ui.toast(`Rule created. Applying now...`);
+                            await this.applyTagRulesToAll(newRule);
                         }
                     }
                 }
@@ -1643,27 +1683,36 @@
             });
         },
 
-        async applyTagRulesToAll() {
+        async applyTagRulesToAll(specificRule = null) {
             let allTx = [...this.data.transactions, ...Object.values(this.data.subData).flat()];
+            const rules = specificRule ? [specificRule] : this.data.tagRules;
             let changedCount = 0;
-            for (const t of allTx) {
-                if (t.tags && t.tags.length > 0) continue;
-                const cleanedName = this.cleanSubDesc(t.desc);
-                const rule = this.data.tagRules.find(r => r.id === cleanedName);
-                if (rule) {
-                    await this.addTag(t.id, rule.tag);
-                    changedCount++;
+            for (const rule of rules) {
+                for (const t of allTx) {
+                    if (this.cleanSubDesc(t.desc) === rule.id) {
+                        if (!t.tags || !t.tags.includes(rule.tag)) {
+                            await this.addTag(t.id, rule.tag, true);
+                            changedCount++;
+                        }
+                    }
                 }
             }
-            ui.toast(`Applied ${changedCount} tags based on your rules.`);
-            ui.refresh();
+            if (changedCount > 0) {
+                ui.toast(`Tagged ${changedCount} existing items based on your rule(s).`);
+                ui.refresh();
+            } else if (!specificRule) {
+                ui.toast("No new items to tag.");
+            }
         },
 
         async deleteTagRule(ruleId) {
-            this.data.tagRules = this.data.tagRules.filter(r => r.id !== ruleId);
-            await db.delete('tagRules', ruleId);
-            ui.renderTagRules();
-            ui.toast("Rule deleted.");
+            const confirmed = await ui.confirm("Delete Rule?", `Are you sure you want to delete the rule for '${ruleId}'?`);
+            if (confirmed) {
+                this.data.tagRules = this.data.tagRules.filter(r => r.id !== ruleId);
+                await db.delete('tagRules', ruleId);
+                ui.renderTagRules();
+                ui.toast("Rule deleted.");
+            }
         },
 
         // --- PROFILES ---
@@ -1691,7 +1740,7 @@
                 map: { date: parseInt(document.getElementById('peMapDate').value), desc: parseInt(document.getElementById('peMapDesc').value), amt: parseInt(document.getElementById('peMapAmt').value) },
                 inferYear: document.getElementById('peInferYear').checked
             };
-            if(!profile.name || !profile.regex) return alert("Name and Regex are required");
+            if(!profile.name || !profile.regex) return ui.alert("Name and Regex are required");
             await db.save('profiles', profile);
             await this.initProfiles();
             ui.toggleModal('profileEditorModal');
@@ -1700,7 +1749,12 @@
 
         async deleteProfile() {
             const id = document.getElementById('peId').value;
-            if(confirm("Delete this profile?")) { await db.delete('profiles', id); await this.initProfiles(); ui.toggleModal('profileEditorModal'); ui.toast("Profile Deleted"); }
+            if(await ui.confirm("Delete Profile?", "Are you sure you want to delete this profile?")) { 
+                await db.delete('profiles', id); 
+                await this.initProfiles(); 
+                ui.toggleModal('profileEditorModal'); 
+                ui.toast("Profile Deleted"); 
+            }
         },
 
         testRegex() {
@@ -1773,13 +1827,18 @@
         },
 
         async clearRejected() {
-            if(confirm("Restore all rejected suggestions?")) { await db.clearStore('rejected'); this.data.rejected = []; ui.refresh(); ui.toast("Rejected list cleared"); }
+            if(await ui.confirm("Clear Rejected?", "Restore all rejected suggestions?")) { 
+                await db.clearStore('rejected'); 
+                this.data.rejected = []; 
+                ui.refresh(); 
+                ui.toast("Rejected list cleared"); 
+            }
         },
 
         async processFiles(fileList, mode, categoryContext = null) {
             const profileId = document.getElementById('importProfileSelect').value;
             const profile = this.data.profiles.find(p => p.id === profileId);
-            if(!profile) return alert("Please select a parsing profile");
+            if(!profile) return ui.alert("Please select a parsing profile");
 
             ui.toast(`Processing ${fileList.length} files...`);
             const results = await Promise.all(Array.from(fileList).map(f => parser.parsePdf(f, profile)));
@@ -1899,7 +1958,7 @@
 
         async confirmPotential(descGroup) { await this.toggleAllRecurring(descGroup, true); ui.toast(`Confirmed transactions as recurring`); },
         async rejectPotential(descGroup) { const entry = { id: descGroup, rejectedAt: new Date() }; this.data.rejected.push(entry); await db.save('rejected', entry); ui.refresh(); ui.toast("Recommendation rejected"); },
-        async unmarkGroup(descGroup) { if(!confirm(`Remove all recurring tags for '${descGroup}'?`)) return; await this.toggleAllRecurring(descGroup, false); },
+        async unmarkGroup(descGroup) { if(await ui.confirm("Unmark Group?", `Remove all recurring tags for '${descGroup}'?`)) { await this.toggleAllRecurring(descGroup, false); } },
         async saveNote(id, text) {
             let t = this.getTxById(id);
             if(t) {
@@ -1970,7 +2029,7 @@
         },
 
         async exportXLSX() {
-            if (typeof XLSX === 'undefined') { return alert("XLSX Library not loaded."); }
+            if (typeof XLSX === 'undefined') { return ui.alert("XLSX Library not loaded."); }
             ui.toast("Generating Excel File...");
             const wb = XLSX.utils.book_new();
             const headerStyle = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "3B82F6" } }, alignment: { horizontal: "center" } };
@@ -2125,7 +2184,7 @@
             }
             return potentials.sort((a,b) => a.days - b.days);
         },
-        async clearAll() { if(confirm("Permanently delete all data?")) { await db.clear(); location.reload(); } }
+        async clearAll() { if(await ui.confirm("Delete All Data?", "This will permanently delete all imported files, transactions, and settings. Are you sure?")) { await db.clear(); location.reload(); } }
     });
 
     // Expose app/ui to global scope for HTML event handlers
