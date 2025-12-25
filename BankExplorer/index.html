@@ -1,3 +1,8 @@
+You've found another excellent and subtle bug. You are absolutely correct; the search bar should allow you to type freely and see results instantly, not just force you to use autocomplete.
+
+### The Problem Explained
+
+The issue was in the core filtering logic. When you typed in the search bar, the code was performing a fuzzy search across all your data (which is good) but then it was immediately throwing away any results that came from your detailed sub-data (like credit card statements).
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1290,7 +1295,7 @@
             const tagsCloud = document.getElementById('tagsCloud');
             if(Object.keys(tagCounts).length > 0) {
                 tagsCloud.innerHTML = Object.entries(tagCounts).map(([tag, count]) => 
-                    `<span class="tag-badge" style="padding:5px 10px; font-size:0.8rem; cursor:pointer;" onclick="document.getElementById('filterTag').value='${tag}';app.applyFilters();ui.switchView('transactions');">#${tag} (${count})</span>`
+                    `<span class="tag-badge" style="padding:5px 10px; font-size:0.8rem; cursor:pointer;" onclick="app.searchByTag('${tag.replace(/'/g, "\\'")}')">#${tag} (${count})</span>`
                 ).join('');
             } else {
                 tagsCloud.innerHTML = '<small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>';
@@ -1344,7 +1349,7 @@
             if (!file) return;
 
             let allTx = [...app.data.transactions];
-            Object.values(app.data.subData).forEach(items => all = all.concat(items));
+            Object.values(app.data.subData).forEach(items => allTx.push(...items));
             const items = allTx.filter(t => t.sourceFileId === fileId).sort((a, b) => new Date(b.date) - new Date(a.date));
 
             document.getElementById('drillTitle').innerText = `From: ${file.name}`;
@@ -1596,6 +1601,21 @@
         },
 
         // --- FILTER & SEARCH ---
+        searchByTag(tag) {
+            let allTx = [...this.data.transactions];
+            Object.values(this.data.subData).forEach(items => allTx.push(...items));
+            const taggedTx = allTx.filter(t => t.tags && t.tags.includes(tag));
+            
+            document.getElementById('globalSearch').value = `#${tag}`;
+            this.filters = { text:`#${tag}`, start:'', end:'', min:'', max:'', type:'all', tag:'' };
+            document.getElementById('filterDot').style.display = 'none';
+
+            this.data.viewTx = taggedTx.sort((a,b) => new Date(b.date) - new Date(a.date));
+            ui.renderTx();
+            ui.switchView('transactions');
+            ui.toast(`Found ${taggedTx.length} transactions tagged with #${tag}`);
+        },
+
         handleSearchInput(e) {
             const val = e.target.value.trim();
             this.filters.text = val.toLowerCase();
@@ -1784,24 +1804,37 @@
             this.filters.max = document.getElementById('filterMax').value;
             this.filters.type = document.getElementById('filterType').value;
             this.filters.tag = document.getElementById('filterTag').value.trim();
+
+            let baseList;
             
-            let baseList = this.data.transactions;
-            if (this.filters.text && this.fuse) { const results = this.fuse.search(this.filters.text); baseList = results.map(r => r.item).filter(i => !i.isSub); }
+            if (this.filters.text && this.filters.text.startsWith('#')) {
+                const tag = this.filters.text.substring(1);
+                let allTx = [...this.data.transactions];
+                Object.values(this.data.subData).forEach(items => allTx.push(...items));
+                baseList = allTx.filter(t => t.tags && t.tags.some(tg => tg.toLowerCase().includes(tag)));
+            } else if (this.filters.text && this.fuse) {
+                const results = this.fuse.search(this.filters.text);
+                baseList = results.map(r => r.item);
+            } else {
+                baseList = this.data.transactions;
+            }
+
             this.data.viewTx = baseList.filter(t => {
-                if(t.isIgnored) return false;
+                if (t.isIgnored) return false;
                 const d = new Date(t.date);
-                if(this.filters.start && d < new Date(this.filters.start)) return false;
-                if(this.filters.end && d > new Date(this.filters.end)) return false;
-                if(this.filters.min && Math.abs(t.amount) < parseFloat(this.filters.min)) return false;
-                if(this.filters.max && Math.abs(t.amount) > parseFloat(this.filters.max)) return false;
-                if(this.filters.type === 'inc' && t.amount < 0) return false;
-                if(this.filters.type === 'exp' && t.amount > 0) return false;
-                if(this.filters.tag && (!t.tags || !t.tags.some(tg => tg.toLowerCase().includes(this.filters.tag.toLowerCase())))) return false;
-                return true; 
+                if (this.filters.start && d < new Date(this.filters.start)) return false;
+                if (this.filters.end && d > new Date(this.filters.end)) return false;
+                if (this.filters.min && Math.abs(t.amount) < parseFloat(this.filters.min)) return false;
+                if (this.filters.max && Math.abs(t.amount) > parseFloat(this.filters.max)) return false;
+                if (this.filters.type === 'inc' && t.amount < 0) return false;
+                if (this.filters.type === 'exp' && t.amount > 0) return false;
+                if (this.filters.tag && (!t.tags || !t.tags.some(tg => tg.toLowerCase().includes(this.filters.tag.toLowerCase())))) return false;
+                return true;
             });
+            
             const hasAdv = this.filters.start || this.filters.end || this.filters.min || this.filters.max || this.filters.type !== 'all' || this.filters.tag;
             document.getElementById('filterDot').style.display = hasAdv ? 'inline' : 'none';
-            if(document.getElementById('filterModal').style.display === 'flex') { ui.toggleModal('filterModal'); ui.toast(`Found ${this.data.viewTx.length} matches`); }
+            if (document.getElementById('filterModal').style.display === 'flex') { ui.toggleModal('filterModal'); ui.toast(`Found ${this.data.viewTx.length} matches`); }
             ui.refresh();
         },
 
@@ -1811,7 +1844,9 @@
             document.getElementById('filterMin').value = ''; document.getElementById('filterMax').value = '';
             document.getElementById('filterType').value = 'all'; document.getElementById('filterTag').value = '';
             this.applyFilters();
-            document.getElementById('filterDot').style.display = 'none'; ui.toggleModal('filterModal'); ui.refresh();
+            document.getElementById('filterDot').style.display = 'none'; 
+            if(document.getElementById('filterModal').style.display === 'flex') ui.toggleModal('filterModal'); 
+            ui.refresh();
         },
 
         async exportXLSX() {
