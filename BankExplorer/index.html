@@ -121,20 +121,33 @@
         .nav-item i { font-size: 1.4rem; margin-bottom: 5px; display: block; }
         .nav-item.active { color: var(--accent); }
 
-        /* BULK ACTION BAR */
-        .bulk-bar {
-            position: fixed; bottom: calc(var(--nav-height) + var(--safe-bottom)); 
-            left: 0; right: 0; background: var(--primary); color: white;
-            padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
-            transform: translateY(100%); transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 140; box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
-        }
-        .bulk-bar.active { transform: translateY(0); }
+/* BULK ACTION BAR */
+.bulk-bar {
+    position: fixed; 
+    bottom: 0; /* Start at the very bottom */
+    left: 0; right: 0; 
+    background: var(--primary); 
+    color: white;
+    padding: 10px 20px; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    /* Move it down by its own height (100%) so it is off-screen */
+    transform: translateY(100%); 
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 140; 
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+}
 
-        .bulk-checkbox {
-            width: 20px; height: 20px; margin-right: 15px; cursor: pointer;
-            accent-color: var(--accent); flex-shrink: 0;
-        }
+.bulk-bar.active { 
+    /* Slide UP by the height of the nav + safe area */
+    transform: translateY(calc( -1 * (var(--nav-height) + var(--safe-bottom)) )); 
+}
+
+.bulk-checkbox {
+    width: 20px; height: 20px; margin-right: 15px; cursor: pointer;
+    accent-color: var(--accent); flex-shrink: 0;
+}
 
         /* VIEWS */
         .view-section { display: none; padding: 20px; max-width: 800px; margin: 0 auto; }
