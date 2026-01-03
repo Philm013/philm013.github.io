@@ -727,9 +727,16 @@
                     <option value="exp">Expenses Only</option>
                 </select>
             </div>
-             <div class="input-group">
+             <!-- REPLACE THE "Filter by Tag" INPUT GROUP IN #filterModal WITH THIS: -->
+            <div class="input-group">
                 <label>Filter by Tag</label>
-                <input type="text" id="filterTag" class="form-control" placeholder="e.g. Groceries">
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="text" id="filterTag" class="form-control" placeholder="e.g. Groceries" oninput="if(this.value) document.getElementById('filterUntagged').checked = false;">
+                    <label class="check-group" style="margin:0; white-space:nowrap; padding: 10px; height: 45px; font-size: 0.9rem;">
+                        <input type="checkbox" id="filterUntagged" onchange="if(this.checked) document.getElementById('filterTag').value = '';"> 
+                        Untagged
+                    </label>
+                </div>
             </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="btn" style="background:var(--bg); color:var(--text-main); flex:1;" onclick="app.clearFilters()">Clear</button>
@@ -2265,58 +2272,87 @@ renderTagRules() {
             return null;
         },
 
-        applyFilters() {
-            this.filters.start = document.getElementById('filterStart').value;
-            this.filters.end = document.getElementById('filterEnd').value;
-            this.filters.min = document.getElementById('filterMin').value;
-            this.filters.max = document.getElementById('filterMax').value;
-            this.filters.type = document.getElementById('filterType').value;
-            this.filters.tag = document.getElementById('filterTag').value.trim();
+        // REPLACE app.applyFilters WITH THIS:
+applyFilters() {
+    this.filters.start = document.getElementById('filterStart').value;
+    this.filters.end = document.getElementById('filterEnd').value;
+    this.filters.min = document.getElementById('filterMin').value;
+    this.filters.max = document.getElementById('filterMax').value;
+    this.filters.type = document.getElementById('filterType').value;
+    this.filters.tag = document.getElementById('filterTag').value.trim();
+    this.filters.untagged = document.getElementById('filterUntagged').checked;
 
-            let baseList;
-            const searchText = this.filters.text.toLowerCase();
+    let baseList;
+    const searchText = this.filters.text.toLowerCase();
 
-            if (searchText && searchText.startsWith('#')) {
-                const tag = searchText.substring(1);
-                let allTx = [...this.data.transactions];
-                Object.values(this.data.subData).forEach(items => allTx.push(...items));
-                baseList = allTx.filter(t => t.tags && t.tags.some(tg => tg.toLowerCase().includes(tag)));
-            } else if (searchText && this.fuse) {
-                const results = this.fuse.search(this.filters.text);
-                baseList = results.map(r => r.item);
-            } else {
-                baseList = this.data.transactions;
-            }
+    // 1. Determine Base List (Search Text vs Full List)
+    if (searchText && searchText.startsWith('#')) {
+        const tag = searchText.substring(1);
+        let allTx = [...this.data.transactions];
+        Object.values(this.data.subData).forEach(items => allTx.push(...items));
+        baseList = allTx.filter(t => t.tags && t.tags.some(tg => tg.toLowerCase().includes(tag)));
+    } else if (searchText && this.fuse) {
+        const results = this.fuse.search(this.filters.text);
+        baseList = results.map(r => r.item);
+    } else {
+        // Default: Combine main transactions + all sub-data for a complete list
+        // Note: You can change this to just main transactions if you prefer not to see sub-items in the main list
+        let allTx = [...this.data.transactions];
+        Object.values(this.data.subData).forEach(items => allTx.push(...items));
+        baseList = allTx;
+    }
 
-            this.data.viewTx = baseList.filter(t => {
-                if (t.isIgnored) return false;
-                const d = new Date(t.date);
-                if (this.filters.start && d < new Date(this.filters.start)) return false;
-                if (this.filters.end && d > new Date(this.filters.end)) return false;
-                if (this.filters.min && Math.abs(t.amount) < parseFloat(this.filters.min)) return false;
-                if (this.filters.max && Math.abs(t.amount) > parseFloat(this.filters.max)) return false;
-                if (this.filters.type === 'inc' && t.amount < 0) return false;
-                if (this.filters.type === 'exp' && t.amount > 0) return false;
-                if (this.filters.tag && (!t.tags || !t.tags.some(tg => tg.toLowerCase().includes(this.filters.tag.toLowerCase())))) return false;
-                return true;
-            });
-            
-            const hasAdv = this.filters.start || this.filters.end || this.filters.min || this.filters.max || this.filters.type !== 'all' || this.filters.tag;
-            document.getElementById('filterDot').style.display = hasAdv ? 'inline' : 'none';
-            if (document.getElementById('filterModal').style.display === 'flex') { ui.toggleModal('filterModal'); ui.toast(`Found ${this.data.viewTx.length} matches`); }
-            ui.refresh();
-        },
+    // 2. Apply Filters
+    this.data.viewTx = baseList.filter(t => {
+        if (t.isIgnored) return false;
+        
+        const d = new Date(t.date);
+        if (this.filters.start && d < new Date(this.filters.start)) return false;
+        if (this.filters.end && d > new Date(this.filters.end)) return false;
+        if (this.filters.min && Math.abs(t.amount) < parseFloat(this.filters.min)) return false;
+        if (this.filters.max && Math.abs(t.amount) > parseFloat(this.filters.max)) return false;
+        
+        if (this.filters.type === 'inc' && t.amount < 0) return false;
+        if (this.filters.type === 'exp' && t.amount > 0) return false;
 
-        clearFilters() {
-            document.getElementById('globalSearch').value = ''; this.filters.text = '';
-            document.getElementById('filterStart').value = ''; document.getElementById('filterEnd').value = '';
-            document.getElementById('filterMin').value = ''; document.getElementById('filterMax').value = '';
-            document.getElementById('filterType').value = 'all'; document.getElementById('filterTag').value = '';
-            this.applyFilters();
-            document.getElementById('filterDot').style.display = 'none'; 
-            if(document.getElementById('filterModal').style.display === 'flex') ui.toggleModal('filterModal'); 
-            ui.refresh();
-        },
+        // Tag Filtering Logic
+        if (this.filters.untagged) {
+            // Show only if tags array is empty or null
+            if (t.tags && t.tags.length > 0) return false;
+        } else if (this.filters.tag) {
+            // Show only if tags match the input
+            if (!t.tags || !t.tags.some(tg => tg.toLowerCase().includes(this.filters.tag.toLowerCase()))) return false;
+        }
+
+        return true;
+    });
+    
+    // 3. UI Updates
+    const hasAdv = this.filters.start || this.filters.end || this.filters.min || this.filters.max || this.filters.type !== 'all' || this.filters.tag || this.filters.untagged;
+    document.getElementById('filterDot').style.display = hasAdv ? 'inline' : 'none';
+    
+    if (document.getElementById('filterModal').style.display === 'flex') { 
+        ui.toggleModal('filterModal'); 
+        ui.toast(`Found ${this.data.viewTx.length} matches`); 
+    }
+    ui.refresh();
+},
+
+        // REPLACE app.clearFilters WITH THIS:
+clearFilters() {
+    document.getElementById('globalSearch').value = ''; this.filters.text = '';
+    document.getElementById('filterStart').value = ''; document.getElementById('filterEnd').value = '';
+    document.getElementById('filterMin').value = ''; document.getElementById('filterMax').value = '';
+    document.getElementById('filterType').value = 'all'; 
+    
+    document.getElementById('filterTag').value = '';
+    document.getElementById('filterUntagged').checked = false; // Uncheck untagged
+    
+    this.applyFilters();
+    document.getElementById('filterDot').style.display = 'none'; 
+    if(document.getElementById('filterModal').style.display === 'flex') ui.toggleModal('filterModal'); 
+    ui.refresh();
+},
 
         async exportXLSX() {
             if (typeof XLSX === 'undefined') { return ui.alert("XLSX Library not loaded."); }
