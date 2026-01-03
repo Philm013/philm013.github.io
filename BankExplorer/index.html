@@ -1563,7 +1563,20 @@ renderTagRules() {
     let t = app.getTxById(id); 
     if(!t) return;
 
-    // --- 1. HISTORY LOGIC (Existing) ---
+    // --- 0. NAVIGATION HEADER (New) ---
+    // If this is a sub-item (from a PDF), show a way to get back to the main category drill-down
+    let navHtml = '';
+    if (t.isSub) {
+        navHtml = `
+        <div style="margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px;">
+            <button class="btn btn-sm btn-outline" onclick="ui.openDrill('${t.cleanName.replace(/'/g, "\\'")}')">
+                <i class="fas fa-arrow-left"></i> Back to ${t.cleanName}
+            </button>
+            <span class="badge" style="background:var(--accent); color:white;">Sub-Transaction Details</span>
+        </div>`;
+    }
+
+    // --- 1. HISTORY LOGIC ---
     const hist = app.getHistory(t.desc); 
     const histHtml = hist.items.length > 1 ? 
         `<div style="margin-top:20px;">
@@ -1573,21 +1586,20 @@ renderTagRules() {
                 <div class="badge">Avg: ${this.fmt(hist.avg)}</div>
             </div>
             <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
-                ${hist.items.map(h => `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid var(--border); font-size:0.85rem; background:var(--surface);"><span>${new Date(h.date).toLocaleDateString()}</span><span>${h.isRecurring ? '<i class="fas fa-rotate" style="color:var(--success); margin-right:5px;"></i>' : ''}<span class="${h.amount>=0?'pos':'neg'}">${this.fmt(h.amount)}</span></span></div>`).join('')}
+                ${hist.items.map(h => `<div class="tx-row" onclick="ui.showDetail('${h.id}')" style="border-radius:0; border-bottom:1px solid var(--border); padding:10px;"><span>${new Date(h.date).toLocaleDateString()}</span><span>${h.isRecurring ? '<i class="fas fa-rotate" style="color:var(--success); margin-right:5px;"></i>' : ''}<span class="${h.amount>=0?'pos':'neg'}">${this.fmt(h.amount)}</span></span></div>`).join('')}
             </div>
         </div>` : '';
     
-    // --- 2. SUB-DATA (BREAKDOWN) LOGIC (UPDATED WITH DATE FILTER) ---
+    // --- 2. SUB-DATA (BREAKDOWN) LOGIC ---
     let subDataHtml = '';
     
     // Only run if there is uploaded data for this category AND this isn't a sub-item itself
     if (!t.isSub && app.data.subData[t.cleanName] && app.data.subData[t.cleanName].length > 0) {
         
         // A. Calculate the Date Window
-        // Get all main transactions (Payments) for this category to find the previous billing date
         const categoryMainTx = app.data.transactions
             .filter(tx => tx.cleanName === t.cleanName && !tx.isIgnored)
-            .sort((a,b) => new Date(a.date) - new Date(b.date)); // Sort Oldest to Newest
+            .sort((a,b) => new Date(a.date) - new Date(b.date));
 
         const currentIndex = categoryMainTx.findIndex(x => x.id === t.id);
         const currentTxDate = new Date(t.date);
@@ -1596,13 +1608,11 @@ renderTagRules() {
         let dateRangeText = "";
 
         if (currentIndex > 0) {
-            // Use the previous payment date as the start of the window
             prevTxDate = new Date(categoryMainTx[currentIndex - 1].date);
             dateRangeText = `${prevTxDate.toLocaleDateString()} – ${currentTxDate.toLocaleDateString()}`;
         } else {
-            // If no previous payment exists, default to 45 days prior
             prevTxDate = new Date(t.date);
-            prevTxDate.setDate(prevTxDate.getDate() - 45);
+            prevTxDate.setDate(prevTxDate.getDate() - 45); // Default lookback
             dateRangeText = `Prior to ${currentTxDate.toLocaleDateString()}`;
         }
 
@@ -1610,7 +1620,6 @@ renderTagRules() {
         const allSubs = app.data.subData[t.cleanName];
         const filteredSubs = allSubs.filter(s => {
             const sDate = new Date(s.date);
-            // Logic: Item date is strictly AFTER previous payment AND ON/BEFORE current payment
             return sDate > prevTxDate && sDate <= currentTxDate;
         });
 
@@ -1619,6 +1628,7 @@ renderTagRules() {
         
         const subTotal = filteredSubs.reduce((acc, curr) => acc + curr.amount, 0);
 
+        // C. Render the List (NOW CLICKABLE using 'tx-row' class)
         subDataHtml = `
         <div style="margin-top:20px; padding-top:20px; border-top:1px dashed var(--border);">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
@@ -1632,16 +1642,22 @@ renderTagRules() {
             </div>
             
             ${filteredSubs.length > 0 ? `
-                <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; max-height:250px; overflow-y:auto;">
-                    ${filteredSubs.map(s => `
-                        <div style="padding:10px; border-bottom:1px solid var(--border); font-size:0.85rem; display:flex; justify-content:space-between;">
+                <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; max-height:300px; overflow-y:auto;">
+                    ${filteredSubs.map(s => {
+                        const tags = (s.tags || []).map(tag => `<span class="tag-badge">#${tag}</span>`).join('');
+                        return `
+                        <div class="tx-row" onclick="ui.showDetail('${s.id}')" style="border-radius:0; border-bottom:1px solid var(--border); padding:10px 15px;">
                             <div style="flex:1; margin-right:10px;">
                                 <div style="font-weight:600;">${s.desc}</div>
-                                <div style="color:var(--text-sub); font-size:0.75rem;">${s.rawDateStr}</div>
+                                <div style="color:var(--text-sub); font-size:0.75rem;">
+                                    ${s.rawDateStr} 
+                                    ${s.isRecurring ? '<i class="fas fa-rotate" style="color:var(--success)"></i>' : ''} 
+                                    ${tags}
+                                </div>
                             </div>
                             <div class="${s.amount>=0?'pos':'neg'}" style="font-weight:700;">${this.fmt(s.amount)}</div>
-                        </div>
-                    `).join('')}
+                        </div>`;
+                    }).join('')}
                 </div>
                 <div style="display:flex; justify-content:space-between; margin-top:5px; font-size:0.8rem; padding:0 5px;">
                     <span style="color:var(--text-sub)">${filteredSubs.length} items found</span>
@@ -1655,13 +1671,14 @@ renderTagRules() {
         </div>`;
     }
 
-    // --- 3. TAGS & FORM LOGIC (Existing) ---
+    // --- 3. TAGS & FORM LOGIC ---
     const tagsHtml = (t.tags || []).map(tag => `<span class="tag-badge">#${tag} <i class="fas fa-times" onclick="app.removeTag('${t.id}', '${tag}')"></i></span>`).join('');
     const allTags = app.getAllUniqueTags();
     const datalistHtml = `<datalist id="tag-suggestions">${allTags.map(tag => `<option value="${tag}"></option>`).join('')}</datalist>`;
 
     // --- 4. RENDER ---
     document.getElementById('detailContent').innerHTML = `
+        ${navHtml}
         <div style="text-align:center;margin-bottom:20px;">
             <h1 class="${t.amount>=0?'pos':'neg'}">${this.fmt(t.amount)}</h1>
             <div style="color:var(--text-sub)">${new Date(t.date).toDateString()}</div>
