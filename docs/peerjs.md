@@ -1,179 +1,232 @@
 # Getting Started with PeerJS for WebRTC Communication
 
-This guide provides a practical overview of how to use PeerJS to establish peer-to-peer data connections in a web application. We will cover setting up a "host" peer that listens for connections and "client" peers that connect to the host, enabling real-time, bi-directional communication.
+This guide provides a comprehensive overview of using PeerJS to establish peer-to-peer data connections. It covers official API configurations, robust connection handling, and state synchronization strategies.
 
-## Core Concepts
+## 1. Setup
 
-*   **Peer ID:** A unique identifier for each user (or "peer") on the network. A peer can either generate a random ID or be assigned a specific, predictable one.
-*   **PeerServer:** A brokering server that manages peer IDs and introduces peers to each other. PeerJS provides a cloud-hosted PeerServer for easy development, or you can host your own. The server does not handle the actual data transfer between connected peers.
-*   **DataConnection:** An object that represents the connection between two peers. You use this object to send and receive data.
-
-## Implementation Guide
-
-### Step 1: Include the PeerJS Library
-
-First, add the PeerJS script to your HTML file.
+Include the PeerJS library in your HTML.
 
 ```html
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 ```
 
-### Step 2: Creating a "Host" Peer
+## 2. The Peer Object & Configuration
 
-The host acts like a central point that other peers can connect to. It creates a Peer object with a specific ID and waits for incoming connections.
-
-1.  **Initialize the Peer Object:** Create a new `Peer` instance. If you provide a unique string as the first argument, that will be the peer's ID. If you leave it blank, the PeerServer will assign a random one. For a host, a predictable ID is essential.
-
-    ```javascript
-    // Initialize the host peer with a specific, unique ID.
-    const peer = new Peer('my-unique-host-id');
-    let connections = {}; // Object to store all active connections
-
-    peer.on('open', function(id) {
-        console.log('Host peer is ready. My ID is:', id);
-    });
-    ```
-
-2.  **Listen for Incoming Connections:** Use the `peer.on('connection', ...)` event listener. This event fires whenever a client peer successfully connects to this host.
-
-    ```javascript
-    peer.on('connection', function(conn) {
-        console.log('A client has connected:', conn.peer);
-        connections[conn.peer] = conn;
-
-        // Set up event listeners for the new connection
-        setupConnectionListeners(conn);
-    });
-    ```
-
-3.  **Handle Data and Events for Each Connection:** Create a function to manage events for each individual connection, such as receiving data or handling disconnections.
-
-    ```javascript
-    function setupConnectionListeners(conn) {
-        // Handle incoming data
-        conn.on('data', function(data) {
-            console.log(`Received data from ${conn.peer}:`, data);
-            // Example: Echo the message back to the sender
-            conn.send({ message: `Host received your message: "${data.message}"` });
-        });
-
-        // Handle connection closing
-        conn.on('close', function() {
-            console.log(`Connection with ${conn.peer} has been closed.`);
-            delete connections[conn.peer];
-        });
-    }
-    ```
-
-### Step 3: Creating a "Client" Peer
-
-The client peer initiates the connection to the host using the host's known ID.
-
-1.  **Initialize the Peer Object:** Create a client `Peer` instance, typically without an ID so the PeerServer can assign one automatically.
-
-    ```javascript
-    // Initialize a client peer. The server will assign a random ID.
-    const peer = new Peer();
-    let hostConnection;
-
-    peer.on('open', function(id) {
-        console.log('Client peer is ready. My ID is:', id);
-    });
-    ```
-
-2.  **Connect to the Host:** Use the `peer.connect()` method with the host's unique ID. This returns a `DataConnection` object.
-
-    ```javascript
-    function connectToHost(hostId) {
-        console.log(`Attempting to connect to host: ${hostId}`);
-        hostConnection = peer.connect(hostId);
-
-        // Set up event listeners for the connection
-        setupConnectionListeners(hostConnection);
-    }
-    ```
-
-3.  **Handle Connection Events:** After calling `peer.connect()`, set up listeners on the `DataConnection` object to handle the `open`, `data`, and `close` events.
-
-    ```javascript
-    function setupConnectionListeners(conn) {
-        // Fires when the connection is established and ready
-        conn.on('open', function() {
-            console.log('Connection to host established!');
-            // Send a welcome message
-            conn.send({ message: 'Hello from the client!' });
-        });
-
-        // Handle incoming data from the host
-        conn.on('data', function(data) {
-            console.log('Received data from host:', data);
-        });
-
-        // Handle connection closing
-        conn.on('close', function() {
-            console.log('Connection to host has been closed.');
-            hostConnection = null;
-        });
-    }
-
-    // Example of how to start the connection
-    // connectToHost('my-unique-host-id');
-    ```
-
-### Step 4: Error Handling
-
-It's crucial to listen for errors on the main `Peer` object. This can alert you to issues like an invalid host ID or network problems.
+The `Peer` object is your connection to the PeerServer (the signaling server). While PeerJS provides a free cloud server, you can pass an `options` object to configure STUN/TURN servers (crucial for getting through firewalls) or debugging levels.
 
 ```javascript
-peer.on('error', function(err) {
-    console.error('An error occurred with PeerJS:', err);
-    // A common error is 'peer-unavailable' when the host ID doesn't exist.
-    if (err.type === 'peer-unavailable') {
-        alert('The host ID you are trying to connect to does not exist.');
+const peer = new Peer('my-unique-id', {
+    // 0: None, 1: Errors, 2: Warnings, 3: All logs
+    debug: 2, 
+    
+    // Configuration for the ICE Agent (STUN/TURN servers)
+    config: {
+        'iceServers': [
+            { url: 'stun:stun1.l.google.com:19302' },
+            { url: 'stun:stun2.l.google.com:19302' },
+            // For strict networks (schools/offices), you often need a TURN server here.
+        ]
     }
 });
 ```
 
-## Advanced Usage
+## 3. The Data Connection API
 
-### Broadcasting Messages from Host
-
-To send a message to all connected clients, the host can iterate through its collection of active connections.
+When you call `peer.connect(id)`, you are creating a `DataConnection`. You can configure how data is sent using the `options` parameter.
 
 ```javascript
-// Function for the HOST peer
-function broadcast(data) {
-    console.log('Broadcasting data to all clients:', data);
-    for (const peerId in connections) {
-        const conn = connections[peerId];
-        if (conn && conn.open) {
-            conn.send(data);
+const conn = peer.connect('destination-peer-id', {
+    // 'reliable': true (default) ensures delivery but might be slightly slower.
+    reliable: true,
+    
+    // 'serialization': 'binary' (default), 'json', or 'none'.
+    // 'binary' (BinaryPack) allows sending Blobs, ArrayBuffers, and Files.
+    // 'json' is slightly faster if you are ONLY sending text/JSON objects.
+    serialization: 'json'
+});
+```
+
+## 4. Implementation Guide: Host & Client Pattern
+
+### The Host (Teacher/Server)
+The host initializes a peer with a known ID and acts as the "Source of Truth" for the application state.
+
+```javascript
+const State = { items: [], ink: [] }; // The app's current state
+const peer = new Peer('room-host-id', { debug: 2 });
+let connections = {};
+
+peer.on('open', (id) => {
+    console.log('Host ready:', id);
+    startHeartbeat(); // Start the heartbeat loop (see Section 5)
+});
+
+peer.on('connection', (conn) => {
+    console.log('Client connected:', conn.peer);
+    connections[conn.peer] = conn;
+
+    // CRITICAL: Immediate State Synchronization
+    // Whether this is a new user or a user reconnecting after a drop,
+    // we ALWAYS send the full state immediately upon connection.
+    conn.on('open', () => {
+        conn.send({
+            type: 'FULL_SYNC',
+            items: State.items,
+            ink: State.ink
+        });
+    });
+
+    conn.on('data', (data) => {
+        // Handle client updates (e.g., student answers)
+        handleClientData(data);
+    });
+
+    conn.on('close', () => {
+        console.log('Client disconnected:', conn.peer);
+        delete connections[conn.peer];
+    });
+});
+```
+
+### The Client (Student)
+The client connects to the host. Crucially, it must handle receiving the full state from the host to ensure it is in sync.
+
+```javascript
+const peer = new Peer(); // Auto-assigned ID
+let hostConnection = null;
+
+peer.on('open', (id) => {
+    console.log('Client ready:', id);
+    connectToHost('room-host-id');
+});
+
+function connectToHost(hostId) {
+    hostConnection = peer.connect(hostId, { serialization: 'json' });
+
+    hostConnection.on('open', () => {
+        console.log('Connected to host');
+        // Reset heartbeat tracking on new connection
+        lastHeartbeat = Date.now(); 
+    });
+
+    hostConnection.on('data', (data) => {
+        lastHeartbeat = Date.now(); // Record activity (see Section 5)
+
+        // Handle State Synchronization
+        if (data.type === 'FULL_SYNC') {
+            console.log('Applying full state sync...');
+            State.items = data.items;
+            State.ink = data.ink;
+            renderApp(); // Update UI
         }
-    }
-}
+        // Handle Heartbeats
+        else if (data.type === 'HEARTBEAT') {
+            return; // Connection is alive
+        }
+        // Handle other updates
+        else {
+            handleUpdate(data);
+        }
+    });
 
-// Example usage:
-// broadcast({ announcement: 'The session will end in 5 minutes.' });
+    hostConnection.on('close', () => {
+        console.log('Connection lost');
+        hostConnection = null;
+    });
+}
 ```
 
-### Heartbeat/Connection Check
+## 5. Resilience: Heartbeats & Auto-Reconnection
 
-WebRTC connections can sometimes drop without immediately firing a `close` event. A "heartbeat" is a simple way to ensure a connection is still active. The client or host periodically sends a small message; if a response isn't received after a certain time, you can assume the connection is lost.
+WebRTC connections can close silently (e.g., laptop lid closes, wifi drops) without firing events immediately. A heartbeat mechanism ensures the client knows when to force a reconnection.
+
+**On the Host:**
+Send a ping to all clients periodically.
 
 ```javascript
-// On the CLIENT side
-setInterval(() => {
-    if (hostConnection && hostConnection.open) {
-        hostConnection.send({ type: 'HEARTBEAT' });
-    }
-}, 5000); // Send a heartbeat every 5 seconds
+function startHeartbeat() {
+    setInterval(() => {
+        // Broadcast to all active connections
+        for (let peerId in connections) {
+            const conn = connections[peerId];
+            if (conn && conn.open) {
+                conn.send({ type: 'HEARTBEAT' });
+            }
+        }
+    }, 3000); // Every 3 seconds
+}
+```
 
-// On the HOST side, when handling data
-conn.on('data', function(data) {
-    if (data.type === 'HEARTBEAT') {
-        // The connection is alive. You could update a `lastHeartbeat` timestamp here.
-        return;
+**On the Client:**
+Check if the heartbeat has stopped. If so, destroy the connection and reconnect.
+
+```javascript
+let lastHeartbeat = Date.now();
+const TIMEOUT_MS = 8000; // 8 seconds tolerance
+
+setInterval(() => {
+    const timeSinceLast = Date.now() - lastHeartbeat;
+
+    // Logic: If connected but no heartbeat, OR if connection var is null
+    if ((hostConnection && timeSinceLast > TIMEOUT_MS) || !hostConnection) {
+        console.warn('Connection dead or timed out. Reconnecting...');
+        
+        if (hostConnection) {
+            hostConnection.close(); // Clean up old object
+        }
+        
+        // Re-run the connection logic
+        // Because the Host sends 'FULL_SYNC' on 'open', 
+        // the state will automatically fix itself upon reconnecting.
+        connectToHost('room-host-id');
     }
-    // Handle other data...
+}, 2000);
+```
+
+## 6. Official Lifecycle Events & Error Handling
+
+Understanding PeerJS events is critical for debugging.
+
+### Peer Events
+*   `open`: Emitted when the connection to the PeerServer is established and the ID is available.
+*   `connection`: Emitted when a remote peer attempts to connect to you.
+*   `disconnected`: Emitted when the peer disconnects from the *signaling server*, but P2P connections *might* still be active. You can often call `peer.reconnect()` here.
+*   `close`: Emitted when the peer is destroyed and can no longer accept connections.
+*   `error`: Critical for handling failures.
+
+### Common Error Types
+You should implement a global error listener:
+
+```javascript
+peer.on('error', (err) => {
+    console.error(err.type, err);
+
+    switch (err.type) {
+        case 'peer-unavailable':
+            // The ID you are trying to connect to does not exist.
+            alert('Host ID not found.');
+            break;
+            
+        case 'unavailable-id':
+            // The ID you tried to use for yourself is taken.
+            alert('This ID is already in use.');
+            break;
+
+        case 'network':
+            // Lost connection to the PeerServer/Signaling server.
+            // P2P connections might still work, but new ones cannot be made.
+            break;
+
+        case 'browser-incompatible':
+            // The browser doesn't support WebRTC.
+            alert('Your browser does not support WebRTC.');
+            break;
+    }
 });
 ```
+
+### DataConnection Events
+*   `open`: The connection is ready to send/receive data.
+*   `data`: Data has been received.
+*   `close`: The connection has been closed by either side.
+*   `error`: A connection-specific error occurred.
