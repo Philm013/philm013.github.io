@@ -1559,9 +1559,7 @@ renderTagRules() {
         },
 
         switchDrillTab(tab) { ['list','analysis','upload'].forEach(t => document.getElementById('drill-tab-'+t).classList.add('hidden')); document.querySelectorAll('.sub-nav-btn').forEach(b => b.classList.remove('active')); document.getElementById('drill-tab-'+tab).classList.remove('hidden'); const map = {list:0, analysis:1, upload:2}; document.querySelectorAll('.sub-nav-btn')[map[tab]].classList.add('active'); },
-        // REPLACE THE EXISTING showDetail FUNCTION INSIDE THE ui OBJECT:
-
-showDetail(id) {
+        showDetail(id) {
     let t = app.getTxById(id); 
     if(!t) return;
 
@@ -1579,34 +1577,81 @@ showDetail(id) {
             </div>
         </div>` : '';
     
-    // --- 2. SUB-DATA (BREAKDOWN) LOGIC (NEW) ---
-    // Check if there are sub-transactions for this category (and ensure this isn't already a sub-transaction)
+    // --- 2. SUB-DATA (BREAKDOWN) LOGIC (UPDATED WITH DATE FILTER) ---
     let subDataHtml = '';
+    
+    // Only run if there is uploaded data for this category AND this isn't a sub-item itself
     if (!t.isSub && app.data.subData[t.cleanName] && app.data.subData[t.cleanName].length > 0) {
-        const subs = app.data.subData[t.cleanName];
-        // Sort by date descending
-        subs.sort((a,b) => new Date(b.date) - new Date(a.date));
         
+        // A. Calculate the Date Window
+        // Get all main transactions (Payments) for this category to find the previous billing date
+        const categoryMainTx = app.data.transactions
+            .filter(tx => tx.cleanName === t.cleanName && !tx.isIgnored)
+            .sort((a,b) => new Date(a.date) - new Date(b.date)); // Sort Oldest to Newest
+
+        const currentIndex = categoryMainTx.findIndex(x => x.id === t.id);
+        const currentTxDate = new Date(t.date);
+        
+        let prevTxDate = null;
+        let dateRangeText = "";
+
+        if (currentIndex > 0) {
+            // Use the previous payment date as the start of the window
+            prevTxDate = new Date(categoryMainTx[currentIndex - 1].date);
+            dateRangeText = `${prevTxDate.toLocaleDateString()} – ${currentTxDate.toLocaleDateString()}`;
+        } else {
+            // If no previous payment exists, default to 45 days prior
+            prevTxDate = new Date(t.date);
+            prevTxDate.setDate(prevTxDate.getDate() - 45);
+            dateRangeText = `Prior to ${currentTxDate.toLocaleDateString()}`;
+        }
+
+        // B. Filter the Sub-Data
+        const allSubs = app.data.subData[t.cleanName];
+        const filteredSubs = allSubs.filter(s => {
+            const sDate = new Date(s.date);
+            // Logic: Item date is strictly AFTER previous payment AND ON/BEFORE current payment
+            return sDate > prevTxDate && sDate <= currentTxDate;
+        });
+
+        // Sort Newest First for display
+        filteredSubs.sort((a,b) => new Date(b.date) - new Date(a.date));
+        
+        const subTotal = filteredSubs.reduce((acc, curr) => acc + curr.amount, 0);
+
         subDataHtml = `
         <div style="margin-top:20px; padding-top:20px; border-top:1px dashed var(--border);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h4 style="margin:0; color:var(--text-sub)"><i class="fas fa-file-invoice"></i> UPLOADED DETAILS</h4>
-                <button class="btn btn-sm btn-outline" onclick="ui.toggleModal('detailModal'); ui.openDrill('${t.cleanName.replace(/'/g, "\\'")}')">View Full Analysis</button>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                <div>
+                    <h4 style="margin:0; color:var(--text-sub)"><i class="fas fa-file-invoice"></i> MATCHED DETAILS</h4>
+                    <div style="font-size:0.75rem; color:var(--accent); font-weight:600;">Window: ${dateRangeText}</div>
+                </div>
+                <div style="text-align:right">
+                     <button class="btn btn-sm btn-outline" onclick="ui.toggleModal('detailModal'); ui.openDrill('${t.cleanName.replace(/'/g, "\\'")}')">View All</button>
+                </div>
             </div>
-            <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; max-height:250px; overflow-y:auto;">
-                ${subs.map(s => `
-                    <div style="padding:10px; border-bottom:1px solid var(--border); font-size:0.85rem; display:flex; justify-content:space-between;">
-                        <div style="flex:1; margin-right:10px;">
-                            <div style="font-weight:600;">${s.desc}</div>
-                            <div style="color:var(--text-sub); font-size:0.75rem;">${s.rawDateStr}</div>
+            
+            ${filteredSubs.length > 0 ? `
+                <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; max-height:250px; overflow-y:auto;">
+                    ${filteredSubs.map(s => `
+                        <div style="padding:10px; border-bottom:1px solid var(--border); font-size:0.85rem; display:flex; justify-content:space-between;">
+                            <div style="flex:1; margin-right:10px;">
+                                <div style="font-weight:600;">${s.desc}</div>
+                                <div style="color:var(--text-sub); font-size:0.75rem;">${s.rawDateStr}</div>
+                            </div>
+                            <div class="${s.amount>=0?'pos':'neg'}" style="font-weight:700;">${this.fmt(s.amount)}</div>
                         </div>
-                        <div class="${s.amount>=0?'pos':'neg'}" style="font-weight:700;">${this.fmt(s.amount)}</div>
-                    </div>
-                `).join('')}
-            </div>
-            <div style="font-size:0.75rem; color:var(--text-sub); margin-top:5px; text-align:right;">
-                ${subs.length} items from source files
-            </div>
+                    `).join('')}
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:5px; font-size:0.8rem; padding:0 5px;">
+                    <span style="color:var(--text-sub)">${filteredSubs.length} items found</span>
+                    <span><strong>Sum:</strong> ${this.fmt(subTotal)}</span>
+                </div>
+            ` : `
+                <div style="padding:15px; text-align:center; color:var(--text-sub); border:1px solid var(--border); border-radius:8px; background:var(--bg);">
+                    No details found within this date range.
+                </div>
+            `}
         </div>`;
     }
 
