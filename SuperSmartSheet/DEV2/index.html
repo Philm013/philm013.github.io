@@ -200,6 +200,14 @@
         tr.row-new td { --row-bg-override: var(--row-new); }
         tr.row-modified td { --row-bg-override: var(--row-mod); }
         tr.row-deleted td { background-color: var(--row-del) !important; opacity: 0.5; text-decoration: line-through; pointer-events: none; }
+
+        #sheetLink:hover #sheetName {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+        #sheetLink:hover #sheetIdDisplay {
+            color: var(--primary-dark);
+        }
         
         .badge-cell { padding: 12px 8px; height: 100%; min-height: 100%; display: flex; align-items: flex-start; gap: 4px; overflow: hidden; cursor: pointer; white-space: normal; position: relative; flex-wrap: wrap;}
         .badge-pill { background: var(--primary-soft); color: var(--primary-dark); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
@@ -293,10 +301,13 @@
     <div class="glass-header">
         <div class="d-flex align-items-center gap-3 overflow-hidden">
             <button class="btn btn-light rounded-circle shadow-sm border" onclick="toDash()"><i class="bi bi-chevron-left"></i></button>
-            <div class="text-truncate">
-                <div class="fw-bold text-truncate" id="sheetName">Loading...</div>
-                <div class="small text-muted font-monospace" id="sheetIdDisplay">...</div>
-            </div>
+            <!-- ADDED LINK HERE -->
+            <a id="sheetLink" href="#" target="_blank" class="text-decoration-none text-reset d-block overflow-hidden">
+                <div class="text-truncate">
+                    <div class="fw-bold text-truncate" id="sheetName" style="cursor: pointer;">Loading...</div>
+                    <div class="small text-muted font-monospace" id="sheetIdDisplay">...</div>
+                </div>
+            </a>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-white border shadow-sm" onclick="viewRawData()" title="View Raw Data Table"><i class="bi bi-table"></i></button>
@@ -530,20 +541,44 @@ function renderLibrary() { const lib = JSON.parse(localStorage.getItem('smLib') 
 function addToLib(id, name) { let lib = JSON.parse(localStorage.getItem('smLib') || '[]'); lib = lib.filter(s => s.id !== id); lib.unshift({ id, name, date: Date.now() }); localStorage.setItem('smLib', JSON.stringify(lib.slice(0,10))); }
 function removeSheet(e, id) { e.stopPropagation(); if(confirm('Remove?')) { let lib = JSON.parse(localStorage.getItem('smLib') || '[]'); localStorage.setItem('smLib', JSON.stringify(lib.filter(s => s.id !== id))); renderLibrary(); } }
 async function api(ep, method='GET', body=null) { const t = localStorage.getItem('smToken'); const opts = { method, headers: { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' } }; if(body) opts.body = JSON.stringify(body); sysLog(`REQ ${method} ${ep}`, body); const res = await fetch(CONFIG.proxy + CONFIG.api + ep, opts); if(res.status === 403) { if(confirm("Proxy Locked. Open unlock page?")) window.open('https://cors-anywhere.herokuapp.com/corsdemo', '_blank'); throw 'PROXY_LOCK'; } const json = await res.json(); if(!res.ok) { sysLog(`ERR ${res.status}`, json); throw (json.message || `Error ${res.status}`); } return json; }
-function loadFromDash() { const id = document.getElementById('dashSheetId').value.trim(); if(id) loadSheet(id); }
+function loadFromDash() {
+    let input = document.getElementById('dashSheetId').value.trim();
+    if (!input) return;
+
+    // Check if it's a full URL
+    if (input.includes('/sheets/')) {
+        const parts = input.split('/sheets/');
+        // Extract the ID/Slug (the part after /sheets/ and before any ?)
+        input = parts[1].split('?')[0];
+    }
+    
+    // Now 'input' is either 'G2gvgr4f5W3qg88cXMrc...' or '1968568015998852'
+    loadSheet(input);
+}
 function loadSheet(id) { STATE.sheetId = id; document.getElementById('dashboardView').classList.remove('active'); document.getElementById('editorView').classList.add('active'); resetState(); fetchData().then(() => { loadViews(); if(STATE.autoRefresh) startAutoRefresh(); openSetup(false); }); }
 function resetState() { STATE.serverRows = []; STATE.allRows=[]; STATE.adds=[]; STATE.dels=new Set(); STATE.edits={}; STATE.hierarchyChanges={}; STATE.selectedRowIds.clear(); STATE.meta.collapsed.clear(); STATE.meta.setupCollapsed.clear(); STATE.meta.rawCollapsed.clear(); STATE.meta.maxDepth = 0; STATE.lastModifiedAt = null; STATE.conflicts = []; STATE.rowMap.clear(); STATE.childMap.clear(); STATE.flatRenderList = []; updateSyncUI(); document.getElementById('tBody').innerHTML=''; document.getElementById('sheetName').innerText='Loading...'; stopAutoRefresh(); }
 
 async function fetchData() { 
     showLoader(true); 
     try { 
-        const d = await api(`/sheets/${STATE.sheetId}?include=format,objectValue,writerInfo,attachments,discussions`); 
+        // We call the API using whatever ID was provided (Numeric or Slug both work)
+        const d = await api(`/sheets/${STATE.sheetId}?include=format,objectValue`); 
+        
         STATE.serverRows = JSON.parse(JSON.stringify(d.rows)); 
         STATE.allRows = JSON.parse(JSON.stringify(d.rows)); 
         STATE.cols = d.columns; 
         STATE.lastModifiedAt = d.modifiedAt; 
+        
+        // Update UI Text
         document.getElementById('sheetName').innerText = d.name; 
-        document.getElementById('sheetIdDisplay').innerText = d.id; 
+        document.getElementById('sheetIdDisplay').innerText = d.id; // Keep Numeric ID for display
+        
+        // FIX: Use the official permalink returned by Smartsheet
+        const sheetLink = document.getElementById('sheetLink');
+        if(sheetLink && d.permalink) {
+            sheetLink.href = d.permalink; 
+        }
+
         addToLib(d.id, d.name); 
         STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); 
         indexAllData();
@@ -578,26 +613,47 @@ function checkConflictsDone() { if(STATE.conflicts.length === 0) { bootstrap.Mod
 function convertDeletedRowToNew(oldId) { const edits = STATE.edits[oldId]; if(!edits) return; const tempId = 'NEW_REC_' + Date.now(); const newRow = { id: tempId, cells: [], rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", toTop: true }; STATE.edits[tempId] = {...edits}; delete STATE.edits[oldId]; STATE.adds.push(newRow); }
 
 // --- FORMATTING PARSER ---
+// --- 3. FIX: PREVENT ACCIDENTAL BLACK BACKGROUNDS ---
 function getFormatInfo(fmt) {
     if (!fmt) return { style: '', bg: null };
-    const p = fmt.split(','); let s = ''; let bg = null;
-    if (p.length > 9) { const bgIdx = parseInt(p[9]); if (!isNaN(bgIdx) && bgIdx > 1 && SMARTSHEET_PALETTE[bgIdx]) bg = SMARTSHEET_PALETTE[bgIdx]; }
-    if (p.length > 8) { const txtIdx = parseInt(p[8]); if (!isNaN(txtIdx) && txtIdx > 1 && SMARTSHEET_PALETTE[txtIdx]) s += `color: ${SMARTSHEET_PALETTE[txtIdx]} !important;`; }
+    const p = fmt.split(','); 
+    let s = ''; 
+    let bg = null;
+
+    // Index 9 is Background Color
+    if (p.length > 9) { 
+        const bgIdx = parseInt(p[9]); 
+        // Smartsheet Palette: 0=None, 1=White, 2=Black, 3...Colors
+        // We only apply if it's not 0 (None), 1 (White), or if it's a specific color.
+        // If your sheet is turning black, index 2 is being triggered. 
+        // We will skip 0, 1, and 2 to keep backgrounds clean by default.
+        if (!isNaN(bgIdx) && bgIdx > 2 && SMARTSHEET_PALETTE[bgIdx]) {
+            bg = SMARTSHEET_PALETTE[bgIdx];
+        }
+    }
+    
+    // Index 8 is Text Color
+    if (p.length > 8) { 
+        const txtIdx = parseInt(p[8]); 
+        if (!isNaN(txtIdx) && txtIdx > 1 && SMARTSHEET_PALETTE[txtIdx]) {
+            s += `color: ${SMARTSHEET_PALETTE[txtIdx]} !important;`;
+        }
+    }
+
+    // Alignment and other styles...
     if (p[6]) { const h = ['','left','center','right']; if (h[p[6]]) s += `text-align: ${h[p[6]]};`; }
     if (p[7]) { const v = ['','top','middle','bottom']; if (v[p[7]]) s += `vertical-align: ${v[p[7]]};`; }
-    if (p[15] === '1') s += `white-space: normal !important; word-wrap: break-word;`;
     if (p[2] === '1') s += 'font-weight: bold;';
     if (p[3] === '1') s += 'font-style: italic;';
-    let d = [];
-    if (p[4] === '1') d.push('underline');
-    if (p[5] === '1') d.push('line-through');
-    if (d.length) s += `text-decoration: ${d.join(' ')};`;
+    
     return { style: s, bg: bg };
 }
 
 // --- SETUP MODAL ---
+// --- 2. FIX: PERSISTENT OUTLINE BUTTONS ---
 function generateOutlineButtonsHTML(context) { 
-    const maxLevel = STATE.meta.maxDepth + 1; 
+    // Use the absolute maximum depth of the sheet, not the current view
+    const maxLevel = (STATE.meta.absoluteMaxDepth || 0) + 1; 
     let html = ''; 
     for(let i = 1; i <= maxLevel; i++) { 
         html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`; 
@@ -644,16 +700,33 @@ function renderSetupCols() {
 function applySetup() { const curView = STATE.views.find(v => v.id === STATE.currentViewId); if (!curView) return; const checkboxes = document.querySelectorAll('#setupColList input:checked'); let newVisible = Array.from(checkboxes).map(cb => parseInt(cb.value)); const primaryColId = STATE.cols.find(c => c.primary)?.id; if (primaryColId && !newVisible.includes(primaryColId)) { newVisible.unshift(primaryColId); } curView.visibleCols = newVisible; saveViewsToStorage(); bootstrap.Modal.getInstance('#setupModal').hide(); renderTable(); }
 
 // --- DATA INDEXING & HIERARCHY ---
+// --- 1. FIX: RE-CALCULATE MAX DEPTH GLOBALLY ---
 function indexAllData() {
     STATE.rowMap.clear(); STATE.childMap.clear();
-    // FIX: Do not concatenate adds here. Adds are already spliced into allRows.
+    let absoluteMaxDepth = 0;
+
+    // Helper to calculate depth of any row regardless of visibility
+    const getRowDepth = (row) => {
+        let d = 0;
+        let curr = row;
+        while (curr && curr.parentId) {
+            d++;
+            curr = STATE.allRows.find(r => r.id === curr.parentId);
+        }
+        return d;
+    };
+
     STATE.allRows.forEach(r => {
         STATE.rowMap.set(r.id, r);
+        const d = getRowDepth(r);
+        if (d > absoluteMaxDepth) absoluteMaxDepth = d; // Track the sheet's total depth
+
         if (r.parentId) {
             if (!STATE.childMap.has(r.parentId)) STATE.childMap.set(r.parentId, []);
             STATE.childMap.get(r.parentId).push(r.id);
         }
     });
+    STATE.meta.absoluteMaxDepth = absoluteMaxDepth; // Store this for the buttons
 }
 
 function getVisibleIds() {

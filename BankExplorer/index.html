@@ -1,0 +1,2199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Bank Explorer Pro v6.4 (Interactive AI)</title>
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> <!-- For Markdown Rendering -->
+
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #3b82f6;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+            --header-height: 50px;
+            --search-height: 60px;
+            --nav-height: 65px;
+            --ai-chat-width: 450px;
+        }
+
+        body.dark-mode {
+            --primary: #f8fafc;
+            --accent: #60a5fa;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text-main: #f1f5f9;
+            --text-sub: #94a3b8;
+            --border: #334155;
+            --card-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            margin: 0; font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main);
+            height: 100vh; height: 100dvh; 
+            display: flex; flex-direction: column; overflow: hidden; 
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* HEADER */
+        header {
+            flex: 0 0 var(--header-height); background: var(--surface); padding: 0 20px; 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 1px solid var(--border); z-index: 50;
+        }
+        .logo { font-weight: 800; font-size: 1.1rem; color: var(--text-main); display:flex; align-items:center; gap:10px; }
+        
+        /* SEARCH BAR */
+        .search-container {
+            flex: 0 0 var(--search-height); background: var(--bg); padding: 10px 20px;
+            display: flex; align-items: center; gap: 10px; z-index: 40;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .search-wrapper { position: relative; flex: 1; }
+        
+        .search-input {
+            width: 100%; padding: 10px 10px 10px 35px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--surface); color: var(--text-main); font-size: 0.95rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05); outline: none;
+        }
+        .search-input:focus { border-color: var(--accent); }
+        .search-icon { position: absolute; left: 12px; top: 12px; color: var(--text-sub); font-size: 0.9rem; }
+
+        .autocomplete-list {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 8px; margin-top: 5px; max-height: 200px; overflow-y: auto;
+            box-shadow: var(--card-shadow); z-index: 1000; display: none;
+        }
+        .autocomplete-item {
+            padding: 10px 15px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.9rem;
+            display: flex; justify-content: space-between;
+        }
+        .autocomplete-item:last-child { border-bottom: none; }
+        .autocomplete-match { font-weight: 700; color: var(--accent); }
+
+        /* MAIN */
+        main {
+            flex: 1; position: relative; overflow-y: auto; overflow-x: hidden;
+            background: var(--bg); 
+            padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px);
+        }
+
+        /* NAV */
+        nav.bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--surface); border-top: 1px solid var(--border); 
+            display: flex; justify-content: space-around; align-items: flex-start; 
+            padding-top: 10px;
+            padding-bottom: var(--safe-bottom);
+            height: calc(var(--nav-height) + var(--safe-bottom));
+            z-index: 100; 
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.05);
+        }
+        .nav-item { 
+            flex: 1; text-align: center; color: var(--text-sub); 
+            font-size: 0.7rem; background: none; border: none; cursor: pointer; transition: color 0.2s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .nav-item i { font-size: 1.4rem; margin-bottom: 5px; display: block; }
+        .nav-item.active { color: var(--accent); }
+
+        /* VIEWS */
+        .view-section { display: none; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .view-section.active { display: block; animation: fadeIn 0.3s ease-out; }
+
+        /* CARDS */
+        .card {
+            background: var(--surface); border-radius: 16px; padding: 20px;
+            box-shadow: var(--card-shadow); margin-bottom: 20px; border: 1px solid var(--border);
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border); border-radius: 12px;
+            padding: 30px 20px; text-align: center; cursor: pointer;
+            transition: all 0.2s; background: rgba(0,0,0,0.02);
+        }
+        .upload-area:active { background: rgba(0,0,0,0.05); border-color: var(--accent); }
+        
+        .file-list-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px; background: var(--surface); border-radius: 8px;
+            margin-bottom: 8px; border: 1px solid var(--border); font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .file-list-item:active { background: rgba(0,0,0,0.05); }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+        .metric-box { background: var(--surface); padding: 15px; border-radius: 12px; text-align: center; box-shadow: var(--card-shadow); border: 1px solid var(--border); }
+        .metric-val { font-size: 1.1rem; font-weight: 800; margin-top: 5px; }
+        .pos { color: var(--success); } .neg { color: var(--danger); }
+
+        .chart-container { position: relative; height: 300px; width: 100%; }
+
+        /* INTERACTIVE CONTROLS */
+        .chart-controls {
+            display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 10px; align-items: center;
+        }
+        .control-btn {
+            padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; border: 1px solid var(--border);
+            background: var(--surface); color: var(--text-sub); white-space: nowrap; cursor: pointer; transition: 0.2s;
+        }
+        .control-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+        
+        .filter-chip {
+            background: var(--primary); color: white; padding: 6px 12px; border-radius: 8px; 
+            font-size: 0.85rem; display: flex; align-items: center; gap: 8px; 
+            margin-bottom: 15px; cursor: pointer; width: fit-content;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .filter-chip:hover { opacity: 0.9; }
+
+        .tx-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface); padding: 16px; border-bottom: 1px solid var(--border);
+            cursor: pointer;
+        }
+        .tx-row:active { background: rgba(0,0,0,0.05); }
+        .tx-row:first-of-type { border-top-left-radius: 12px; border-top-right-radius: 12px; }
+        .tx-row:last-of-type { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; border-bottom: none; }
+        
+        .potential-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid var(--border);
+        }
+        .potential-row:last-child { border-bottom: none; }
+
+        /* TAGS */
+        .tag-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 8px; border-radius: 12px; font-size: 0.7rem;
+            background: var(--bg); border: 1px solid var(--border); color: var(--text-sub);
+            margin-right: 4px;
+        }
+        .tag-badge i { font-size: 0.65rem; cursor: pointer; }
+        .tag-badge i:hover { color: var(--danger); }
+        
+        .tag-input-container {
+            display: flex; gap: 5px; margin-top: 10px;
+        }
+
+        /* MODALS */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7); display: none;
+            backdrop-filter: blur(4px); 
+            align-items: flex-end; justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-sheet {
+            background: var(--surface); width: 100%; max-width: 800px;
+            height: auto; max-height: 90vh; max-height: 90dvh;
+            display: flex; flex-direction: column;
+            border-top-left-radius: 24px; border-top-right-radius: 24px;
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            padding-bottom: calc(var(--safe-bottom) + 20px);
+            color: var(--text-main);
+        }
+
+        .modal-header {
+            flex: 0 0 auto; padding: 15px 20px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface); border-top-left-radius: 24px; border-top-right-radius: 24px;
+        }
+
+        .modal-body {
+            flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; background: var(--bg);
+        }
+        
+        .full-screen-modal {
+            height: 100vh; height: 100dvh; max-height: 100dvh; border-radius: 0;
+            padding-bottom: 0;
+        }
+        .full-screen-modal .modal-header { border-radius: 0; }
+
+        /* CHAT / AI WIDGET */
+        .chat-fab {
+            position: fixed; bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px); right: 20px;
+            width: 56px; height: 56px; border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white; border: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; cursor: pointer; z-index: 150;
+            transition: transform 0.2s;
+        }
+        .chat-fab:active { transform: scale(0.95); }
+
+        .chat-window {
+            position: fixed; bottom: 0; right: 0; width: 100%; max-width: 500px; height: 80vh;
+            background: var(--surface); border-top-left-radius: 20px; border-top-right-radius: 20px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 160;
+            display: flex; flex-direction: column; transform: translateY(110%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid var(--border);
+        }
+        @media (min-width: 768px) {
+            .chat-window { bottom: 20px; right: 20px; width: var(--ai-chat-width); height: 600px; border-radius: 20px; }
+        }
+        .chat-window.open { transform: translateY(0); }
+        
+        .chat-header {
+            padding: 10px 15px; border-bottom: 1px solid var(--border); display: flex; flex-direction:column; gap:8px;
+            background: var(--surface); border-radius: 20px 20px 0 0;
+        }
+        .chat-controls-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: var(--bg); display: flex; flex-direction: column; gap: 10px; }
+        
+        .msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; font-size: 0.9rem; line-height: 1.4; position: relative; }
+        .msg.user { align-self: flex-end; background: var(--accent); color: white; border-bottom-right-radius: 4px; }
+        .msg.ai { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); color: var(--text-main); border-bottom-left-radius: 4px; }
+        .msg.system { align-self: center; font-size: 0.75rem; color: var(--text-sub); background: rgba(0,0,0,0.05); padding: 4px 10px; border-radius: 10px; text-align:center;}
+        .msg.ai table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.8rem; }
+        .msg.ai th, .msg.ai td { border: 1px solid var(--border); padding: 6px; text-align: left; }
+        .msg.ai th { background-color: var(--bg); }
+        .msg.ai ul, .msg.ai ol { padding-left: 20px; }
+        .msg.ai strong { font-weight: 700; }
+        
+        .chat-input-area { padding: 10px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 8px; }
+
+        .suggestion-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-top: 10px; }
+        .suggestion-item { font-size: 0.85rem; border-bottom: 1px solid var(--border); padding: 8px 0; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item .desc { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: inline-block; vertical-align: middle;}
+        .suggestion-actions { margin-top: 15px; display: flex; gap: 10px; }
+
+        /* PDF CANVAS STYLES */
+        #pdfContainer {
+            width: 100%; height: 100%; overflow-y: auto; background: #525659;
+            display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 20px;
+        }
+        #pdfContainer canvas {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); max-width: 100%;
+        }
+
+        .sub-nav { 
+            display: flex; border-bottom: 1px solid var(--border); 
+            background: var(--surface); flex: 0 0 auto;
+        }
+        .sub-nav-btn { flex: 1; padding: 15px; text-align: center; background: none; border: none; border-bottom: 2px solid transparent; font-weight: 600; color: var(--text-sub); }
+        .sub-nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px; color: var(--text-sub); }
+        .form-control { 
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); 
+            background: var(--bg); color: var(--text-main); font-size: 1rem;
+        }
+        
+        .check-group {
+            display: flex; align-items: center; gap: 10px; background: var(--bg);
+            padding: 12px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer;
+        }
+        .check-group input[type="checkbox"] { transform: scale(1.2); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        
+        .btn { border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-ghost { background: transparent; color: var(--text-sub); }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-danger-ghost { background: transparent; color: var(--danger); border: 1px solid transparent; }
+        .btn-success-soft { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .btn-danger-soft { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+        .hidden { display: none !important; }
+        .badge { background: var(--bg); border: 1px solid var(--border); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--text-sub); }
+        
+        .profile-card { background: var(--bg); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .calc-toggle-btn {
+            background: transparent; border: 1px solid var(--border); color: var(--text-sub);
+            padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-right: 5px; cursor: pointer; width: 35px;
+        }
+        .calc-toggle-btn.active { background: var(--bg); color: var(--accent); border-color: var(--accent); font-weight: bold; }
+
+        .typing-indicator { display: inline-block; width: 6px; height: 6px; background: #ccc; border-radius: 50%; margin: 0 2px; animation: bounce 1s infinite; }
+        .typing-indicator:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo"><i class="fas fa-wallet"></i> Bank Explorer</div>
+    <div style="display: flex; gap: 5px;">
+        <button class="btn btn-ghost" onclick="ui.toggleTheme()" title="Dark Mode"><i class="fas fa-moon"></i></button>
+        <button class="btn btn-ghost" onclick="ui.toggleFullScreen()" title="Full Screen"><i id="fsIcon" class="fas fa-expand"></i></button>
+        <button class="btn btn-ghost" onclick="ui.toggleModal('settingsModal')" title="Settings"><i class="fas fa-cog"></i></button>
+        <button class="btn btn-ghost" onclick="ui.toggleModal('exportModal')" title="Export"><i class="fas fa-download"></i></button>
+    </div>
+</header>
+
+<!-- GLOBAL SEARCH BAR -->
+<div class="search-container">
+    <div class="search-wrapper">
+        <i class="fas fa-search search-icon"></i>
+        <input type="text" id="globalSearch" class="search-input" placeholder="Search merchants, tags, amounts..." onkeyup="app.handleSearchInput(event)">
+        <div id="autocompleteList" class="autocomplete-list"></div>
+    </div>
+    <button class="btn btn-ghost" style="padding: 10px;" onclick="ui.toggleModal('filterModal')" title="Advanced Filters">
+        <i class="fas fa-filter"></i> <span id="filterDot" style="color:var(--accent); display:none">•</span>
+    </button>
+</div>
+
+<main>
+    <!-- DASHBOARD -->
+    <div id="view-dashboard" class="view-section active">
+        <!-- KPIs -->
+        <div style="margin-bottom:15px; display:flex; gap:10px; overflow-x:auto; padding-bottom:5px;">
+            <div class="metric-box" style="flex:1; min-width:120px;">
+                <div style="font-size:0.7rem; color:var(--text-sub)">NET FLOW</div>
+                <div class="metric-val" id="kpi-net">-</div>
+            </div>
+            <div class="metric-box" style="flex:1; min-width:120px;">
+                <div style="font-size:0.7rem; color:var(--text-sub)">INCOME</div>
+                <div class="metric-val pos" id="kpi-inc">-</div>
+            </div>
+            <div class="metric-box" style="flex:1; min-width:120px;">
+                <div style="font-size:0.7rem; color:var(--text-sub)">EXPENSE</div>
+                <div class="metric-val neg" id="kpi-exp">-</div>
+            </div>
+            <div class="metric-box" style="flex:1; min-width:120px; border-color:var(--accent);">
+                <div style="font-size:0.7rem; color:var(--accent)">SAVINGS RATE</div>
+                <div class="metric-val" id="kpi-rate" style="color:var(--accent)">-</div>
+            </div>
+        </div>
+
+        <!-- Interactive Explorer -->
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="margin:0">Visualization</h3>
+            </div>
+            
+            <div id="chartFilterContainer"></div>
+
+            <div class="chart-controls">
+                <button class="control-btn active" data-group="time" onclick="ui.setDashTime('month', this)">Monthly</button>
+                <button class="control-btn" data-group="time" onclick="ui.setDashTime('week', this)">Weekly</button>
+                <button class="control-btn" data-group="time" onclick="ui.setDashTime('quarter', this)">Quarterly</button>
+                <div style="width:1px; background:var(--border); height:20px; margin:0 5px;"></div>
+                <button class="control-btn active" data-group="mode" onclick="ui.setDashMode('flow', this)">Net Flow</button>
+                <button class="control-btn" data-group="mode" onclick="ui.setDashMode('trend', this)">Trend</button>
+                <button class="control-btn" data-group="mode" onclick="ui.setDashMode('composition', this)">Composition</button>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="dashChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Secondary Analysis -->
+        <div class="card">
+            <h3 style="margin-bottom:5px;">Top Categories</h3>
+            <div style="font-size:0.8rem; color:var(--text-sub); margin-bottom:15px;">Click a slice to filter the chart above</div>
+            <div class="chart-container" style="height:250px;"><canvas id="dashDonut"></canvas></div>
+        </div>
+    </div>
+
+    <!-- SOURCES -->
+    <div id="view-sources" class="view-section">
+        <div class="card">
+            <h2 style="margin-top:0;">Data Sources</h2>
+            <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center; background:var(--bg); padding:10px; border-radius:8px; border:1px solid var(--border);">
+                <div style="flex:1">
+                    <label style="font-size:0.7rem; font-weight:700; color:var(--text-sub);">PARSING PROFILE</label>
+                    <select id="importProfileSelect" class="form-control" style="padding:6px; font-size:0.9rem; margin-top:5px;"></select>
+                </div>
+                <button class="btn btn-sm btn-ghost" onclick="ui.toggleModal('parserManagerModal')" title="Edit Profiles"><i class="fas fa-edit"></i></button>
+            </div>
+            <div class="upload-area" onclick="document.getElementById('mainFileInput').click()">
+                <i class="fas fa-file-import" style="font-size: 2rem; color: var(--accent); margin-bottom: 10px;"></i>
+                <div style="font-weight:600;">Add Bank Statements</div>
+                <div style="font-size:0.8rem; color:var(--text-sub)">Using selected profile</div>
+                <input type="file" id="mainFileInput" multiple accept="application/pdf" style="display: none;">
+            </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin: 20px 10px 10px 10px;">
+            <h4 style="margin:0; color:var(--text-sub);">Managed Files</h4>
+            <button class="btn btn-ghost" style="color:var(--danger); font-size:0.8rem;" onclick="app.clearAll()">Reset All</button>
+        </div>
+        <div id="fileListContainer"></div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div id="view-transactions" class="view-section">
+        <div style="padding:10px; text-align:right; font-size:0.8rem; color:var(--text-sub);">
+            Showing <span id="txCount">0</span> transactions
+        </div>
+        <div id="txContainer"></div>
+    </div>
+
+    <!-- ANALYSIS -->
+    <div id="view-analysis" class="view-section">
+        
+        <!-- Tags Analysis -->
+        <div class="card">
+            <h3 style="margin-top:0"><i class="fas fa-tags" style="color:var(--accent)"></i> Tag Exploration</h3>
+            <div id="tagsCloud" style="display:flex; flex-wrap:wrap; gap:8px; padding-top:10px;">
+                <small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>
+            </div>
+        </div>
+
+        <!-- Potential Recurring Card -->
+        <div class="card hidden" id="potentialCard" style="border-left: 4px solid var(--warning);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h3 style="margin-top:0; color:var(--warning)"><i class="fas fa-magic"></i> Potential Recurring</h3>
+                <button class="btn btn-ghost btn-sm" onclick="ui.toggleModal('settingsModal')"><i class="fas fa-sliders-h"></i></button>
+            </div>
+            <div style="font-size:0.8rem; color:var(--text-sub); margin-bottom:10px;">
+                Found items matching your recurring settings. <br>Tap name to view transactions.
+            </div>
+            <div id="potentialList"></div>
+        </div>
+
+        <!-- Confirmed Recurring Card -->
+        <div class="card">
+            <h3 style="margin-top:0"><i class="fas fa-rotate" style="color:var(--accent)"></i> Recurring Expenses</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span style="color:var(--text-sub)">Monthly Estimate</span>
+                <span id="recurringSum" style="font-weight:800; font-size:1.2rem;">$0.00</span>
+            </div>
+            <div id="recurringList" style="border-top:1px solid var(--border); padding-top:10px;">
+                <small style="color:var(--text-sub)">No recurring items tagged.</small>
+            </div>
+            <hr style="border:none; border-top: 1px solid var(--border); margin: 20px 0;">
+            <div id="recurringTagsList"></div>
+            <div class="tag-input-container">
+                <input type="text" id="newRecurringTag" class="form-control" list="recurringTagSuggestions" placeholder="Add tag to track monthly...">
+                <button class="btn btn-sm btn-outline" onclick="app.addRecurringTag(document.getElementById('newRecurringTag').value)"><i class="fas fa-plus"></i> Track</button>
+            </div>
+            <datalist id="recurringTagSuggestions"></datalist>
+        </div>
+
+        <h3 style="margin:0 0 15px 0;">Expense Breakdown</h3>
+        <div id="analysisList"></div>
+    </div>
+</main>
+
+<nav class="bottom-nav">
+    <button class="nav-item active" onclick="ui.switchView('dashboard')"><i class="fas fa-chart-pie"></i><span>Overview</span></button>
+    <button class="nav-item" onclick="ui.switchView('sources')"><i class="fas fa-folder-open"></i><span>Sources</span></button>
+    <button class="nav-item" onclick="ui.switchView('transactions')"><i class="fas fa-list"></i><span>List</span></button>
+    <button class="nav-item" onclick="ui.switchView('analysis')"><i class="fas fa-layer-group"></i><span>Analysis</span></button>
+</nav>
+
+<!-- AI CHAT WIDGET -->
+<button class="chat-fab" onclick="ui.toggleChat()"><i class="fas fa-robot"></i></button>
+<div id="chatWindow" class="chat-window">
+    <div class="chat-header">
+        <div class="chat-controls-row">
+            <div style="display:flex; align-items:center; gap:10px; font-weight:600;">
+                <i class="fas fa-robot" style="color:var(--accent)"></i> Gemini Assistant
+            </div>
+            <button class="btn btn-ghost" onclick="ui.toggleChat()"><i class="fas fa-chevron-down"></i></button>
+        </div>
+        <div class="chat-controls-row">
+             <select id="aiContextScope" class="form-control" style="padding: 6px; font-size: 0.8rem; border-radius: 6px; flex:1;">
+                <option value="auto">Context: Auto (Tools)</option>
+                <option value="view">Context: Current Filtered View</option>
+                <option value="all">Context: All Data (Entire DB)</option>
+             </select>
+        </div>
+    </div>
+    <div id="chatMessages" class="chat-messages">
+        <div class="msg system">Gemini Assistant Active. Select context scope above to control what data is sent to the AI. Set your API Key in Settings.</div>
+    </div>
+    <div class="chat-input-area">
+        <input type="text" id="chatInput" class="form-control" placeholder="Ask Gemini..." onkeypress="if(event.key==='Enter') ui.sendChatMessage()">
+        <button class="btn btn-primary" onclick="ui.sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+<!-- PDF MODAL -->
+<div id="pdfModal" class="modal-overlay" style="z-index: 2000;">
+    <div class="modal-sheet full-screen-modal">
+        <div class="modal-header">
+            <h3 id="pdfTitle">Document Viewer</h3>
+            <button class="btn btn-ghost" onclick="ui.toggleModal('pdfModal')">Close</button>
+        </div>
+        <div class="modal-body" style="background:#525659; height:100%; padding:0;">
+            <div id="pdfContainer"></div>
+        </div>
+    </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settingsModal" class="modal-overlay">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <h3>Settings</h3>
+            <button class="btn btn-ghost" onclick="ui.toggleModal('settingsModal')">Close</button>
+        </div>
+        <div class="modal-body" style="padding:20px;">
+            <h4>Configuration</h4>
+            <div class="input-group">
+                <label>Gemini API Key</label>
+                <input type="password" id="apiKeyInput" class="form-control" placeholder="AI Studio Key...">
+                <small style="color:var(--text-sub)">Stored locally in browser.</small>
+            </div>
+
+            <div class="input-group">
+                <label>Gemini Model</label>
+                <select id="aiModelSelect" class="form-control">
+                    <option value="gemini-flash-latest">Gemini Flash</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                    <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>AI System Instructions (Persona)</label>
+                <textarea id="aiContextInput" class="form-control" rows="4" placeholder="You are a financial assistant..."></textarea>
+                <small style="color:var(--text-sub)">Define the AI's persona or specific goals.</small>
+            </div>
+            
+            <button class="btn btn-outline" style="width:100%; margin-bottom:15px; text-align:left; justify-content:space-between;" onclick="ui.toggleModal('parserManagerModal')">
+                <span><i class="fas fa-code"></i> Manage Parser Profiles</span>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <button class="btn btn-outline" style="width:100%; margin-bottom:15px; text-align:left; justify-content:space-between;" onclick="ui.toggleModal('tagRulesModal')">
+                <span><i class="fas fa-magic"></i> Manage Smart Tagging Rules</span>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <button class="btn btn-primary" style="width:100%; margin-bottom:15px;" onclick="app.applyTagRulesToAll()">
+                <i class="fas fa-sync-alt"></i> Apply All Tagging Rules
+            </button>
+            
+            <h4>Recurring Detection Thresholds</h4>
+            <div style="display:flex; gap:10px;">
+                <div class="input-group" style="flex:1">
+                    <label>Min Days Interval</label>
+                    <input type="number" id="setMinDays" class="form-control" value="25">
+                </div>
+                <div class="input-group" style="flex:1">
+                    <label>Max Days Interval</label>
+                    <input type="number" id="setMaxDays" class="form-control" value="35">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Minimum Occurrences</label>
+                <input type="number" id="setMinCount" class="form-control" value="2">
+            </div>
+            <div style="margin-top:20px;">
+                 <button class="btn btn-primary" style="width:100%" onclick="app.updateSettings()">Save & Rescan</button>
+                 <br><br>
+                 <button class="btn btn-outline" style="width:100%" onclick="app.clearRejected()">Reset Rejected Suggestions</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TAG RULES MODAL -->
+<div id="tagRulesModal" class="modal-overlay" style="z-index:1100;">
+    <div class="modal-sheet" style="height:90vh;">
+        <div class="modal-header">
+            <h3>Smart Tagging Rules</h3>
+            <button class="btn btn-ghost" onclick="ui.toggleModal('tagRulesModal')">Close</button>
+        </div>
+        <div class="modal-body" style="padding:20px;">
+            <div id="tagRulesList"></div>
+        </div>
+    </div>
+</div>
+
+<!-- PARSER MANAGER MODAL -->
+<div id="parserManagerModal" class="modal-overlay" style="z-index:1100;">
+    <div class="modal-sheet" style="height:90vh;">
+        <div class="modal-header">
+            <h3>Parser Profiles</h3>
+            <button class="btn btn-ghost" onclick="ui.toggleModal('parserManagerModal')">Close</button>
+        </div>
+        <div class="modal-body" style="padding:20px;">
+            <div id="profilesList" style="margin-bottom:20px;"></div>
+            <button class="btn btn-primary" style="width:100%" onclick="app.editProfile()"><i class="fas fa-plus"></i> Create New Profile</button>
+        </div>
+    </div>
+</div>
+
+<!-- PROFILE EDITOR MODAL -->
+<div id="profileEditorModal" class="modal-overlay" style="z-index:1200;">
+    <div class="modal-sheet" style="height:90vh;">
+        <div class="modal-header">
+            <h3 id="peTitle">Edit Profile</h3>
+            <button class="btn btn-ghost" onclick="ui.toggleModal('profileEditorModal')">Cancel</button>
+        </div>
+        <div class="modal-body" style="padding:20px;">
+            <input type="hidden" id="peId">
+            <div class="input-group">
+                <label>Profile Name</label>
+                <input type="text" id="peName" class="form-control" placeholder="e.g. Chase Checking">
+            </div>
+            <div class="input-group">
+                <label>Regex Pattern (JavaScript)</label>
+                <input type="text" id="peRegex" class="form-control" style="font-family:monospace;" placeholder="^(\d{2}/\d{2})...">
+                <small style="color:var(--text-sub)">Use capture groups ( ) for Date, Desc, Amount.</small>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div class="input-group" style="flex:1">
+                    <label>Date Group #</label>
+                    <input type="number" id="peMapDate" class="form-control" value="1">
+                </div>
+                <div class="input-group" style="flex:1">
+                    <label>Desc Group #</label>
+                    <input type="number" id="peMapDesc" class="form-control" value="2">
+                </div>
+                <div class="input-group" style="flex:1">
+                    <label>Amount Group #</label>
+                    <input type="number" id="peMapAmt" class="form-control" value="3">
+                </div>
+            </div>
+            <label class="check-group" style="margin-bottom:15px;">
+                <input type="checkbox" id="peInferYear">
+                <span>Infer Year (For statements without year in date)</span>
+            </label>
+
+            <div style="background:var(--bg); padding:15px; border-radius:8px; border:1px solid var(--border); margin-bottom:20px;">
+                <label style="font-size:0.7rem; font-weight:700;">TESTER</label>
+                <input type="text" id="peTestLine" class="form-control" placeholder="Paste a line from PDF here..." style="margin-bottom:10px; font-size:0.8rem;">
+                <button class="btn btn-sm btn-outline" onclick="app.testRegex()">Test Pattern</button>
+                <div id="peTestResult" style="margin-top:10px; font-family:monospace; font-size:0.8rem;"></div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%" onclick="app.saveProfile()">Save Profile</button>
+            <button id="peDeleteBtn" class="btn btn-danger-ghost" style="width:100%; margin-top:10px;" onclick="app.deleteProfile()">Delete Profile</button>
+        </div>
+    </div>
+</div>
+
+<!-- FILTER MODAL -->
+<div id="filterModal" class="modal-overlay">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <h3>Filter Data</h3>
+            <button class="btn btn-ghost" onclick="ui.toggleModal('filterModal')">Close</button>
+        </div>
+        <div class="modal-body" style="padding:20px;">
+            <div style="display:flex; gap:10px;">
+                <div class="input-group" style="flex:1">
+                    <label>Start Date</label>
+                    <input type="date" id="filterStart" class="form-control">
+                </div>
+                <div class="input-group" style="flex:1">
+                    <label>End Date</label>
+                    <input type="date" id="filterEnd" class="form-control">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div class="input-group" style="flex:1">
+                    <label>Min Amount ($)</label>
+                    <input type="number" id="filterMin" class="form-control" placeholder="0.00">
+                </div>
+                <div class="input-group" style="flex:1">
+                    <label>Max Amount ($)</label>
+                    <input type="number" id="filterMax" class="form-control" placeholder="Max">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Type</label>
+                <select id="filterType" class="form-control">
+                    <option value="all">All Transactions</option>
+                    <option value="inc">Income Only</option>
+                    <option value="exp">Expenses Only</option>
+                </select>
+            </div>
+             <div class="input-group">
+                <label>Filter by Tag</label>
+                <input type="text" id="filterTag" class="form-control" placeholder="e.g. Groceries">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn" style="background:var(--bg); color:var(--text-main); flex:1;" onclick="app.clearFilters()">Clear</button>
+                <button class="btn btn-primary" style="flex:2;" onclick="app.applyFilters()">Apply Filters</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DRILL DOWN MODAL -->
+<div id="drillModal" class="modal-overlay" style="z-index: 1000;">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <div>
+                <h3 id="drillTitle" style="margin:0;">Category</h3>
+                <div id="drillSubtitle" style="font-size:0.8rem; color:var(--text-sub);"></div>
+            </div>
+            <button class="btn btn-ghost" onclick="ui.toggleModal('drillModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="sub-nav">
+            <button class="sub-nav-btn active" onclick="ui.switchDrillTab('list')">List</button>
+            <button class="sub-nav-btn" onclick="ui.switchDrillTab('analysis')">Analysis</button>
+            <button class="sub-nav-btn" onclick="ui.switchDrillTab('upload')">Add Data</button>
+        </div>
+        <div class="modal-body">
+            <div id="drill-tab-list" style="padding:20px 20px 60px 20px;">
+                <div id="drill-actions" style="margin-bottom:15px; display:none; justify-content:flex-end; gap:10px;">
+                    <button class="btn btn-sm btn-outline" onclick="app.toggleAllRecurring(document.getElementById('drillTitle').innerText, true)">Mark All</button>
+                    <button class="btn btn-sm btn-outline" onclick="app.toggleAllRecurring(document.getElementById('drillTitle').innerText, false)">Unmark All</button>
+                </div>
+                <div id="drillList"></div>
+            </div>
+            <div id="drill-tab-analysis" class="hidden" style="padding:20px 20px 60px 20px;">
+                <div class="card"><h4>Monthly Trend</h4><div class="chart-container"><canvas id="chartSubTime"></canvas></div></div>
+                <div class="card"><h4>Sub-Category Distribution</h4><div class="chart-container" style="height:250px;"><canvas id="chartSubCat"></canvas></div></div>
+                <h4>Patterns</h4><div id="drillAnalysisList"></div>
+            </div>
+            <div id="drill-tab-upload" class="hidden" style="padding:20px;">
+                <div class="upload-area" onclick="document.getElementById('subFileInput').click()">
+                    <div style="font-weight:600; color:var(--accent);">Add Breakdown PDFs</div>
+                    <div style="font-size:0.8rem; color:var(--text-sub);">Select credit card statements for this category</div>
+                    <input type="file" id="subFileInput" multiple accept="application/pdf" style="display: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DETAIL MODAL (Higher Z-Index) -->
+<div id="detailModal" class="modal-overlay" style="z-index: 1050;">
+    <div class="modal-sheet" style="height:auto" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3>Details</h3>
+            <button class="btn btn-ghost" onclick="ui.toggleModal('detailModal')">Close</button>
+        </div>
+        <div class="modal-body" style="padding:20px;" id="detailContent"></div>
+    </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div id="exportModal" class="modal-overlay">
+    <div class="modal-sheet" style="height:auto">
+        <div class="modal-header">
+            <h3>Export Data</h3>
+            <button class="btn btn-ghost" onclick="ui.toggleModal('exportModal')">Close</button>
+        </div>
+        <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:10px;">
+            <button class="btn btn-success-soft" onclick="app.exportXLSX()"><i class="fas fa-file-excel"></i> Export to Excel (.xlsx)</button>
+            <button class="btn btn-primary" onclick="app.exportCSV()"><i class="fas fa-file-csv"></i> Export View to CSV</button>
+            <button class="btn" style="background:var(--border); color:var(--text-main);" onclick="app.exportJSON()"><i class="fas fa-database"></i> Backup Database (JSON)</button>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" class="modal-overlay" style="z-index: 3000; align-items: center;">
+    <div class="modal-sheet" style="max-width: 400px; height: auto;">
+        <div class="modal-header">
+            <h3 id="confirmTitle">Confirm Action</h3>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <p id="confirmMessage" style="margin-top: 0;"></p>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button id="confirmCancel" class="btn" style="background:var(--bg); color:var(--text-main); flex:1;">Cancel</button>
+                <button id="confirmOk" class="btn btn-primary" style="flex:1;">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- SCRIPTS (MODULE TYPE FOR GEMINI) -->
+<script type="module">
+    import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
+
+    // --- DEFINE ALL OBJECTS FIRST ---
+
+    const db = { /* ... DB logic ... */ };
+    const parser = { /* ... Parser logic ... */ };
+    const ui = { /* ... UI logic ... */ };
+    const aiManager = { /* ... AI logic ... */ };
+    const app = { /* ... App logic ... */ };
+
+    // --- DATABASE ---
+    Object.assign(db, {
+        _db: null,
+        async init() {
+            return new Promise((resolve) => {
+                const req = indexedDB.open('BankExplorerDB', 6); // Version bump for new store
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    const stores = { files:'id', tx:'id', subData:'category', rejected:'id', profiles:'id', recurringTags: 'id', tagRules: 'id' };
+                    Object.entries(stores).forEach(([name, key]) => {
+                        if(!db.objectStoreNames.contains(name)) db.createObjectStore(name, {keyPath: key});
+                    });
+                };
+                req.onsuccess = (e) => { this._db = e.target.result; resolve(); };
+            });
+        },
+        async save(store, items) {
+            return new Promise((resolve, reject) => {
+                const tx = this._db.transaction(store, 'readwrite');
+                const os = tx.objectStore(store);
+                if(Array.isArray(items)) items.forEach(i => os.put(i)); else os.put(items);
+                tx.oncomplete = resolve;
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        },
+        async delete(store, id) {
+             return new Promise((resolve) => {
+                const tx = this._db.transaction(store, 'readwrite');
+                tx.objectStore(store).delete(id).onsuccess = resolve;
+             });
+        },
+        async getAll(store) {
+            return new Promise((resolve) => {
+                const tx = this._db.transaction(store, 'readonly');
+                tx.objectStore(store).getAll().onsuccess = (e) => resolve(e.target.result);
+            });
+        },
+        async get(store, id) {
+            return new Promise((resolve) => {
+                const tx = this._db.transaction(store, 'readonly');
+                const req = tx.objectStore(store).get(id);
+                req.onsuccess = (e) => resolve(e.target.result);
+            });
+        },
+        async clear() {
+            return new Promise((resolve) => indexedDB.deleteDatabase('BankExplorerDB').onsuccess = resolve);
+        },
+        async clearStore(store) {
+            return new Promise((resolve) => {
+                 const tx = this._db.transaction(store, 'readwrite');
+                 tx.objectStore(store).clear().onsuccess = resolve;
+            });
+        }
+    });
+
+    // --- PARSER ---
+    Object.assign(parser, {
+        async parsePdf(file, profile) {
+            const buf = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(buf).promise;
+            let statementEndDate = null; let rawLines = []; let items = [];
+            const regex = new RegExp(profile.regex);
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i); const content = await page.getTextContent();
+                content.items.sort((a,b) => (b.transform[5] - a.transform[5]) || (a.transform[4] - b.transform[4]));
+                let line=[], lastY=-9999;
+                for(const itm of content.items) {
+                    if(Math.abs(itm.transform[5]-lastY) > 5) {
+                        if(line.length) {
+                            const str = line.join(' ');
+                            if (str.includes('Billing Period:')) { const m = /Billing Period:\s*(\d{2}\/\d{2}\/\d{2,4})\s*-\s*(\d{2}\/\d{2}\/\d{2,4})/i.exec(str); if (m && m[2]) statementEndDate = new Date(m[2]); }
+                            if(profile.inferYear) rawLines.push(str); else this.parseLine(str, regex, profile.map, items, null); 
+                        }
+                        line=[]; lastY=itm.transform[5]; 
+                    }
+                    line.push(itm.str);
+                }
+                if(line.length) { const str = line.join(' '); if(profile.inferYear) rawLines.push(str); else this.parseLine(str, regex, profile.map, items, null); }
+            }
+            if (profile.inferYear) { const refDate = statementEndDate || new Date(); rawLines.forEach(l => this.parseLine(l, regex, profile.map, items, refDate)); }
+            return { fileName: file.name, items };
+        },
+        parseLine(str, regex, map, out, statementDateContext) {
+            str = str.trim();
+            const transferRegex = /(transfer (to|from) share)|(online transfer)|(transfer withdrawal)|(transfer deposit)|(transfer to .* share)|(transfer from .* share)/i;
+            const m = regex.exec(str);
+            if(m) {
+                if(m[map.desc] && m[map.desc].includes('Total')) return;
+                const rawDate = m[map.date]; const desc = m[map.desc].trim(); let amtStr = m[map.amt];
+                let amt = amtStr.includes('(') ? -this.parseNum(amtStr.replace(/[()]/g,'')) : this.parseNum(amtStr);
+                if(statementDateContext && amt > 0 && !desc.toLowerCase().includes('payment') && !desc.toLowerCase().includes('deposit')) { amt = -amt; }
+                const finalDate = statementDateContext ? this.inferYear(rawDate, statementDateContext) : new Date(rawDate);
+                const isIgnored = transferRegex.test(desc);
+                out.push({ id: crypto.randomUUID(), date: finalDate, rawDateStr: rawDate, desc: desc, amount: amt, cleanName: this.clean(desc), signature: `${rawDate}|${desc}|${amt}`, type: amt >= 0 ? 'inc' : 'exp', isIgnored: isIgnored, needsYearAdjustment: false, recMode: 'avg', tags: [] });
+            }
+        },
+        inferYear(mmdd, refDate) { const [m, d] = mmdd.split('/').map(Number); const refYear = refDate.getFullYear(); let candidate = new Date(refYear, m - 1, d); if (candidate > refDate) candidate.setFullYear(refYear - 1); return candidate; },
+        parseNum(s) { return parseFloat(s.replace(/[$,]/g,'')); },
+        clean(s) { return s.toUpperCase().replace(/WITHDRAWAL|DEPOSIT|ACH|POS|ATM|CHECK CARD|PURCHASE|BILL PAY|RECURRING/gi,'').replace(/[\d#*-]{4,}/g,'').trim(); }
+    });
+
+    // --- AI MANAGER ---
+    Object.assign(aiManager, {
+        client: null,
+        modelId: null,
+        history: [],
+        context: null,
+
+        init() {
+            const key = localStorage.getItem('geminiKey');
+            const savedContext = localStorage.getItem('aiContext');
+            const savedModel = localStorage.getItem('geminiModel');
+
+            this.context = savedContext || "You are a financial assistant. You can analyze spending, help categorize transactions with tags, and answer questions. When asked to analyze, retrieve transactions first. Be concise and friendly.";
+            this.modelId = savedModel || "gemini-flash-latest";
+            
+            if (key) {
+                this.client = new GoogleGenAI({ apiKey: key });
+                this.history = [];
+            }
+            document.getElementById('apiKeyInput').value = key || '';
+            document.getElementById('aiContextInput').value = this.context;
+            document.getElementById('aiModelSelect').value = this.modelId;
+        },
+
+        getDataSnapshot(scope) {
+            let txs = [];
+            if (scope === 'view') {
+                txs = app.data.viewTx;
+            } else if (scope === 'all') {
+                txs = app.data.transactions.filter(t => !t.isIgnored);
+            }
+            // Lightweight CSV format for token efficiency
+            return txs.map(t => `${t.id}|${t.rawDateStr}|${t.desc}|${t.amount}|${(t.tags||[]).join(',')}`).join('\n');
+        },
+
+        async sendMessage(text) {
+            if(!this.client) {
+                ui.appendChatMessage("Please set your Gemini API Key in settings.", "system");
+                return;
+            }
+
+            ui.appendChatMessage(text, "user");
+            ui.showTypingIndicator();
+
+            const scope = document.getElementById('aiContextScope').value;
+            let finalPrompt = text;
+            
+            if (scope === 'view' || scope === 'all') {
+                const data = this.getDataSnapshot(scope);
+                const scopeName = scope === 'view' ? "Filtered View" : "Full Database";
+                finalPrompt = `[SYSTEM: The user has attached the following ${scopeName} data context to this message. Use this data to answer the request.]\nDATA_START\nID|Date|Description|Amount|Tags\n${data}\nDATA_END\n\nUSER REQUEST: ${text}`;
+            }
+
+            try {
+                const tools = [{
+                    functionDeclarations: [
+                        {
+                            name: "suggest_tags",
+                            description: "Suggests one or more tags for one or more transactions based on analysis. Use this to propose categorizations to the user.",
+                            parameters: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    suggestions: {
+                                        type: Type.ARRAY,
+                                        description: "An array of tagging suggestions.",
+                                        items: {
+                                            type: Type.OBJECT,
+                                            properties: {
+                                                transaction_id: { type: Type.STRING, description: "The ID of the transaction to tag." },
+                                                tags: { type: Type.ARRAY, description: "An array of string tags to suggest for the transaction.", items: { type: Type.STRING } }
+                                            }
+                                        }
+                                    }
+                                },
+                                required: ["suggestions"]
+                            }
+                        }
+                    ]
+                }];
+
+                let contents = [...this.history, { role: "user", parts: [{ text: finalPrompt }] }];
+
+                const response = await this.client.models.generateContent({
+                    model: this.modelId,
+                    contents: contents,
+                    config: {
+                        tools: tools,
+                        systemInstruction: this.context
+                    }
+                });
+
+                ui.removeTypingIndicator();
+                this.history.push({ role: "user", parts: [{ text: finalPrompt }] });
+                this.history.push(response.candidates[0].content);
+
+                const funcCalls = response.functionCalls;
+                if (funcCalls && funcCalls.length > 0 && funcCalls[0].name === 'suggest_tags') {
+                    ui.renderTagSuggestion(funcCalls[0].args.suggestions);
+                } else {
+                    const responseText = response.text;
+                    ui.appendChatMessage(responseText, "ai");
+                }
+
+            } catch (e) {
+                ui.removeTypingIndicator();
+                ui.appendChatMessage("Error: " + e.message, "system");
+                console.error(e);
+            }
+        },
+        
+        async applySuggestions(suggestions, cardId) {
+            if (typeof suggestions === 'string') {
+                suggestions = JSON.parse(suggestions);
+            }
+            let count = 0;
+            for (const sug of suggestions) {
+                for (const tag of sug.tags) {
+                    await app.addTag(sug.transaction_id, tag);
+                    count++;
+                }
+            }
+            const card = document.getElementById(cardId);
+            if (card) {
+                card.innerHTML = `<div style="text-align:center; color: var(--success); font-weight: 600;"><i class="fas fa-check-circle"></i> Tags Applied!</div>`;
+            }
+            ui.toast(`${count} tags applied.`);
+        }
+    });
+
+    // --- UI ---
+    Object.assign(ui, {
+        state: { drillCat: null, dashTime: 'month', dashMode: 'flow', dashCat: null },
+        charts: {},
+
+        init() {
+            if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+            document.getElementById('mainFileInput').onchange = (e) => app.processFiles(e.target.files, 'main');
+            document.getElementById('subFileInput').onchange = (e) => app.processFiles(e.target.files, 'sub', this.state.drillCat);
+            document.addEventListener('fullscreenchange', () => { document.getElementById('fsIcon').className = document.fullscreenElement ? 'fas fa-compress' : 'fas fa-expand'; });
+            this.switchView('sources');
+        },
+
+        refresh() { this.renderSources(); this.renderDash(); this.renderTx(); this.renderAnalysis(); },
+        closeAllModals() { document.querySelectorAll('.modal-overlay').forEach(el => el.style.display = 'none'); },
+        
+        // CHAT UI
+        toggleChat() {
+            document.getElementById('chatWindow').classList.toggle('open');
+        },
+        appendChatMessage(text, role) {
+            const d = document.createElement('div');
+            d.className = `msg ${role}`;
+            if (role === 'ai') {
+                d.innerHTML = text ? marked.parse(text) : '';
+            } else {
+                d.textContent = text;
+            }
+            document.getElementById('chatMessages').appendChild(d);
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+        },
+        showTypingIndicator() {
+            const d = document.createElement('div');
+            d.id = 'typingIndicator'; d.className = 'msg ai';
+            d.innerHTML = '<div class="typing-indicator"></div><div class="typing-indicator"></div><div class="typing-indicator"></div>';
+            document.getElementById('chatMessages').appendChild(d);
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+        },
+        removeTypingIndicator() {
+            const el = document.getElementById('typingIndicator');
+            if(el) el.remove();
+        },
+        sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if(!text) return;
+            input.value = '';
+            aiManager.sendMessage(text);
+        },
+        renderTagSuggestion(suggestions) {
+            const cardId = `suggestion-${crypto.randomUUID()}`;
+            let itemsHtml = '';
+            for (const sug of suggestions) {
+                const t = app.getTxById(sug.transaction_id);
+                if (t) {
+                    const tagsHtml = sug.tags.map(tag => `<span class="tag-badge" style="background: var(--accent); color: white;">#${tag}</span>`).join(' ');
+                    itemsHtml += `<div class="suggestion-item">
+                        <span class="desc">${t.desc}</span> &rarr; ${tagsHtml}
+                    </div>`;
+                }
+            }
+
+            const suggestionHtml = `
+            <div class="suggestion-card" id="${cardId}">
+                <h4 style="margin-top:0; margin-bottom:10px;">Tagging Suggestions</h4>
+                <div>${itemsHtml}</div>
+                <div class="suggestion-actions">
+                    <button class="btn btn-sm btn-primary" onclick="aiManager.applySuggestions('${JSON.stringify(suggestions).replace(/'/g, "\\'")}', '${cardId}')">Apply</button>
+                    <button class="btn btn-sm btn-outline" onclick="this.closest('.suggestion-card').style.display='none'">Dismiss</button>
+                </div>
+            </div>`;
+
+            const d = document.createElement('div');
+            d.className = 'msg ai';
+            d.style.cssText = 'padding: 0; background: transparent; border: none;';
+            d.innerHTML = suggestionHtml;
+            document.getElementById('chatMessages').appendChild(d);
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+        },
+
+        // DASHBOARD CONTROLLER
+        setDashTime(mode, btn) {
+            this.state.dashTime = mode;
+            this.updateControlBtns(btn);
+            this.updateDashboardCharts();
+        },
+        setDashMode(mode, btn) {
+            this.state.dashMode = mode;
+            this.updateControlBtns(btn);
+            this.updateDashboardCharts();
+        },
+        setDashFilter(cat) {
+            this.state.dashCat = cat;
+            const el = document.getElementById('chartFilterContainer');
+            if(cat) {
+                el.innerHTML = `<div class="filter-chip" onclick="ui.setDashFilter(null)">Filter: ${cat} <i class="fas fa-times-circle"></i></div>`;
+            } else {
+                el.innerHTML = '';
+            }
+            this.updateDashboardCharts();
+        },
+        updateControlBtns(clickedBtn) {
+            const group = clickedBtn.dataset.group;
+            const siblings = clickedBtn.parentElement.querySelectorAll(`.control-btn[data-group="${group}"]`);
+            siblings.forEach(el => el.classList.remove('active'));
+            clickedBtn.classList.add('active');
+        },
+
+        renderDash() {
+            // KPIs
+            const tx = app.data.viewTx.filter(t => !t.isIgnored);
+            const inc = tx.filter(t=>t.amount>0).reduce((a,b)=>a+b.amount,0);
+            const exp = tx.filter(t=>t.amount<0).reduce((a,b)=>a+b.amount,0);
+            document.getElementById('kpi-net').innerText = this.fmt(inc+exp);
+            document.getElementById('kpi-inc').innerText = this.fmt(inc);
+            document.getElementById('kpi-exp').innerText = this.fmt(Math.abs(exp));
+            const rate = inc > 0 ? ((inc - Math.abs(exp)) / inc) * 100 : 0;
+            document.getElementById('kpi-rate').innerText = rate.toFixed(1) + '%';
+
+            // Top Categories (Secondary Chart)
+            const cats={}; tx.filter(t=>t.amount<0).forEach(t=>{ cats[t.cleanName] = (cats[t.cleanName]||0)+Math.abs(t.amount); });
+            const top = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+            this.chart('dashDonut', 'doughnut', {
+                labels: top.map(x=>x[0]),
+                datasets: [{ data: top.map(x=>x[1]), backgroundColor:['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#64748b'] }]
+            }, {
+                onClick: (e, elements, chart) => {
+                    if (elements[0]) {
+                        const i = elements[0].index;
+                        const cat = chart.data.labels[i];
+                        ui.setDashFilter(cat);
+                    }
+                }
+            });
+
+            this.updateDashboardCharts();
+        },
+
+        getAnalysisData(grouping) {
+            let data = app.data.viewTx.filter(t => !t.isIgnored);
+            if (this.state.dashCat) {
+                data = data.filter(t => t.cleanName === this.state.dashCat);
+            }
+
+            if(data.length === 0) return { keys: [], values: [] };
+
+            const mapKey = (d) => {
+                const year = d.getFullYear();
+                if (grouping === 'week') {
+                    const start = new Date(year, 0, 1);
+                    const days = Math.floor((d - start) / (24 * 60 * 60 * 1000));
+                    const week = Math.ceil((d.getDay() + 1 + days) / 7);
+                    return { sort: `${year}-${week.toString().padStart(2,'0')}`, label: `'${year.toString().substr(2)} W${week}` };
+                } else if (grouping === 'quarter') {
+                    const q = Math.floor(d.getMonth()/3)+1;
+                    return { sort: `${year}-Q${q}`, label: `'${year.toString().substr(2)} Q${q}` };
+                }
+                const m = d.getMonth()+1;
+                return { sort: `${year}-${m.toString().padStart(2,'0')}`, label: d.toLocaleString('default', {month:'short', year:'2-digit'}) };
+            };
+
+            const groups = {};
+            data.forEach(t => {
+                const k = mapKey(new Date(t.date));
+                if(!groups[k.sort]) groups[k.sort] = { label: k.label, inc:0, exp:0, net:0, cats:{} };
+                if(t.amount > 0) groups[k.sort].inc += t.amount;
+                else {
+                    groups[k.sort].exp += Math.abs(t.amount);
+                    groups[k.sort].cats[t.cleanName] = (groups[k.sort].cats[t.cleanName] || 0) + Math.abs(t.amount);
+                }
+                groups[k.sort].net += t.amount;
+            });
+
+            const sortedKeys = Object.keys(groups).sort();
+            return {
+                keys: sortedKeys.map(k => groups[k].label),
+                values: sortedKeys.map(k => groups[k])
+            };
+        },
+
+        updateDashboardCharts() {
+            const grouping = this.state.dashTime;
+            const mode = this.state.dashMode;
+            const analysis = this.getAnalysisData(grouping);
+            const labels = analysis.keys;
+            const values = analysis.values;
+
+            let type, data, options = { 
+                responsive:true, maintainAspectRatio:false, 
+                scales: { x:{ grid:{display:false} }, y:{ border:{display:false} } },
+                onClick: (e, elements, chart) => {
+                    if (elements[0]) {
+                        const idx = elements[0].index;
+                        const label = chart.data.labels[idx];
+                        ui.toast(`Selected Period: ${label}`);
+                    }
+                }
+            };
+
+            if (mode === 'flow') {
+                type = 'bar';
+                data = {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Income', data: values.map(v=>v.inc), backgroundColor:'#10b981', borderRadius:4 },
+                        { label: 'Expense', data: values.map(v=>v.exp), backgroundColor:'#ef4444', borderRadius:4 }
+                    ]
+                };
+            } else if (mode === 'trend') {
+                type = 'line';
+                let running = 0;
+                const trendData = values.map(v => { running += v.net; return running; });
+                data = {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Cumulative Net Flow',
+                        data: trendData,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                };
+            } else if (mode === 'composition') {
+                type = 'bar';
+                options.scales.x.stacked = true;
+                options.scales.y.stacked = true;
+                
+                const allCats = {};
+                values.forEach(v => Object.entries(v.cats).forEach(([k,amt]) => allCats[k] = (allCats[k]||0)+amt));
+                const topCats = Object.keys(allCats).sort((a,b)=>allCats[b]-allCats[a]).slice(0,5);
+                const colors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981'];
+
+                data = {
+                    labels: labels,
+                    datasets: topCats.map((cat, i) => ({
+                        label: cat,
+                        data: values.map(v => v.cats[cat] || 0),
+                        backgroundColor: colors[i]
+                    }))
+                };
+            }
+
+            this.chart('dashChart', type, data, options);
+        },
+
+        // HELPER
+        toggleTheme() { document.body.classList.toggle('dark-mode'); localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light'); },
+        toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); },
+        renderProfilesSelect() { document.getElementById('importProfileSelect').innerHTML = app.data.profiles.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); },
+        renderProfilesList() { document.getElementById('profilesList').innerHTML = app.data.profiles.map(p => `<div class="profile-card"><div><strong>${p.name}</strong><br><small style="font-family:monospace; color:var(--text-sub)">${p.regex.substring(0,30)}...</small></div><button class="btn btn-sm btn-outline" onclick="app.editProfile('${p.id}')">Edit</button></div>`).join(''); },
+        renderTagRules() { document.getElementById('tagRulesList').innerHTML = app.data.tagRules.map(r => `<div class="profile-card"><div><strong>${r.id}</strong><br><small style="color:var(--accent)"> &rarr; #${r.tag}</small></div><button class="btn btn-sm btn-danger-soft" onclick="app.deleteTagRule('${r.id}')">Delete</button></div>`).join('') || '<div style="padding:20px;text-align:center;color:#999">No rules created yet.</div>'; },
+        async openPdf(fileId) { if(!fileId) return ui.alert("No File ID provided."); const f = await db.get('files',fileId); if(!f||!f.blob) return ui.alert("File not found in database."); const url = URL.createObjectURL(f.blob); document.getElementById('pdfTitle').innerText=f.name; document.getElementById('pdfContainer').innerHTML='Loading...'; ui.toggleModal('pdfModal'); const pdf = await pdfjsLib.getDocument(url).promise; document.getElementById('pdfContainer').innerHTML=''; for(let i=1;i<=pdf.numPages;i++){ const p=await pdf.getPage(i); const c=document.createElement('canvas'); const v=p.getViewport({scale:1.5}); c.width=v.width; c.height=v.height; c.style.marginBottom='10px'; await p.render({canvasContext:c.getContext('2d'), viewport:v}).promise; document.getElementById('pdfContainer').appendChild(c); } },
+        switchView(id) { this.closeAllModals(); document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active')); document.getElementById('view-'+id).classList.add('active'); document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active')); document.querySelector(`.nav-item[onclick="ui.switchView('${id}')"]`).classList.add('active'); },
+        toast(msg) { const d = document.createElement('div'); d.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 16px;border-radius:20px;z-index:9999;font-size:0.85rem;"; d.innerText = msg; document.body.appendChild(d); setTimeout(()=>d.remove(), 2500); },
+        async confirm(title, message) {
+            return new Promise(resolve => {
+                const modal = document.getElementById('confirmModal');
+                document.getElementById('confirmTitle').innerText = title;
+                document.getElementById('confirmMessage').innerText = message;
+                modal.style.display = 'flex';
+                
+                const okBtn = document.getElementById('confirmOk');
+                const cancelBtn = document.getElementById('confirmCancel');
+
+                const cleanup = () => {
+                    okBtn.replaceWith(okBtn.cloneNode(true));
+                    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+                    modal.style.display = 'none';
+                };
+
+                document.getElementById('confirmOk').onclick = () => { cleanup(); resolve(true); };
+                document.getElementById('confirmCancel').onclick = () => { cleanup(); resolve(false); };
+            });
+        },
+        alert(message, title = "Alert") { this.confirm(title, message); },
+        renderSources() { document.getElementById('fileListContainer').innerHTML = app.data.files.map(f => `<div class="file-list-item" onclick="ui.showFileTransactions('${f.id}')"><div style="flex:1;"><b>${f.name}</b><br><small>${f.count} txns</small></div><div>${f.context ? `<small style="display:block;color:var(--accent);text-align:right">${f.context}</small>` : ''}<button class="btn btn-ghost" onclick="event.stopPropagation(); ui.openPdf('${f.id}')" style="padding:5px; color:var(--accent)"><i class="fas fa-eye"></i></button></div></div>`).join('') || '<div style="padding:20px;text-align:center;color:#999">No files</div>'; },
+        renderTx() { const c = document.getElementById('txContainer'); const view = app.data.viewTx; document.getElementById('txCount').innerText = view.length; c.innerHTML = view.map(t => this.txHtml(t)).join(''); },
+        
+        renderAnalysis() {
+            const tx = app.data.viewTx; const list = document.getElementById('analysisList'); list.innerHTML='';
+            const grp={}; tx.filter(t=>t.amount<0 && !t.isIgnored).forEach(t=>{ if(!grp[t.cleanName]) grp[t.cleanName]={tot:0,cnt:0}; grp[t.cleanName].tot += t.amount; grp[t.cleanName].cnt++; });
+            Object.entries(grp).sort((a,b)=>a[1].tot-b[1].tot).forEach(([name,d]) => { const hasSub = app.data.subData[name] && app.data.subData[name].length > 0; const div = document.createElement('div'); div.className = 'tx-row'; div.onclick = () => this.openDrill(name); div.innerHTML = `<div><div style="font-weight:600">${name} ${hasSub?'<i class="fas fa-check-circle" style="color:var(--accent);font-size:0.8rem"></i>':''}</div><div style="font-size:0.75rem;color:var(--text-sub)">${d.cnt} txns</div></div><div style="font-weight:700" class="neg">${this.fmt(d.tot)}</div></div>`; list.appendChild(div); });
+            
+            // Render Tags Cloud
+            const tagCounts = {};
+            app.data.transactions.forEach(t => { if (t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag] || 0) + 1); });
+            Object.values(app.data.subData).forEach(arr => arr.forEach(t => { if (t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag] || 0) + 1); }));
+
+            const tagsCloud = document.getElementById('tagsCloud');
+            if(Object.keys(tagCounts).length > 0) {
+                tagsCloud.innerHTML = Object.entries(tagCounts).map(([tag, count]) => 
+                    `<span class="tag-badge" style="padding:5px 10px; font-size:0.8rem; cursor:pointer;" onclick="app.searchByTag('${tag.replace(/'/g, "\\'")}')">#${tag} (${count})</span>`
+                ).join('');
+            } else {
+                tagsCloud.innerHTML = '<small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>';
+            }
+
+            // --- Recurring Section ---
+            let totalMonthly = 0;
+
+            // Transaction-based recurring
+            const recList = document.getElementById('recurringList'); 
+            let allTx = [...app.data.transactions]; 
+            Object.values(app.data.subData).forEach(s => allTx = allTx.concat(s));
+            const recurringCandidates = allTx.filter(t => t.isRecurring && !t.isIgnored);
+            const fGroups = app.getFuzzyGroups(recurringCandidates);
+            const recEntries = Object.entries(fGroups).map(([name, items]) => {
+                const tot = items.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+                const mode = items[0] ? (items[0].recMode || 'avg') : 'avg';
+                return { name: name, tot: tot, cnt: items.length, mode: mode };
+            });
+
+            if(recEntries.length > 0) {
+                recList.innerHTML = ''; 
+                recEntries.forEach(g => { 
+                    const monthlyCost = g.mode === '12mo' ? (g.tot / 12) : (g.tot / g.cnt);
+                    totalMonthly += monthlyCost; 
+                    recList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="display:flex; flex-direction:column; gap:2px; margin-right:10px;"><button class="calc-toggle-btn ${g.mode === 'avg' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleAvgMode('${g.name.replace(/'/g, "\\'")}')">AVG</button><button class="calc-toggle-btn ${g.mode === '12mo' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleAvgMode('${g.name.replace(/'/g, "\\'")}')">/12</button></div><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600">${g.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(monthlyCost)}/mo</small><span class="badge">${g.cnt}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`; 
+                });
+            } else { 
+                recList.innerHTML = '<small style="color:var(--text-sub)">No recurring items tagged.</small>'; 
+            }
+
+            // Tag-based recurring
+            const recurringTagsList = document.getElementById('recurringTagsList');
+            const tagStats = app.calculateRecurringTagStats();
+            if (tagStats.length > 0) {
+                recurringTagsList.innerHTML = '';
+                tagStats.forEach(stat => {
+                    const mode = stat.mode || 'avg';
+                    const monthlyCost = mode === '12mo' ? stat.total / 12 : stat.monthlyAvg;
+                    totalMonthly += monthlyCost;
+                    const modeLabel = mode === '12mo' ? '/mo (/12)' : '/mo (avg)';
+                    recurringTagsList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="display:flex; flex-direction:column; gap:2px; margin-right:10px;"><button class="calc-toggle-btn ${mode === 'avg' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleRecurringTagMode('${stat.name.replace(/'/g, "\\'")}')">AVG</button><button class="calc-toggle-btn ${mode === '12mo' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleRecurringTagMode('${stat.name.replace(/'/g, "\\'")}')">/12</button></div><div style="flex:1; cursor:pointer;" onclick="app.searchByTag('${stat.name.replace(/'/g, "\\'")}')"><div style="font-weight:600">#${stat.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(monthlyCost)}${modeLabel}</small><span class="badge">${stat.count}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.removeRecurringTag('${stat.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`;
+                });
+            } else {
+                recurringTagsList.innerHTML = '';
+            }
+
+            document.getElementById('recurringSum').innerText = this.fmt(totalMonthly);
+            const allTags = app.getAllUniqueTags();
+            document.getElementById('recurringTagSuggestions').innerHTML = allTags.map(tag => `<option value="${tag}"></option>`).join('');
+            
+            // Potential
+            const potList = document.getElementById('potentialList'); const potentials = app.getPotentialRecurring();
+            if(potentials.length > 0) {
+                document.getElementById('potentialCard').classList.remove('hidden');
+                potList.innerHTML = potentials.map(p => `<div class="potential-row"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${p.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600; color:var(--text-main)">${p.name}</div><div style="font-size:0.75rem; color:var(--text-sub)">~${p.days} days • ${this.fmt(Math.abs(p.avgAmt))}</div></div><div style="display:flex; gap:5px;"><button class="btn btn-sm btn-success-soft" onclick="app.confirmPotential('${p.name.replace(/'/g, "\\'")}')"><i class="fas fa-check"></i></button><button class="btn btn-sm btn-danger-soft" onclick="app.rejectPotential('${p.name.replace(/'/g, "\\'")}')"><i class="fas fa-times"></i></button></div></div>`).join('');
+            } else { document.getElementById('potentialCard').classList.add('hidden'); }
+        },
+
+        openDrill(cat) { this.state.drillCat = cat; document.getElementById('drillTitle').innerText = cat; this.renderDrillDown(cat); this.switchDrillTab('list'); this.toggleModal('drillModal'); },
+        
+        showFileTransactions(fileId) {
+            const file = app.data.files.find(f => f.id === fileId);
+            if (!file) return;
+
+            let allTx = [...app.data.transactions];
+            Object.values(app.data.subData).forEach(items => allTx.push(...items));
+            const items = allTx.filter(t => t.sourceFileId === fileId).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            document.getElementById('drillTitle').innerText = `From: ${file.name}`;
+            document.getElementById('drillSubtitle').innerText = `${items.length} transactions extracted`;
+            document.getElementById('drillList').innerHTML = items.map(t => this.txHtml(t)).join('');
+            
+            // Hide irrelevant tabs and actions for this view
+            document.getElementById('drill-actions').style.display = 'none';
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'analysis\')"]').style.display = 'none';
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'upload\')"]').style.display = 'none';
+
+            this.switchDrillTab('list');
+            this.toggleModal('drillModal');
+        },
+
+        openPatternDrill(name, useFuzzy = false) {
+            this.state.drillCat = null; document.getElementById('drillTitle').innerText = name; document.getElementById('drill-actions').style.display = 'flex';
+            let all = [...app.data.transactions]; Object.values(app.data.subData).forEach(items => all = all.concat(items));
+            let items = [];
+            if (useFuzzy) {
+                const allGroups = app.getFuzzyGroups(all);
+                items = allGroups[name] || [];
+            } else {
+                items = all.filter(t => app.cleanSubDesc(t.desc) === name);
+            }
+            items.sort((a,b) => new Date(b.date) - new Date(a.date));
+            document.getElementById('drillSubtitle').innerText = "Pattern History";
+            document.getElementById('drillList').innerHTML = items.map(t => `<div class="tx-row" style="${t.isIgnored ? 'opacity:0.5;' : ''}"><div style="display:flex; align-items:center; gap:10px; flex:1"><label class="check-group" style="padding:5px; margin:0; border:none;"><input type="checkbox" style="transform:scale(1.3)" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"></label><div onclick="ui.showDetail('${t.id}')" style="cursor:pointer; flex:1"><div style="font-weight:600">${t.desc}</div><div style="font-size:0.75rem;color:var(--text-sub)">${t.rawDateStr} ${t.isIgnored ? '(Ignored)' : ''}</div></div></div><div class="${t.amount>=0?'pos':'neg'}" style="font-weight:700">${this.fmt(t.amount)}</div></div>`).join('');
+            document.getElementById('drillAnalysisList').innerHTML = `<div style="padding:10px;text-align:center;color:var(--text-sub)">${items.length} items found</div>`;
+            const byMonth = {}; items.forEach(t => { if(t.date && !t.isIgnored) { const k = new Date(t.date).toLocaleString('default', {month:'short', year:'2-digit'}); byMonth[k] = (byMonth[k]||0) + Math.abs(t.amount); } });
+            const lbls = Object.keys(byMonth).reverse(); this.chart('chartSubTime', 'bar', { labels: lbls, datasets: [{ label: 'Spent', data: lbls.map(l=>byMonth[l]), backgroundColor:'#3b82f6' }] });
+            this.chart('chartSubCat', 'doughnut', { labels: [], datasets: [] }); document.getElementById('drill-tab-upload').classList.add('hidden'); this.switchDrillTab('list');
+            
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'analysis\')"]').style.display = 'block';
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'upload\')"]').style.display = 'block';
+
+            const modal = document.getElementById('drillModal'); if(modal.style.display !== 'flex') { this.toggleModal('drillModal'); }
+        },
+
+        renderDrillDown(cat) {
+            document.getElementById('drill-actions').style.display = 'none';
+            const subs = app.data.subData[cat]; let items = [];
+            if(subs && subs.length > 0) { items = subs; document.getElementById('drillSubtitle').innerHTML = "<i class='fas fa-file-invoice'></i> Detailed Breakdown (From Credit Card Stmt)"; } 
+            else { items = app.data.transactions.filter(t => t.cleanName === cat); document.getElementById('drillSubtitle').innerText = "Aggregated Data (From Bank Stmt)"; }
+            items = items.filter(t => !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
+            document.getElementById('drillList').innerHTML = items.map(t => this.txHtml(t)).join('');
+            const byDesc = {}; items.forEach(t => { const k = app.cleanSubDesc(t.desc); if(!byDesc[k]) byDesc[k] = { tot:0, cnt:0 }; byDesc[k].tot += t.amount; byDesc[k].cnt++; });
+            const allSorted = Object.entries(byDesc).sort((a,b)=>a[1].tot-b[1].tot); 
+            document.getElementById('drillAnalysisList').innerHTML = allSorted.map(([k,v]) => `<div class="tx-row" onclick="ui.openPatternDrill('${k.replace(/'/g, "\\'")}')"><div><div style="font-weight:600">${k}</div><div style="font-size:0.75rem;color:var(--text-sub)">${v.cnt} txns</div></div><div style="font-weight:700" class="neg">${this.fmt(v.tot)}</div></div>`).join('');
+            const byMonth = {}; items.forEach(t => { if(t.date) { const k = new Date(t.date).toLocaleString('default', {month:'short', year:'2-digit'}); byMonth[k] = (byMonth[k]||0) + Math.abs(t.amount); } });
+            const lbls = Object.keys(byMonth).reverse(); this.chart('chartSubTime', 'bar', { labels: lbls, datasets: [{ label: 'Spent', data: lbls.map(l=>byMonth[l]), backgroundColor:'#3b82f6' }] });
+            const top5 = allSorted.slice(0,5); this.chart('chartSubCat', 'doughnut', { labels: top5.map(x=>x[0]), datasets: [{ data: top5.map(x=>Math.abs(x[1].tot)), backgroundColor:['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#64748b'] }] });
+            
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'analysis\')"]').style.display = 'block';
+            document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'upload\')"]').style.display = 'block';
+        },
+
+        switchDrillTab(tab) { ['list','analysis','upload'].forEach(t => document.getElementById('drill-tab-'+t).classList.add('hidden')); document.querySelectorAll('.sub-nav-btn').forEach(b => b.classList.remove('active')); document.getElementById('drill-tab-'+tab).classList.remove('hidden'); const map = {list:0, analysis:1, upload:2}; document.querySelectorAll('.sub-nav-btn')[map[tab]].classList.add('active'); },
+        showDetail(id) {
+            let t = app.getTxById(id); if(!t) return;
+            const hist = app.getHistory(t.desc); const histHtml = hist.items.length > 1 ? `<div style="margin-top:20px;"><h4 style="margin-bottom:10px; color:var(--text-sub)">HISTORY (${hist.count})</h4><div style="display:flex; gap:10px; margin-bottom:15px; font-size:0.9rem;"><div class="badge">Total: ${this.fmt(hist.total)}</div><div class="badge">Avg: ${this.fmt(hist.avg)}</div></div><div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">${hist.items.map(h => `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid var(--border); font-size:0.85rem; background:var(--surface);"><span>${new Date(h.date).toLocaleDateString()}</span><span>${h.isRecurring ? '<i class="fas fa-rotate" style="color:var(--success); margin-right:5px;"></i>' : ''}<span class="${h.amount>=0?'pos':'neg'}">${this.fmt(h.amount)}</span></span></div>`).join('')}</div></div>` : '';
+            
+            // Tags HTML
+            const tagsHtml = (t.tags || []).map(tag => `<span class="tag-badge">#${tag} <i class="fas fa-times" onclick="app.removeTag('${t.id}', '${tag}')"></i></span>`).join('');
+            const allTags = app.getAllUniqueTags();
+            const datalistHtml = `<datalist id="tag-suggestions">${allTags.map(tag => `<option value="${tag}"></option>`).join('')}</datalist>`;
+
+            document.getElementById('detailContent').innerHTML = `<div style="text-align:center;margin-bottom:20px;"><h1 class="${t.amount>=0?'pos':'neg'}">${this.fmt(t.amount)}</h1><div style="color:var(--text-sub)">${new Date(t.date).toDateString()}</div></div><div style="background:var(--bg);padding:15px;border-radius:8px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">DESCRIPTION</label><div style="font-size:1.1rem;margin-bottom:10px">${t.desc}</div><div style="display:flex; gap:10px; margin-bottom:15px;"><label class="check-group" style="flex:1"><input type="checkbox" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"><span style="font-weight:600">Recurring</span></label><label class="check-group" style="flex:1"><input type="checkbox" ${t.isIgnored?'checked':''} onchange="app.toggleIgnored('${t.id}')"><span style="font-weight:600; color:var(--text-sub)">Ignore/Transfer</span></label></div><div><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">TAGS</label><div style="margin-bottom:5px;">${tagsHtml}</div><div class="tag-input-container"><input type="text" id="newTagInput" class="form-control" placeholder="Add tag..." list="tag-suggestions" onkeypress="if(event.key==='Enter') app.addTag('${t.id}', this.value)"><button class="btn btn-sm btn-outline" onclick="app.addTag('${t.id}', document.getElementById('newTagInput').value)"><i class="fas fa-plus"></i></button></div>${datalistHtml}</div><div style="margin-top:15px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">NOTES</label><textarea id="noteInput" class="form-control" rows="2" placeholder="Add details...">${t.note || ''}</textarea><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="app.saveNote('${t.id}', document.getElementById('noteInput').value)">Save Note</button></div><div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:0.8rem; color:var(--text-sub)">Source: ${t.sourceFile || 'N/A'}</span>${t.sourceFileId ? `<button class="btn btn-outline" style="padding:5px 10px; font-size:0.8rem;" onclick="event.stopPropagation(); ui.openPdf('${t.sourceFileId}')"><i class="fas fa-file-pdf"></i> View Source</button>` : ''}</div></div>${histHtml}`;
+            
+            // Ensure modal is open
+            if(document.getElementById('detailModal').style.display !== 'flex') this.toggleModal('detailModal');
+        },
+        txHtml(t) { 
+            const tags = (t.tags || []).map(tag => `<span class="tag-badge">#${tag}</span>`).join('');
+            return `<div class="tx-row" onclick="ui.showDetail('${t.id}')"><div><div style="font-weight:600">${t.desc}</div><div style="font-size:0.75rem;color:var(--text-sub)">${t.rawDateStr} ${t.note ? '<i class="fas fa-sticky-note" style="color:var(--accent)"></i>' : ''} ${t.isRecurring ? '<i class="fas fa-rotate" style="color:var(--success)"></i>' : ''} ${t.isIgnored ? '<i class="fas fa-ban" style="color:var(--text-sub)"></i>' : ''} ${tags}</div></div><div class="${t.amount>=0?'pos':'neg'}" style="font-weight:700; ${t.isIgnored ? 'text-decoration:line-through; color:var(--text-sub);' : ''}">${this.fmt(t.amount)}</div></div>`; 
+        },
+        toggleModal(id) { const el = document.getElementById(id); el.style.display = el.style.display==='flex'?'none':'flex'; if (id === 'tagRulesModal') this.renderTagRules(); },
+        chart(id, type, data, options = {}) {
+            if(this.charts[id]) this.charts[id].destroy();
+            const opts = { responsive:true, maintainAspectRatio:false, plugins: { legend: {display: type==='doughnut'} }, scales: { x:{display:type!=='doughnut', grid:{display:false}}, y:{display:type!=='doughnut', border:{display:false}} }, ...options };
+            this.charts[id] = new Chart(document.getElementById(id), { type, data, options: opts });
+        },
+        fmt(n) { return n.toLocaleString('en-US', {style:'currency', currency:'USD'}); }
+    });
+
+    // --- APP ---
+    Object.assign(app, {
+        data: { files: [], transactions: [], subData: {}, viewTx: [], rejected: [], profiles: [], recurringTags: [], tagRules: [] },
+        filters: { text:'', start:'', end:'', min:'', max:'', type:'all', tag:'' },
+        settings: { minDays: 25, maxDays: 35, minCount: 2 },
+        fuse: null,
+        
+        async init() {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            await db.init();
+            await this.loadData();
+            await this.initProfiles();
+            this.cleanExistingTransfers();
+            aiManager.init();
+            document.addEventListener('click', (e) => {
+                if(!e.target.closest('.search-container')) document.getElementById('autocompleteList').style.display = 'none';
+            });
+            ui.init();
+        },
+
+        async loadData() {
+            this.data.files = await db.getAll('files');
+            this.data.transactions = await db.getAll('tx');
+            this.data.transactions.forEach(t => { if(!t.tags) t.tags = []; });
+            
+            const subs = await db.getAll('subData');
+            this.data.subData = {};
+            subs.forEach(s => this.data.subData[s.category] = s.items);
+
+            this.data.rejected = await db.getAll('rejected');
+            this.data.recurringTags = await db.getAll('recurringTags');
+            this.data.tagRules = await db.getAll('tagRules');
+            
+            this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
+            this.data.viewTx = [...this.data.transactions];
+            this.initFuse();
+            this.applyFilters();
+        },
+
+        async initProfiles() {
+            this.data.profiles = await db.getAll('profiles');
+            if(this.data.profiles.length === 0) {
+                const defaults = [
+                    { id: 'default_bank', name: 'Standard Bank (Date Desc Amt)', regex: '^(\\d{1,2}/\\d{1,2}/\\d{4})\\s+(?:\\d{1,2}/\\d{1,2}/\\d{4}\\s+)?(.*?)\\s+(-?\\$?[\\d,]+\\.\\d{2})\\s+(-?\\$?[\\d,]+\\.\\d{2})$', map: { date: 1, desc: 2, amt: 3 }, inferYear: false },
+                    { id: 'default_cc', name: 'Credit Card (No Year)', regex: '^(\\d{1,2}/\\d{1,2})\\s+(\\d{1,2}/\\d{1,2})\\s+(.*?)\\s+(-?\\$?[\\d,]+\\.\\d{2})$', map: { date: 1, desc: 3, amt: 4 }, inferYear: true }
+                ];
+                await db.save('profiles', defaults);
+                this.data.profiles = defaults;
+            }
+            ui.renderProfilesSelect();
+            ui.renderProfilesList();
+        },
+
+        async cleanExistingTransfers() {
+            const transferRegex = /(transfer (to|from) share)|(online transfer)|(transfer withdrawal)|(transfer deposit)|(transfer to .* share)|(transfer from .* share)/i;
+            let changes = 0;
+            for(let t of this.data.transactions) {
+                if(transferRegex.test(t.desc) && !t.isIgnored) {
+                    t.isIgnored = true;
+                    await db.save('tx', t);
+                    changes++;
+                }
+            }
+        },
+
+        initFuse() {
+            let allDocs = [...this.data.transactions];
+            Object.values(this.data.subData).forEach(items => allDocs = allDocs.concat(items));
+            this.fuse = new Fuse(allDocs, { keys: ['desc', 'cleanName', 'note', 'amount', 'tags'], threshold: 0.4, ignoreLocation: true });
+        },
+
+        // --- TAGGING ---
+        getAllUniqueTags() {
+            const DEFAULT_TAGS = ['Groceries', 'Utilities', 'Rent', 'Mortgage', 'Gas', 'Dining', 'Entertainment', 'Shopping', 'Health', 'Travel', 'Subscription', 'Income', 'Transfer'];
+            const tagSet = new Set(DEFAULT_TAGS);
+            this.data.transactions.forEach(t => { if (t.tags) t.tags.forEach(tag => tagSet.add(tag)); });
+            for (const cat in this.data.subData) { this.data.subData[cat].forEach(t => { if (t.tags) t.tags.forEach(tag => tagSet.add(tag)); }); }
+            this.data.recurringTags.forEach(tagObj => tagSet.add(tagObj.id));
+            return Array.from(tagSet).sort();
+        },
+
+        async addTag(id, tag, fromRule = false) {
+            tag = tag.trim();
+            if(!tag) return;
+            let t = this.getTxById(id);
+            if(t) {
+                if(!t.tags) t.tags = [];
+                if(!t.tags.includes(tag)) {
+                    t.tags.push(tag);
+                    let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+                    if(store === 'tx') await db.save('tx', t); 
+                    else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                    this.initFuse();
+                    ui.refresh();
+                    if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
+
+                    const cleanedName = this.cleanSubDesc(t.desc);
+                    if (!fromRule && cleanedName && !this.data.tagRules.find(r => r.id === cleanedName)) {
+                        const confirmed = await ui.confirm("Create Smart Rule?", `Create a rule to always tag '${cleanedName}' as '${tag}'?`);
+                        if (confirmed) {
+                            const newRule = { id: cleanedName, tag: tag };
+                            this.data.tagRules.push(newRule);
+                            await db.save('tagRules', newRule);
+                            ui.toast(`Rule created. Applying now...`);
+                            await this.applyTagRulesToAll(newRule);
+                        }
+                    }
+                }
+            }
+        },
+
+        async removeTag(id, tag) {
+            let t = this.getTxById(id);
+            if(t && t.tags) {
+                t.tags = t.tags.filter(tg => tg !== tag);
+                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); 
+                else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                this.initFuse();
+                ui.refresh();
+                if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
+            }
+        },
+        
+        async addRecurringTag(tag) {
+            tag = tag.trim();
+            if (!tag || this.data.recurringTags.find(t => t.id === tag)) return;
+            const newTag = { id: tag, mode: 'avg' };
+            this.data.recurringTags.push(newTag);
+            await db.save('recurringTags', newTag);
+            document.getElementById('newRecurringTag').value = '';
+            ui.refresh();
+        },
+
+        async removeRecurringTag(tag) {
+            this.data.recurringTags = this.data.recurringTags.filter(t => t.id !== tag);
+            await db.delete('recurringTags', tag);
+            ui.refresh();
+        },
+
+        async toggleRecurringTagMode(tagName) {
+            const tag = this.data.recurringTags.find(t => t.id === tagName);
+            if (tag) {
+                tag.mode = (tag.mode === '12mo') ? 'avg' : '12mo';
+                await db.save('recurringTags', tag);
+                ui.refresh();
+            }
+        },
+
+        calculateRecurringTagStats() {
+            if (this.data.recurringTags.length === 0) return [];
+            
+            let allTx = [...this.data.transactions];
+            Object.values(this.data.subData).forEach(items => allTx.push(...items));
+            
+            return this.data.recurringTags.map(tagObj => {
+                const tag = tagObj.id;
+                const taggedTx = allTx.filter(t => t.tags && t.tags.includes(tag) && t.amount < 0);
+                if (taggedTx.length === 0) return { name: tag, monthlyAvg: 0, total: 0, count: 0, mode: tagObj.mode || 'avg' };
+
+                taggedTx.sort((a, b) => new Date(a.date) - new Date(b.date));
+                const total = taggedTx.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+                const firstDate = new Date(taggedTx[0].date);
+                const lastDate = new Date(taggedTx[taggedTx.length - 1].date);
+                
+                let months = (lastDate.getFullYear() - firstDate.getFullYear()) * 12;
+                months -= firstDate.getMonth();
+                months += lastDate.getMonth();
+                const monthSpan = months <= 0 ? 1 : months + 1;
+
+                return { name: tag, monthlyAvg: total / monthSpan, total, count: taggedTx.length, mode: tagObj.mode || 'avg' };
+            });
+        },
+
+        async applyTagRulesToAll(specificRule = null) {
+            let allTx = [...this.data.transactions, ...Object.values(this.data.subData).flat()];
+            const rules = specificRule ? [specificRule] : this.data.tagRules;
+            let changedCount = 0;
+            for (const rule of rules) {
+                for (const t of allTx) {
+                    if (this.cleanSubDesc(t.desc) === rule.id) {
+                        if (!t.tags || !t.tags.includes(rule.tag)) {
+                            await this.addTag(t.id, rule.tag, true);
+                            changedCount++;
+                        }
+                    }
+                }
+            }
+            if (changedCount > 0) {
+                ui.toast(`Tagged ${changedCount} existing items based on your rule(s).`);
+                ui.refresh();
+            } else if (!specificRule) {
+                ui.toast("No new items to tag.");
+            }
+        },
+
+        async deleteTagRule(ruleId) {
+            const confirmed = await ui.confirm("Delete Rule?", `Are you sure you want to delete the rule for '${ruleId}'?`);
+            if (confirmed) {
+                this.data.tagRules = this.data.tagRules.filter(r => r.id !== ruleId);
+                await db.delete('tagRules', ruleId);
+                ui.renderTagRules();
+                ui.toast("Rule deleted.");
+            }
+        },
+
+        // --- PROFILES ---
+        editProfile(id) {
+            const p = id ? this.data.profiles.find(x => x.id === id) : { id:'', name:'', regex:'', map:{date:1,desc:2,amt:3}, inferYear:false };
+            document.getElementById('peId').value = p.id;
+            document.getElementById('peName').value = p.name;
+            document.getElementById('peRegex').value = p.regex;
+            document.getElementById('peMapDate').value = p.map.date;
+            document.getElementById('peMapDesc').value = p.map.desc;
+            document.getElementById('peMapAmt').value = p.map.amt;
+            document.getElementById('peInferYear').checked = p.inferYear;
+            document.getElementById('peTitle').innerText = id ? 'Edit Profile' : 'New Profile';
+            document.getElementById('peDeleteBtn').style.display = id ? 'block' : 'none';
+            document.getElementById('peTestResult').innerHTML = '';
+            ui.toggleModal('profileEditorModal');
+        },
+
+        async saveProfile() {
+            const id = document.getElementById('peId').value || crypto.randomUUID();
+            const profile = {
+                id: id,
+                name: document.getElementById('peName').value,
+                regex: document.getElementById('peRegex').value,
+                map: { date: parseInt(document.getElementById('peMapDate').value), desc: parseInt(document.getElementById('peMapDesc').value), amt: parseInt(document.getElementById('peMapAmt').value) },
+                inferYear: document.getElementById('peInferYear').checked
+            };
+            if(!profile.name || !profile.regex) return ui.alert("Name and Regex are required");
+            await db.save('profiles', profile);
+            await this.initProfiles();
+            ui.toggleModal('profileEditorModal');
+            ui.toast("Profile Saved");
+        },
+
+        async deleteProfile() {
+            const id = document.getElementById('peId').value;
+            if(await ui.confirm("Delete Profile?", "Are you sure you want to delete this profile?")) { 
+                await db.delete('profiles', id); 
+                await this.initProfiles(); 
+                ui.toggleModal('profileEditorModal'); 
+                ui.toast("Profile Deleted"); 
+            }
+        },
+
+        testRegex() {
+            const regexStr = document.getElementById('peRegex').value;
+            const line = document.getElementById('peTestLine').value;
+            const map = { date: parseInt(document.getElementById('peMapDate').value), desc: parseInt(document.getElementById('peMapDesc').value), amt: parseInt(document.getElementById('peMapAmt').value) };
+            const out = document.getElementById('peTestResult');
+            try {
+                const re = new RegExp(regexStr);
+                const match = re.exec(line);
+                if(match) out.innerHTML = `<span class="pos">MATCH!</span> Date:${match[map.date]} | Desc:${match[map.desc]} | Amt:${match[map.amt]}`;
+                else out.innerHTML = `<span class="neg">NO MATCH</span>`;
+            } catch(e) { out.innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+        },
+
+        // --- FILTER & SEARCH ---
+        searchByTag(tag) {
+            document.getElementById('globalSearch').value = `#${tag}`;
+            this.handleSearchInput({ target: { value: `#${tag}` } });
+            ui.switchView('transactions');
+            ui.toast(`Showing transactions tagged with #${tag}`);
+        },
+
+        handleSearchInput(e) {
+            const val = e.target.value.trim();
+            this.filters.text = val;
+            this.renderAutocomplete(val);
+            this.applyFilters();
+        },
+
+        renderAutocomplete(val) {
+            const list = document.getElementById('autocompleteList');
+            if(val.length < 2) { list.style.display = 'none'; return; }
+            let allNames = new Set();
+            this.data.transactions.forEach(t => { allNames.add(t.desc); if(t.tags) t.tags.forEach(tg => allNames.add('#'+tg)); });
+            Object.values(this.data.subData).forEach(arr => arr.forEach(t => allNames.add(t.desc)));
+            const matches = Array.from(allNames).filter(name => name.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
+            if(matches.length === 0) { list.style.display = 'none'; return; }
+            list.innerHTML = matches.map(name => {
+                const regex = new RegExp(`(${val})`, 'gi');
+                const hl = name.replace(regex, '<span class="autocomplete-match">$1</span>');
+                return `<div class="autocomplete-item" onclick="app.selectAutocomplete('${name.replace(/'/g, "\\'")}')">${hl}</div>`;
+            }).join('');
+            list.style.display = 'block';
+        },
+
+        selectAutocomplete(name) {
+            document.getElementById('globalSearch').value = name;
+            this.filters.text = name;
+            document.getElementById('autocompleteList').style.display = 'none';
+            this.applyFilters();
+        },
+
+        updateSettings() {
+            this.settings.minDays = parseInt(document.getElementById('setMinDays').value) || 25;
+            this.settings.maxDays = parseInt(document.getElementById('setMaxDays').value) || 35;
+            this.settings.minCount = parseInt(document.getElementById('setMinCount').value) || 2;
+            const key = document.getElementById('apiKeyInput').value;
+            const context = document.getElementById('aiContextInput').value;
+            const model = document.getElementById('aiModelSelect').value;
+            
+            if(key) localStorage.setItem('geminiKey', key);
+            if(context) localStorage.setItem('aiContext', context);
+            if(model) localStorage.setItem('geminiModel', model);
+            
+            aiManager.init();
+            ui.toggleModal('settingsModal');
+            ui.refresh();
+            ui.toast("Settings updated");
+        },
+
+        async clearRejected() {
+            if(await ui.confirm("Clear Rejected?", "Restore all rejected suggestions?")) { 
+                await db.clearStore('rejected'); 
+                this.data.rejected = []; 
+                ui.refresh(); 
+                ui.toast("Rejected list cleared"); 
+            }
+        },
+
+        async processFiles(fileList, mode, categoryContext = null) {
+            const profileId = document.getElementById('importProfileSelect').value;
+            const profile = this.data.profiles.find(p => p.id === profileId);
+            if(!profile) return ui.alert("Please select a parsing profile");
+
+            ui.toast(`Processing ${fileList.length} files...`);
+            const results = await Promise.all(Array.from(fileList).map(f => parser.parsePdf(f, profile)));
+            
+            let count = 0;
+            const newFiles = [], newTx = [], newSubData = {};
+            for (let i = 0; i < fileList.length; i++) {
+                const res = results[i];
+                if(res.items.length === 0) continue;
+                const fileId = crypto.randomUUID();
+                newFiles.push({ id: fileId, name: res.fileName, count: res.items.length, type: mode, context: categoryContext, date: new Date(), blob: fileList[i] });
+
+                res.items.forEach(item => {
+                    const cleanedName = this.cleanSubDesc(item.desc);
+                    const rule = this.data.tagRules.find(r => r.id === cleanedName);
+                    if (rule && !item.tags.includes(rule.tag)) {
+                        item.tags.push(rule.tag);
+                    }
+                });
+
+                if(mode === 'main') {
+                    res.items.forEach(item => {
+                        if(!this.data.transactions.some(t => t.signature === item.signature)) {
+                            item.sourceFile = res.fileName; item.sourceFileId = fileId;
+                            this.data.transactions.push(item); newTx.push(item); count++;
+                        }
+                    });
+                } else if(mode === 'sub' && categoryContext) {
+                    if(!this.data.subData[categoryContext]) this.data.subData[categoryContext] = [];
+                    if(!newSubData[categoryContext]) newSubData[categoryContext] = [];
+                    res.items.forEach(item => {
+                        if(!this.data.subData[categoryContext].some(t => t.signature === item.signature)) {
+                            item.sourceFile = res.fileName; item.sourceFileId = fileId; item.isSub = true; item.cleanName = categoryContext;
+                            this.data.subData[categoryContext].push(item); newSubData[categoryContext].push(item); count++;
+                        }
+                    });
+                }
+            }
+            if(newFiles.length) { this.data.files.push(...newFiles); await db.save('files', newFiles); }
+            if(newTx.length) await db.save('tx', newTx);
+            for(const cat in newSubData) { await db.save('subData', { category: cat, items: this.data.subData[cat] }); }
+            this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
+            this.initFuse();
+            this.clearFilters();
+            ui.toast(`Imported ${count} new transactions.`);
+        },
+
+        async toggleRecurring(id) {
+            let t = this.getTxById(id);
+            if(t) {
+                t.isRecurring = !t.isRecurring;
+                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                
+                ui.renderAnalysis();
+                if(document.getElementById('drillModal').style.display === 'flex') {
+                    ui.openPatternDrill(document.getElementById('drillTitle').innerText, true);
+                }
+            }
+        },
+
+        async toggleIgnored(id) {
+            let t = this.getTxById(id);
+            if(t) {
+                t.isIgnored = !t.isIgnored;
+                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                ui.toast(t.isIgnored ? "Transaction Hidden" : "Transaction Unhidden");
+                this.applyFilters();
+                if(document.getElementById('detailModal').style.display === 'flex') ui.toggleModal('detailModal');
+            }
+        },
+        
+        async toggleAllRecurring(descGroup, state) {
+            let count = 0;
+            const all = [...this.data.transactions];
+            for(let key in this.data.subData) all.push(...this.data.subData[key]);
+            
+            const allGroups = this.getFuzzyGroups(all);
+            const targets = new Set(allGroups[descGroup] || []);
+            
+            for(const t of targets) {
+                if(t.isRecurring !== state) {
+                    t.isRecurring = state;
+                    const store = this.data.transactions.find(x => x.id === t.id) ? 'tx' : 'subData';
+                    if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                    count++;
+                }
+            }
+            if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(descGroup, true);
+            ui.refresh();
+            ui.toast(state ? `Marked all (${count})` : `Unmarked all (${count})`);
+        },
+        
+        async toggleAvgMode(descGroup) {
+            let count = 0;
+            const all = [...this.data.transactions];
+            for(let key in this.data.subData) all.push(...this.data.subData[key]);
+            
+            const allGroups = this.getFuzzyGroups(all);
+            const targets = new Set(allGroups[descGroup] || []);
+            
+            let newMode = 'avg'; // Default
+            if (targets.size > 0) {
+                 const first = [...targets][0];
+                 newMode = (first.recMode === '12mo') ? 'avg' : '12mo';
+            }
+
+            for(const t of targets) {
+                t.recMode = newMode;
+                const store = this.data.transactions.find(x => x.id === t.id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                count++;
+            }
+            ui.refresh();
+        },
+
+        async confirmPotential(descGroup) { await this.toggleAllRecurring(descGroup, true); ui.toast(`Confirmed transactions as recurring`); },
+        async rejectPotential(descGroup) { const entry = { id: descGroup, rejectedAt: new Date() }; this.data.rejected.push(entry); await db.save('rejected', entry); ui.refresh(); ui.toast("Recommendation rejected"); },
+        async unmarkGroup(descGroup) { if(await ui.confirm("Unmark Group?", `Remove all recurring tags for '${descGroup}'?`)) { await this.toggleAllRecurring(descGroup, false); } },
+        async saveNote(id, text) {
+            let t = this.getTxById(id);
+            if(t) {
+                t.note = text;
+                let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                ui.toast("Note Saved"); this.initFuse(); this.applyFilters(); 
+            }
+        },
+        getTxById(id) {
+            let found = this.data.transactions.find(t => t.id === id);
+            if(found) return found;
+            for(const cat in this.data.subData) { found = this.data.subData[cat].find(t => t.id === id); if(found) return found; }
+            return null;
+        },
+
+        applyFilters() {
+            this.filters.start = document.getElementById('filterStart').value;
+            this.filters.end = document.getElementById('filterEnd').value;
+            this.filters.min = document.getElementById('filterMin').value;
+            this.filters.max = document.getElementById('filterMax').value;
+            this.filters.type = document.getElementById('filterType').value;
+            this.filters.tag = document.getElementById('filterTag').value.trim();
+
+            let baseList;
+            const searchText = this.filters.text.toLowerCase();
+
+            if (searchText && searchText.startsWith('#')) {
+                const tag = searchText.substring(1);
+                let allTx = [...this.data.transactions];
+                Object.values(this.data.subData).forEach(items => allTx.push(...items));
+                baseList = allTx.filter(t => t.tags && t.tags.some(tg => tg.toLowerCase().includes(tag)));
+            } else if (searchText && this.fuse) {
+                const results = this.fuse.search(this.filters.text);
+                baseList = results.map(r => r.item);
+            } else {
+                baseList = this.data.transactions;
+            }
+
+            this.data.viewTx = baseList.filter(t => {
+                if (t.isIgnored) return false;
+                const d = new Date(t.date);
+                if (this.filters.start && d < new Date(this.filters.start)) return false;
+                if (this.filters.end && d > new Date(this.filters.end)) return false;
+                if (this.filters.min && Math.abs(t.amount) < parseFloat(this.filters.min)) return false;
+                if (this.filters.max && Math.abs(t.amount) > parseFloat(this.filters.max)) return false;
+                if (this.filters.type === 'inc' && t.amount < 0) return false;
+                if (this.filters.type === 'exp' && t.amount > 0) return false;
+                if (this.filters.tag && (!t.tags || !t.tags.some(tg => tg.toLowerCase().includes(this.filters.tag.toLowerCase())))) return false;
+                return true;
+            });
+            
+            const hasAdv = this.filters.start || this.filters.end || this.filters.min || this.filters.max || this.filters.type !== 'all' || this.filters.tag;
+            document.getElementById('filterDot').style.display = hasAdv ? 'inline' : 'none';
+            if (document.getElementById('filterModal').style.display === 'flex') { ui.toggleModal('filterModal'); ui.toast(`Found ${this.data.viewTx.length} matches`); }
+            ui.refresh();
+        },
+
+        clearFilters() {
+            document.getElementById('globalSearch').value = ''; this.filters.text = '';
+            document.getElementById('filterStart').value = ''; document.getElementById('filterEnd').value = '';
+            document.getElementById('filterMin').value = ''; document.getElementById('filterMax').value = '';
+            document.getElementById('filterType').value = 'all'; document.getElementById('filterTag').value = '';
+            this.applyFilters();
+            document.getElementById('filterDot').style.display = 'none'; 
+            if(document.getElementById('filterModal').style.display === 'flex') ui.toggleModal('filterModal'); 
+            ui.refresh();
+        },
+
+        async exportXLSX() {
+            if (typeof XLSX === 'undefined') { return ui.alert("XLSX Library not loaded."); }
+            ui.toast("Generating Excel File...");
+            const wb = XLSX.utils.book_new();
+            const headerStyle = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "3B82F6" } }, alignment: { horizontal: "center" } };
+            const subHeaderStyle = { font: { bold: true }, fill: { fgColor: { rgb: "E2E8F0" } } };
+            const currStyle = { numFmt: "$#,##0.00" };
+            const posStyle = { font: { color: { rgb: "10B981" } }, numFmt: "$#,##0.00" };
+            const negStyle = { font: { color: { rgb: "EF4444" } }, numFmt: "$#,##0.00" };
+            const dateStyle = { alignment: { horizontal: "center" } };
+
+            const tx = this.data.viewTx.filter(t => !t.isIgnored);
+            const inc = tx.filter(t=>t.amount>0).reduce((a,b)=>a+b.amount,0);
+            const exp = tx.filter(t=>t.amount<0).reduce((a,b)=>a+b.amount,0);
+            const cats = {}; tx.filter(t=>t.amount<0).forEach(t=>{ cats[t.cleanName] = (cats[t.cleanName]||0)+Math.abs(t.amount); });
+            const catRows = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+
+            const dashData = [[{ v: "FINANCIAL SUMMARY", s: { font: { bold: true, sz: 14 } } }], [], [{ v: "METRIC", s: headerStyle }, { v: "VALUE", s: headerStyle }], [{ v: "Total Income" }, { v: inc, s: posStyle }], [{ v: "Total Expense" }, { v: exp, s: negStyle }], [{ v: "Net Flow" }, { v: inc + exp, s: (inc+exp)>=0 ? posStyle : negStyle }], [], [{ v: "EXPENSE BY CATEGORY", s: { font: { bold: true, sz: 12 } } }], [{ v: "Category", s: headerStyle }, { v: "Amount", s: headerStyle }], ...catRows.map(r => [{ v: r[0] }, { v: r[1], s: currStyle }])];
+            const wsDash = XLSX.utils.aoa_to_sheet(dashData); wsDash['!cols'] = [{ wch: 25 }, { wch: 15 }]; XLSX.utils.book_append_sheet(wb, wsDash, "Dashboard");
+
+            let allRec = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => allRec = allRec.concat(items));
+            const recGroups = this.getFuzzyGroups(allRec.filter(t => t.isRecurring && !t.isIgnored));
+            const recData = [[{ v: "Group / Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Note", s: headerStyle }]];
+            const rowProps = []; rowProps.push({});
+            Object.entries(recGroups).forEach(([name, items]) => {
+                items.sort((a,b) => new Date(b.date) - new Date(a.date));
+                const total = items.reduce((sum, t) => sum + t.amount, 0); const avg = total / items.length;
+                recData.push([{ v: name, s: subHeaderStyle }, { v: `${items.length} transactions - Avg: ${ui.fmt(avg)}`, s: subHeaderStyle }, { v: total, s: { ...subHeaderStyle, ...negStyle } }, { v: "", s: subHeaderStyle }]);
+                rowProps.push({ level: 0, collapsed: true });
+                items.forEach(t => { recData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.amount, s: negStyle }, { v: t.note || "" }]); rowProps.push({ level: 1, hidden: true }); });
+            });
+            const wsRec = XLSX.utils.aoa_to_sheet(recData); wsRec['!cols'] = [{ wch: 25 }, { wch: 40 }, { wch: 15 }, { wch: 30 }]; wsRec['!rows'] = rowProps; XLSX.utils.book_append_sheet(wb, wsRec, "Recurring Items");
+
+            const tagStats = this.calculateRecurringTagStats();
+            if (tagStats.length > 0) {
+                const tagData = [[{v: "Recurring Tag", s: headerStyle}, {v: "Monthly Average", s: headerStyle}, {v: "Total Spent", s: headerStyle}, {v: "# Transactions", s: headerStyle}]];
+                tagStats.forEach(s => tagData.push([s.name, {v: s.monthlyAvg, s: negStyle}, {v: s.total, s: currStyle}, s.count]));
+                const wsTags = XLSX.utils.aoa_to_sheet(tagData); wsTags['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 20 }]; XLSX.utils.book_append_sheet(wb, wsTags, "Recurring Tag Summary");
+            }
+
+            const txData = [[{ v: "Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Category", s: headerStyle }, { v: "Tags", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Type", s: headerStyle }, { v: "Note", s: headerStyle }, { v: "Status", s: headerStyle }]];
+            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => { txData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.cleanName }, { v: (t.tags||[]).join(', ') }, { v: t.amount, s: t.amount >= 0 ? posStyle : negStyle }, { v: t.amount >= 0 ? "Income" : "Expense" }, { v: t.note || "" }, { v: t.isRecurring ? "Recurring" : "" }]); });
+            const wsTx = XLSX.utils.aoa_to_sheet(txData); wsTx['!cols'] = [{ wch: 12 }, { wch: 50 }, { wch: 30 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 30 }, { wch: 12 }]; XLSX.utils.book_append_sheet(wb, wsTx, "Transactions");
+
+            XLSX.writeFile(wb, "BankExplorer_Export.xlsx"); ui.toggleModal('exportModal');
+        },
+
+        exportCSV() {
+            const rows = [["Date","Description","Amount","Category","Tags","Note"]];
+            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => rows.push([t.rawDateStr, `"${t.desc.replace(/"/g,'""')}"`, t.amount, t.cleanName, `"${(t.tags||[]).join(',')}"`, `"${(t.note||'').replace(/"/g,'""')}"`]));
+            const csv = rows.map(r => r.join(',')).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'bank_export.csv'; a.click();
+        },
+        exportJSON() {
+            const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles, recurringTags: this.data.recurringTags, tagRules: this.data.tagRules });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'bank_backup.json'; a.click();
+        },
+        
+        levenshtein(s1, s2) {
+            s1 = s1.toLowerCase();
+            s2 = s2.toLowerCase();
+            const costs = [];
+            for (let i = 0; i <= s1.length; i++) {
+                let lastValue = i;
+                for (let j = 0; j <= s2.length; j++) {
+                    if (i === 0) {
+                        costs[j] = j;
+                    } else {
+                        if (j > 0) {
+                            let newValue = costs[j - 1];
+                            if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+                                newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                            }
+                            costs[j - 1] = lastValue;
+                            lastValue = newValue;
+                        }
+                    }
+                }
+                if (i > 0) costs[s2.length] = lastValue;
+            }
+            return costs[s2.length];
+        },
+        
+        cleanSubDesc(desc) { 
+            let cleaned = desc.toUpperCase()
+                .replace(/WITHDRAWAL|DEPOSIT|ACH|POS|ATM|CHECK CARD|PURCHASE|BILL PAY|RECURRING/gi,' ')
+                .replace(/[\d#*-]+/g,' ') 
+                .replace(/\s+/g, ' ')
+                .trim();
+            
+            const locationKeywords = / ST | AVE | BLVD | RD | FL | CA | NY /i;
+            if (locationKeywords.test(cleaned)) {
+                cleaned = cleaned.split(locationKeywords)[0];
+            }
+            
+            return cleaned.trim();
+        },
+        
+        getFuzzyGroups(txList) {
+            const strictMap = {};
+            txList.forEach(t => {
+                const k = this.cleanSubDesc(t.desc);
+                if (!k) return;
+                if (!strictMap[k]) strictMap[k] = [];
+                strictMap[k].push(t);
+            });
+
+            const groupNames = Object.keys(strictMap);
+            const mergedGroups = {};
+            const mergedKeys = new Set();
+
+            const MERGE_THRESHOLD = 2; 
+
+            for (let i = 0; i < groupNames.length; i++) {
+                const baseName = groupNames[i];
+                if (mergedKeys.has(baseName)) continue;
+
+                mergedGroups[baseName] = [...strictMap[baseName]];
+                mergedKeys.add(baseName);
+
+                for (let j = i + 1; j < groupNames.length; j++) {
+                    const compareName = groupNames[j];
+                    if (mergedKeys.has(compareName)) continue;
+
+                    const distance = this.levenshtein(baseName, compareName);
+
+                    if (distance <= MERGE_THRESHOLD) {
+                        mergedGroups[baseName].push(...strictMap[compareName]);
+                        mergedKeys.add(compareName);
+                    }
+                }
+            }
+            return mergedGroups;
+        },
+
+        getHistory(desc) {
+            const clean = this.cleanSubDesc(desc); let all = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => all = all.concat(items));
+            const matches = all.filter(t => this.cleanSubDesc(t.desc) === clean && !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
+            const total = matches.reduce((sum, t) => sum + t.amount, 0); return { items: matches, total, avg: total / matches.length, count: matches.length };
+        },
+        getPotentialRecurring() {
+            let all = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => all = all.concat(items));
+            const candidates = all.filter(t => t.amount < 0 && !t.isRecurring && !t.isIgnored);
+            const groups = this.getFuzzyGroups(candidates);
+            const rejectedSet = new Set(this.data.rejected.map(r => r.id));
+            const potentials = [];
+            for(const [key, items] of Object.entries(groups)) {
+                if(rejectedSet.has(key)) continue;
+                if(items.length < this.settings.minCount) continue; 
+                items.sort((a,b) => new Date(b.date) - new Date(a.date)); 
+                const dates = items.map(i => new Date(i.date).getTime()); const intervals = [];
+                for(let i=0; i < dates.length - 1; i++) { intervals.push((dates[i] - dates[i+1]) / (1000 * 3600 * 24)); }
+                const avg = intervals.reduce((a,b)=>a+b,0) / intervals.length;
+                if(avg >= this.settings.minDays && avg <= this.settings.maxDays) { potentials.push({ name: key, avgAmt: items[0].amount, count: items.length, days: Math.round(avg), sampleId: items[0].id }); }
+            }
+            return potentials.sort((a,b) => a.days - b.days);
+        },
+        async clearAll() { if(await ui.confirm("Delete All Data?", "This will permanently delete all imported files, transactions, and settings. Are you sure?")) { await db.clear(); location.reload(); } }
+    });
+
+    // Expose app/ui to global scope for HTML event handlers
+    window.app = app;
+    window.ui = ui;
+    window.aiManager = aiManager;
+
+    // Start
+    app.init();
+</script>
+</body>
+</html>
