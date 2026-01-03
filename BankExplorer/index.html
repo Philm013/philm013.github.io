@@ -804,6 +804,45 @@
     </div>
 </div>
 
+ <!-- RULE DECISION MODAL -->
+<div id="ruleDecisionModal" class="modal-overlay" style="z-index: 3100; align-items: center;">
+    <div class="modal-sheet" style="max-width: 450px; height: auto;">
+        <div class="modal-header">
+            <h3>Create Smart Tag Rule?</h3>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <p style="margin-top:0; color:var(--text-sub)">
+                You just tagged <strong id="rdVendor">Vendor</strong>. 
+                Do you want to automatically apply <span id="rdTag" class="tag-badge">Tag</span> to future imports?
+            </p>
+            
+            <input type="hidden" id="rdTxId">
+            <input type="hidden" id="rdTagName">
+            <input type="hidden" id="rdVendorClean">
+            <input type="hidden" id="rdAmount">
+
+            <div style="display:flex; flex-direction: column; gap:10px; margin-top:20px;">
+                <button class="btn btn-outline" style="justify-content: space-between; text-align: left;" onclick="app.createSmartRule('exact')">
+                    <span>
+                        <i class="fas fa-crosshairs" style="color:var(--accent)"></i> 
+                        Exact Match Only
+                    </span>
+                    <span id="rdAmtDisplay" style="font-weight:700"></span>
+                </button>
+                
+                <button class="btn btn-outline" style="justify-content: flex-start; text-align: left;" onclick="app.createSmartRule('any')">
+                    <i class="fas fa-globe" style="color:var(--success)"></i>
+                    Match ANY amount for this Vendor
+                </button>
+                
+                <button class="btn" style="background:var(--bg); color:var(--text-sub); margin-top: 5px;" onclick="ui.toggleModal('ruleDecisionModal')">
+                    No, just this once
+                </button>
+            </div>
+        </div>
+    </div>
+</div>   
+    
 <!-- CONFIRM MODAL -->
 <div id="confirmModal" class="modal-overlay" style="z-index: 3000; align-items: center;">
     <div class="modal-sheet" style="max-width: 400px; height: auto;">
@@ -1144,6 +1183,24 @@
             document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
         },
 
+        // FIND: Object.assign(ui, { ...
+
+// ADD THIS FUNCTION INSIDE THE UI OBJECT:
+askRuleCreation(txId, cleanName, tag, amount) {
+    document.getElementById('rdVendor').innerText = cleanName;
+    document.getElementById('rdTag').innerText = '#' + tag;
+    document.getElementById('rdAmtDisplay').innerText = this.fmt(amount);
+    document.getElementById('rdAmtDisplay').className = amount >= 0 ? 'pos' : 'neg';
+    
+    document.getElementById('rdTxId').value = txId;
+    document.getElementById('rdTagName').value = tag;
+    document.getElementById('rdVendorClean').value = cleanName;
+    document.getElementById('rdAmount').value = amount;
+    
+    const modal = document.getElementById('ruleDecisionModal');
+    modal.style.display = 'flex';
+},
+        
         // DASHBOARD CONTROLLER
         setDashTime(mode, btn) {
             this.state.dashTime = mode;
@@ -1315,7 +1372,27 @@
         toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); },
         renderProfilesSelect() { document.getElementById('importProfileSelect').innerHTML = app.data.profiles.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); },
         renderProfilesList() { document.getElementById('profilesList').innerHTML = app.data.profiles.map(p => `<div class="profile-card"><div><strong>${p.name}</strong><br><small style="font-family:monospace; color:var(--text-sub)">${p.regex.substring(0,30)}...</small></div><button class="btn btn-sm btn-outline" onclick="app.editProfile('${p.id}')">Edit</button></div>`).join(''); },
-        renderTagRules() { document.getElementById('tagRulesList').innerHTML = app.data.tagRules.map(r => `<div class="profile-card"><div><strong>${r.id}</strong><br><small style="color:var(--accent)"> &rarr; #${r.tag}</small></div><button class="btn btn-sm btn-danger-soft" onclick="app.deleteTagRule('${r.id}')">Delete</button></div>`).join('') || '<div style="padding:20px;text-align:center;color:#999">No rules created yet.</div>'; },
+        // REPLACE ui.renderTagRules with:
+renderTagRules() { 
+    document.getElementById('tagRulesList').innerHTML = app.data.tagRules.map(r => {
+        let desc = r.id;
+        let icon = '<i class="fas fa-globe"></i>';
+        
+        if (r.type === 'exact') {
+            desc = `${r.matchName} <span class="${r.matchAmount >= 0 ? 'pos' : 'neg'}" style="font-weight:bold">${ui.fmt(r.matchAmount)}</span>`;
+            icon = '<i class="fas fa-crosshairs"></i>';
+        }
+        
+        return `<div class="profile-card">
+            <div>
+                <div style="font-size:0.8rem; color:var(--text-sub); margin-bottom:4px;">${icon} ${r.type === 'exact' ? 'Exact Match' : 'Any Amount'}</div>
+                <strong>${desc}</strong><br>
+                <small style="color:var(--accent)"> &rarr; #${r.tag}</small>
+            </div>
+            <button class="btn btn-sm btn-danger-soft" onclick="app.deleteTagRule('${r.id.replace(/'/g, "\\'")}')">Delete</button>
+        </div>`;
+    }).join('') || '<div style="padding:20px;text-align:center;color:#999">No rules created yet.</div>'; 
+},
         async openPdf(fileId) { if(!fileId) return ui.alert("No File ID provided."); const f = await db.get('files',fileId); if(!f||!f.blob) return ui.alert("File not found in database."); const url = URL.createObjectURL(f.blob); document.getElementById('pdfTitle').innerText=f.name; document.getElementById('pdfContainer').innerHTML='Loading...'; ui.toggleModal('pdfModal'); const pdf = await pdfjsLib.getDocument(url).promise; document.getElementById('pdfContainer').innerHTML=''; for(let i=1;i<=pdf.numPages;i++){ const p=await pdf.getPage(i); const c=document.createElement('canvas'); const v=p.getViewport({scale:1.5}); c.width=v.width; c.height=v.height; c.style.marginBottom='10px'; await p.render({canvasContext:c.getContext('2d'), viewport:v}).promise; document.getElementById('pdfContainer').appendChild(c); } },
         switchView(id) { this.closeAllModals(); document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active')); document.getElementById('view-'+id).classList.add('active'); document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active')); document.querySelector(`.nav-item[onclick="ui.switchView('${id}')"]`).classList.add('active'); },
         toast(msg) { const d = document.createElement('div'); d.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 16px;border-radius:20px;z-index:9999;font-size:0.85rem;"; d.innerText = msg; document.body.appendChild(d); setTimeout(()=>d.remove(), 2500); },
@@ -1591,34 +1668,36 @@
         },
 
         async addTag(id, tag, fromRule = false) {
-            tag = tag.trim();
-            if(!tag) return;
-            let t = this.getTxById(id);
-            if(t) {
-                if(!t.tags) t.tags = [];
-                if(!t.tags.includes(tag)) {
-                    t.tags.push(tag);
-                    let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
-                    if(store === 'tx') await db.save('tx', t); 
-                    else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                    this.initFuse();
-                    ui.refresh();
-                    if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
+    tag = tag.trim();
+    if(!tag) return;
+    let t = this.getTxById(id);
+    if(t) {
+        if(!t.tags) t.tags = [];
+        if(!t.tags.includes(tag)) {
+            t.tags.push(tag);
+            let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
+            if(store === 'tx') await db.save('tx', t); 
+            else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+            this.initFuse();
+            ui.refresh();
+            if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
 
-                    const cleanedName = this.cleanSubDesc(t.desc);
-                    if (!fromRule && cleanedName && !this.data.tagRules.find(r => r.id === cleanedName)) {
-                        const confirmed = await ui.confirm("Create Smart Rule?", `Create a rule to always tag '${cleanedName}' as '${tag}'?`);
-                        if (confirmed) {
-                            const newRule = { id: cleanedName, tag: tag };
-                            this.data.tagRules.push(newRule);
-                            await db.save('tagRules', newRule);
-                            ui.toast(`Rule created. Applying now...`);
-                            await this.applyTagRulesToAll(newRule);
-                        }
-                    }
+            // CHANGED LOGIC HERE
+            const cleanedName = this.cleanSubDesc(t.desc);
+            if (!fromRule && cleanedName) {
+                // Check if a rule already covers this (either exact or wildcard)
+                const existing = this.data.tagRules.find(r => {
+                    if (r.type === 'exact') return r.matchName === cleanedName && r.matchAmount === t.amount && r.tag === tag;
+                    return r.id === cleanedName && r.tag === tag;
+                });
+                
+                if (!existing) {
+                    ui.askRuleCreation(id, cleanedName, tag, t.amount);
                 }
             }
-        },
+        }
+    }
+},
 
         async removeTag(id, tag) {
             let t = this.getTxById(id);
@@ -1632,6 +1711,47 @@
                 if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
             }
         },
+        
+        async createSmartRule(type) {
+    ui.toggleModal('ruleDecisionModal');
+    
+    const cleanName = document.getElementById('rdVendorClean').value;
+    const tag = document.getElementById('rdTagName').value;
+    const amount = parseFloat(document.getElementById('rdAmount').value);
+    
+    let ruleId, newRule;
+
+    if (type === 'exact') {
+        // Create a unique ID for exact match
+        ruleId = `${cleanName}::${amount}`;
+        newRule = { 
+            id: ruleId, 
+            tag: tag, 
+            type: 'exact', 
+            matchName: cleanName, 
+            matchAmount: amount 
+        };
+    } else {
+        // Standard ID for wildcard
+        ruleId = cleanName;
+        newRule = { 
+            id: ruleId, 
+            tag: tag, 
+            type: 'any' 
+        };
+    }
+
+    // Save to DB
+    // Remove existing if overwriting specific logic
+    this.data.tagRules = this.data.tagRules.filter(r => r.id !== ruleId);
+    this.data.tagRules.push(newRule);
+    await db.save('tagRules', newRule);
+    
+    ui.toast(type === 'exact' ? "Exact Value Rule Created" : "Vendor Rule Created");
+    
+    // Apply immediately
+    await this.applyTagRulesToAll(newRule);
+},
         
         async addRecurringTag(tag) {
             tag = tag.trim();
@@ -1684,26 +1804,43 @@
         },
 
         async applyTagRulesToAll(specificRule = null) {
-            let allTx = [...this.data.transactions, ...Object.values(this.data.subData).flat()];
-            const rules = specificRule ? [specificRule] : this.data.tagRules;
-            let changedCount = 0;
-            for (const rule of rules) {
-                for (const t of allTx) {
-                    if (this.cleanSubDesc(t.desc) === rule.id) {
-                        if (!t.tags || !t.tags.includes(rule.tag)) {
-                            await this.addTag(t.id, rule.tag, true);
-                            changedCount++;
-                        }
-                    }
+    let allTx = [...this.data.transactions, ...Object.values(this.data.subData).flat()];
+    const rules = specificRule ? [specificRule] : this.data.tagRules;
+    let changedCount = 0;
+    
+    for (const rule of rules) {
+        for (const t of allTx) {
+            const txName = this.cleanSubDesc(t.desc);
+            let isMatch = false;
+
+            if (rule.type === 'exact') {
+                // Check Name AND Amount
+                // Use small epsilon for float comparison safety or direct equality if imported cleanly
+                if (txName === rule.matchName && Math.abs(t.amount - rule.matchAmount) < 0.001) {
+                    isMatch = true;
+                }
+            } else {
+                // Legacy or 'any' type: Check Name only
+                if (txName === rule.id || (rule.type === 'any' && txName === rule.id)) {
+                    isMatch = true;
                 }
             }
-            if (changedCount > 0) {
-                ui.toast(`Tagged ${changedCount} existing items based on your rule(s).`);
-                ui.refresh();
-            } else if (!specificRule) {
-                ui.toast("No new items to tag.");
+
+            if (isMatch) {
+                if (!t.tags || !t.tags.includes(rule.tag)) {
+                    await this.addTag(t.id, rule.tag, true);
+                    changedCount++;
+                }
             }
-        },
+        }
+    }
+    if (changedCount > 0) {
+        ui.toast(`Tagged ${changedCount} items via Smart Rules.`);
+        ui.refresh();
+    } else if (!specificRule) {
+        ui.toast("Rules applied. No new matches found.");
+    }
+},
 
         async deleteTagRule(ruleId) {
             const confirmed = await ui.confirm("Delete Rule?", `Are you sure you want to delete the rule for '${ruleId}'?`);
