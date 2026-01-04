@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v8.1 (Unified Recurring)</title>
+    <title>Bank Explorer Pro v8.2 (Tag UX Fix)</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -228,6 +229,24 @@
         
         .tag-input-container {
             display: flex; gap: 5px; margin-top: 10px;
+        }
+        
+        /* TAG CLOUD CONTROLS */
+        .tag-cloud-wrapper {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            background: var(--bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-top: 10px;
+        }
+        
+        .tag-filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            align-items: center;
         }
 
         /* MODALS */
@@ -491,6 +510,18 @@
         <div class="card">
             <h3 style="margin-top:0"><i class="fas fa-filter" style="color:var(--accent)"></i> Interactive Filter</h3>
             
+            <!-- Active Tags Area -->
+            <div style="font-size:0.8rem; font-weight:600; color:var(--text-sub);">ACTIVE FILTERS</div>
+            <div id="activeTagsList" style="margin-bottom:10px; min-height:30px; display:flex; flex-wrap:wrap; gap:5px;">
+                <span style="color:var(--text-sub); font-style:italic; font-size:0.8rem; padding:5px 0;">No tags selected. Click tags below to explore.</span>
+            </div>
+
+            <!-- Tag Actions -->
+            <div id="tagActions" style="display:none; gap:10px; margin-bottom:15px;">
+                <button class="btn btn-sm btn-outline" style="flex:1" onclick="app.filterByActiveTags()"><i class="fas fa-list"></i> View Transactions</button>
+                <button class="btn btn-sm btn-ghost" onclick="app.clearAnalysisTags()">Clear</button>
+            </div>
+            
             <!-- Stats for selected tags -->
             <div id="tagStats" class="stats-grid" style="display:none; margin-bottom:15px;">
                 <div class="metric-box">
@@ -503,23 +534,21 @@
                 </div>
             </div>
 
-            <!-- Active Tags Area -->
-            <div style="margin-bottom:5px; font-size:0.8rem; font-weight:600; color:var(--text-sub);">ACTIVE FILTERS</div>
-            <div id="activeTagsList" style="margin-bottom:10px; min-height:30px; display:flex; flex-wrap:wrap; gap:5px;">
-                <span style="color:var(--text-sub); font-style:italic; font-size:0.8rem; padding:5px 0;">No tags selected. Click tags below to explore.</span>
-            </div>
-
-            <div id="tagActions" style="display:none; gap:10px; margin-bottom:15px;">
-                <button class="btn btn-sm btn-outline" style="flex:1" onclick="app.filterByActiveTags()"><i class="fas fa-list"></i> View Transactions</button>
-                <button class="btn btn-sm btn-ghost" onclick="app.clearAnalysisTags()">Clear</button>
-            </div>
-            
             <hr style="border:none; border-top:1px solid var(--border); margin:10px 0 15px 0;">
 
-            <!-- All Tags Cloud -->
-            <div style="margin-bottom:5px; font-size:0.8rem; font-weight:600; color:var(--text-sub);">AVAILABLE TAGS</div>
-            <div id="tagsCloud" style="display:flex; flex-wrap:wrap; gap:8px; padding-top:5px;">
-                <small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>
+            <!-- All Tags Cloud Filter & Container -->
+            <div style="font-size:0.8rem; font-weight:600; color:var(--text-sub); margin-bottom:5px;">AVAILABLE TAGS</div>
+            
+            <div class="tag-filter-bar">
+                <input type="text" id="tagCloudFilter" class="form-control" style="padding:6px 10px; font-size:0.9rem;" placeholder="Find tag..." oninput="ui.renderTagsView()">
+                <button class="control-btn active" id="btnSortCount" onclick="ui.state.tagSortMode='count'; ui.renderTagsView()">Top</button>
+                <button class="control-btn" id="btnSortAlpha" onclick="ui.state.tagSortMode='alpha'; ui.renderTagsView()">A-Z</button>
+            </div>
+
+            <div class="tag-cloud-wrapper">
+                <div id="tagsCloud" style="display:flex; flex-wrap:wrap; gap:8px;">
+                    <small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>
+                </div>
             </div>
         </div>
         
@@ -1244,7 +1273,7 @@
 
     // --- UI ---
     Object.assign(ui, {
-        state: { drillCat: null, dashTime: 'month', dashMode: 'flow', dashCat: null, drillRaw: [], drillFiltered: [] },
+        state: { drillCat: null, dashTime: 'month', dashMode: 'flow', dashCat: null, drillRaw: [], drillFiltered: [], tagSortMode: 'count', tagFilter: '' },
         charts: {},
 
         init() {
@@ -1573,6 +1602,10 @@
         },
 
         renderTagsView() {
+            // Update button states
+            document.getElementById('btnSortCount').className = `control-btn ${ui.state.tagSortMode === 'count' ? 'active' : ''}`;
+            document.getElementById('btnSortAlpha').className = `control-btn ${ui.state.tagSortMode === 'alpha' ? 'active' : ''}`;
+
             // 1. Gather Data
             const tagCounts = {};
             let allTx = [...app.data.transactions]; Object.values(app.data.subData).forEach(items => allTx.push(...items));
@@ -1582,16 +1615,37 @@
                 tagCounts[tag].sum += t.amount;
             }); });
 
-            // 2. Render Clouds
+            // 2. Render Clouds (with Filter Logic)
             const tagsCloud = document.getElementById('tagsCloud');
             const activeTagsList = document.getElementById('activeTagsList');
             const tagStats = document.getElementById('tagStats');
             const tagActions = document.getElementById('tagActions');
+            
+            // Get local filter input
+            const filterInput = document.getElementById('tagCloudFilter');
+            const filterText = filterInput ? filterInput.value.toLowerCase() : '';
 
             if(Object.keys(tagCounts).length > 0) { 
                 // Available Cloud
-                const availableTags = Object.keys(tagCounts).filter(t => !app.analysisTags.has(t)).sort();
-                tagsCloud.innerHTML = availableTags.map(tag => `<span class="tag-badge" onclick="app.toggleAnalysisTag('${tag.replace(/'/g, "\\'")}')">#${tag} (${tagCounts[tag].count})</span>`).join('');
+                let availableTags = Object.keys(tagCounts).filter(t => !app.analysisTags.has(t));
+                
+                // Apply Search Filter
+                if(filterText) {
+                    availableTags = availableTags.filter(t => t.toLowerCase().includes(filterText));
+                }
+
+                // Apply Sort
+                if(ui.state.tagSortMode === 'count') {
+                    availableTags.sort((a,b) => tagCounts[b].count - tagCounts[a].count);
+                } else {
+                    availableTags.sort();
+                }
+
+                if(availableTags.length > 0) {
+                    tagsCloud.innerHTML = availableTags.map(tag => `<span class="tag-badge" onclick="app.toggleAnalysisTag('${tag.replace(/'/g, "\\'")}')">#${tag} (${tagCounts[tag].count})</span>`).join('');
+                } else {
+                    tagsCloud.innerHTML = '<span style="color:var(--text-sub); font-style:italic;">No matching tags.</span>';
+                }
                 
                 // Active Cloud
                 const activeArray = Array.from(app.analysisTags);
