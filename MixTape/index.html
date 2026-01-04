@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#dcdcdc">
+    <title>StreamDeck V15 | Hi-Fi</title>
+    
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <!-- Retro Fonts: LCD and Handwriting -->
+    <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=VT323&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* 90s Walkman Aesthetics */
+            --case-bg: #e0e0e0;
+            --plastic-dark: #b0b0b0;
+            --accent-color: #ff9900;
+            --lcd-bg: #6e7a63;
+            --lcd-txt: #1c2e1c;
+            --tape-black: #111;
+            --led-red: #ff3333;
+            --led-green: #33ff33;
+            --shadow: 4px 4px 10px rgba(0,0,0,0.2), -2px -2px 6px rgba(255,255,255,0.8);
+            --inset: inset 2px 2px 5px rgba(0,0,0,0.1), inset -1px -1px 3px rgba(255,255,255,0.5);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
+
+        body {
+            background: #222; margin: 0;
+            height: 100dvh; width: 100vw; display: flex; justify-content: center; align-items: center;
+            overflow: hidden; font-family: sans-serif;
+        }
+
+        /* --- THE WALKMAN CHASSIS --- */
+        .walkman {
+            width: 100%; max-width: 420px; height: 96%;
+            background: var(--case-bg);
+            border-radius: 20px;
+            box-shadow: inset 5px 5px 15px rgba(255,255,255,0.5), inset -5px -5px 15px rgba(0,0,0,0.1), 0 0 50px rgba(0,0,0,0.7);
+            padding: 20px;
+            display: flex; flex-direction: column; gap: 15px;
+            position: relative;
+            border: 4px solid #fff;
+        }
+
+        /* 1. HEADER & LEDs */
+        .top-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 5px; border-bottom: 2px solid #ccc;
+        }
+        .brand { font-weight: 900; color: #555; font-style: italic; font-size: 18px; letter-spacing: -1px; }
+        .brand span { color: var(--accent-color); }
+        
+        .led-panel { display: flex; gap: 8px; font-size: 9px; font-weight: bold; color: #666; }
+        .led-label { display: flex; flex-direction: column; align-items: center; }
+        .bulb { 
+            width: 8px; height: 8px; border-radius: 50%; background: #bbb; border: 1px solid #999; margin-top: 2px;
+            transition: background 0.3s;
+        }
+        .bulb.on { background: var(--led-green); box-shadow: 0 0 5px var(--led-green); border-color: transparent;}
+        .bulb.bad { background: var(--led-red); box-shadow: 0 0 5px var(--led-red); border-color: transparent;}
+
+        /* 2. THE TAPE WINDOW */
+        .cassette-window {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 10px;
+            height: 180px;
+            position: relative;
+            box-shadow: inset 0 0 15px #000;
+            overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+        }
+        /* Video hidden behind tape */
+        #yt-mount { position: absolute; opacity: 0; pointer-events: none; }
+
+        /* The Cassette Itself */
+        .tape {
+            width: 95%; height: 90%; background: var(--tape-black);
+            border-radius: 8px; position: relative;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        
+        .sticker {
+            width: 90%; height: 70%; background: #f0f0f0; border-radius: 4px;
+            position: relative; overflow: hidden;
+            display: flex; justify-content: space-around; align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        /* Handwriting font for song title */
+        .hand-write {
+            position: absolute; top: 10%; width: 100%; text-align: center;
+            font-family: 'Permanent Marker', cursive; color: #0000aa; opacity: 0.8; font-size: 14px;
+            white-space: nowrap; overflow: hidden; padding: 0 10px; z-index: 2; transform: rotate(-1deg);
+        }
+
+        .reel {
+            width: 45px; height: 45px; border-radius: 50%; background: #fff;
+            border: 4px solid #ddd; position: relative; overflow: hidden; z-index: 1;
+        }
+        /* Teeth of the reel */
+        .reel::after {
+            content: ''; position: absolute; inset: -5px;
+            background: repeating-conic-gradient(#333 0 10deg, transparent 10deg 30deg);
+        }
+        /* Animation Classes */
+        .tape.spinning .reel::after { animation: spin 2s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* 3. LCD & INPUTS */
+        .middle-section {
+            background: #d4d4d4; padding: 10px; border-radius: 8px; box-shadow: var(--inset);
+            display: flex; gap: 10px;
+        }
+        
+        .lcd {
+            flex: 1; background: var(--lcd-bg); color: var(--lcd-txt);
+            border: 2px solid #555; border-radius: 4px; padding: 5px;
+            font-family: 'VT323', monospace; font-size: 18px; line-height: 1;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .lcd-row { display: flex; justify-content: space-between; font-size: 14px;}
+
+        .input-stack { width: 50%; display: flex; flex-direction: column; gap: 5px; }
+        input { 
+            width: 100%; border: none; border-bottom: 2px solid #999; background: transparent; 
+            font-family: monospace; font-size: 12px; padding: 4px; border-radius: 0; color:#333;
+        }
+        input:focus { border-color: var(--accent-color); }
+        .action-btn {
+            background: #999; color: white; border: none; padding: 6px; font-size: 10px; font-weight: bold;
+            border-radius: 2px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        .action-btn:active { transform: translateY(1px); box-shadow: none; background: var(--accent-color); }
+
+        /* 4. TRACKLIST (Paper insert style) */
+        .deck-list {
+            flex: 1; background: #fff;
+            background-image: repeating-linear-gradient(#fff 0, #fff 19px, #ccc 20px);
+            border-radius: 4px; border: 1px solid #ccc;
+            overflow-y: auto; padding: 10px; padding-top: 0;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+            font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #333;
+        }
+        
+        .line-item {
+            display: flex; justify-content: space-between; align-items: center;
+            height: 20px; cursor: pointer; margin-bottom: 1px; padding: 0 5px;
+        }
+        .line-item.current { background: rgba(255, 153, 0, 0.3); font-weight: bold; }
+        .line-item:hover .del-mark { visibility: visible; }
+        
+        .del-mark { color: red; font-weight: bold; cursor: pointer; visibility: hidden; }
+
+        /* 5. PHYSICAL CONTROLS */
+        .control-row {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+            background: #ccc; padding: 10px; border-radius: 10px;
+            border-top: 1px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .button {
+            height: 50px; background: #e8e8e8; border: none;
+            border-radius: 4px; color: #555; font-size: 20px;
+            box-shadow: 4px 4px 8px rgba(0,0,0,0.15), -2px -2px 6px #fff;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: all 0.1s;
+        }
+        .button:active {
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px #fff;
+            color: var(--accent-color);
+        }
+        .eject-btn { color: #cc0000; font-size: 14px; font-weight: bold; }
+
+        /* MODALS (Stylized like instruction manuals/notes) */
+        .modal-shade {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 100;
+            display: none; align-items: center; justify-content: center;
+        }
+        .note-card {
+            background: #fff; width: 300px; padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); transform: rotate(-2deg);
+            font-family: 'Courier New', monospace; border: 1px solid #ccc;
+        }
+        .card-title { border-bottom: 2px solid #333; margin-bottom: 10px; font-weight: bold; }
+        .close-ink {
+            display: block; margin-top: 15px; background: none; border: 1px solid #333; 
+            cursor: pointer; width: 100%; padding: 5px; font-weight: bold;
+        }
+        
+        #share-output { width: 100%; background: #eee; border: none; padding: 5px; font-family: monospace; font-size: 10px; }
+
+    </style>
+</head>
+<body>
+
+<div class="walkman">
+    <!-- Header -->
+    <div class="top-row">
+        <div class="brand">RETRO<span>DECK</span> V15</div>
+        <div class="led-panel">
+            <div class="led-label">NET<div class="bulb" id="led-net"></div></div>
+            <div class="led-label">DB<div class="bulb" id="led-db"></div></div>
+            <div class="led-label">P2P<div class="bulb" id="led-p2p"></div></div>
+        </div>
+    </div>
+
+    <!-- Cassette Window -->
+    <div class="cassette-window">
+        <!-- Hidden YT -->
+        <div id="yt-mount"></div>
+        
+        <!-- The Cassette -->
+        <div class="tape" id="tape-body">
+            <div class="sticker">
+                <div class="reel"></div>
+                <div class="hand-write" id="tape-label">MIXTAPE VOL 1</div>
+                <div class="reel"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interface -->
+    <div class="middle-section">
+        <div class="lcd">
+            <div class="lcd-row">
+                <span id="lcd-state">STOPPED</span>
+                <span>VOL 80</span>
+            </div>
+            <div class="lcd-row" style="margin-top:auto">
+                <span>TRK <span id="trk-num">00</span></span>
+                <span id="time-disp">00:00</span>
+            </div>
+        </div>
+        <div class="input-stack">
+            <input type="text" id="q-input" placeholder="Artist - Song" enterkeyhint="go">
+            <div style="display:flex; gap:2px;">
+                <button class="action-btn" style="flex:1" onclick="net.run()">FIND</button>
+                <button class="action-btn" style="flex:1" onclick="app.clear()">CLR</button>
+            </div>
+            <div style="display:flex; gap:2px;">
+                <button class="action-btn" style="flex:1" onclick="lib.ui()">LIB</button>
+                <button class="action-btn" style="flex:1" onclick="lib.save()">SAV</button>
+                <button class="action-btn" style="flex:1" onclick="peer.ui()">LNK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Playlist -->
+    <div class="deck-list" id="ui-list">
+        <!-- JS Injects Rows -->
+        <div style="text-align:center; padding-top:20px; color:#999; font-style:italic;">-- DECK EMPTY --</div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="control-row">
+        <button class="button" onclick="play.cmd('prev')">⏮</button>
+        <button class="button" onclick="play.cmd('play')">▶</button>
+        <button class="button" onclick="play.cmd('pause')">⏸</button>
+        <button class="button" onclick="play.cmd('next')">⏭</button>
+        <button class="button eject-btn" onclick="app.clear()">⏏</button>
+    </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-shade" id="modal-share">
+    <div class="note-card">
+        <div class="card-title">TO: FRIEND</div>
+        <p style="font-size:10px">Here is the link for the live sync:</p>
+        <textarea id="share-output" rows="3" readonly></textarea>
+        <button class="close-ink" onclick="peer.copy()">COPY TO CLIPBOARD</button>
+        <button class="close-ink" onclick="document.getElementById('modal-share').style.display='none'">CLOSE</button>
+    </div>
+</div>
+
+<!-- LIBRARY MODAL -->
+<div class="modal-shade" id="modal-lib">
+    <div class="note-card">
+        <div class="card-title">MY COLLECTION</div>
+        <div id="lib-rows" style="height:150px; overflow-y:auto; border:1px solid #eee; padding:5px; margin-bottom:5px;"></div>
+        <button class="close-ink" onclick="document.getElementById('modal-lib').style.display='none'">CLOSE</button>
+    </div>
+</div>
+
+<script>
+    /*
+     * STREAMDECK V15: HI-FI RETRO
+     * Core: Uses v13 Logic (Window.Open for Auth) + Retro UI bindings
+     */
+
+    const sys = {
+        led: (id, st) => document.getElementById('led-'+id).className = `bulb ${st}`,
+        label: (t) => {
+            document.getElementById('tape-label').innerText = t;
+            // Also update window title for metadata
+            document.title = "▶ " + t;
+        }
+    };
+
+    // --- 1. NETWORK (THE v13 FIX) ---
+    const net = {
+        config: {
+            proxy: "https://cors-anywhere.herokuapp.com/",
+            api: "https://pipedapi.kavin.rocks/search?q="
+        },
+        run: async function() {
+            const q = document.getElementById('q-input').value.trim();
+            if(!q) return;
+
+            // Direct Link Trap
+            const m = q.match(/(?:v=|youtu\.be\/)([^&?]+)/);
+            if(m) {
+                app.add({id:m[1], title:'Direct Tape'});
+                document.getElementById('q-input').value = "";
+                return;
+            }
+
+            sys.led('net', 'on'); // Waiting
+
+            try {
+                const url = net.config.proxy + net.config.api + encodeURIComponent(q) + "&filter=music_songs";
+                const res = await fetch(url, { headers: { 'X-Requested-With': 'StreamDeckRetro' }});
+
+                // AUTH TRAP
+                if(res.status === 403) {
+                    sys.led('net', 'bad');
+                    if(confirm("Network Locked.\n\nOpen Auth Page in New Window? (Click Button there, then Close, then try again)")) {
+                        window.open("https://cors-anywhere.herokuapp.com/corsdemo", "_blank");
+                    }
+                    return;
+                }
+
+                const data = await res.json();
+                const item = data.items.find(x => x.type === 'stream');
+                
+                if(item) {
+                    const id = item.url.split('v=')[1];
+                    app.add({ id, title: item.title });
+                    sys.led('net', ''); // clear
+                    document.getElementById('q-input').value = "";
+                } else {
+                    alert("No track found");
+                    sys.led('net', 'bad');
+                }
+
+            } catch(e) {
+                console.error(e);
+                sys.led('net', 'bad');
+            }
+        }
+    };
+
+    // --- 2. LOGIC ---
+    const app = {
+        list: [],
+        idx: 0,
+        add: function(t) {
+            this.list.push(t);
+            this.render();
+            if(this.list.length === 1) this.load(0);
+        },
+        load: function(i) {
+            if(!this.list[i]) return;
+            this.idx = i;
+            this.render();
+            sys.label(this.list[i].title);
+            document.getElementById('trk-num').innerText = (i+1).toString().padStart(2,'0');
+            if(play.obj) play.obj.loadVideoById(this.list[i].id);
+        },
+        render: function() {
+            const el = document.getElementById('ui-list');
+            el.innerHTML = "";
+            if(this.list.length === 0) el.innerHTML = `<div style="text-align:center; padding-top:20px; color:#999; font-style:italic;">-- DECK EMPTY --</div>`;
+            
+            this.list.forEach((t,i) => {
+                const act = i === this.idx ? 'current' : '';
+                el.innerHTML += `
+                    <div class="line-item ${act}">
+                        <span onclick="app.load(${i})" style="flex-grow:1; white-space:nowrap; overflow:hidden;">${i+1}. ${t.title}</span>
+                        <span class="del-mark" onclick="app.rem(${i})">X</span>
+                    </div>`;
+            });
+        },
+        rem: function(i) { this.list.splice(i,1); this.render(); },
+        clear: function() { this.list=[]; this.render(); play.obj.stopVideo(); sys.label("NO CASSETTE"); }
+    };
+
+    // --- 3. STORAGE ---
+    const lib = {
+        db: null,
+        init: function() {
+            const r = indexedDB.open("RetroDeck", 1);
+            r.onupgradeneeded = e => e.target.result.createObjectStore("tapes", {keyPath:"id", autoIncrement:true});
+            r.onsuccess = e => { lib.db = e.target.result; sys.led('db', 'on'); };
+        },
+        save: function() {
+            if(app.list.length===0) return;
+            const n = prompt("Scribble name on tape:");
+            if(!n) return;
+            lib.db.transaction("tapes","readwrite").objectStore("tapes").put({name:n, list:app.list});
+            alert("Stored in shelf.");
+        },
+        ui: function() {
+            const el = document.getElementById('lib-rows');
+            el.innerHTML = "";
+            lib.db.transaction("tapes","readonly").objectStore("tapes").getAll().onsuccess = e => {
+                e.target.result.forEach(t => {
+                    el.innerHTML += `
+                        <div style="border-bottom:1px dashed #999; padding:5px; display:flex; justify-content:space-between">
+                            <span onclick='app.list=${JSON.stringify(t.list)};app.render();app.load(0);document.getElementById("modal-lib").style.display="none"' style="cursor:pointer; font-weight:bold;">${t.name}</span>
+                            <span onclick="lib.del(${t.id})" style="color:red; cursor:pointer;">[x]</span>
+                        </div>`;
+                });
+                document.getElementById('modal-lib').style.display='flex';
+            }
+        },
+        del: function(id) {
+            lib.db.transaction("tapes","readwrite").objectStore("tapes").delete(id).onsuccess = () => lib.ui();
+        }
+    };
+
+    // --- 4. PLAYER ---
+    const play = {
+        obj: null,
+        cmd: function(c) {
+            if(!play.obj) return;
+            if(c==='prev') app.load(app.idx-1);
+            if(c==='next') app.load(app.idx+1);
+            if(c==='play') play.obj.playVideo();
+            if(c==='pause') play.obj.pauseVideo();
+        },
+        visuals: function(state) {
+            // State: 1=Play, 2=Pause
+            const tape = document.getElementById('tape-body');
+            const lcd = document.getElementById('lcd-state');
+            
+            if(state === 1) {
+                tape.classList.add('spinning');
+                lcd.innerText = "PLAYING >>";
+            } else {
+                tape.classList.remove('spinning');
+                lcd.innerText = state === 2 ? "PAUSED ||" : "STOPPED";
+            }
+        }
+    };
+
+    window.onYouTubeIframeAPIReady = function() {
+        play.obj = new YT.Player('yt-mount', {
+            height:'100%', width:'100%', playerVars:{controls:0, disablekb:1},
+            events: {
+                onStateChange: e => {
+                    play.visuals(e.data);
+                    if(e.data === 0) app.load(app.idx+1); // Auto Next
+                }
+            }
+        });
+        
+        lib.init(); // Mount DB
+        peer.init(); // Start Radio
+        
+        // LCD Clock
+        setInterval(() => {
+            if(play.obj && play.obj.getCurrentTime) {
+                const t = play.obj.getCurrentTime();
+                const m=Math.floor(t/60); const s=Math.floor(t%60);
+                document.getElementById('time-disp').innerText = `${m}:${s<10?'0'+s:s}`;
+            }
+        }, 1000);
+    };
+
+    // --- 5. PEERJS ---
+    const peer = {
+        me: null,
+        init: () => {
+            if(window.location.hash.includes('share=')) {
+                const id = window.location.hash.split('=')[1];
+                const p = new Peer();
+                p.on('open', () => {
+                    sys.led('p2p', 'on');
+                    const c = p.connect(id);
+                    c.on('data', d => { 
+                        app.list = d; app.render(); app.load(0); 
+                        sys.label("SHARED TAPE");
+                    });
+                });
+            }
+        },
+        ui: () => {
+            if(!peer.me) {
+                peer.me = new Peer();
+                peer.me.on('open', id => {
+                    sys.led('p2p', 'on');
+                    const url = window.location.href.split('#')[0] + "#share=" + id;
+                    document.getElementById('share-output').value = url;
+                    document.getElementById('modal-share').style.display='flex';
+                });
+                peer.me.on('connection', c => {
+                    c.on('open', () => c.send(app.list));
+                });
+            } else {
+                document.getElementById('modal-share').style.display='flex';
+            }
+        },
+        copy: () => {
+            document.getElementById('share-output').select();
+            document.execCommand('copy');
+        }
+    };
+
+    // BOOT
+    const script = document.createElement('script');
+    script.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(script);
+    document.getElementById('q-input').addEventListener('keypress',e=>{if(e.key==='Enter')net.run()});
+
+</script>
+</body>
+</html>
