@@ -302,7 +302,7 @@
         }
     };
 
-    // --- 1. NETWORK (Logic matched to Smartsheet working file) ---
+    // --- 1. NETWORK (MATCHING SMARTSHEET LOGIC) ---
     const net = {
         config: {
             proxy: "https://cors-anywhere.herokuapp.com/",
@@ -325,12 +325,20 @@
             try {
                 const url = net.config.proxy + net.config.api + encodeURIComponent(q) + "&filter=music_songs";
                 
-                // Fetch attempts with simple headers. 
-                // If you have unlocked the proxy in another tab, this will pass.
-                const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                // CRITICAL FIX: The proxy returns 403 if it doesn't see "browser-like" or "app-like" headers.
+                // Smartsheet works because it sends 'Authorization'. 
+                // Since we don't need Auth, we MUST send 'X-Requested-With' and 'Content-Type' 
+                // to prove we are a valid application request, satisfying the proxy whitelist check.
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest', 
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-                // AUTH TRAP: Matches logic of working Smartsheet file.
-                // Only prompt if the status is explicitly 403 (Proxy Locked)
+                // ONLY prompt if the proxy specifically returns 403 Forbidden 
+                // (which means the whitelist has expired or IP changed).
                 if(res.status === 403) {
                     sys.led('net', 'bad');
                     if(confirm("Proxy Locked.\n\nOpen Auth Page to unlock? (Click Button there, then Close, then try again)")) {
@@ -339,7 +347,7 @@
                     return;
                 }
 
-                if(!res.ok) throw new Error("Network Error");
+                if(!res.ok) throw new Error(`HTTP ${res.status}`);
 
                 const data = await res.json();
                 const item = data.items.find(x => x.type === 'stream');
