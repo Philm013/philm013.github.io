@@ -290,7 +290,7 @@
 <script>
     /*
      * STREAMDECK V15: HI-FI RETRO
-     * Core: Uses v13 Logic (Window.Open for Auth) + Retro UI bindings
+     * Core: Uses CORS logic identical to working Smartsheet implementation.
      */
 
     const sys = {
@@ -302,7 +302,7 @@
         }
     };
 
-    // --- 1. NETWORK (THE v13 FIX) ---
+    // --- 1. NETWORK (Logic matched to Smartsheet working file) ---
     const net = {
         config: {
             proxy: "https://cors-anywhere.herokuapp.com/",
@@ -324,16 +324,22 @@
 
             try {
                 const url = net.config.proxy + net.config.api + encodeURIComponent(q) + "&filter=music_songs";
-                const res = await fetch(url, { headers: { 'X-Requested-With': 'StreamDeckRetro' }});
+                
+                // Fetch attempts with simple headers. 
+                // If you have unlocked the proxy in another tab, this will pass.
+                const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
 
-                // AUTH TRAP
+                // AUTH TRAP: Matches logic of working Smartsheet file.
+                // Only prompt if the status is explicitly 403 (Proxy Locked)
                 if(res.status === 403) {
                     sys.led('net', 'bad');
-                    if(confirm("Network Locked.\n\nOpen Auth Page in New Window? (Click Button there, then Close, then try again)")) {
+                    if(confirm("Proxy Locked.\n\nOpen Auth Page to unlock? (Click Button there, then Close, then try again)")) {
                         window.open("https://cors-anywhere.herokuapp.com/corsdemo", "_blank");
                     }
                     return;
                 }
+
+                if(!res.ok) throw new Error("Network Error");
 
                 const data = await res.json();
                 const item = data.items.find(x => x.type === 'stream');
