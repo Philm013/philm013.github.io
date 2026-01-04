@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v7.0 (Final)</title>
+    <title>Bank Explorer Pro v7.2 (Drill & Tag Update)</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -217,12 +216,15 @@
         /* TAGS */
         .tag-badge {
             display: inline-flex; align-items: center; gap: 4px;
-            padding: 2px 8px; border-radius: 12px; font-size: 0.7rem;
+            padding: 4px 10px; border-radius: 14px; font-size: 0.8rem;
             background: var(--bg); border: 1px solid var(--border); color: var(--text-sub);
-            margin-right: 4px;
+            margin-right: 4px; margin-bottom: 4px; cursor: pointer; transition: all 0.2s;
+            user-select: none;
         }
-        .tag-badge i { font-size: 0.65rem; cursor: pointer; }
-        .tag-badge i:hover { color: var(--danger); }
+        .tag-badge:hover { border-color: var(--accent); }
+        .tag-badge.selected { background: var(--accent); color: white; border-color: var(--accent); font-weight: 600; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3); }
+        .tag-badge i { font-size: 0.75rem; margin-left: 5px; }
+        .tag-badge i:hover { color: rgba(255,255,255,0.8); }
         
         .tag-input-container {
             display: flex; gap: 5px; margin-top: 10px;
@@ -488,10 +490,38 @@
     <!-- ANALYSIS -->
     <div id="view-analysis" class="view-section">
         
-        <!-- Tags Analysis -->
+        <!-- Tags Analysis (Updated) -->
         <div class="card">
-            <h3 style="margin-top:0"><i class="fas fa-tags" style="color:var(--accent)"></i> Tag Exploration</h3>
-            <div id="tagsCloud" style="display:flex; flex-wrap:wrap; gap:8px; padding-top:10px;">
+            <h3 style="margin-top:0"><i class="fas fa-tags" style="color:var(--accent)"></i> Tag Explorer</h3>
+            
+            <!-- Stats for selected tags -->
+            <div id="tagStats" class="stats-grid" style="display:none; margin-bottom:15px;">
+                <div class="metric-box">
+                    <div style="font-size:0.7rem; color:var(--text-sub)">TOTAL</div>
+                    <div class="metric-val" id="tagStatTotal">-</div>
+                </div>
+                <div class="metric-box">
+                    <div style="font-size:0.7rem; color:var(--text-sub)">COUNT</div>
+                    <div class="metric-val" id="tagStatCount">-</div>
+                </div>
+            </div>
+
+            <!-- Active Tags Area -->
+            <div style="margin-bottom:5px; font-size:0.8rem; font-weight:600; color:var(--text-sub);">ACTIVE FILTERS</div>
+            <div id="activeTagsList" style="margin-bottom:10px; min-height:30px; display:flex; flex-wrap:wrap; gap:5px;">
+                <span style="color:var(--text-sub); font-style:italic; font-size:0.8rem; padding:5px 0;">No tags selected. Click tags below to explore.</span>
+            </div>
+
+            <div id="tagActions" style="display:none; gap:10px; margin-bottom:15px;">
+                <button class="btn btn-sm btn-outline" style="flex:1" onclick="app.filterByActiveTags()"><i class="fas fa-list"></i> View Transactions</button>
+                <button class="btn btn-sm btn-ghost" onclick="app.clearAnalysisTags()">Clear</button>
+            </div>
+            
+            <hr style="border:none; border-top:1px solid var(--border); margin:10px 0 15px 0;">
+
+            <!-- All Tags Cloud -->
+            <div style="margin-bottom:5px; font-size:0.8rem; font-weight:600; color:var(--text-sub);">AVAILABLE TAGS</div>
+            <div id="tagsCloud" style="display:flex; flex-wrap:wrap; gap:8px; padding-top:5px;">
                 <small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>
             </div>
         </div>
@@ -567,6 +597,7 @@
              <select id="aiContextScope" class="form-control" style="padding: 6px; font-size: 0.8rem; border-radius: 6px; flex:1;">
                 <option value="auto">Context: Auto (Tools)</option>
                 <option value="view">Context: Current Filtered View</option>
+                <option value="drill">Context: Current Drill-Down</option>
                 <option value="all">Context: All Data (Entire DB)</option>
              </select>
         </div>
@@ -817,6 +848,15 @@
         </div>
         <div class="modal-body">
             <div id="drill-tab-list" style="padding:20px 20px 60px 20px;">
+                <!-- DRILL FILTER BAR -->
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <input type="text" id="drillSearch" class="form-control" placeholder="Search in this view..." oninput="ui.filterDrillList()" style="padding:8px; font-size:0.9rem;">
+                    <label class="check-group" style="margin:0; white-space:nowrap; padding: 0 10px; height: auto; font-size: 0.8rem;">
+                        <input type="checkbox" id="drillUntagged" onchange="ui.filterDrillList()"> 
+                        Untagged
+                    </label>
+                </div>
+
                 <div id="drill-actions" style="margin-bottom:15px; display:none; justify-content:flex-end; gap:10px;">
                     <button class="btn btn-sm btn-outline" onclick="app.toggleAllRecurring(document.getElementById('drillTitle').innerText, true)">Mark All</button>
                     <button class="btn btn-sm btn-outline" onclick="app.toggleAllRecurring(document.getElementById('drillTitle').innerText, false)">Unmark All</button>
@@ -834,6 +874,26 @@
                     <div style="font-size:0.8rem; color:var(--text-sub);">Select credit card statements for this category</div>
                     <input type="file" id="subFileInput" multiple accept="application/pdf" style="display: none;">
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BULK TAG MODAL -->
+<div id="bulkTagModal" class="modal-overlay" style="z-index: 2500; align-items: center;">
+    <div class="modal-sheet" style="max-width: 400px; height: auto;">
+        <div class="modal-header">
+            <h3>Apply Tag to Selected</h3>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <p style="margin-top:0; color:var(--text-sub)">Enter a tag to add to the selected items.</p>
+            <div class="input-group">
+                <input type="text" id="bulkTagInput" class="form-control" list="globalTagList" placeholder="e.g. Vacation" onkeypress="if(event.key==='Enter') app.confirmBulkTag()">
+                <datalist id="globalTagList"></datalist>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn" style="background:var(--bg); color:var(--text-main); flex:1;" onclick="ui.toggleModal('bulkTagModal')">Cancel</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="app.confirmBulkTag()">Apply Tag</button>
             </div>
         </div>
     </div>
@@ -937,7 +997,7 @@
         _db: null,
         async init() {
             return new Promise((resolve) => {
-                const req = indexedDB.open('BankExplorerDB', 7); // Version bump
+                const req = indexedDB.open('BankExplorerDB', 7); 
                 req.onupgradeneeded = (e) => {
                     const db = e.target.result;
                     const stores = { files:'id', tx:'id', subData:'category', rejected:'id', profiles:'id', recurringTags: 'id', tagRules: 'id' };
@@ -1062,6 +1122,9 @@
             let txs = [];
             if (scope === 'view') {
                 txs = app.data.viewTx;
+            } else if (scope === 'drill') {
+                // Feature: Use currently filtered drill-down data
+                txs = ui.state.drillFiltered || [];
             } else if (scope === 'all') {
                 txs = app.data.transactions.filter(t => !t.isIgnored);
             }
@@ -1080,9 +1143,12 @@
             const scope = document.getElementById('aiContextScope').value;
             let finalPrompt = text;
             
-            if (scope === 'view' || scope === 'all') {
+            if (scope === 'view' || scope === 'all' || scope === 'drill') {
                 const data = this.getDataSnapshot(scope);
-                const scopeName = scope === 'view' ? "Filtered View" : "Full Database";
+                let scopeName = "Full Database";
+                if(scope === 'view') scopeName = "Filtered View";
+                if(scope === 'drill') scopeName = "Current Drill-Down View";
+
                 finalPrompt = `[SYSTEM: The user has attached the following ${scopeName} data context to this message. Use this data to answer the request.]\nDATA_START\nID|Date|Description|Amount|Tags\n${data}\nDATA_END\n\nUSER REQUEST: ${text}`;
             }
 
@@ -1164,7 +1230,7 @@
 
     // --- UI ---
     Object.assign(ui, {
-        state: { drillCat: null, dashTime: 'month', dashMode: 'flow', dashCat: null },
+        state: { drillCat: null, dashTime: 'month', dashMode: 'flow', dashCat: null, drillRaw: [], drillFiltered: [] },
         charts: {},
 
         init() {
@@ -1416,10 +1482,48 @@
             const grp={}; tx.filter(t=>t.amount<0 && !t.isIgnored).forEach(t=>{ if(!grp[t.cleanName]) grp[t.cleanName]={tot:0,cnt:0}; grp[t.cleanName].tot += t.amount; grp[t.cleanName].cnt++; });
             Object.entries(grp).sort((a,b)=>a[1].tot-b[1].tot).forEach(([name,d]) => { const hasSub = app.data.subData[name] && app.data.subData[name].length > 0; const div = document.createElement('div'); div.className = 'tx-row'; div.onclick = () => this.openDrill(name); div.innerHTML = `<div><div style="font-weight:600">${name} ${hasSub?'<i class="fas fa-check-circle" style="color:var(--accent);font-size:0.8rem"></i>':''}</div><div style="font-size:0.75rem;color:var(--text-sub)">${d.cnt} txns</div></div><div style="font-weight:700" class="neg">${this.fmt(d.tot)}</div></div>`; list.appendChild(div); });
             
-            // Tags Cloud
-            const tagCounts = {}; app.data.transactions.forEach(t => { if (t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag] || 0) + 1); }); Object.values(app.data.subData).forEach(arr => arr.forEach(t => { if (t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag] || 0) + 1); }));
+            // TAG EXPLORER LOGIC
+            const tagCounts = {}; 
+            app.data.transactions.forEach(t => { if (t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag] || 0) + 1); }); 
+            Object.values(app.data.subData).forEach(arr => arr.forEach(t => { if (t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag] || 0) + 1); }));
+            
+            // Render Clouds
             const tagsCloud = document.getElementById('tagsCloud');
-            if(Object.keys(tagCounts).length > 0) { tagsCloud.innerHTML = Object.entries(tagCounts).map(([tag, count]) => `<span class="tag-badge" style="padding:5px 10px; font-size:0.8rem; cursor:pointer;" onclick="app.searchByTag('${tag.replace(/'/g, "\\'")}')">#${tag} (${count})</span>`).join(''); } else { tagsCloud.innerHTML = '<small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>'; }
+            const activeTagsList = document.getElementById('activeTagsList');
+            const tagStats = document.getElementById('tagStats');
+            const tagActions = document.getElementById('tagActions');
+
+            if(Object.keys(tagCounts).length > 0) { 
+                // Available Cloud (Available = All tags minus Active tags)
+                const availableTags = Object.keys(tagCounts).filter(t => !app.analysisTags.has(t)).sort();
+                tagsCloud.innerHTML = availableTags.map(tag => `<span class="tag-badge" onclick="app.toggleAnalysisTag('${tag.replace(/'/g, "\\'")}')">#${tag} (${tagCounts[tag]})</span>`).join('');
+                
+                // Active Cloud
+                const activeArray = Array.from(app.analysisTags);
+                if(activeArray.length > 0) {
+                    activeTagsList.innerHTML = activeArray.map(tag => `<span class="tag-badge selected" onclick="app.toggleAnalysisTag('${tag.replace(/'/g, "\\'")}')">#${tag} <i class="fas fa-times"></i></span>`).join('');
+                    
+                    // Stats Calculation
+                    let allTx = [...app.data.transactions]; Object.values(app.data.subData).forEach(items => allTx.push(...items));
+                    // Filter: Transaction matches if it has at least ONE of the selected tags (OR logic)
+                    const matches = allTx.filter(t => t.tags && t.tags.some(txTag => app.analysisTags.has(txTag)) && !t.isIgnored);
+                    const total = matches.reduce((sum, t) => sum + t.amount, 0);
+                    
+                    document.getElementById('tagStatTotal').innerText = this.fmt(total);
+                    document.getElementById('tagStatTotal').className = `metric-val ${total >= 0 ? 'pos' : 'neg'}`;
+                    document.getElementById('tagStatCount').innerText = matches.length;
+
+                    tagStats.style.display = 'grid';
+                    tagActions.style.display = 'flex';
+                } else {
+                    activeTagsList.innerHTML = '<span style="color:var(--text-sub); font-style:italic; font-size:0.8rem; padding:5px 0;">No tags selected. Click tags below to explore.</span>';
+                    tagStats.style.display = 'none';
+                    tagActions.style.display = 'none';
+                }
+            } else { 
+                tagsCloud.innerHTML = '<small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>'; 
+                activeTagsList.innerHTML = '';
+            }
 
             // Recurring Section
             let totalMonthly = 0;
@@ -1433,9 +1537,9 @@
             } else { recList.innerHTML = '<small style="color:var(--text-sub)">No recurring items tagged.</small>'; }
 
             const recurringTagsList = document.getElementById('recurringTagsList');
-            const tagStats = app.calculateRecurringTagStats();
-            if (tagStats.length > 0) {
-                recurringTagsList.innerHTML = ''; tagStats.forEach(stat => { const mode = stat.mode || 'avg'; const monthlyCost = mode === '12mo' ? stat.total / 12 : stat.monthlyAvg; totalMonthly += monthlyCost; const modeLabel = mode === '12mo' ? '/mo (/12)' : '/mo (avg)'; recurringTagsList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="display:flex; flex-direction:column; gap:2px; margin-right:10px;"><button class="calc-toggle-btn ${mode === 'avg' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleRecurringTagMode('${stat.name.replace(/'/g, "\\'")}')">AVG</button><button class="calc-toggle-btn ${mode === '12mo' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleRecurringTagMode('${stat.name.replace(/'/g, "\\'")}')">/12</button></div><div style="flex:1; cursor:pointer;" onclick="app.searchByTag('${stat.name.replace(/'/g, "\\'")}')"><div style="font-weight:600">#${stat.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(monthlyCost)}${modeLabel}</small><span class="badge">${stat.count}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.removeRecurringTag('${stat.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`; });
+            const tagStatsList = app.calculateRecurringTagStats();
+            if (tagStatsList.length > 0) {
+                recurringTagsList.innerHTML = ''; tagStatsList.forEach(stat => { const mode = stat.mode || 'avg'; const monthlyCost = mode === '12mo' ? stat.total / 12 : stat.monthlyAvg; totalMonthly += monthlyCost; const modeLabel = mode === '12mo' ? '/mo (/12)' : '/mo (avg)'; recurringTagsList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="display:flex; flex-direction:column; gap:2px; margin-right:10px;"><button class="calc-toggle-btn ${mode === 'avg' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleRecurringTagMode('${stat.name.replace(/'/g, "\\'")}')">AVG</button><button class="calc-toggle-btn ${mode === '12mo' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleRecurringTagMode('${stat.name.replace(/'/g, "\\'")}')">/12</button></div><div style="flex:1; cursor:pointer;" onclick="app.searchByTag('${stat.name.replace(/'/g, "\\'")}')"><div style="font-weight:600">#${stat.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(monthlyCost)}${modeLabel}</small><span class="badge">${stat.count}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.removeRecurringTag('${stat.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`; });
             } else { recurringTagsList.innerHTML = ''; }
 
             document.getElementById('recurringSum').innerText = this.fmt(totalMonthly);
@@ -1449,7 +1553,18 @@
             } else { document.getElementById('potentialCard').classList.add('hidden'); }
         },
 
-        openDrill(cat) { this.state.drillCat = cat; document.getElementById('drillTitle').innerText = cat; this.renderDrillDown(cat); this.switchDrillTab('list'); this.toggleModal('drillModal'); },
+        openDrill(cat) { 
+            this.state.drillCat = cat; 
+            document.getElementById('drillTitle').innerText = cat; 
+            
+            // Reset filters
+            document.getElementById('drillSearch').value = '';
+            document.getElementById('drillUntagged').checked = false;
+
+            this.renderDrillDown(cat); 
+            this.switchDrillTab('list'); 
+            this.toggleModal('drillModal'); 
+        },
         
         showFileTransactions(fileId) {
             const file = app.data.files.find(f => f.id === fileId);
@@ -1458,7 +1573,15 @@
             const items = allTx.filter(t => t.sourceFileId === fileId).sort((a, b) => new Date(b.date) - new Date(a.date));
             document.getElementById('drillTitle').innerText = `From: ${file.name}`;
             document.getElementById('drillSubtitle').innerText = `${items.length} transactions extracted`;
-            document.getElementById('drillList').innerHTML = items.map(t => this.txHtml(t)).join('');
+            
+            // Reset filters
+            document.getElementById('drillSearch').value = '';
+            document.getElementById('drillUntagged').checked = false;
+
+            // Save state for filtering
+            this.state.drillRaw = items;
+            this.filterDrillList(); // This renders the list
+
             document.getElementById('drill-actions').style.display = 'none';
             document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'analysis\')"]').style.display = 'none';
             document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'upload\')"]').style.display = 'none';
@@ -1472,7 +1595,13 @@
             let items = []; if (useFuzzy) { const allGroups = app.getFuzzyGroups(all); items = allGroups[name] || []; } else { items = all.filter(t => app.cleanSubDesc(t.desc) === name); }
             items.sort((a,b) => new Date(b.date) - new Date(a.date));
             document.getElementById('drillSubtitle').innerText = "Pattern History";
-            document.getElementById('drillList').innerHTML = items.map(t => `<div class="tx-row" style="${t.isIgnored ? 'opacity:0.5;' : ''}"><div style="display:flex; align-items:center; gap:10px; flex:1"><label class="check-group" style="padding:5px; margin:0; border:none;"><input type="checkbox" style="transform:scale(1.3)" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"></label><div onclick="ui.showDetail('${t.id}')" style="cursor:pointer; flex:1"><div style="font-weight:600">${t.desc}</div><div style="font-size:0.75rem;color:var(--text-sub)">${t.rawDateStr} ${t.isIgnored ? '(Ignored)' : ''}</div></div></div><div class="${t.amount>=0?'pos':'neg'}" style="font-weight:700">${this.fmt(t.amount)}</div></div>`).join('');
+            
+            // Save state & Filter (Search bar functionality still useful here)
+            document.getElementById('drillSearch').value = '';
+            document.getElementById('drillUntagged').checked = false;
+            this.state.drillRaw = items;
+            this.filterDrillList();
+
             document.getElementById('drillAnalysisList').innerHTML = `<div style="padding:10px;text-align:center;color:var(--text-sub)">${items.length} items found</div>`;
             const byMonth = {}; items.forEach(t => { if(t.date && !t.isIgnored) { const k = new Date(t.date).toLocaleString('default', {month:'short', year:'2-digit'}); byMonth[k] = (byMonth[k]||0) + Math.abs(t.amount); } });
             const lbls = Object.keys(byMonth).reverse(); this.chart('chartSubTime', 'bar', { labels: lbls, datasets: [{ label: 'Spent', data: lbls.map(l=>byMonth[l]), backgroundColor:'#3b82f6' }] });
@@ -1488,7 +1617,11 @@
             if(subs && subs.length > 0) { items = subs; document.getElementById('drillSubtitle').innerHTML = "<i class='fas fa-file-invoice'></i> Detailed Breakdown (From Credit Card Stmt)"; } 
             else { items = app.data.transactions.filter(t => t.cleanName === cat); document.getElementById('drillSubtitle').innerText = "Aggregated Data (From Bank Stmt)"; }
             items = items.filter(t => !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
-            document.getElementById('drillList').innerHTML = items.map(t => this.txHtml(t)).join('');
+            
+            // Save state
+            this.state.drillRaw = items;
+            this.filterDrillList(); // This renders the list
+
             const byDesc = {}; items.forEach(t => { const k = app.cleanSubDesc(t.desc); if(!byDesc[k]) byDesc[k] = { tot:0, cnt:0 }; byDesc[k].tot += t.amount; byDesc[k].cnt++; });
             const allSorted = Object.entries(byDesc).sort((a,b)=>a[1].tot-b[1].tot); 
             document.getElementById('drillAnalysisList').innerHTML = allSorted.map(([k,v]) => `<div class="tx-row" onclick="ui.openPatternDrill('${k.replace(/'/g, "\\'")}')"><div><div style="font-weight:600">${k}</div><div style="font-size:0.75rem;color:var(--text-sub)">${v.cnt} txns</div></div><div style="font-weight:700" class="neg">${this.fmt(v.tot)}</div></div>`).join('');
@@ -1497,6 +1630,30 @@
             const top5 = allSorted.slice(0,5); this.chart('chartSubCat', 'doughnut', { labels: top5.map(x=>x[0]), datasets: [{ data: top5.map(x=>Math.abs(x[1].tot)), backgroundColor:['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#64748b'] }] });
             document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'analysis\')"]').style.display = 'block';
             document.querySelector('.sub-nav-btn[onclick="ui.switchDrillTab(\'upload\')"]').style.display = 'block';
+        },
+
+        filterDrillList() {
+            const term = document.getElementById('drillSearch').value.toLowerCase();
+            const untaggedOnly = document.getElementById('drillUntagged').checked;
+            
+            let filtered = this.state.drillRaw.filter(t => {
+                if (untaggedOnly && t.tags && t.tags.length > 0) return false;
+                if (term) {
+                    if (!t.desc.toLowerCase().includes(term) && !t.amount.toString().includes(term)) return false;
+                }
+                return true;
+            });
+
+            this.state.drillFiltered = filtered; // Update filtered state for AI context
+
+            // Render logic
+            if (this.state.drillRaw.length > 0 && this.state.drillRaw[0].isRecurring !== undefined && document.getElementById('drillTitle').innerText !== 'Recurring') {
+                // Pattern drill view (with checkboxes)
+                 document.getElementById('drillList').innerHTML = filtered.map(t => `<div class="tx-row" style="${t.isIgnored ? 'opacity:0.5;' : ''}"><div style="display:flex; align-items:center; gap:10px; flex:1"><label class="check-group" style="padding:5px; margin:0; border:none;"><input type="checkbox" style="transform:scale(1.3)" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"></label><div onclick="ui.showDetail('${t.id}')" style="cursor:pointer; flex:1"><div style="font-weight:600">${t.desc}</div><div style="font-size:0.75rem;color:var(--text-sub)">${t.rawDateStr} ${t.isIgnored ? '(Ignored)' : ''}</div></div></div><div class="${t.amount>=0?'pos':'neg'}" style="font-weight:700">${this.fmt(t.amount)}</div></div>`).join('');
+            } else {
+                // Standard Drill View
+                document.getElementById('drillList').innerHTML = filtered.map(t => this.txHtml(t)).join('');
+            }
         },
 
         switchDrillTab(tab) { ['list','analysis','upload'].forEach(t => document.getElementById('drill-tab-'+t).classList.add('hidden')); document.querySelectorAll('.sub-nav-btn').forEach(b => b.classList.remove('active')); document.getElementById('drill-tab-'+tab).classList.remove('hidden'); const map = {list:0, analysis:1, upload:2}; document.querySelectorAll('.sub-nav-btn')[map[tab]].classList.add('active'); },
@@ -1547,6 +1704,7 @@
         fuse: null,
         selectedIds: new Set(),
         searchIndex: [], // Cache for autocomplete optimization
+        analysisTags: new Set(), // State for Tag Explorer
         
         async init() {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1726,6 +1884,39 @@
         // --- FILTER & SEARCH ---
         searchByTag(tag) { document.getElementById('globalSearch').value = `#${tag}`; this.handleSearchInput({ target: { value: `#${tag}` } }); ui.switchView('transactions'); ui.toast(`Showing transactions tagged with #${tag}`); },
         
+        // --- TAG EXPLORER ACTIONS ---
+        toggleAnalysisTag(tag) {
+            if(this.analysisTags.has(tag)) this.analysisTags.delete(tag);
+            else this.analysisTags.add(tag);
+            ui.renderAnalysis();
+        },
+        clearAnalysisTags() {
+            this.analysisTags.clear();
+            ui.renderAnalysis();
+        },
+        filterByActiveTags() {
+            if(this.analysisTags.size === 0) return;
+            // Manual filter application bypassing the text input
+            const activeTags = Array.from(this.analysisTags);
+            let allTx = [...this.data.transactions];
+            Object.values(this.data.subData).forEach(items => allTx.push(...items));
+            
+            this.data.viewTx = allTx.filter(t => {
+                if (t.isIgnored) return false;
+                // OR logic: match ANY of the active tags
+                return t.tags && t.tags.some(tg => this.analysisTags.has(tg));
+            });
+            
+            // Switch to list view
+            ui.switchView('transactions');
+            ui.renderTx();
+            ui.toast(`Filtering by ${activeTags.length} tags`);
+            
+            // Clear global search input so it doesn't conflict visually
+            document.getElementById('globalSearch').value = '';
+            document.getElementById('txCount').innerText = this.data.viewTx.length;
+        },
+
         // DEBOUNCED SEARCH INPUT
         handleSearchInput(e) {
             clearTimeout(debounceTimer);
@@ -1834,7 +2025,25 @@
         toggleSelectAll(checked) { if (checked) this.data.viewTx.forEach(t => this.selectedIds.add(t.id)); else this.clearSelection(); ui.renderTx(); this.updateBulkUI(); },
         clearSelection() { this.selectedIds.clear(); ui.renderTx(); this.updateBulkUI(); const el = document.getElementById('selectAllCheckbox'); if(el) el.checked = false; },
         updateBulkUI() { const bar = document.getElementById('bulkActionBar'); const count = this.selectedIds.size; document.getElementById('bulkCount').innerText = count; if (count > 0) bar.classList.add('active'); else bar.classList.remove('active'); },
-        async promptBulkTag() { const tag = prompt(`Enter tag to apply to ${this.selectedIds.size} items:`); if (!tag) return; ui.toast(`Applying tag #${tag}...`); let count = 0; for (const id of this.selectedIds) { await this.addTag(id, tag, true); count++; } this.clearSelection(); ui.toast(`Applied #${tag} to ${count} transactions.`); ui.refresh(); },
+        async promptBulkTag() { 
+            // New Modal Implementation
+            document.getElementById('globalTagList').innerHTML = app.getAllUniqueTags().map(tag => `<option value="${tag}"></option>`).join('');
+            document.getElementById('bulkTagInput').value = '';
+            ui.toggleModal('bulkTagModal');
+            document.getElementById('bulkTagInput').focus();
+        },
+        async confirmBulkTag() {
+            const tag = document.getElementById('bulkTagInput').value.trim();
+            if(!tag) return;
+            ui.toggleModal('bulkTagModal');
+            
+            ui.toast(`Applying tag #${tag}...`); 
+            let count = 0; 
+            for (const id of this.selectedIds) { await this.addTag(id, tag, true); count++; } 
+            this.clearSelection(); 
+            ui.toast(`Applied #${tag} to ${count} transactions.`); 
+            ui.refresh();
+        },
         async bulkToggleIgnore() { if (await ui.confirm("Bulk Ignore", `Toggle ignore status for ${this.selectedIds.size} items?`)) { for (const id of this.selectedIds) { await this.toggleIgnored(id); } this.clearSelection(); ui.refresh(); } },
 
         clearFilters() { document.getElementById('globalSearch').value = ''; this.filters.text = ''; document.getElementById('filterStart').value = ''; document.getElementById('filterEnd').value = ''; document.getElementById('filterMin').value = ''; document.getElementById('filterMax').value = ''; document.getElementById('filterType').value = 'all'; document.getElementById('filterTag').value = ''; document.getElementById('filterUntagged').checked = false; this.applyFilters(); document.getElementById('filterDot').style.display = 'none'; if(document.getElementById('filterModal').style.display === 'flex') ui.toggleModal('filterModal'); ui.refresh(); },
