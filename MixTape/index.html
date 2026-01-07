@@ -303,18 +303,20 @@
         }
     };
 
-    // --- 1. NETWORK (MATCHING SMARTSHEET LOGIC) ---
+    // --- 1. NETWORK ---
     const net = {
         config: {
+            // CORS Proxy is required for client-side requests
             proxy: "https://cors-anywhere.herokuapp.com/",
-            // Using a known stable Piped mirror to resolve 404/403 issues
-            api: "https://pipedapi.kavin.rocks/search?q="
+            // API: Switched to system.li per your comments (more reliable than kavin.rocks)
+            // Docs: https://docs.piped.video/docs/api-documentation/
+            api: "https://pipedapi.system.li/search?q="
         },
         run: async function() {
             const q = document.getElementById('q-input').value.trim();
             if(!q) return;
 
-            // Direct Link Trap
+            // Direct Link Trap (supports v=ID and youtu.be/ID)
             const m = q.match(/(?:v=|youtu\.be\/)([^&?]+)/);
             if(m) {
                 app.add({id:m[1], title:'Direct Tape'});
@@ -325,17 +327,14 @@
             sys.led('net', 'on'); // Waiting
 
             try {
+                // Docs: GET /search?q={query}&filter=music_songs
                 const url = net.config.proxy + net.config.api + encodeURIComponent(q) + "&filter=music_songs";
                 
-                // Fetch request. We do NOT add custom headers because Piped often blocks them.
-                // The Proxy (cors-anywhere) respects the browser cookie if previously unlocked.
                 const res = await fetch(url);
 
                 if(res.status === 403) {
-                    // SMART CHECK: Only prompt if the error text confirms it comes from the Proxy.
-                    // This prevents infinite loops if the API itself is returning 403.
                     const text = await res.text();
-                    
+                    // Distinguish between Proxy lock vs API lock
                     if(text.includes('corsdemo') || text.includes('herokuapp')) {
                         sys.led('net', 'bad');
                         if(confirm("Proxy Locked.\n\nOpen Auth Page to unlock? (Click Button there, then Close, then try again)")) {
@@ -343,7 +342,7 @@
                         }
                     } else {
                         sys.led('net', 'bad');
-                        alert("API Forbidden (403). The search service is blocking requests.");
+                        alert("API Forbidden (403). The Piped instance rejected the request.");
                     }
                     return;
                 }
@@ -351,11 +350,18 @@
                 if(!res.ok) throw new Error(`HTTP ${res.status}`);
 
                 const data = await res.json();
+                
+                // Piped API: look for items where type == 'stream'
                 const item = data.items.find(x => x.type === 'stream');
                 
                 if(item) {
-                    const id = item.url.split('v=')[1];
-                    app.add({ id, title: item.title });
+                    // Docs: item.url is relative (e.g., "/watch?v=dQw4w9WgXcQ")
+                    // We extract the ID safely
+                    let id = item.url;
+                    const idMatch = item.url.match(/v=([^&]+)/);
+                    if(idMatch) id = idMatch[1];
+
+                    app.add({ id: id, title: item.title });
                     sys.led('net', ''); // clear
                     document.getElementById('q-input').value = "";
                 } else {
