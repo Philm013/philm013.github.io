@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow v14.0 - Enterprise Collaborative</title>
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- PeerJS CDN -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    
+    <!-- Configuration -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['Roboto Mono', 'monospace'] },
+                    colors: {
+                        brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+                        slate: { 850: '#151f32', 900: '#0f172a' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Utility */
+        .gantt-grid { background-image: linear-gradient(to right, #f1f5f9 1px, transparent 1px); background-size: 50px 100%; }
+        .modal-backdrop { background-color: rgba(9, 30, 66, 0.54); backdrop-filter: blur(2px); }
+
+        /* Issue Type Icons */
+        .icon-story { background: #63ba3c; } .icon-bug { background: #e5493a; }
+        .icon-epic { background: #904ee2; } .icon-task { background: #4bade8; }
+
+        /* Redesigned Inputs & Modal Layout */
+        .styled-input { @apply block w-full text-sm border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 transition-shadow; }
+        .styled-label { @apply block text-xs font-semibold text-gray-500 uppercase mb-1; }
+        .sidebar-field-row { @apply flex justify-between items-center py-2 border-b border-gray-100; }
+        .sidebar-field-label { @apply text-sm text-gray-600 font-medium; }
+        .sidebar-field-value { @apply text-sm text-gray-900 font-semibold; }
+        .sidebar-field-value select, .sidebar-field-value input { @apply border-none bg-transparent text-right p-0 focus:ring-0 font-semibold w-full; }
+        
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .mobile-hidden { display: none !important; }
+            .mobile-modal-full { 
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                width: 100% !important; max-width: 100% !important;
+                height: 100% !important; max-height: 100% !important;
+                border-radius: 0 !important;
+                transform: translateX(0) !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-slate-800 h-screen flex overflow-hidden selection:bg-brand-100 selection:text-brand-700">
+
+    <!-- Mobile Sidebar Toggle -->
+    <div class="fixed top-0 left-0 p-4 z-50 md:hidden">
+        <button onclick="app.toggleMobileSidebar()" class="p-2 bg-slate-900 text-white rounded-md shadow-lg">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside id="main-sidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-900 text-white flex-col border-r border-slate-800 flex-shrink-0 transition-transform duration-300 transform -translate-x-full md:relative md:translate-x-0 md:flex z-40">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="flex items-center gap-2 font-bold text-lg tracking-tight">
+                <div class="w-6 h-6 rounded bg-brand-500 flex items-center justify-center text-xs">TF</div>
+                TaskFlow <span class="text-[9px] bg-slate-700 px-1 rounded text-gray-400 font-mono">ENT</span>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-4">
+            <nav class="space-y-1 px-3">
+                <button onclick="app.nav('dashboard'); app.closeMobileSidebar()" id="nav-dash" class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" /></svg>
+                    Dashboard
+                </button>
+            </nav>
+
+            <div class="mt-8 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Projects</div>
+            <nav class="mt-2 space-y-1 px-3" id="project-list"></nav>
+            <div class="px-3 mt-2">
+                <button onclick="app.openProjectModal(); app.closeMobileSidebar()" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-brand-500 hover:text-brand-400 font-medium transition-colors">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    New Project
+                </button>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-slate-800 space-y-2">
+            <button onclick="app.nav('settings'); app.closeMobileSidebar()" class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                Settings & Fields
+            </button>
+            <button onclick="app.openHelpModal(); app.closeMobileSidebar()" class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-blue-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                CSV Import Help
+            </button>
+             <button onclick="app.openCollabModal(); app.closeMobileSidebar()" class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-pink-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                Collaborate <span id="collab-status" class="ml-auto text-[9px] px-2 py-0.5 rounded-full bg-gray-600">Offline</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col min-w-0 bg-white">
+        <!-- Header -->
+        <header class="h-16 border-b border-gray-200 flex items-center justify-between px-6 bg-white z-20">
+            <div class="flex items-center">
+                <button onclick="app.toggleMobileSidebar()" class="p-1 mr-4 rounded-md md:hidden hover:bg-gray-100">
+                    <svg class="w-6 h-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+                <div>
+                    <h1 id="page-title" class="text-xl font-semibold text-gray-900">Dashboard</h1>
+                    <p id="page-desc" class="text-xs text-gray-500 mt-0.5 mobile-hidden">Overview</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="header-manage-proj" class="hidden text-sm text-gray-600 hover:text-brand-600 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200" onclick="app.openProjectModal(app.activePid)">
+                    Project Settings
+                </button>
+                <div class="h-8 w-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold ring-2 ring-white shadow-sm">
+                    ME
+                </div>
+            </div>
+        </header>
+
+        <!-- Toolbar (Project Views Only) -->
+        <div id="project-toolbar" class="hidden h-14 border-b border-gray-200 flex items-center px-6 gap-4 bg-gray-50/50 flex-shrink-0">
+            <!-- View Toggles -->
+            <div class="flex bg-gray-200/60 p-1 rounded-lg flex-wrap sm:flex-nowrap">
+                <button class="view-btn px-3 py-1 text-xs font-medium rounded-md transition-all text-gray-500 hover:text-gray-900" data-view="home" onclick="app.setView('home')">Overview</button>
+                <button class="view-btn px-3 py-1 text-xs font-medium rounded-md transition-all text-gray-500 hover:text-gray-900" data-view="backlog" onclick="app.setView('backlog')">Backlog</button>
+                <button class="view-btn px-3 py-1 text-xs font-medium rounded-md transition-all text-gray-500 hover:text-gray-900" data-view="board" onclick="app.setView('board')">Active Board</button>
+                <button class="view-btn px-3 py-1 text-xs font-medium rounded-md transition-all text-gray-500 hover:text-gray-900" data-view="list" onclick="app.setView('list')">Issues</button>
+                <button class="view-btn px-3 py-1 text-xs font-medium rounded-md transition-all text-gray-500 hover:text-gray-900" data-view="gantt" onclick="app.setView('gantt')">Timeline</button>
+                <button class="view-btn px-3 py-1 text-xs font-medium rounded-md transition-all text-gray-500 hover:text-gray-900 mobile-hidden" data-view="split" onclick="app.setView('split')">Split</button>
+            </div>
+
+            <div class="h-5 w-px bg-gray-300 mx-2 mobile-hidden"></div>
+
+            <!-- Search -->
+            <div class="relative flex-1 max-w-md mobile-hidden sm:block">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <input type="text" id="searchBox" onkeyup="app.render()" placeholder="Filter keys, summaries..." class="block w-full pl-10 pr-3 py-1.5 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-400 focus:outline-none focus:placeholder-gray-300 focus:ring-1 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition-shadow">
+            </div>
+
+            <button onclick="app.openTaskModal()" class="ml-auto inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-colors">
+                <svg class="-ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Create
+            </button>
+        </div>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-hidden relative bg-white">
+            
+            <!-- DASHBOARD VIEW -->
+            <div id="view-dashboard" class="h-full overflow-y-auto p-4 sm:p-8 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="dashboard-stats"></div>
+                <div class="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+                    <p class="text-lg">Select a project to view Sprints, Boards, and Timelines.</p>
+                </div>
+            </div>
+
+            <!-- SETTINGS VIEW -->
+            <div id="view-settings" class="h-full overflow-y-auto p-4 sm:p-8 hidden">
+                <div class="max-w-5xl mx-auto space-y-8">
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-900">System Configuration</h3>
+                                <p class="text-sm text-gray-500">Customize fields, workflow, and metadata.</p>
+                            </div>
+                            <button onclick="app.resetData()" class="text-red-600 hover:text-red-700 text-sm font-medium mt-2 sm:mt-0">Factory Reset</button>
+                        </div>
+
+                        <div class="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <h4 class="text-sm font-bold text-gray-700 uppercase tracking-wider mb-3">Field Configuration (Issue View)</h4>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="cfg-fields-container"></div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div>
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Teams</h4>
+                                <div class="flex gap-2 mb-3">
+                                    <input id="cfg-team-name" class="styled-input" placeholder="Name">
+                                    <button onclick="app.cfgAdd('team')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-600">+</button>
+                                </div>
+                                <div id="cfg-list-teams" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Users</h4>
+                                <div class="flex gap-2 mb-3">
+                                    <input id="cfg-user-name" class="styled-input" placeholder="Name">
+                                    <button onclick="app.cfgAdd('user')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-600">+</button>
+                                </div>
+                                <div id="cfg-list-users" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Statuses</h4>
+                                <div class="flex gap-2 mb-3">
+                                    <input id="cfg-status-label" class="styled-input" placeholder="Label">
+                                    <button onclick="app.cfgAdd('status')" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-600">+</button>
+                                </div>
+                                <div id="cfg-list-statuses" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PROJECT VIEWS -->
+            <div id="view-project" class="h-full hidden flex-col">
+                <div id="layout-home" class="p-4 sm:p-8 h-full overflow-y-auto hidden"></div>
+                <div id="layout-backlog" class="h-full overflow-y-auto p-4 sm:p-6 hidden bg-gray-100"></div>
+                <div id="layout-board" class="h-full overflow-x-auto p-4 sm:p-6 flex flex-col sm:flex-row gap-6 hidden bg-gray-100"></div>
+                <div id="layout-list" class="h-full overflow-hidden hidden"></div>
+                <div id="layout-gantt" class="h-full hidden flex-col"></div>
+                <div id="layout-split" class="h-full hidden grid grid-cols-1 md:grid-cols-12 divide-x divide-gray-200">
+                    <div id="split-list-container" class="col-span-full md:col-span-4 h-full overflow-hidden"></div>
+                    <div id="split-gantt-container" class="col-span-full md:col-span-8 h-full overflow-hidden flex flex-col"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- HELP MODAL -->
+    <div id="helpModalBackdrop" class="fixed inset-0 z-[100] hidden modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full h-[90vh] flex flex-col mobile-modal-full">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
+                <h3 class="text-xl font-bold text-gray-900">Jira CSV Import & Help</h3>
+                <button onclick="app.closeModals()" class="text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-8 prose prose-sm max-w-none text-gray-700">
+                <h4 class="text-brand-700 font-bold mb-2">Customizing for your Workflow</h4>
+                <p>Go to <strong>Settings & Fields > Field Configuration</strong> to toggle fields like Resolution, Time Tracking, or Components to match your specific Jira configuration. Changes apply immediately.</p>
+                <hr class="my-4">
+                <h4 class="font-bold">CSV Import Guidelines</h4>
+                <p>When exporting, the system adheres to the following Jira CSV standards for each field:</p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><strong>Summary:</strong> The issue title (Required).</li>
+                    <li><strong>Work Item Key:</strong> (e.g. PROJ-101). Used to update existing items if re-imported to Jira.</li>
+                    <li><strong>Components/Versions/Labels:</strong> Comma-separated values supported.</li>
+                    <li><strong>Time Tracking:</strong> Exported in Seconds (Original Estimate, Time Spent). The UI accepts "1h 30m" format.</li>
+                    <li><strong>Dates:</strong> Format is ISO 8601 (YYYY-MM-DD).</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ISSUE MODAL (Redesigned) -->
+    <div id="taskModalBackdrop" class="fixed inset-0 z-50 hidden modal-backdrop flex items-center justify-center p-4">
+        <div class="absolute inset-y-0 right-0 max-w-4xl w-full bg-white shadow-2xl transform transition-transform duration-300 translate-x-full flex flex-col mobile-modal-full" id="taskModalPanel">
+            <form id="taskForm" class="flex-1 flex flex-col h-full">
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white flex-shrink-0 sticky top-0 z-10">
+                    <div class="flex items-center gap-2">
+                        <span id="tm-key" class="font-mono font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded border border-brand-100 text-sm">NEW</span>
+                        <select name="issueType" id="tm-issueType" class="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer text-gray-500 hover:bg-gray-100 rounded"></select>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button type="button" class="text-red-600 hover:underline text-sm font-medium hidden" id="tm-delete-btn" onclick="app.deleteTask()">Delete</button>
+                        <button type="submit" class="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-brand-600 border border-transparent rounded-md shadow-sm hover:bg-brand-700 focus:outline-none">Save</button>
+                        <button type="button" onclick="app.closeModals()" class="text-gray-400 hover:text-gray-500">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Body -->
+                <div class="flex-1 overflow-y-auto p-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- Main Content -->
+                        <div class="lg:col-span-2 space-y-8">
+                            <input name="title" class="block w-full text-2xl font-bold text-gray-900 border-none focus:ring-0 p-0 placeholder-gray-400" placeholder="Issue Summary" required>
+                            
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-800 mb-2">Description</h3>
+                                <textarea name="description" rows="5" class="styled-input" placeholder="Add details..."></textarea>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-sm font-bold text-gray-800">Subtasks</h3>
+                                    <button type="button" onclick="app.quickAddSubtask()" class="text-xs text-brand-600 hover:underline font-medium">+ Add Subtask</button>
+                                </div>
+                                <div id="tm-sub-list" class="space-y-2"></div>
+                            </div>
+                        </div>
+
+                        <!-- Sidebar -->
+                        <div class="lg:col-span-1 space-y-2">
+                            <div class="sidebar-field-row"><span class="sidebar-field-label">Status</span><select name="status" id="tm-status" class="sidebar-field-value"></select></div>
+                            <div class="sidebar-field-row" data-f="resolution"><span class="sidebar-field-label">Resolution</span><select name="resolution" id="tm-resolution" class="sidebar-field-value"></select></div>
+                            <div class="sidebar-field-row"><span class="sidebar-field-label">Priority</span><select name="priority" id="tm-priority" class="sidebar-field-value"></select></div>
+                            <div class="sidebar-field-row"><span class="sidebar-field-label">Assignee</span><select name="assignee" id="tm-assignee" class="sidebar-field-value"></select></div>
+                            <div class="sidebar-field-row" data-f="reporter"><span class="sidebar-field-label">Reporter</span><select name="reporter" id="tm-reporter" class="sidebar-field-value"></select></div>
+                            <div class="sidebar-field-row" data-f="team"><span class="sidebar-field-label">Team</span><select name="teamId" id="tm-team" class="sidebar-field-value"></select></div>
+                            <div class="sidebar-field-row" data-f="sprint"><span class="sidebar-field-label">Sprint</span><select name="sprintId" id="tm-sprint" class="sidebar-field-value"></select></div>
+                            <div class="sidebar-field-row" data-f="storyPoints"><span class="sidebar-field-label">Story Points</span><input type="number" name="storyPoints" class="sidebar-field-value text-right"></div>
+                            <div class="sidebar-field-row" data-f="startDate"><span class="sidebar-field-label">Start Date</span><input type="date" name="startDate" class="sidebar-field-value"></div>
+                            <div class="sidebar-field-row" data-f="dueDate"><span class="sidebar-field-label">Due Date</span><input type="date" name="dueDate" class="sidebar-field-value"></div>
+                            
+                            <div class="pt-2 mt-2 border-t" data-f="fixVersions"><label class="text-sm text-gray-600 font-medium">Fix Versions</label><input name="fixVersions" class="styled-input mt-1" placeholder="v1.0, v1.1"></div>
+                            <div class="pt-2" data-f="components"><label class="text-sm text-gray-600 font-medium">Components</label><input name="components" class="styled-input mt-1" placeholder="UI, API"></div>
+                            <div class="pt-2" data-f="labels"><label class="text-sm text-gray-600 font-medium">Labels (Tags)</label><input name="labels" class="styled-input mt-1" placeholder="bug, hotfix"></div>
+                            
+                            <div class="pt-2 mt-2 border-t" data-f="timeTracking">
+                                <label class="text-sm text-gray-600 font-medium">Time Tracking</label>
+                                <div class="grid grid-cols-2 gap-2 mt-1">
+                                    <input name="timeOriginal" class="styled-input" placeholder="Original Est">
+                                    <input name="timeSpent" class="styled-input" placeholder="Time Spent">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Other Modals (Project, Subtask, Collab) -->
+    <div id="projectModalBackdrop" class="fixed inset-0 z-[60] hidden modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 mobile-modal-full" id="projectModalPanel">
+            <form id="projectForm">
+                <input type="hidden" name="pid">
+                <h3 class="text-lg font-medium text-gray-900 mb-4" id="proj-modal-title">Project</h3>
+                <div class="space-y-4">
+                    <div><label class="styled-label">Name</label><input name="name" class="styled-input" required></div>
+                    <div><label class="styled-label">Key (e.g. PROJ)</label><input name="key" class="styled-input" required></div>
+                    <div><label class="styled-label">Description</label><textarea name="desc" class="styled-input" rows="3"></textarea></div>
+                </div>
+                <div class="mt-6 flex justify-between items-center">
+                    <div>
+                        <button type="button" id="proj-delete-btn" onclick="app.deleteProject()" class="text-red-600 hover:text-red-700 text-sm font-medium hidden">Delete</button>
+                        <button type="button" id="proj-export-btn" onclick="app.exportProjectToJira()" class="ml-4 text-brand-600 hover:text-brand-700 text-sm font-medium hidden">Export CSV</button>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="app.closeModals()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700">Save</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="subtaskModalBackdrop" class="fixed inset-0 z-[60] hidden modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 mobile-modal-full" id="subtaskModalPanel">
+            <form id="subtaskForm">
+                <input type="hidden" name="isTemp">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Edit Subtask</h3>
+                <div class="space-y-4">
+                    <input name="st_text" class="styled-input font-medium" placeholder="Subtask Title" required>
+                    <div><label class="styled-label">Assignee</label><select name="st_assignee" id="st_assignee_select" class="styled-input"></select></div>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="app.closeModals()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md">Cancel</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="collabModalBackdrop" class="fixed inset-0 z-[100] hidden modal-backdrop flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-2xl max-w-2xl w-full p-6 mobile-modal-full" id="collabModalPanel">
+            <h3 class="text-xl font-bold text-gray-900 mb-4 flex justify-between items-center">
+                <span>Collaborative Planning</span>
+                <button onclick="app.closeModals()" class="text-gray-400 hover:text-gray-600">×</button>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 class="font-bold text-gray-800 mb-3">Share Your Session</h4>
+                    <p class="text-sm text-gray-600 mb-3">Your Peer ID: <span id="my-peer-id" class="font-mono bg-gray-200 px-2 py-1 rounded text-xs font-semibold">Generating...</span></p>
+                    <button onclick="peerManager.generateId()" class="w-full bg-brand-600 text-white px-3 py-2 rounded-md hover:bg-brand-700 text-sm mb-3">Generate/Refresh ID</button>
+                    <p class="text-xs text-center text-gray-500">Share link:</p>
+                    <input type="text" id="share-link-input" class="styled-input text-xs text-center mb-2" readonly onclick="this.select()">
+                    <button onclick="navigator.clipboard.writeText(document.getElementById('share-link-input').value); app.showToast('Link copied!')" class="w-full bg-gray-200 text-gray-700 px-3 py-2 rounded-md hover:bg-gray-300 text-sm">Copy Link</button>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 class="font-bold text-gray-800 mb-3">Join a Session</h4>
+                    <p class="text-sm text-gray-600 mb-3">Enter Peer ID to connect:</p>
+                    <input type="text" id="remote-peer-id" class="styled-input mb-3" placeholder="Remote Peer ID">
+                    <button onclick="peerManager.connectToPeer(document.getElementById('remote-peer-id').value)" class="w-full bg-brand-600 text-white px-3 py-2 rounded-md hover:bg-brand-700 text-sm">Connect</button>
+                    <div class="mt-4 border-t border-gray-200 pt-3">
+                        <h5 class="text-sm font-bold text-gray-700 mb-2">Connected Peers (<span id="connected-peers-count">0</span>)</h5>
+                        <ul id="connected-peers-list" class="space-y-1 text-sm text-gray-600 max-h-32 overflow-y-auto"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded shadow-lg text-sm transition-opacity duration-300 opacity-0 pointer-events-none z-[70]">Action Successful</div>
+
+    <script>
+        // --- SCRIPT START ---
+        const STORE_KEY = 'taskflow_v14_jira_ent';
+
+        const timeUtil = {
+            toSeconds: (str) => {
+                if(!str) return 0;
+                let total = 0;
+                const h = str.match(/(\d+)\s*h/); if(h) total += parseInt(h[1])*3600;
+                const m = str.match(/(\d+)\s*m/); if(m) total += parseInt(m[1])*60;
+                return total > 0 ? total : (parseInt(str) || 0);
+            },
+            toStr: (sec) => {
+                if(!sec) return '';
+                const h = Math.floor(sec/3600);
+                const m = Math.floor((sec%3600)/60);
+                let parts = [];
+                if(h > 0) parts.push(`${h}h`);
+                if(m > 0) parts.push(`${m}m`);
+                return parts.join(' ');
+            }
+        };
+
+        class App {
+            constructor() {
+                // Default Config (Jira Enhanced)
+                const defaults = {
+                    config: { 
+                        users: [
+                            {id: 'u1', name: 'Unassigned', initials: 'U', color: '#94a3b8'}, 
+                            {id: 'u2', name: 'Alice Smith', initials: 'AS', color: '#4f46e5'}, 
+                            {id: 'u3', name: 'Bob Jones', initials: 'BJ', color: '#10b981'}
+                        ],
+                        statuses: [
+                            {id: 'todo', label: 'To Do', color: '#e2e8f0'},
+                            {id: 'inprogress', label: 'In Progress', color: '#bfdbfe'},
+                            {id: 'done', label: 'Done', color: '#bbf7d0'}
+                        ],
+                        priorities: [
+                            {id: 'high', label: 'High', color: '#ef4444'},
+                            {id: 'medium', label: 'Medium', color: '#f59e0b'},
+                            {id: 'low', label: 'Low', color: '#94a3b8'}
+                        ],
+                        teams: [{id:'t1', name:'Frontend'}, {id:'t2', name:'Backend'}],
+                        resolutions: [{id:'fixed', label:'Fixed'}, {id:'wontdo', label:"Won't Do"}],
+                        // Field Configuration (Toggles)
+                        fields: {
+                            resolution: true, reporter: true, team: true, 
+                            sprint: true, storyPoints: true, fixVersions: true, 
+                            components: true, labels: true, timeTracking: true,
+                            startDate: true, dueDate: true
+                        }
+                    },
+                    projects: [ {id: 'p1', name: 'Web Redesign', key: 'WEB', desc: 'Main Site', sprints: [{id:'sp1', name:'Sprint 1', state:'active'}, {id:'sp2', name:'Sprint 2', state:'future'}]} ],
+                    tasks: [
+                        { id: 't1', key:'WEB-1', projectId: 'p1', title: 'Setup Repo', status: 'done', priority: 'high', issueType:'story', assignee: 'u2', sprintId:'sp1', storyPoints:3, subtasks:[{id:'s1', text:'Init Git', done:true}], labels:['dev'], created: Date.now(), startDate: this.getDateStr(-5), dueDate: this.getDateStr(0), timeOriginal:7200, timeSpent:7200},
+                        { id: 't2', key:'WEB-2', projectId: 'p1', title: 'Homepage', status: 'todo', priority: 'medium', issueType:'task', assignee: 'u3', sprintId:'sp1', storyPoints:5, subtasks:[], labels:[], created: Date.now(), startDate: this.getDateStr(1), dueDate: this.getDateStr(7), timeOriginal:28800}
+                    ]
+                };
+                
+                this.state = JSON.parse(localStorage.getItem(STORE_KEY)) || defaults;
+                // Patch old state for new fields if upgrading
+                if(!this.state.config.fields) this.state.config.fields = defaults.config.fields;
+                if(!this.state.config.teams) this.state.config.teams = defaults.config.teams;
+                if(!this.state.config.resolutions) this.state.config.resolutions = defaults.config.resolutions;
+                this.state.tasks.forEach(task => { // Ensure all tasks have these properties for consistency
+                    if (!task.created) task.created = Date.now();
+                    if (!task.comments) task.comments = [];
+                });
+
+
+                this.view = 'dashboard'; 
+                this.layout = 'home'; // Current view inside project
+                this.activePid = null;
+                this.editId = null; 
+                this.tempSubs = []; 
+                this.expanded = new Set(); // For Gantt/List subtask expansion
+                
+                this.isMobileSidebarOpen = false;
+            }
+
+            init() {
+                this.renderNav(); 
+                this.nav('dashboard');
+                
+                document.addEventListener('submit', (e) => {
+                    if (e.target.id === 'taskForm') this.handleTaskForm(e);
+                    if (e.target.id === 'subtaskForm') this.handleSubtaskForm(e);
+                    if (e.target.id === 'projectForm') this.handleProjectForm(e);
+                });
+
+                // Initialize PeerJS Manager
+                if(window.peerManager) peerManager.init(this);
+            }
+
+            // Sync state to localStorage and optionally to peers
+            save(broadcast = true) { 
+                localStorage.setItem(STORE_KEY, JSON.stringify(this.state)); 
+                this.render(); 
+                if (broadcast && window.peerManager) {
+                    peerManager.sendStateToPeers(this.state);
+                }
+            }
+
+            // Update state from a remote peer
+            receiveState(newState) {
+                this.state = newState;
+                localStorage.setItem(STORE_KEY, JSON.stringify(this.state));
+                this.render();
+                this.showToast("State updated by peer!");
+            }
+
+            showToast(msg) {
+                const t = document.getElementById('toast');
+                t.innerText = msg; t.classList.remove('opacity-0');
+                setTimeout(() => t.classList.add('opacity-0'), 3000);
+            }
+
+            getDateStr(offsetDays) {
+                const d = new Date(); d.setDate(d.getDate() + offsetDays);
+                return d.toISOString().split('T')[0];
+            }
+
+            // --- Mobile Sidebar ---
+            toggleMobileSidebar() {
+                this.isMobileSidebarOpen = !this.isMobileSidebarOpen;
+                const sidebar = document.getElementById('main-sidebar');
+                if (this.isMobileSidebarOpen) {
+                    sidebar.classList.remove('-translate-x-full');
+                    sidebar.classList.add('translate-x-0', 'flex'); // Ensure it becomes flex when open
+                } else {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebar.classList.remove('translate-x-0');
+                }
+            }
+
+            closeMobileSidebar() {
+                 if (this.isMobileSidebarOpen) {
+                     this.toggleMobileSidebar();
+                 }
+            }
+
+            // --- Navigation & Views ---
+
+            nav(target, pid = null) {
+                this.view = target; 
+                this.activePid = pid;
+                
+                // Reset UI
+                ['view-dashboard', 'view-settings', 'view-project'].forEach(id => {
+                    document.getElementById(id).classList.add('hidden');
+                    document.getElementById(id).classList.remove('flex'); // Remove flex for project
+                });
+                document.getElementById('project-toolbar').classList.add('hidden');
+                document.getElementById('header-manage-proj').classList.add('hidden');
+
+                document.querySelectorAll('nav button').forEach(b => b.classList.remove('bg-slate-800', 'text-white'));
+                if(target === 'dashboard') {
+                    document.getElementById('nav-dash').classList.add('bg-slate-800', 'text-white');
+                    document.getElementById('view-dashboard').classList.remove('hidden');
+                    this.setTitle('Dashboard', 'Workspace Overview');
+                    this.renderDashboard();
+                } else if (target === 'settings') {
+                    document.getElementById('view-settings').classList.remove('hidden');
+                    this.setTitle('Settings & Fields', 'Configuration');
+                    this.renderSettings();
+                } else if (target === 'project') {
+                    const p = this.state.projects.find(x => x.id === pid);
+                    if(!p) return this.nav('dashboard');
+                    
+                    const navEl = document.getElementById('nav-p-'+pid);
+                    if(navEl) navEl.classList.add('bg-slate-800', 'text-white');
+                    
+                    document.getElementById('view-project').classList.remove('hidden');
+                    document.getElementById('view-project').classList.add('flex');
+                    document.getElementById('project-toolbar').classList.remove('hidden');
+                    document.getElementById('header-manage-proj').classList.remove('hidden');
+                    this.setTitle(p.name + ` (${p.key})`, p.desc || 'Project View');
+                    this.render(); // Render active layout
+                }
+            }
+
+            setTitle(t, d) {
+                document.getElementById('page-title').innerText = t;
+                document.getElementById('page-desc').innerText = d;
+            }
+
+            setView(layout) {
+                this.layout = layout;
+                document.querySelectorAll('.view-btn').forEach(b => {
+                    b.classList.toggle('bg-white', b.dataset.view === layout);
+                    b.classList.toggle('shadow-sm', b.dataset.view === layout);
+                    b.classList.toggle('text-gray-900', b.dataset.view === layout);
+                    b.classList.toggle('text-gray-500', b.dataset.view !== layout);
+                });
+                this.render();
+            }
+
+            render() {
+                if(this.view !== 'project') return;
+                
+                const tasks = this.getFilteredTasks();
+                const layouts = ['home', 'list', 'board', 'gantt', 'split', 'backlog'];
+                layouts.forEach(l => {
+                    const el = document.getElementById(`layout-${l}`);
+                    el.classList.add('hidden');
+                    // Ensure flex is removed if not a flex layout
+                    if (l !== 'gantt' && l !== 'split') {
+                        el.classList.remove('flex');
+                    }
+                });
+                
+                const current = document.getElementById(`layout-${this.layout}`);
+                current.classList.remove('hidden');
+                // Special handling for flex layouts
+                if (this.layout === 'gantt' || this.layout === 'split') {
+                    current.classList.add('flex');
+                }
+
+                if(this.layout === 'home') this.renderProjectHome();
+                if(this.layout === 'backlog') this.renderBacklog(tasks, current);
+                if(this.layout === 'list') this.renderList(tasks, current);
+                if(this.layout === 'board') this.renderBoard(tasks, current);
+                if(this.layout === 'gantt') this.renderGantt(tasks, current);
+                if(this.layout === 'split') {
+                    this.renderList(tasks, document.getElementById('split-list-container'));
+                    this.renderGantt(tasks, document.getElementById('split-gantt-container'));
+                }
+            }
+
+            getFilteredTasks() {
+                const term = document.getElementById('searchBox').value.toLowerCase();
+                return this.state.tasks.filter(t => t.projectId === this.activePid && 
+                    (t.title.toLowerCase().includes(term) || 
+                     (t.key||'').toLowerCase().includes(term) || 
+                     (t.labels||[]).some(tag => tag.toLowerCase().includes(term))));
+            }
+
+            // --- Render Logic ---
+
+            renderDashboard() {
+                const total = this.state.tasks.length;
+                const done = this.state.tasks.filter(t => t.status === 'done').length;
+                document.getElementById('dashboard-stats').innerHTML = `
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><span class="text-xs font-semibold text-gray-500 uppercase">Projects</span><span class="text-3xl font-bold text-gray-900 mt-2 block">${this.state.projects.length}</span></div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><span class="text-xs font-semibold text-gray-500 uppercase">Total Issues</span><span class="text-3xl font-bold text-gray-900 mt-2 block">${total}</span></div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><span class="text-xs font-semibold text-gray-500 uppercase">Completed</span><span class="text-3xl font-bold text-green-600 mt-2 block">${done}</span></div>
+                `;
+            }
+
+            renderProjectHome() {
+                const p = this.state.projects.find(x => x.id === this.activePid);
+                const tasks = this.state.tasks.filter(t => t.projectId === this.activePid);
+                const done = tasks.filter(t => t.status === 'done').length;
+                const progress = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
+                document.getElementById('layout-home').innerHTML = `
+                    <div class="max-w-4xl mx-auto bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-2">${p.name}</h2>
+                        <div class="flex items-center gap-2 mb-6"><span class="bg-gray-100 text-gray-600 font-mono text-xs px-2 py-1 rounded">Key: ${p.key}</span></div>
+                        <p class="text-gray-500 mb-8">${p.desc || 'No description.'}</p>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2"><div class="bg-brand-600 h-2.5 rounded-full" style="width: ${progress}%"></div></div>
+                        <span class="text-sm font-medium text-gray-600">${progress}% Complete</span>
+                    </div>`;
+            }
+
+            renderBacklog(tasks, container) {
+                const p = this.state.projects.find(x => x.id === this.activePid);
+                // Group by Sprints
+                let html = '';
+                
+                const taskRow = (t) => {
+                    const u = this.state.config.users.find(u=>u.id===t.assignee)||this.state.config.users[0];
+                    const pr = this.state.config.priorities.find(x=>x.id===t.priority);
+                    return `<div onclick="app.openTaskModal('${t.id}')" class="flex items-center bg-white border-b border-gray-100 p-2 hover:bg-gray-50 cursor-pointer group">
+                        <div class="w-20 font-mono text-xs text-gray-500">${t.key}</div>
+                        <div class="flex-1 text-sm font-medium text-gray-900 flex items-center gap-2">
+                             <span class="w-4 h-4 rounded-sm flex items-center justify-center text-[10px] text-white font-bold uppercase icon-${t.issueType||'story'}">${(t.issueType||'S')[0]}</span>
+                             ${t.title}
+                        </div>
+                        <div class="flex items-center gap-3 pr-2">
+                             ${t.storyPoints ? `<span class="bg-gray-100 text-gray-600 text-xs px-1.5 rounded-full font-bold">${t.storyPoints}</span>` : ''}
+                             <span class="text-[10px] uppercase font-bold" style="color:${pr.color}">${pr.label}</span>
+                             <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] text-white font-bold" style="background-color: ${u.color}">${u.initials}</div>
+                        </div>
+                    </div>`;
+                };
+
+                // Sprints
+                if(p.sprints) p.sprints.forEach(s => {
+                    const st = tasks.filter(t => t.sprintId === s.id);
+                    html += `<div class="mb-6 border border-gray-200 rounded-lg bg-gray-50 overflow-hidden">
+                        <div class="p-3 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
+                            <span class="font-bold text-sm text-gray-800">${s.name} <span class="font-normal text-xs text-gray-500">(${st.length} issues)</span></span>
+                            <div class="flex gap-2">
+                                ${s.state==='active'?`<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase">Active</span>`:
+                                `<button onclick="app.activateSprint('${s.id}')" class="text-xs bg-white border px-2 py-1 rounded hover:bg-gray-50">Start Sprint</button>`}
+                            </div>
+                        </div>
+                        <div class="bg-white min-h-[40px]">${st.length ? st.map(taskRow).join('') : '<div class="p-3 text-xs text-gray-400 border-dashed text-center">Drag issues here</div>'}</div>
+                    </div>`;
+                });
+
+                // Backlog
+                const backlog = tasks.filter(t => !t.sprintId);
+                html += `<div class="mb-6 border border-gray-200 rounded-lg bg-gray-50 overflow-hidden">
+                    <div class="p-3 bg-gray-100 border-b border-gray-200 font-bold text-sm flex justify-between">
+                        <span>Backlog <span class="font-normal text-xs text-gray-500">(${backlog.length} issues)</span></span>
+                        <button onclick="app.createSprint()" class="text-xs bg-white border px-2 py-1 rounded hover:bg-gray-50">Create Sprint</button>
+                    </div>
+                    <div class="bg-white min-h-[40px]">${backlog.map(taskRow).join('')}</div>
+                    <button onclick="app.openTaskModal()" class="w-full text-left p-2 px-4 text-sm text-gray-500 hover:bg-gray-50 border-t border-gray-100 font-medium">+ Create issue</button>
+                </div>`;
+                
+                container.innerHTML = html;
+            }
+
+            renderBoard(tasks, container) {
+                // Filter by Active Sprint
+                const p = this.state.projects.find(x => x.id === this.activePid);
+                const activeSprint = p.sprints ? p.sprints.find(s => s.state === 'active') : null;
+                
+                if(!activeSprint) {
+                    container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-500"><p>No active sprint.</p><button onclick="app.setView('backlog')" class="mt-2 text-brand-600 hover:underline">Go to Backlog to start one.</button></div>`;
+                    return;
+                }
+                
+                const sprintTasks = tasks.filter(t => t.sprintId === activeSprint.id);
+
+                container.innerHTML = this.state.config.statuses.map(s => {
+                    const colTasks = sprintTasks.filter(t => t.status === s.id);
+                    return `
+                    <div class="flex-shrink-0 w-full sm:w-80 flex flex-col h-full bg-gray-100 rounded-xl border border-gray-200 mb-4 sm:mb-0">
+                        <div class="p-3 flex justify-between border-b border-gray-200 bg-gray-50 rounded-t-xl">
+                            <h3 class="text-sm font-semibold text-gray-700">${s.label}</h3>
+                            <span class="bg-white px-2 py-0.5 rounded-full text-xs border">${colTasks.length}</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-2 space-y-2" ondragover="event.preventDefault()" ondrop="app.drop(event, '${s.id}')">
+                            ${colTasks.map(t => {
+                                const u = this.state.config.users.find(x=>x.id===t.assignee)||this.state.config.users[0];
+                                return `
+                                <div draggable="true" ondragstart="event.dataTransfer.setData('id', '${t.id}')" onclick="app.openTaskModal('${t.id}')" 
+                                     class="bg-white p-3 rounded shadow-sm border border-gray-200 cursor-pointer hover:shadow-md">
+                                    <div class="flex justify-between mb-1"><span class="text-xs font-mono text-gray-500 hover:underline">${t.key}</span></div>
+                                    <div class="text-sm font-medium text-gray-900 mb-2">${t.title}</div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] text-white font-bold uppercase icon-${t.issueType||'story'}">${(t.issueType||'S')[0]}</span>
+                                        <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] text-white font-bold" style="background-color: ${u.color}">${u.initials}</div>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            renderList(tasks, container) {
+                const cfg = this.state.config.fields;
+                let head = `<th class="px-6 py-3 text-left">Key</th><th class="px-6 py-3 text-left">Summary</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Assignee</th>`;
+                if(cfg.priority) head += `<th class="px-6 py-3 mobile-hidden sm:table-cell">Priority</th>`;
+                if(cfg.dueDate) head += `<th class="px-6 py-3 mobile-hidden sm:table-cell">Due</th>`;
+                
+                const rows = tasks.map(t => {
+                    const u = this.state.config.users.find(x=>x.id===t.assignee)||this.state.config.users[0];
+                    const s = this.state.config.statuses.find(x=>x.id===t.status);
+                    const p = this.state.config.priorities.find(x=>x.id===t.priority);
+                    let row = `<td class="px-6 py-3 font-mono text-xs text-gray-500">${t.key}</td>
+                               <td class="px-6 py-3 text-sm font-medium text-gray-900">${t.title}</td>
+                               <td class="px-6 py-3"><span class="px-2 py-0.5 rounded-full text-xs border" style="background:${s.color}20; border-color:${s.color}40">${s.label}</span></td>
+                               <td class="px-6 py-3 text-sm">${u.name}</td>`;
+                    if(cfg.priority) row += `<td class="px-6 py-3 text-xs mobile-hidden sm:table-cell" style="color:${p.color}">${p.label}</td>`;
+                    if(cfg.dueDate) row += `<td class="px-6 py-3 text-xs text-gray-500 mobile-hidden sm:table-cell">${t.dueDate||'-'}</td>`;
+                    return `<tr class="hover:bg-gray-50 cursor-pointer border-b border-gray-100" onclick="app.openTaskModal('${t.id}')">${row}</tr>`;
+                }).join('');
+
+                container.innerHTML = `<div class="min-w-full inline-block align-middle overflow-x-auto"><table class="min-w-full"><thead class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase border-b border-gray-200"><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+            }
+
+            renderGantt(tasks, container) {
+                // Flatten Subtasks if expanded
+                const items = [];
+                tasks.forEach(t => {
+                    items.push({type:'task', data:t});
+                    if(this.expanded.has(t.id) && t.subtasks) t.subtasks.forEach(s => items.push({type:'sub', data:s, parent:t.id}));
+                });
+
+                if(!items.length) { container.innerHTML = '<div class="p-8 text-center text-gray-500">No issues or dates.</div>'; return; }
+
+                // Dates
+                const dates = items.flatMap(i => {
+                    if (i.data.startDate && i.data.dueDate) {
+                        return [new Date(i.data.startDate), new Date(i.data.dueDate)];
+                    } else { // Default to today to avoid errors if dates are missing
+                        const today = new Date();
+                        return [today, new Date(today.getTime() + 86400000 * 2)]; // 2 days duration
+                    }
+                });
+                const min = new Date(Math.min(...dates)); min.setDate(min.getDate()-2);
+                const max = new Date(Math.max(...dates)); max.setDate(max.getDate()+10);
+                const days = Math.ceil((max-min)/86400000);
+                const dayW = 50; // Original value 50px
+
+                // Header
+                let header = '';
+                for(let i=0; i<days; i++) {
+                    const d = new Date(min.getTime() + i*86400000);
+                    const isWeekend = d.getDay() === 0 || d.getDay() === 6; // Original styling
+                    header += `<div class="flex-shrink-0 w-[50px] text-center border-r border-gray-100 pt-2 ${isWeekend ? 'bg-gray-50 text-gray-400' : 'text-gray-600 font-medium'}"><div class="text-[10px]">${d.getDate()}</div><div class="text-[9px] uppercase">${d.toLocaleDateString('en-US',{weekday:'narrow'})}</div></div>`;
+                }
+
+                // Sidebar
+                const sidebar = items.map(i => `
+                    <div class="h-10 flex items-center px-4 border-b border-gray-100 hover:bg-gray-50 text-xs">
+                        ${i.type==='task' ? 
+                        `<button onclick="app.toggleExp('${i.data.id}')" class="mr-1 text-gray-400 ${i.data.subtasks?.length ? '' : 'invisible'}">${this.expanded.has(i.data.id)?'▼':'▶'}</button> <span class="font-medium truncate">${i.data.title}</span>` : 
+                        `<span class="pl-8 text-gray-500 truncate">↳ ${i.data.text}</span>`}
+                    </div>`).join('');
+
+                // Bars
+                const bars = items.map((i, idx) => {
+                    const startDate = new Date(i.data.startDate||Date.now());
+                    const dueDate = new Date(i.data.dueDate||Date.now());
+
+                    const start = (startDate - min)/86400000;
+                    const dur = Math.max(1, (dueDate - startDate)/86400000 + 1); // +1 to include due date itself
+
+                    const statusColor = (i.type === 'task' ? (this.state.config.statuses.find(s => s.id === i.data.status)?.color || '#6366f1') : '#94a3b8'); // Brand-500 for task, slate for subtask
+                    const textColor = (statusColor === '#e3fcef' || statusColor === '#bbf7d0') ? '#1e293b' : 'white'; // Dark text for light backgrounds
+
+                    return `<div onclick="app.openTaskModal('${i.type==='task'?i.data.id:i.parent}')" class="absolute h-6 rounded text-[10px] flex items-center px-2 cursor-pointer hover:opacity-90 shadow-sm whitespace-nowrap overflow-hidden transition-all" 
+                        style="left:${start*dayW}px; width:${dur*dayW}px; top:${idx*40+8}px; background-color:${statusColor}; color:${textColor}; border:1px solid rgba(0,0,0,0.1);">
+                        ${i.data.title || i.data.text}
+                    </div>`;
+                }).join('');
+
+                container.innerHTML = `
+                    <div class="flex h-full border border-gray-200 rounded-lg overflow-hidden bg-white">
+                        <div class="w-full sm:w-64 flex-shrink-0 border-r border-gray-200 flex flex-col bg-white z-10">
+                            <div class="h-12 border-b border-gray-200 bg-gray-50 flex items-center px-4 text-xs font-semibold text-gray-500 uppercase">Task Name</div>
+                            <div class="flex-1 overflow-auto" id="gantt-sb-${this.layout}">
+                                ${sidebar}
+                            </div>
+                        </div>
+                        <div class="flex-1 flex flex-col overflow-hidden relative">
+                            <div class="h-12 border-b border-gray-200 bg-white flex overflow-auto relative z-10 shadow-sm">
+                                <div style="width:${days*dayW}px" class="flex">${header}</div>
+                            </div>
+                            <div class="flex-1 overflow-auto relative bg-white" id="gantt-tl-${this.layout}">
+                                <div style="width:${days*dayW}px; height:${items.length*40}px" class="relative gantt-grid">
+                                    ${bars}
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                    
+                // Sync Scroll (Original logic)
+                const sb = document.getElementById(`gantt-sb-${this.layout}`);
+                const tl = document.getElementById(`gantt-tl-${this.layout}`);
+                if(sb && tl) tl.onscroll = () => sb.scrollTop = tl.scrollTop;
+            }
+
+            toggleExp(id) {
+                if(this.expanded.has(id)) this.expanded.delete(id); else this.expanded.add(id);
+                this.render();
+            }
+
+            drop(e, status) {
+                e.preventDefault();
+                const id = e.dataTransfer.getData('id');
+                const t = this.state.tasks.find(x=>x.id===id);
+                if(t) { t.status = status; this.save(); }
+            }
+
+            // --- Logic: Sprints ---
+            createSprint() {
+                const p = this.state.projects.find(x=>x.id===this.activePid);
+                if(!p.sprints) p.sprints = [];
+                p.sprints.push({id:'sp'+Date.now(), name:`Sprint ${p.sprints.length+1}`, state:'future'});
+                this.save();
+            }
+            activateSprint(id) {
+                const p = this.state.projects.find(x=>x.id===this.activePid);
+                if(p.sprints.some(s=>s.state==='active')) return alert('Complete current sprint first.');
+                p.sprints.find(x=>x.id===id).state='active';
+                this.save(); this.setView('board');
+            }
+
+            // --- Config & Settings ---
+            renderSettings() {
+                // Toggles
+                const fields = this.state.config.fields;
+                document.getElementById('cfg-fields-container').innerHTML = Object.keys(fields).map(k => 
+                    `<label class="flex items-center gap-2 text-sm"><input type="checkbox" ${fields[k]?'checked':''} onchange="app.toggleCfgField('${k}')" class="rounded text-brand-600"> ${k.replace(/([A-Z])/g, ' $1').trim()}</label>`
+                ).join('');
+                
+                // Lists
+                const list = (id, type) => document.getElementById(id).innerHTML = this.state.config[type].map(x => 
+                    `<div class="flex justify-between items-center bg-gray-50 p-1 px-2 rounded text-sm mb-1 border"><span>${x.name||x.label}</span><button class="text-gray-400 hover:text-red-500 font-bold" onclick="app.delCfg('${type}','${x.id}')">×</button></div>`
+                ).join('');
+                list('cfg-list-teams', 'teams');
+                list('cfg-list-users', 'users');
+                list('cfg-list-statuses', 'statuses');
+            }
+            toggleCfgField(k) { this.state.config.fields[k] = !this.state.config.fields[k]; this.save(); }
+            cfgAdd(type) {
+                const key = type==='status'?'statuses':(type+'s');
+                const inp = document.getElementById(type==='status'?'cfg-status-label':`cfg-${type}-name`);
+                if(inp.value) { this.state.config[key].push({id:Date.now()+'', name:inp.value, label:inp.value, color:'#eee'}); this.save(); this.renderSettings(); inp.value=''; }
+            }
+            delCfg(type, id) { this.state.config[type].splice(this.state.config[type].findIndex(x=>x.id===id), 1); this.save(); this.renderSettings(); }
+            resetData() { if(confirm('Reset all?')) { localStorage.removeItem(STORE_KEY); location.reload(); } }
+
+            // --- Modal & Editing ---
+            openTaskModal(id=null) {
+                this.editId = id;
+                const p = this.state.projects.find(x=>x.id===this.activePid);
+                const t = id ? this.state.tasks.find(x=>x.id===id) : {
+                    projectId: this.activePid, title:'', description:'', status:'todo', priority:'medium', issueType:'story',
+                    assignee:'u1', sprintId:'', storyPoints:'', labels:[], subtasks:[], components:[], fixVersions:[],
+                    reporter: 'u1', teamId: '', startDate: '', dueDate: '', timeOriginal: '', timeSpent: '', resolution:''
+                };
+                this.tempSubs = [...(t.subtasks||[])];
+
+                const f = document.getElementById('taskForm');
+                f.title.value = t.title;
+                f.description.value = t.description||'';
+                
+                const sel = (id, arr, val) => document.getElementById(id).innerHTML = arr.map(x=>`<option value="${x.id}" ${x.id===val?'selected':''}>${x.label||x.name}</option>`).join('');
+                
+                sel('tm-status', this.state.config.statuses, t.status);
+                sel('tm-priority', this.state.config.priorities, t.priority);
+                sel('tm-assignee', this.state.config.users, t.assignee);
+                sel('tm-issueType', [{id:'story',name:'Story'},{id:'bug',name:'Bug'},{id:'task',name:'Task'},{id:'epic',name:'Epic'}], t.issueType);
+
+                // Field Toggles
+                const cfg = this.state.config.fields;
+                const toggle = (sel, show) => {
+                    const el = document.querySelector(`[data-f="${sel}"]`); 
+                    if(el) el.style.display = show ? 'flex' : 'none';
+                };
+                
+                toggle('resolution', cfg.resolution); if(cfg.resolution) sel('tm-resolution', [{id:'',label:'Unresolved'},...this.state.config.resolutions], t.resolution||'');
+                toggle('reporter', cfg.reporter); if(cfg.reporter) sel('tm-reporter', this.state.config.users, t.reporter||'u1');
+                toggle('team', cfg.team); if(cfg.team) sel('tm-team', [{id:'',name:'None'},...this.state.config.teams], t.teamId||'');
+                toggle('sprint', cfg.sprint); if(cfg.sprint) document.getElementById('tm-sprint').innerHTML = `<option value="">Backlog</option>` + (p.sprints||[]).map(s=>`<option value="${s.id}" ${s.id===t.sprintId?'selected':''}>${s.name}</option>`).join('');
+                
+                toggle('storyPoints', cfg.storyPoints); f.storyPoints.value = t.storyPoints||'';
+                toggle('startDate', cfg.startDate); f.startDate.value = t.startDate||'';
+                toggle('dueDate', cfg.dueDate); f.dueDate.value = t.dueDate||'';
+                toggle('fixVersions', cfg.fixVersions); f.fixVersions.value = (t.fixVersions||[]).join(', ');
+                toggle('components', cfg.components); f.components.value = (t.components||[]).join(', ');
+                toggle('labels', cfg.labels); f.labels.value = (t.labels||[]).join(', ');
+                
+                toggle('timeTracking', cfg.timeTracking);
+                if(cfg.timeTracking) { f.timeOriginal.value = timeUtil.toStr(t.timeOriginal); f.timeSpent.value = timeUtil.toStr(t.timeSpent); }
+
+                document.getElementById('tm-key').innerText = t.key || 'NEW';
+                document.getElementById('tm-delete-btn').classList.toggle('hidden', !id);
+                this.renderModalLists();
+                
+                document.getElementById('taskModalBackdrop').classList.remove('hidden');
+                document.getElementById('taskModalPanel').classList.remove('translate-x-full');
+            }
+
+            renderModalLists() {
+                const c = document.getElementById('tm-sub-list');
+                c.innerHTML = this.tempSubs.map((s,i) => `
+                    <div class="flex items-center gap-3 p-2 bg-gray-50 rounded group">
+                        <input type="checkbox" ${s.done?'checked':''} onchange="app.toggleTempSub(${i})">
+                        <span class="flex-1 text-sm ${s.done?'line-through text-gray-400':''}">${s.text}</span>
+                        <button type="button" onclick="app.removeSub(${i})" class="text-red-500 opacity-0 group-hover:opacity-100">×</button>
+                    </div>`).join('');
+            }
+            quickAddSubtask() { const t = prompt('Subtask:'); if(t) { this.tempSubs.push({text:t,done:false}); this.renderModalLists(); } }
+            toggleTempSub(i) { this.tempSubs[i].done = !this.tempSubs[i].done; this.renderModalLists(); }
+            removeSub(i) { this.tempSubs.splice(i,1); this.renderModalLists(); }
+
+            handleTaskForm(e) {
+                e.preventDefault();
+                const d = Object.fromEntries(new FormData(e.target));
+                const split = (s) => s ? s.split(',').map(x=>x.trim()).filter(x=>x) : [];
+                
+                const data = {
+                    title: d.title, description: d.description, status: d.status, priority: d.priority, issueType: d.issueType,
+                    assignee: d.assignee, reporter: d.reporter, teamId: d.teamId, sprintId: d.sprintId, storyPoints: d.storyPoints ? parseInt(d.storyPoints) : null,
+                    startDate: d.startDate, dueDate: d.dueDate, fixVersions: split(d.fixVersions), components: split(d.components),
+                    labels: split(d.labels), timeOriginal: timeUtil.toSeconds(d.timeOriginal), timeSpent: timeUtil.toSeconds(d.timeSpent), subtasks: this.tempSubs
+                };
+
+                if(this.editId) {
+                    Object.assign(this.state.tasks.find(x=>x.id===this.editId), data);
+                } else {
+                    const p = this.state.projects.find(x=>x.id===this.activePid);
+                    const num = this.state.tasks.filter(t=>t.projectId===this.activePid).length + 1;
+                    this.state.tasks.push({id:'t'+Date.now(), key:`${p.key}-${num}`, projectId: this.activePid, created: Date.now(), comments:[], ...data});
+                }
+                this.save(); this.closeModals(); this.showToast('Saved');
+            }
+            deleteTask() { if(confirm('Delete?')) { this.state.tasks = this.state.tasks.filter(x=>x.id!==this.editId); this.save(); this.closeModals(); } }
+            closeModals() {
+                // Modals animate out, then become hidden
+                document.getElementById('taskModalPanel').classList.add('translate-x-full');
+                document.getElementById('projectModalBackdrop').classList.add('hidden');
+                document.getElementById('subtaskModalBackdrop').classList.add('hidden');
+                document.getElementById('helpModalBackdrop').classList.add('hidden');
+                document.getElementById('collabModalBackdrop').classList.add('hidden');
+                
+                setTimeout(() => {
+                    document.getElementById('taskModalBackdrop').classList.add('hidden');
+                }, 300); // Wait for transition
+            }
+
+            // --- Project & Export ---
+            openProjectModal(pid) {
+                const f = document.getElementById('projectForm');
+                f.pid.value = pid||'';
+                const p = pid ? this.state.projects.find(x=>x.id===pid) : {name:'',key:'',desc:''};
+                f.name.value=p.name; f.key.value=p.key; f.desc.value=p.desc;
+                document.getElementById('proj-delete-btn').classList.toggle('hidden',!pid);
+                document.getElementById('proj-export-btn').classList.toggle('hidden',!pid);
+                
+                document.getElementById('projectModalBackdrop').classList.remove('hidden');
+                document.getElementById('projectModalPanel').classList.remove('translate-y-full'); // For mobile animation
+            }
+            handleProjectForm(e) {
+                e.preventDefault(); const d = Object.fromEntries(new FormData(e.target));
+                if(d.pid) Object.assign(this.state.projects.find(x=>x.id===d.pid), {name:d.name,key:d.key,desc:d.desc});
+                else { const id='p'+Date.now(); this.state.projects.push({id, name:d.name, key:d.key.toUpperCase(), desc:d.desc, sprints:[]}); this.nav('project',id); }
+                this.save(); this.renderNav(); this.closeModals();
+            }
+            deleteProject() { if(confirm('Delete Project?')) { 
+                const pid = document.getElementById('projectForm').pid.value;
+                this.state.projects = this.state.projects.filter(x=>x.id!==pid);
+                this.state.tasks = this.state.tasks.filter(x=>x.projectId!==pid);
+                this.save(); this.nav('dashboard'); this.renderNav(); this.closeModals();
+            }}
+            renderNav() { document.getElementById('project-list').innerHTML = this.state.projects.map(p=>`<button id="nav-p-${p.id}" onclick="app.nav('project','${p.id}'); app.closeMobileSidebar()" class="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md text-slate-400 hover:bg-slate-800 hover:text-white"><span class="w-2 h-2 rounded-full bg-brand-500"></span> ${p.name}</button>`).join(''); }
+            
+            exportProjectToJira() {
+                const pid = document.getElementById('projectForm').pid.value;
+                const tasks = this.state.tasks.filter(t => t.projectId === pid);
+                const esc = (s) => `"${(s||'').toString().replace(/"/g, '""')}"`;
+
+                // CSV Header adhering to requested fields
+                let csv = 'Summary,Work Item Key,Status,Priority,Issue Type,Assignee,Reporter,Team,Sprint,Story Points,Start Date,Due Date,Fix Version,Components,Labels,Time Original (sec),Time Spent (sec),Description\n';
+                
+                tasks.forEach(t => {
+                    const status = this.state.config.statuses.find(x=>x.id===t.status);
+                    const priority = this.state.config.priorities.find(x=>x.id===t.priority);
+                    const assignee = this.state.config.users.find(x=>x.id===t.assignee);
+                    const reporter = this.state.config.users.find(x=>x.id===t.reporter);
+                    const team = this.state.config.teams.find(x=>x.id===t.teamId);
+                    const sprint = this.state.projects.find(x=>x.id===pid).sprints?.find(x=>x.id===t.sprintId);
+
+                    csv += [
+                        t.title,
+                        t.key,
+                        status ? status.label : '',
+                        priority ? priority.label : '',
+                        t.issueType,
+                        assignee ? assignee.name : '',
+                        reporter ? reporter.name : '',
+                        team ? team.name : '',
+                        sprint ? sprint.name : 'Backlog',
+                        t.storyPoints || '',
+                        t.startDate || '',
+                        t.dueDate || '',
+                        (t.fixVersions || []).join(','),
+                        (t.components || []).join(','),
+                        (t.labels || []).join(','),
+                        t.timeOriginal || 0,
+                        t.timeSpent || 0,
+                        t.description
+                    ].map(esc).join(',') + '\n';
+                });
+
+                const blob = new Blob([csv], {type:'text/csv'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href=url; a.download = `JiraFlow_Export_${p.key}.csv`; a.click();
+                this.showToast('CSV Downloaded!');
+            }
+            openHelpModal() { 
+                document.getElementById('helpModalBackdrop').classList.remove('hidden'); 
+                document.getElementById('helpModalBackdrop').querySelector('.mobile-modal-full').classList.add('mobile-modal-full');
+            }
+
+            // --- Collaboration Modal ---
+            openCollabModal() { 
+                document.getElementById('collabModalBackdrop').classList.remove('hidden'); 
+                document.getElementById('collabModalPanel').classList.add('mobile-modal-full');
+                peerManager.refreshUI();
+            }
+        }
+
+        class PeerManager {
+            constructor() {
+                this.app = null;
+                this.peer = null;
+                this.myId = '';
+                this.connections = {}; // Stores DataConnection objects {peerId: conn}
+                this.statusElement = null;
+                this.connectedPeersList = null;
+                this.connectedPeersCount = null;
+                this.shareLinkInput = null;
+            }
+
+            init(appInstance) {
+                this.app = appInstance;
+                this.statusElement = document.getElementById('collab-status');
+                this.connectedPeersList = document.getElementById('connected-peers-list');
+                this.connectedPeersCount = document.getElementById('connected-peers-count');
+                this.shareLinkInput = document.getElementById('share-link-input');
+                document.getElementById('my-peer-id').innerText = 'Not connected';
+                this.generateId(); // Attempt to generate ID on startup
+            }
+
+            updateStatus(status, color = 'bg-gray-600') {
+                if (this.statusElement) {
+                    this.statusElement.innerText = status;
+                    this.statusElement.className = `ml-auto text-[9px] px-2 py-0.5 rounded-full ${color}`;
+                }
+            }
+
+            updateConnectedPeersUI() {
+                const peerIds = Object.keys(this.connections);
+                if (this.connectedPeersList) {
+                    this.connectedPeersList.innerHTML = peerIds.map(id => `<li class="flex justify-between items-center"><span class="font-mono text-gray-700">${id}</span><button onclick="peerManager.closeConnection('${id}')" class="text-red-500 text-xs ml-2">Disconnect</button></li>`).join('');
+                }
+                if (this.connectedPeersCount) {
+                    this.connectedPeersCount.innerText = peerIds.length;
+                }
+                if (peerIds.length > 0) {
+                    this.updateStatus(`Online (${peerIds.length})`, 'bg-pink-600');
+                } else if (this.myId) {
+                    this.updateStatus('Waiting for connections', 'bg-blue-600');
+                } else {
+                    this.updateStatus('Offline', 'bg-gray-600');
+                }
+            }
+            
+            refreshUI() {
+                document.getElementById('my-peer-id').innerText = this.myId || 'Generating...';
+                if (this.shareLinkInput) {
+                    this.shareLinkInput.value = this.myId ? `${window.location.origin}${window.location.pathname}?peerId=${this.myId}` : '';
+                }
+                this.updateConnectedPeersUI();
+            }
+
+            generateId() {
+                if (this.peer && !this.peer.disconnected) {
+                    this.peer.destroy();
+                    this.peer = null;
+                }
+
+                document.getElementById('my-peer-id').innerText = 'Generating...';
+                this.updateStatus('Connecting...', 'bg-yellow-600');
+
+                // Generate a random ID, or use one from URL for direct connection
+                const urlParams = new URLSearchParams(window.location.search);
+                const peerIdFromUrl = urlParams.get('peerId');
+                const idToUse = peerIdFromUrl || 'taskflow-' + Math.random().toString(36).substr(2, 9);
+                
+                this.peer = new Peer(idToUse);
+
+                this.peer.on('open', id => {
+                    this.myId = id;
+                    document.getElementById('my-peer-id').innerText = id;
+                    this.refreshUI();
+                    this.app.showToast(`PeerJS ID: ${id}`);
+                    this.updateStatus('Waiting for connections', 'bg-blue-600');
+                    
+                    // If connecting from URL, try to connect to the peer that shared the link
+                    if (peerIdFromUrl && peerIdFromUrl !== this.myId) {
+                        this.connectToPeer(peerIdFromUrl);
+                    }
+                });
+
+                this.peer.on('connection', conn => {
+                    this.handleConnection(conn);
+                    this.app.showToast(`Incoming connection from ${conn.peer}`);
+                });
+
+                this.peer.on('error', err => {
+                    console.error('PeerJS error:', err);
+                    this.app.showToast(`PeerJS Error: ${err.message}`);
+                    this.updateStatus('Error', 'bg-red-600');
+                    if (err.type === 'peer-unavailable' && document.getElementById('remote-peer-id')) {
+                         document.getElementById('remote-peer-id').value = ''; // Clear ID on error
+                    }
+                });
+
+                this.peer.on('disconnected', () => {
+                    console.warn('PeerJS disconnected.');
+                    this.updateStatus('Disconnected', 'bg-gray-600');
+                    this.myId = '';
+                    this.refreshUI();
+                });
+            }
+
+            connectToPeer(remoteId) {
+                if (!this.peer || this.peer.disconnected) {
+                    this.app.showToast("PeerJS not initialized. Generate ID first.");
+                    return;
+                }
+                if (remoteId === this.myId) {
+                    this.app.showToast("Cannot connect to yourself!");
+                    return;
+                }
+                if (this.connections[remoteId]) {
+                    this.app.showToast(`Already connected to ${remoteId}`);
+                    return;
+                }
+
+                this.app.showToast(`Attempting to connect to ${remoteId}...`);
+                document.getElementById('remote-peer-id').value = ''; // Clear input
+
+                const conn = this.peer.connect(remoteId);
+                this.handleConnection(conn);
+            }
+
+            handleConnection(conn) {
+                conn.on('open', () => {
+                    console.log(`Connection opened with ${conn.peer}`);
+                    this.connections[conn.peer] = conn;
+                    this.app.showToast(`Connected to ${conn.peer}`);
+                    this.updateConnectedPeersUI();
+
+                    // Send current state to the new peer
+                    conn.send({ type: 'state', data: this.app.state });
+                });
+
+                conn.on('data', data => {
+                    console.log(`Received data from ${conn.peer}:`, data);
+                    if (data.type === 'state') {
+                        this.app.receiveState(data.data); // Update local state
+                    }
+                });
+
+                conn.on('close', () => {
+                    console.log(`Connection closed with ${conn.peer}`);
+                    delete this.connections[conn.peer];
+                    this.app.showToast(`Disconnected from ${conn.peer}`);
+                    this.updateConnectedPeersUI();
+                });
+
+                conn.on('error', err => {
+                    console.error(`Connection error with ${conn.peer}:`, err);
+                    this.app.showToast(`Connection error with ${conn.peer}: ${err.message}`);
+                    delete this.connections[conn.peer];
+                    this.updateConnectedPeersUI();
+                });
+            }
+
+            sendStateToPeers(state) {
+                for (const peerId in this.connections) {
+                    if (this.connections[peerId].open) {
+                        this.connections[peerId].send({ type: 'state', data: state });
+                    }
+                }
+            }
+
+            closeConnection(peerId) {
+                if (this.connections[peerId]) {
+                    this.connections[peerId].close();
+                    delete this.connections[peerId];
+                    this.updateConnectedPeersUI();
+                }
+            }
+        }
+
+        // --- CORRECTED INITIALIZATION SEQUENCE ---
+        const app = new App();
+        const peerManager = new PeerManager();
+        
+        // Make instances globally available for inline onclick handlers
+        window.app = app;
+        window.peerManager = peerManager;
+        
+        // Now, initialize the app, which in turn will initialize the peer manager
+        app.init();
+    </script>
+</body>
+</html>
