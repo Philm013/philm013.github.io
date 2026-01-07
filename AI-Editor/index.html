@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Edit.Me with AI - Draggable Modal - Function Calling - Context</title>
+
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/ambiance.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/fold/foldgutter.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/dialog/dialog.css" />
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- CORRECTED: Google Diff Match Patch (Browser-compatible version) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+    <div id="app-container" class="app-container-wrapper">
+        <aside id="sidebar-container" class="app-sidebar-region">
+            <div class="sidebar-header-panel">
+                <h2>File Registry</h2><button id="sidebar-close-btn" class="sidebar-close-trigger" title="Close Menu">×</button>
+            </div>
+            <ul id="file-list-display" class="sidebar-file-list-container">
+                <li class="no-files-indicator is-hidden">No file entities found.</li>
+            </ul>
+
+            <div class="sidebar-section-divider"></div>
+            <div class="sidebar-header-panel">
+                <h2>Project Rules</h2>
+            </div>
+            <ul id="rules-list-display" class="sidebar-rules-list-container">
+                <li class="no-rules-indicator is-hidden">No project rules defined.</li>
+            </ul>
+            <div class="sidebar-section-divider"></div>
+
+            <div class="sidebar-footer-panel">
+                <button id="create-file-btn" class="create-new-file-trigger">+ Create File Entity</button>
+                <button id="load-file-btn" class="load-file-trigger">Load File...</button>
+                <input type="file" id="file-loader-input" class="is-hidden" accept="*/*" multiple> 
+                <button id="create-rule-btn" class="action-button">+ Create Rule</button>
+            </div>
+        </aside>
+        <div id="sidebar-backdrop-element" class="sidebar-overlay-backdrop"></div>
+
+        <main class="app-main-content-area">
+            <header class="main-top-bar-container">
+                <button id="sidebar-menu-toggle" class="sidebar-open-trigger" title="Open Menu">☰</button>
+                <div id="active-file-indicator" class="current-file-display-label">No Active Entity</div>
+                <div class="editor-action-controls">
+                    <button id="toggle-pad-btn" class="action-button" title="Open Dev PAD Wizard">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" /></svg>
+                    </button>
+                    <button id="toggle-view-btn" class="action-button" title="Toggle Preview" disabled><svg class="edit-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" /></svg><svg class="preview-icon is-hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" /></svg></button>
+                    <button id="format-code-action" class="action-button" title="Apply Formatting" disabled><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h18v2H3V3zm0 4h18v2H3V7zm0 4h18v2H3v-2zm0 4h18v2H3v-2zm0 4h18v2H3v-2zM9 5h12v2H9V5zm0 4h9v2H9v-2zm0 4h6v2H9v-2zm0 4h3v2H9v-2z" /></svg></button>
+                    <button id="download-file-action" class="action-button" title="Download Current File" disabled><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" /></svg></button>
+                    <button id="fullscreen-toggle-action" class="action-button" title="Toggle Fullscreen"><svg class="enter-fullscreen-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" /></svg><svg class="exit-fullscreen-icon is-hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" /></svg></button>
+                </div>
+            </header>
+            <nav id="tab-bar-navigation" class="main-tab-navigation-bar">
+                <button id="add-tab-btn" title="New File">+</button>
+            </nav>
+            <div id="editor-preview-host" class="editor-preview-host view-mode-edit">
+                <div id="editor-area" class="custom-editor-component-wrapper">
+                    <textarea id="editor-input-source" style="display: none;"></textarea>
+                </div>
+                <div id="preview-area" class="preview-output-wrapper">
+                    <iframe id="preview-frame" class="preview-iframe-element" sandbox="allow-scripts allow-same-origin"></iframe>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <button id="floating-ai-chat-trigger" class="floating-ai-chat-btn" title="Ask AI about the document" disabled>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 16.5 A1.5 1.5 0 0 1 13.5 18 A1.5 1.5 0 0 1 12 16.5 A1.5 1.5 0 0 1 15 16.5 M8.5 18 A1.5 1.5 0 0 1 7 16.5 A1.5 1.5 0 0 1 10 16.5 A1.5 1.5 0 0 1 8.5 18 M15.97 11.43 A8.5 8.5 0 0 0 12.5 10.5 A8.5 8.5 0 0 0 9 11.43 C7.17 11.86 6 13.05 6 14.5 V16 H19 V14.5 C19 13.05 17.83 11.86 15.97 11.43 M12.5 9 A3.5 3.5 0 0 0 16 5.5 A3.5 3.5 0 0 0 12.5 2 A3.5 3.5 0 0 0 9 5.5 A3.5 3.5 0 0 0 12.5 9 Z" /></svg>
+    </button>
+
+    <div id="main-ai-chat-modal" class="ai-chat-modal">
+        <div class="ai-chat-modal-content">
+            <div class="ai-chat-modal-header">
+                <h2>AI Document Assistant (Beta)</h2>
+                <div class="header-controls">
+                    <label for="ai-global-search-toggle" title="Allow AI 'grep_files' tool to search across all open files. If disabled, it only searches the active file unless specific IDs are provided." style="font-size: 0.9em; display: flex; align-items: center; margin-right: 10px; color: var(--text-secondary); cursor: help;">
+                        <input type="checkbox" id="ai-global-search-toggle" style="margin-right: 5px;"> Global Search
+                    </label>
+                    <select id="model-selector" class="header-btn">
+                     <option value="gemini-flash-latest">Gemini Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
+            </select>
+                    <button id="main-ai-chat-close-btn" class="ai-chat-modal-close" title="Close Chat">×</button>
+                </div>
+            </div>
+            <div id="main-ai-chat-log" class="ai-chat-log">
+                <div id="main-ai-chat-selection-context" class="ai-chat-selection-context is-hidden">
+                    <strong>Selected Text:</strong>
+                    <pre><code id="main-ai-chat-context-code"></code></pre>
+                </div>
+                <p style="text-align:center; color:#777; font-style:italic;">Ask a question about the current document...</p>
+            </div>
+            <div class="ai-chat-input-area">
+                <div id="chat-filename-suggestions" class="autocomplete-suggestions is-hidden">
+                    <ul></ul>
+                </div>
+                <textarea id="main-ai-chat-input" rows="1" placeholder="Ask AI to review, explain, suggest changes... (Type @ for filename suggestions)"></textarea>
+                <button id="main-ai-chat-send-btn" title="Send Message"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg></button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEW: DEV PAD MODAL -->
+    <div id="pad-modal" class="pad-modal is-hidden">
+        <div class="pad-modal-content">
+            <div class="pad-modal-header">
+                <h2>Dev PAD Wizard</h2>
+                <button id="pad-modal-close-btn" class="pad-modal-close" title="Close Dev PAD">×</button>
+            </div>
+            <div id="pad-log" class="pad-log">
+                <!-- PAD content will be rendered here -->
+            </div>
+            <div id="pad-input-area" class="pad-input-area">
+                <textarea id="pad-input" rows="1" placeholder="Provide instructions or respond to Archie..."></textarea>
+                <button id="pad-send-btn" title="Send Message"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg></button>
+            </div>
+        </div>
+    </div>
+
+
+     <div id="rule-editor-modal" class="rule-editor-modal">
+          <div class="rule-editor-modal-content">
+               <div class="rule-editor-modal-header">
+                    <h2>Create/Edit Rule</h2>
+                    <button id="rule-editor-close-btn" class="rule-editor-modal-close" title="Close Rule Editor">×</button>
+               </div>
+               <div class="rule-editor-form">
+                    <label for="rule-editor-name">Rule Name:</label>
+                    <input type="text" id="rule-editor-name" placeholder="e.g., ReactComponentStyleGuide" required>
+                    <label for="rule-editor-description">Description (for AI):</label>
+                    <input type="text" id="rule-editor-description" placeholder="Brief description of what this rule covers">
+                    <label for="rule-editor-content">Rule Content (Markdown recommended):</label>
+                    <textarea id="rule-editor-content" rows="10" placeholder="Enter the full rule content here..."></textarea>
+               </div>
+               <div class="rule-editor-modal-footer">
+                    <button id="rule-editor-save-btn" class="action-button">Save Rule</button>
+               </div>
+          </div>
+     </div>
+
+    <div id="loading-indicator" class="loading-indicator-overlay is-hidden">Processing...</div>
+    <div id="notification-area"></div>
+
+    <!-- CodeMirror and modes/addons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/xml/xml.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/javascript/javascript.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/css/css.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/htmlmixed/htmlmixed.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/markdown/markdown.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/python/python.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/clike/clike.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/shell/shell.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/edit/matchbrackets.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/edit/closebrackets.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/fold/foldcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/fold/foldgutter.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/fold/brace-fold.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/fold/xml-fold.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/fold/indent-fold.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/fold/markdown-fold.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/selection/active-line.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/search/searchcursor.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/search/search.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/search/jump-to-line.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/addon/dialog/dialog.js"></script>
+
+    <!-- Other Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.0/beautify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.0/beautify-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.0/beautify-html.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.10/purify.min.js"></script>
+
+    <!-- Load Gemini SDK -->
+    <script type="module">
+      window.sdkInitializationPromise = new Promise(async (resolve) => {
+          window.genAiInstance = null;
+          window.AiClass = null;
+
+          try {
+               const GEMINI_API_KEY = "AIzaSyC70cXxItO4NGCEWo2B9lM9ZfbBSepASRM"; // Placeholder, AI service will prompt if needed
+
+              if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY") {
+                  console.warn("[SDK Loader] Gemini API Key not pre-configured in HTML. AI service will prompt if needed.");
+              }
+
+              console.log("[SDK Loader] Attempting to load Google AI SDK from esm.run...");
+              const module = await import("https://esm.run/@google/generative-ai");
+              window.AiClass = module.GoogleGenerativeAI || module.GoogleGenAI;
+
+              if (window.AiClass) {
+                  console.log("[SDK Loader] SDK Class loaded successfully.");
+                   if (GEMINI_API_KEY && GEMINI_API_KEY !== "YOUR_GEMINI_API_KEY") {
+                       try {
+                           window.genAiInstance = new window.AiClass(GEMINI_API_KEY);
+                           console.log("[SDK Loader] Google AI SDK instance created with pre-configured key.");
+                       } catch (instantiationError) {
+                           console.error("[SDK Loader] Error instantiating Google AI SDK with pre-configured key:", instantiationError);
+                       }
+                   } else {
+                        console.log("[SDK Loader] SDK class loaded. Instance will be created by AI service later if key is provided via prompt.");
+                   }
+              } else {
+                   console.error("[SDK Loader] Loaded Google AI SDK module, but couldn't find expected class.");
+              }
+          } catch (err) {
+              console.error("[SDK Loader] Failed to load Google AI SDK module:", err);
+          } finally {
+              console.log("[SDK Loader] Resolving SDK initialization promise.");
+              resolve();
+          }
+      });
+    </script>
+
+    <!-- Load Your Main App Module LAST -->
+    <script type="module" src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,3056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Archie's IDE</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --surface-color: #252526;
+            --surface-hover: #2a2d2e;
+            --primary-color: #007acc;
+            --primary-active-color: #005a9e;
+            --text-color: #d4d4d4;
+            --subtle-text-color: #8c8c8c;
+            --border-color: #3c3c3c;
+            --diff-add-bg: rgba(64, 224, 132, 0.1);
+            --diff-add-color: #97f3b4;
+            --diff-del-bg: rgba(255, 59, 48, 0.1);
+            --diff-del-color: #f8a5a1;
+            --font-family: -apple-system, BlinkMacMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+            --explorer-width: 250px;
+            --right-pane-width: 50%;
+            --mobile-tab-bar-height: 50px;
+        }
+
+        /* Basic Reset & Fullscreen Setup */
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: var(--bg-color);
+            color: var(--text-color); font-family: var(--font-family);
+            font-size: 14px;
+        }
+
+        /* Main App Layout */
+        #app-container { display: flex; flex-direction: column; width: 100%; height: 100%; }
+
+        header {
+            padding: 8px 15px; background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0; gap: 15px; z-index: 10;
+        }
+        header h1 { font-size: 1.1rem; margin: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .header-controls { display: flex; align-items: center; gap: 8px; }
+        .header-btn {
+            background-color: rgba(255,255,255,0.1); color: white;
+            border: 1px solid var(--border-color); border-radius: 5px; padding: 6px 12px;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .header-btn:hover { background-color: rgba(255,255,255,0.2); }
+        .header-btn:disabled { background-color: #333; cursor: not-allowed; color: #888; }
+        .header-btn .icon { width: 18px; height: 18px; }
+        
+        #auto-mode-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        #model-selector {
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            padding-right: 25px;
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23d4d4d4%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 8px top 50%;
+            background-size: .65em auto;
+        }
+
+        /* Desktop IDE Layout */
+        #ide-layout { display: flex; flex-grow: 1; overflow: hidden; }
+
+        /* File Explorer */
+        #file-explorer {
+            width: var(--explorer-width); flex-shrink: 0;
+            background-color: var(--surface-color);
+            overflow-y: auto; user-select: none; position: relative;
+            display: flex; flex-direction: column;
+        }
+        .explorer-header { padding: 10px 15px; font-weight: bold; font-size: 0.9em; text-transform: uppercase; color: var(--subtle-text-color); flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
+        .file-tree-container { flex-grow: 1; overflow-y: auto; padding: 0 0 10px 0; }
+        .file-tree ul { list-style: none; padding-left: 15px; margin: 0; }
+        .file-tree li { position: relative; }
+        .file-item-wrapper { display: flex; align-items: center; gap: 6px; padding: 4px 10px; cursor: pointer; border-radius: 4px; }
+        .file-item-wrapper:hover { background-color: var(--surface-hover); }
+        .file-tree li.active > .file-item-wrapper { background-color: var(--primary-color); color: white; }
+        .file-tree .icon { width: 16px; height: 16px; flex-shrink: 0; }
+        .explorer-footer {
+            padding: 10px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            gap: 8px;
+            flex-shrink: 0;
+            background-color: var(--surface-color);
+        }
+        .explorer-footer .header-btn {
+            background-color: rgba(255,255,255,0.05);
+            padding: 8px;
+            font-size: 1em;
+            flex-grow: 1;
+        }
+        .explorer-footer .header-btn .icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Resizer */
+        .resizer { flex-shrink: 0; width: 5px; background: var(--border-color); cursor: col-resize; transition: background-color 0.2s; }
+        .resizer:hover { background-color: var(--primary-color); }
+
+        /* Main Content Pane */
+        #main-pane { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        #editor-tabs { display: flex; background-color: var(--bg-color); flex-shrink: 0; overflow-x: auto; }
+        .editor-tab {
+            padding: 8px 12px 8px 15px; background-color: var(--surface-color);
+            border-right: 1px solid var(--border-color); cursor: pointer;
+            color: var(--subtle-text-color); white-space: nowrap; position: relative;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .editor-tab.active { background-color: var(--bg-color); color: var(--text-color); }
+        .tab-close-btn { border: none; background: none; color: inherit; cursor: pointer; opacity: 0.6; padding: 0 4px; border-radius: 4px; line-height: 1; font-size: 1.2em; }
+        .tab-close-btn:hover { opacity: 1; background-color: rgba(255,255,255,0.1); }
+        .tab-preview-btn {
+            background: none; border: none; color: var(--subtle-text-color);
+            cursor: pointer; padding: 0 4px; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0.6;
+			min-width: 25px;
+        }
+        .tab-preview-btn.active { color: var(--primary-color); opacity: 1; }
+        .tab-preview-btn:hover { opacity: 1; background-color: rgba(255,255,255,0.1); }
+        .tab-preview-btn .icon { width: 18px; height: 18px; }
+
+        #editor-panes { flex-grow: 1; position: relative; }
+        .editor-pane { display: none; height: 100%; overflow-y: auto; }
+        .editor-pane.active { display: block; }
+        .code-editor {
+            width: 100%; height: 100%; background: var(--bg-color);
+            border: none; color: var(--text-color); resize: none;
+            padding: 15px; font-family: var(--font-mono); font-size: 15px;
+            line-height: 1.5;
+        }
+        .editor-pane iframe {
+            width: 100%; height: 100%; border: none; background-color: white;
+        }
+        .markdown-preview {
+            padding: 20px 30px;
+            line-height: 1.6;
+            background-color: var(--bg-color);
+            height: 100%;
+        }
+
+        /* Right Pane (Terminal/History/Rules) */
+        #right-pane {
+            width: var(--right-pane-width); flex-shrink: 0; display: flex; flex-direction: column;
+            background-color: var(--bg-color); border-left: 1px solid var(--border-color);
+        }
+        #right-pane-tabs { display: flex; flex-shrink: 0; background-color: var(--surface-color); }
+        .right-pane-tab {
+            flex: 1; text-align: center; padding: 8px 10px;
+            cursor: pointer; font-weight: 500; color: var(--subtle-text-color);
+            border-bottom: 2px solid transparent; transition: all 0.2s;
+            position: relative;
+        }
+        .right-pane-tab.active { color: var(--text-color); border-bottom-color: var(--primary-color); }
+        #history-tab-badge {
+            position: absolute; top: 4px; right: 8px;
+            background-color: var(--primary-color); color: white;
+            border-radius: 10px; font-size: 10px; font-weight: bold;
+            min-width: 18px; height: 18px; line-height: 18px;
+            padding: 0 5px; display: none;
+        }
+        
+        #right-pane-content { flex-grow: 1; overflow: hidden; position: relative; }
+        .right-pane-view { display: none; height: 100%; }
+        .right-pane-view.active { display: flex; }
+        
+        #terminal-view, #pad-view { flex-direction: column; }
+        #pad-interactive-view { flex-grow: 1; overflow-y: auto; padding: 15px; }
+        .pad-section { border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 15px; }
+        .pad-section-header { display: flex; justify-content: space-between; align-items: center; background-color: var(--surface-color); padding: 8px 12px; border-bottom: 1px solid var(--border-color); }
+        .pad-section-header h3 { margin: 0; font-size: 1.1em; }
+        .pad-revise-btn { background-color: rgba(255,255,255,0.1); border: 1px solid var(--border-color); color: var(--text-color); padding: 4px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; }
+        .pad-revise-btn:hover { background-color: var(--primary-color); }
+        .pad-section-content { padding: 0 15px 15px 15px; }
+        .pad-section-content table { width: 100%; border-collapse: collapse; }
+        .pad-section-content th, .pad-section-content td { border: 1px solid var(--border-color); padding: 6px 8px; text-align: left; }
+        .pad-section-content th { background-color: var(--surface-hover); }
+        .pad-section-content pre { background-color: var(--bg-color); padding: 10px; border-radius: 4px; overflow-x: auto; }
+
+        #terminal-toolbar {
+            padding: 5px 10px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--surface-color);
+            text-align: right;
+            flex-shrink: 0;
+        }
+        #clear-terminal-btn {
+            background-color: rgba(255,255,255,0.1);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 4px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #clear-terminal-btn:hover { background-color: rgba(255,255,255,0.2); }
+
+        #terminal-output {
+            flex-grow: 1; background-color: var(--bg-color); color: #ccc;
+            font-family: var(--font-mono); font-size: 13px; white-space: pre-wrap;
+            padding: 10px; overflow-y: auto;
+        }
+        .log-entry { padding: 4px 0; position: relative; }
+        .log-entry .log-prefix { font-weight: bold; margin-right: 8px; }
+        .log-user .log-prefix { color: var(--primary-color); }
+        .log-ai .log-prefix { color: #34c759; }
+        .log-system .log-prefix { color: var(--subtle-text-color); }
+        .log-error .log-prefix { color: #ff3b30; }
+        .log-user img { max-width: 200px; border-radius: 4px; margin-top: 8px; display: block; }
+        .log-thinking { color: var(--subtle-text-color); font-style: italic; display: flex; align-items: center; gap: 8px; }
+        .log-confirmation .log-actions { margin-top: 10px; display: flex; gap: 8px; }
+        .log-confirmation .log-actions button { background-color: var(--surface-hover); border: 1px solid var(--border-color); color: var(--text-color); padding: 5px 12px; border-radius: 5px; cursor: pointer; }
+        .log-confirmation .log-actions button:hover { background-color: var(--primary-color); }
+        .log-confirmation .log-actions button:disabled { background-color: #333; cursor: not-allowed; color: #888; }
+        .log-change-proposal { border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin: 10px 0; background-color: var(--surface-color); }
+        .log-change-proposal .proposal-header { font-weight: bold; margin-bottom: 10px; }
+        .log-change-proposal .proposal-diff { font-family: var(--font-mono); white-space: pre; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+        .log-change-proposal .proposal-diff ins { background-color: var(--diff-add-bg); color: var(--diff-add-color); text-decoration: none; }
+        .log-change-proposal .proposal-diff del { background-color: var(--diff-del-bg); color: var(--diff-del-color); text-decoration: none; }
+
+        .log-entry-controls {
+            position: absolute;
+            top: 2px;
+            right: 5px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .log-entry:hover .log-entry-controls { opacity: 1; }
+        .log-save-rule-btn {
+            background: var(--surface-hover);
+            border: 1px solid var(--border-color);
+            color: var(--subtle-text-color);
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .log-save-rule-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        .log-tool-summary details { border: 1px solid var(--border-color); border-radius: 4px; margin: 8px 0; }
+        .log-tool-summary summary { cursor: pointer; padding: 8px; background-color: var(--surface-hover); font-weight: bold; }
+        .log-tool-summary .tool-details { padding: 10px; background-color: var(--bg-color); font-family: var(--font-mono); font-size: 12px; white-space: pre-wrap; }
+        .log-tool-summary .tool-reasoning { font-style: italic; color: var(--subtle-text-color); margin-bottom: 10px; padding: 0 10px; }
+        .log-tool-summary .tool-call-item { margin-bottom: 8px; }
+        .log-tool-summary .tool-call-item .success { color: var(--diff-add-color); }
+        .log-tool-summary .tool-call-item .failure { color: var(--diff-del-color); }
+
+        /* History & Changes View */
+        #history-view { flex-direction: column; height: 100%; }
+        #changes-container, #history-log-container {
+            display: none; /* Hide both by default */
+        }
+        #history-view.show-changes #changes-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        #history-view.show-history-log #history-log-container {
+            display: block;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        #commit-area { padding: 10px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        #commit-area textarea { width: 100%; background: var(--bg-color); border: 1px solid var(--border-color); color: white; padding: 8px; border-radius: 4px; margin-bottom: 8px; }
+        #commit-actions { display: flex; gap: 10px; }
+        #commit-actions button { flex: 1; border: none; color: white; padding: 8px; border-radius: 4px; cursor: pointer; }
+        #commit-btn { background: var(--primary-color); }
+        #commit-btn:hover { background: var(--primary-active-color); }
+        #restore-changes-btn { background: var(--surface-hover); }
+        #restore-changes-btn:hover { background: #c0392b; }
+
+        #changes-list { flex-basis: 30%; overflow-y: auto; border-bottom: 1px solid var(--border-color); }
+        #diff-view { flex-grow: 1; overflow-y: auto; padding: 10px; font-family: var(--font-mono); white-space: pre-wrap; color: var(--text-color); }
+        .history-item, .change-item { padding: 8px 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+        .history-item:hover, .change-item:hover { background-color: var(--surface-hover); }
+        .history-item.selected, .change-item.selected { background-color: var(--primary-color); color: white; }
+        .history-item p { margin: 0; font-size: 0.9em; }
+        .history-item .commit-msg { font-weight: bold; }
+        .history-item .commit-date { font-size: 0.8em; color: var(--subtle-text-color); }
+        #diff-view ins { background-color: var(--diff-add-bg); color: var(--diff-add-color); text-decoration: none; }
+        #diff-view del { background-color: var(--diff-del-bg); color: var(--diff-del-color); text-decoration: none; }
+        #diff-view span, #diff-view ins, #diff-view del { white-space: pre-wrap; }
+
+        /* Rules View */
+        #rules-view { height: 100%; }
+        #rules-list-container { width: 200px; border-right: 1px solid var(--border-color); flex-shrink: 0; display: flex; flex-direction: column; }
+        #rules-list-header { padding: 10px; border-bottom: 1px solid var(--border-color); }
+        #rules-list-header button { width: 100%; background: var(--primary-color); border: none; color: white; padding: 8px; border-radius: 4px; cursor: pointer; }
+        #rules-list { flex-grow: 1; overflow-y: auto; }
+        .rule-item { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--border-color); }
+        .rule-item:hover { background-color: var(--surface-hover); }
+        .rule-item.selected { background-color: var(--primary-color); color: white; }
+        #rule-editor-container { flex-grow: 1; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        #rule-editor-container input, #rule-editor-container textarea { width: 100%; background: var(--bg-color); border: 1px solid var(--border-color); color: white; padding: 8px; border-radius: 4px; }
+        #rule-editor-container textarea { flex-grow: 1; resize: none; font-family: var(--font-mono); }
+        #rule-editor-actions { display: flex; gap: 10px; }
+        #rule-editor-actions button { padding: 8px 15px; border-radius: 4px; border: none; cursor: pointer; color: white; }
+        #save-rule-btn { background-color: var(--primary-color); }
+        #delete-rule-btn { background-color: #c0392b; }
+
+        /* Input Form & Staged Image */
+        #input-form-container { position: relative; }
+        #staged-image-container {
+            position: absolute; bottom: 100%; left: 10px; background: var(--surface-hover);
+            padding: 5px; border: 1px solid var(--border-color); border-bottom: none; border-radius: 8px 8px 0 0;
+        }
+        #staged-image-container img { max-height: 60px; display: block; }
+        #staged-image-remove-btn {
+            position: absolute; top: -8px; right: -8px; background: #ff3b30; color: white;
+            border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #input-form { display: flex; padding: 10px; border-top: 1px solid var(--border-color); background-color: var(--surface-color); flex-shrink: 0; align-items: flex-end;}
+        #user-input {
+            flex: 1; background-color: var(--bg-color); border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 10px; color: var(--text-color);
+            font-family: var(--font-family); font-size: 1rem; resize: none; margin-right: 10px;
+            max-height: 200px;
+        }
+        #send-btn {
+            background-color: var(--primary-color); color: white; border: none; border-radius: 8px;
+            padding: 10px 20px; font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #send-btn:disabled { background-color: #555; cursor: not-allowed; }
+
+        #auto-mode-guidance-form {
+            display: none; /* Hidden by default */
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--surface-color);
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        #auto-mode-guidance-form.visible {
+            display: flex;
+            align-items: flex-end;
+        }
+        #guidance-input {
+            flex: 1; background-color: var(--bg-color); border: 1px solid var(--primary-color);
+            border-radius: 8px; padding: 10px; color: var(--text-color);
+            font-family: var(--font-family); font-size: 1rem; resize: none; margin-right: 10px;
+            max-height: 200px;
+        }
+        #send-guidance-btn {
+            background-color: var(--primary-color); color: white; border: none; border-radius: 8px;
+            padding: 10px 20px; font-size: 1rem; font-weight: 600; cursor: pointer;
+        }
+
+        /* Modals & Menus */
+        #slash-command-menu, #context-menu { display: none; position: absolute; z-index: 1003; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; min-width: 250px; }
+        #slash-command-menu { bottom: 100%; left: 10px; max-height: 200px; overflow-y: auto; }
+        #context-menu { padding: 5px 0; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .command-item, .context-menu-item { padding: 8px 12px; cursor: pointer; }
+        .command-item:hover, .context-menu-item:hover, .command-item.selected { background-color: var(--primary-color); color: white; }
+        .command-item .command-name { font-weight: bold; }
+        .command-item .command-desc { font-size: 0.9em; color: var(--subtle-text-color); margin-left: 8px; }
+        .command-item.selected .command-desc { color: #eee; }
+        .context-menu-divider { height: 1px; background-color: var(--border-color); margin: 5px 0; }
+        .fullscreen-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .modal-content { background: var(--surface-color); padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 90%; max-width: 500px; text-align: center; }
+        .modal-content h2 { margin-top: 0; }
+        .modal-content p { color: var(--subtle-text-color); line-height: 1.5; }
+        .modal-input { width: 100%; padding: 12px; font-size: 1rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); border-radius: 8px; margin: 15px 0 20px; text-align: center; }
+        .modal-button { width: 100%; padding: 12px; font-size: 1rem; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.2s; background: var(--primary-color); color: white; margin-top: 10px; }
+        .modal-button:disabled { background-color: #333; cursor: not-allowed; color: #888; }
+        #start-options { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        #project-manager-modal .modal-content { max-width: 600px; }
+        #project-list { list-style: none; padding: 0; margin: 20px 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; }
+        #project-list li { padding: 10px 15px; text-align: left; cursor: pointer; border-bottom: 1px solid var(--border-color); }
+        #project-list li:last-child { border-bottom: none; }
+        #project-list li:hover { background-color: var(--surface-hover); }
+        #project-list li.selected { background-color: var(--primary-color); color: white; }
+        #project-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        #project-actions .modal-button { width: 100%; margin: 0; }
+        #import-files-input { display: none; }
+        #import-project-input { display: none; }
+
+        /* ================================================================== */
+        /* MOBILE RESPONSIVE STYLES */
+        /* ================================================================== */
+        #mobile-tab-bar, #mobile-menu-btn { display: none; }
+
+        @media (max-width: 768px) {
+            header { flex-wrap: wrap; justify-content: space-between; }
+            header h1 { max-width: calc(100% - 70px); }
+            #mobile-menu-btn {
+                display: flex; align-items: center; justify-content: center;
+                padding: 6px 12px; font-size: 1.2rem;
+            }
+            .header-controls {
+                display: none;
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+                padding-top: 10px;
+                gap: 8px;
+            }
+            .header-controls.visible { display: flex; }
+
+            #ide-layout {
+                flex-direction: column;
+                padding-bottom: var(--mobile-tab-bar-height);
+            }
+            .project-title-display {
+                max-width: 20%;
+            }
+
+            /* Hide desktop elements */
+            .resizer { display: none; }
+            #file-explorer, #right-pane {
+                border: none;
+            }
+
+            /* Show only the active mobile pane */
+            #file-explorer, #main-pane, #right-pane {
+                width: 100%;
+                height: 100%;
+                display: none; /* Hide all panes by default */
+            }
+            #app-container.mobile-view-explorer #file-explorer,
+            #app-container.mobile-view-editor #main-pane,
+            #app-container.mobile-view-terminal #right-pane {
+                display: flex; /* Show only the active one */
+            }
+            #file-explorer .explorer-footer {
+                display: flex; /* Always show on mobile when explorer is active */
+            }
+
+            /* Configure mobile tab bar */
+            #mobile-tab-bar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: var(--mobile-tab-bar-height);
+                background-color: var(--surface-color);
+                border-top: 1px solid var(--border-color);
+                display: flex;
+                z-index: 100;
+            }
+            .mobile-tab {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                cursor: pointer;
+                color: var(--subtle-text-color);
+                font-size: 11px;
+                border-top: 2px solid transparent;
+                padding-top: 2px;
+            }
+            .mobile-tab.active {
+                color: var(--primary-color);
+                border-top-color: var(--primary-color);
+            }
+            .mobile-tab .icon {
+                width: 22px;
+                height: 22px;
+            }
+
+            /* Adjust input form position */
+            #input-form-container {
+                /* position: fixed; */
+                bottom: var(--mobile-tab-bar-height);
+                left: 0;
+                width: 100%;
+                z-index: 99;
+            }
+        }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+</head>
+<body>
+
+    <div id="app-container">
+        <header>
+            <h1 id="project-title-display">Archie's IDE</h1>
+            <div class="header-controls">
+                <button id="auto-mode-btn" class="header-btn" title="Toggle Auto Mode"></button>
+                <select id="model-selector" class="header-btn">
+                     <option value="gemini-flash-latest">Gemini Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pri</option>
+                <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
+            </select>
+            </div>
+            <button id="mobile-menu-btn" class="header-btn">☰</button>
+        </header>
+
+        <div id="ide-layout">
+            <div id="file-explorer">
+                <div class="explorer-header">
+                    Explorer
+                </div>
+                <div class="file-tree-container">
+                    <div id="file-tree" class="file-tree"></div>
+                </div>
+                <div class="explorer-footer">
+                    <button id="projects-btn" class="header-btn" title="Project Manager"></button>
+                    <button id="import-files-btn" class="header-btn" title="Import Files"></button>
+                    <button id="download-zip-btn" class="header-btn" title="Download Project as ZIP"></button>
+                </div>
+            </div>
+            
+            <div class="resizer" id="explorer-resizer"></div>
+
+            <div id="main-pane">
+                <div id="editor-tabs"></div>
+                <div id="editor-panes">
+                     <div id="welcome-pane" class="editor-pane active" style="padding: 30px; color: var(--subtle-text-color);">
+                        <h2>Welcome to Archie's IDE</h2>
+                        <p>Use the input bar below to start building your project.</p>
+                        <p><b>New:</b> Check the "History" tab to review and commit changes!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="resizer" id="preview-resizer"></div>
+
+            <div id="right-pane">
+                 <div id="right-pane-tabs">
+                    <div class="right-pane-tab active" data-tab="terminal">Terminal</div>
+                    <div class="right-pane-tab" data-tab="pad">PAD</div>
+                    <div class="right-pane-tab" data-tab="history">History <span id="history-tab-badge"></span></div>
+                    <div class="right-pane-tab" data-tab="rules">Rules</div>
+                </div>
+                <div id="right-pane-content">
+                    <div id="terminal-view" class="right-pane-view active">
+                        <div id="terminal-toolbar">
+                            <button id="clear-terminal-btn">Clear Log</button>
+                        </div>
+                        <div id="terminal-output"></div>
+                    </div>
+                    <div id="pad-view" class="right-pane-view">
+                        <div id="pad-interactive-view"></div>
+                    </div>
+                    <div id="history-view" class="right-pane-view">
+                        <div id="changes-container">
+                            <div id="commit-area">
+                                <textarea id="commit-message" rows="2" placeholder="Commit message..."></textarea>
+                                <div id="commit-actions">
+                                    <button id="commit-btn">Commit Changes</button>
+                                    <button id="restore-changes-btn">Discard Changes</button>
+                                </div>
+                            </div>
+                            <div id="changes-list"></div>
+                            <div id="diff-view"></div>
+                        </div>
+                        <div id="history-log-container">
+                            <div id="history-log"></div>
+                        </div>
+                    </div>
+                    <div id="rules-view" class="right-pane-view">
+                        <div id="rules-list-container">
+                            <div id="rules-list-header">
+                                <button id="add-rule-btn">New Rule</button>
+                            </div>
+                            <div id="rules-list"></div>
+                        </div>
+                        <div id="rule-editor-container" style="display: none;">
+                            <input type="text" id="rule-name-input" placeholder="Rule Name (e.g., CSS-Style-Guide)">
+                            <textarea id="rule-content-input" placeholder="Rule content... (e.g., Use BEM notation for all CSS classes.)"></textarea>
+                            <div id="rule-editor-actions">
+                                <button id="save-rule-btn">Save Rule</button>
+                                <button id="delete-rule-btn">Delete Rule</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="input-form-container">
+            <div id="staged-image-container" style="display: none;"></div>
+            <div id="slash-command-menu"></div>
+            <form id="input-form">
+                <textarea id="user-input" rows="1" placeholder="Describe changes, or type '/'..."></textarea>
+                <button id="send-btn" type="submit">Send</button>
+            </form>
+            <form id="auto-mode-guidance-form">
+                <textarea id="guidance-input" rows="1" placeholder="Inject guidance into auto-mode..."></textarea>
+                <button id="send-guidance-btn" type="submit">Send Guidance</button>
+            </form>
+        </div>
+
+        <!-- Mobile Tab Bar -->
+        <div id="mobile-tab-bar">
+            <div class="mobile-tab" data-view="explorer">
+                <div class="icon"></div>
+                <span>Explorer</span>
+            </div>
+            <div class="mobile-tab active" data-view="editor">
+                <div class="icon"></div>
+                <span>Editor</span>
+            </div>
+            <div class="mobile-tab" data-view="terminal">
+                <div class="icon"></div>
+                <span>Terminal</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="context-menu">
+        <div class="context-menu-item" data-action="new-file">New File</div>
+        <div class="context-menu-item" data-action="new-folder">New Folder</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="copy-path">Copy Path</div>
+        <div class="context-menu-item" data-action="rename">Rename</div>
+        <div class="context-menu-item" data-action="delete">Delete</div>
+    </div>
+
+    <!-- Modals -->
+    <div id="api-key-modal" class="fullscreen-modal">
+        <div class="modal-content">
+            <h2>Enter Gemini API Key</h2>
+            <p>To use Archie's IDE, provide your Google Gemini API key. It's only stored in your browser.</p>
+            <form id="api-key-form">
+                <input type="password" id="api-key-input" class="modal-input" placeholder="Enter your API key here">
+                <button id="api-key-submit" type="submit" class="modal-button">Start Session</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="project-start-modal" class="fullscreen-modal" style="display: none;">
+        <div class="modal-content">
+            <div id="start-options-view">
+                <h2>Welcome to Archie's IDE</h2>
+                <p>How would you like to begin?</p>
+                <div id="start-options">
+                    <button id="restore-btn" class="modal-button">Restore Last Project</button>
+                    <button id="load-project-start-btn" class="modal-button" style="background-color: var(--surface-hover);">Load a Project</button>
+                    <button id="start-fresh-btn" class="modal-button" style="background-color: var(--surface-hover);">Start a New Project</button>
+                    <button id="import-start-btn" class="modal-button" style="background-color: var(--surface-hover);">Import from Files</button>
+                </div>
+            </div>
+            <div id="new-project-prompt" style="display: none;">
+                <h2>New Project</h2>
+                <p>Describe the project you want to build. Archie will scaffold the initial files for you.</p>
+                <form id="new-project-form">
+                    <textarea id="new-project-input" class="modal-input" rows="3" placeholder="e.g., A personal blog, a todo list app..."></textarea>
+                    <button id="create-project-btn" type="submit" class="modal-button">Create Project</button>
+                    <button id="cancel-new-project-btn" type="button" class="modal-button" style="background-color: var(--surface-hover); margin-top: 10px;">Back</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-manager-modal" class="fullscreen-modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Project Manager</h2>
+            <p>Load, save, or delete your projects.</p>
+            <ul id="project-list"></ul>
+            <div id="project-actions">
+                <button id="load-project-btn" class="modal-button">Load Selected</button>
+                <button id="delete-project-btn" class="modal-button" style="background-color: #c0392b;">Delete Selected</button>
+                <button id="save-project-btn" class="modal-button">Save Current As Copy...</button>
+                <button id="close-pm-btn" class="modal-button" style="background-color: var(--surface-hover);">Close</button>
+            </div>
+        </div>
+    </div>
+    <input type="file" id="import-files-input" multiple>
+    <input type="file" id="import-project-input" webkitdirectory directory multiple style="display: none;">
+
+    <script type="module">
+        import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
+
+        const $ = (selector) => document.querySelector(selector);
+        
+        let ai, isGenerating = false, conversationHistory = [];
+        let stagedImage = null;
+        let uncommittedChanges = {};
+        let lastApiCallTimestamp = 0;
+        let pendingGuidance = null;
+        let markdownConverter;
+        const MIN_API_CALL_INTERVAL_MS = 6500; // 10 RPM is 6s/req. Add buffer.
+
+        const App = {
+            vfs: new VirtualFileSystem(),
+            rules: {},
+            openFiles: new Set(),
+            activeFile: null,
+            currentProjectName: null,
+            state: 'IDLE',
+            isMobile: () => window.innerWidth <= 768,
+            mobileView: 'editor', // explorer, editor, terminal
+            previewModeFiles: new Set(), // Tracks files in preview mode
+            selectedModel: 'gemini-flash-latest',
+            isAutoMode: false,
+        };
+
+        const ICONS = {
+            file: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM16 18H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>`,
+            folder: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`,
+            close: `×`,
+            mobileExplorer: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>`,
+            mobileEditor: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M9.4 7.4L8 6l-6 6 6 6 1.4-1.4L3.8 12l5.6-4.6zm5.2 0L16 6l6 6-6 6-1.4-1.4L20.2 12l-5.6-4.6z"/></svg>`,
+            mobileTerminal: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 18V6h16v12H4zm2-7h4v2H6v-2zm5 0h6v2h-6v-2z"/></svg>`,
+            project: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 0h-4V4h4v2z"/></svg>`,
+            import: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v4h3l-4 4-4-4h3V7z"/></svg>`,
+            download: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>`,
+            eye: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5c-5.22 0-9.87 3.32-11.83 8.5C2.13 13.18 6.78 16.5 12 16.5s9.87-3.32 11.83-8.5C21.87 7.32 17.22 4.5 12 4.5zm0 10c-2.48 0-4.5-2.02-4.5-4.5S9.52 5.5 12 5.5s4.5 2.02 4.5 4.5-2.02 4.5-4.5 4.5zM12 7.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5z"/></svg>`,
+            robot: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a2 2 0 0 0-2 2v2H8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2V4a2 2 0 0 0-2-2zm-4 8a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm8 0a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm-4 4h-4v2h4v-2z"/></svg>`
+        };
+
+        const PAD_TEMPLATE = `# PAD: [ProjectHandle]
+# Stack: HTML, JavaScript (ES6+), CSS
+
+- **Version:** 1.0.0
+- **LastUpdated:** {timestamp}
+- **OverallStatus:** [PLANNING | CODING | REFINING | COMPLETED]
+
+---
+
+### 1. Core Directives & UI/UX Plan
+
+<!-- LLM: This section defines the project's purpose and the user-facing features to be built. -->
+
+**1.1. Project Objective:**
+<!-- LLM: A single, concise, machine-parseable sentence describing the end goal. -->
+> Create a static web application that allows a user to [primary_verb] and [secondary_verb] [primary_noun] using only client-side code.
+
+**1.2. Feature Set (User Stories):**
+<!-- LLM: Master list of user-facing features. Update 'status' as you implement the required files and logic. -->
+| FeatureID | User Story                                         | Priority | Status      | ComponentIDs |
+|-----------|----------------------------------------------------|----------|-------------|--------------|
+| \`F-01\`    | As a user, I can see a list of items from a data source. | P0       | PENDING     | \`C-HTML\`, \`C-JS-RENDER\`, \`C-DATA\` |
+| \`F-02\`    | As a user, I can filter the list of items by typing in a search box. | P1       | PENDING     | \`C-HTML\`, \`C-JS-INTERACT\` |
+| \`F-03\`    | As a user, I can click an item to see more details. | P1       | PENDING     | \`C-JS-INTERACT\`, \`C-CSS\` |
+| \`F-04\`    | As a user, the layout is responsive and usable on mobile screens. | P2       | PENDING     | \`C-CSS\`      |
+| \`...\`     | ...                                                | ...      | PENDING     | \`...\`        |
+
+---
+
+### 2. Technical Blueprint & File Architecture
+
+<!-- LLM: This section defines the file structure and the contracts between them. This is your primary implementation guide. -->
+
+**2.1. File & Component Structure:**
+<!-- LLM: A map of all files to be created and their purpose. -->
+\`\`\`
+/
+|-- index.html      # C-HTML: The main entry point and structure of the application.
+|-- /css
+|   |-- style.css   # C-CSS: Main stylesheet for layout, typography, and colors.
+|-- /js
+|   |-- main.js     # C-JS-MAIN: Main script, initializes the app, event listeners.
+|   |-- render.js   # C-JS-RENDER: Functions for rendering data to the DOM.
+|   |-- events.js   # C-JS-INTERACT: Handlers for user interactions (clicks, input).
+|-- /data
+|   |-- data.json   # C-DATA: The static data source for the application.
+|-- /assets
+|   |-- ...         # Image files, icons, etc.
+\`\`\`
+
+**2.2. Data Structure (\`/data/data.json\`):**
+<!-- LLM: Define the expected structure of your primary data file. -->
+\`\`\`json
+[
+  {
+    "id": "unique-id-1",
+    "title": "Sample Title 1",
+    "description": "A longer description of the item.",
+    "category": "Category A",
+    "imageUrl": "assets/image1.png",
+    "attributes": {
+      "key1": "value1",
+      "key2": "value2"
+    }
+  },
+  {
+    "id": "unique-id-2",
+    "title": "Sample Title 2",
+    "description": "Another item description.",
+    "category": "Category B",
+    "imageUrl": "assets/image2.png",
+    "attributes": {
+      "key1": "value3",
+      "key2": "value4"
+    }
+  }
+]
+\`\`\`
+
+**2.3. JavaScript Module & Function Contracts:**
+<!-- LLM: Define the key functions and their responsibilities. This is the contract between your JS files. -->
+| File        | Function Name             | Inputs                     | Outputs/Effects                                 | Status  |
+|-------------|---------------------------|----------------------------|-------------------------------------------------|---------|
+| \`main.js\`   | \`init()\`                  | -                          | Calls \`fetchData\` and \`renderList\`. Attaches event listeners. | PENDING |
+| \`main.js\`   | \`fetchData()\`             | \`(filePath)\`               | \`Promise<Array>\`: Returns parsed data from JSON file. | PENDING |
+| \`render.js\` | \`renderList(items)\`       | \`(items: Array)\`           | \`void\`: Clears and populates the main list container in the DOM. | PENDING |
+| \`render.js\` | \`createItemElement(item)\` | \`(item: Object)\`           | \`HTMLElement\`: Returns a single DOM element for an item. | PENDING |
+| \`events.js\` | \`handleSearchInput(event)\`| \`(event: InputEvent)\`      | Filters the main item list based on search term. Calls \`renderList\`. | PENDING |
+| \`events.js\` | \`handleItemClick(event)\`  | \`(event: MouseEvent)\`      | Finds the clicked item's data and displays its details. | PENDING |
+
+**2.4. CSS Design System & Naming Convention:**
+<!-- LLM: Define the visual guidelines and class structure. -->
+- **Color Palette:**
+  - \`--primary-color: #005f73;\`
+  - \`--secondary-color: #0a9396;\`
+  - \`--background-color: #e9d8a6;\`
+  - \`--text-color: #333333;\`
+  - \`--accent-color: #ee9b00;\`
+- **Typography:**
+  - \`font-family: 'Arial', sans-serif;\`
+  - \`font-size-base: 16px;\`
+  - \`font-size-h1: 2.5rem;\`
+- **Naming Convention:** BEM (Block Element Modifier).
+  - **Example:** \`.item-list__item--selected\`
+
+---
+
+### 3. Implementation Plan & Task Breakdown
+
+<!-- LLM: Your step-by-step execution plan. Work through these tasks sequentially. -->
+
+| TaskID  | FeatureID | Action                                               | Target File(s)          | Status  |
+|---------|-----------|------------------------------------------------------|-------------------------|---------|
+| \`T-01.01\` | \`F-01\`    | Create \`index.html\` with basic HTML5 boilerplate.     | \`index.html\`            | PENDING |
+| \`T-01.02\` | \`F-01\`    | Add main layout containers to \`index.html\` (e.g., \`<header>\`, \`<main>\`, \`<footer>\`). | \`index.html\`            | PENDING |
+| \`T-01.03\` | \`F-01\`    | Create and link \`style.css\` and \`main.js\` in \`index.html\`. | \`index.html\`            | PENDING |
+| \`T-01.04\` | -         | Create \`data/data.json\` with initial mock data.      | \`data/data.json\`        | PENDING |
+| \`T-01.05\` | -         | Define CSS variables and base styles in \`style.css\`. | \`css/style.css\`         | PENDING |
+| \`T-02.01\` | \`F-01\`    | Implement \`fetchData()\` function in \`main.js\`.       | \`js/main.js\`            | PENDING |
+| \`T-02.02\` | \`F-01\`    | Implement \`createItemElement()\` function in \`render.js\`. | \`js/render.js\`          | PENDING |
+| \`T-02.03\` | \`F-01\`    | Implement \`renderList()\` function in \`render.js\`.    | \`js/render.js\`          | PENDING |
+| \`T-02.04\` | \`F-01\`    | Implement \`init()\` in \`main.js\` to load and display initial data. | \`js/main.js\`            | PENDING |
+| \`T-03.01\` | \`F-02\`    | Add a search \`<input>\` element to \`index.html\`.      | \`index.html\`            | PENDING |
+| \`T-03.02\` | \`F-02\`    | Implement \`handleSearchInput()\` in \`events.js\`.      | \`js/events.js\`          | PENDING |
+| \`T-03.03\` | \`F-02\`    | Attach \`handleSearchInput\` to the search input's \`keyup\` event in \`main.js\`. | \`js/main.js\`            | PENDING |
+| \`T-04.01\` | \`F-04\`    | Add CSS Flexbox/Grid layouts for main containers.      | \`css/style.css\`         | PENDING |
+| \`T-04.02\` | \`F-04\`    | Add CSS Media Queries for mobile screen sizes (\`@media (max-width: 600px)\`). | \`css/style.css\`         | PENDING |
+| \`...\`   | \`...\`     | ...                                                  | \`...\`                   | PENDING |
+
+---
+
+### 4. Decision & Execution Log
+
+<!-- LLM: Your write-only section. Log all significant actions and outcomes here. -->
+
+**4.1. Decision Log:**
+<!-- LLM: Record any clarifications or choices made during development. -->
+| Timestamp | Decision/Clarification                                     | Rationale                                       |
+|-----------|------------------------------------------------------------|-------------------------------------------------|
+| \`{ts}\`    | Using ES6 Modules (\`import\`/\`export\`) for JS organization. | Improves code separation and reusability.       |
+| \`{ts}\`    | Will use native \`fetch\` API.                               | No need for external libraries like Axios for this simple project. |
+| \`{ts}\`    | State will be managed in a simple global object in \`main.js\`. | Sufficient for this scale; no complex state library needed. |
+| \`...\`     | ...                                                        | ...                                             |
+
+**4.2. Execution Log:**
+<!-- LLM: Append an entry here after completing each task from the Task Breakdown (3). -->
+| Timestamp | TaskID  | Action Taken & Result                                 | Files Modified                    |
+|-----------|---------|-------------------------------------------------------|-----------------------------------|
+| \`{ts}\`    | \`T-01.01\` | \`SUCCESS: Created index.html with boilerplate.\`       | \`index.html\`                      |
+| \`{ts}\`    | \`T-01.02\` | \`SUCCESS: Added <header>, <main>, <footer> tags.\`     | \`index.html\`                      |
+| \`...\`     | \`...\`   | ...                                                   | \`...\`                             |
+`;
+
+        const SYSTEM_PROMPT = `You are "Archie", a world-class AI developer agent. Your purpose is to collaborate with a user to build and modify web projects from scratch. You operate inside a special browser-based IDE and can only interact with the project files using the provided set of tools. Your goal is to translate the user's requests into functional code by intelligently using these tools.
+
+**THE CARDINAL RULE: ALWAYS READ BEFORE YOU WRITE.**
+This is the most important rule. Before you attempt to modify any file with \`applyChange\`, you MUST first use \`readFile\` or \`readFileLines\` to get its most up-to-date content. This is not optional. Basing your changes on stale or assumed content will cause your actions to fail.
+
+---
+
+### Core Workflow: The Project Architecture Document (PAD)
+
+Your entire operation is driven by the \`PROJECT_ARCHITECTURE.md\` file. This is your single source of truth for planning, execution, and tracking.
+
+1.  **Planning Phase (User-driven):** The user will interact with you to define the project's goals and structure within the PAD. Your role is to act as an expert architect, translating their high-level requests into detailed, actionable plans within the PAD's tables.
+2.  **Execution Phase (Auto Mode):** When Auto Mode is activated, you will execute the plan laid out in the PAD. You must follow this strict, unbreakable loop:
+    a. **Read the Plan:** Your first action is ALWAYS to call \`readFile\` on \`PROJECT_ARCHITECTURE.md\`.
+    b. **Find the Next Task:** Parse the "Implementation Plan & Task Breakdown" table. Find the *first* task with a status of \`PENDING\`.
+    c. **Execute the Task:** Use your tools to perform the action described in that task.
+    d. **Update the Plan:** After the task is successfully completed, your *very next action* MUST be to call \`applyChange\` on \`PROJECT_ARCHITECTURE.md\` to:
+        i.  Change the status of the completed task to \`COMPLETED\`.
+        ii. Add a new entry to the "Execution Log" table detailing what you did.
+    e. **Repeat:** The loop continues until no \`PENDING\` tasks remain.
+
+---
+
+### General Directives & Best Practices
+
+*   **PAD is King:** All work, especially in Auto Mode, must originate from and be tracked in the PAD. Do not perform tasks that are not defined in the plan.
+*   **Code Intelligence:** Use the \`get_code_symbols_outline\` tool to quickly understand the structure of a file before reading it fully. This helps you locate relevant code faster.
+*   **Be Incremental:** Break down large user requests into smaller, specific tasks within the PAD.
+*   **Think Step-by-Step:** In your responses, briefly explain your reasoning or plan *before* you call the tools. This helps the user follow your logic.
+*   **File-Based Operations Only:** You do not output code blocks in the chat. All file creation and modification MUST go through your tools (\`createFile\`, \`applyChange\`, etc.).
+*   **Pathing:** All file paths are relative to the project root (e.g., \`script.js\`, \`css/main.css\`). Use \`/\` as the directory separator.
+*   **Project Completion:** Only call the \`projectComplete\` tool when all tasks in the PAD are marked \`COMPLETED\` and the user's high-level request has been fully satisfied.`;
+
+        const toolsConfig = [{functionDeclarations: [
+            { name: 'createFile', description: 'Creates a new file with specified content.', parameters: { type: Type.OBJECT, properties: { path: { type: Type.STRING }, content: { type: Type.STRING, description: "The initial content of the file." } }, required: ['path', 'content'] } },
+            { name: 'applyChange', description: 'Applies a targeted change to an existing file. This is the primary method for modifying code.', parameters: { type: Type.OBJECT, properties: { path: { type: Type.STRING }, explanation: { type: Type.STRING, description: "A brief, user-facing explanation of the change." }, originalContent: { type: Type.STRING, description: "The exact block of original code to be replaced." }, newContent: { type: Type.STRING, description: "The new code that will replace the original block." } }, required: ['path', 'explanation', 'originalContent', 'newContent'] } },
+            { name: 'deleteFile', description: 'Deletes a file or an entire folder at a given path.', parameters: { type: Type.OBJECT, properties: { path: { type: Type.STRING } }, required: ['path'] } },
+            { name: 'renamePath', description: 'Renames a file or folder.', parameters: { type: Type.OBJECT, properties: { oldPath: { type: Type.STRING }, newPath: { type: Type.STRING } }, required: ['oldPath', 'newPath'] } },
+            { name: 'readFile', description: 'Reads the entire content of a file. Use this to understand existing code before modifying it.', parameters: { type: Type.OBJECT, properties: { path: { type: Type.STRING } }, required: ['path'] } },
+            { name: 'readFileLines', description: 'Reads a specific range of lines from a file for more focused context.', parameters: { type: Type.OBJECT, properties: { path: { type: Type.STRING }, startLine: { type: Type.NUMBER }, endLine: { type: Type.NUMBER } }, required: ['path', 'startLine', 'endLine'] } },
+            { name: 'get_code_symbols_outline', description: 'Provides a structural outline of a file by listing its functions, classes, and other important symbols. Can also fetch the definition of a single symbol.', parameters: { type: Type.OBJECT, properties: { path: { type: Type.STRING }, symbolName: { type: Type.STRING, description: "Optional. If provided, returns the definition snippet for this specific symbol." } }, required: ['path'] } },
+            { name: 'searchProject', description: 'Searches for a text pattern or regex across all files in the project.', parameters: { type: Type.OBJECT, properties: { query: { type: Type.STRING }, isRegex: { type: Type.BOOLEAN } }, required: ['query'] } },
+            { name: 'fetchProjectRules', description: 'Fetches project-specific rules and guidelines. Call without a name to get a list of all rule names.', parameters: { type: Type.OBJECT, properties: { ruleName: { type: Type.STRING } }, required: [] } },
+            { name: 'askUserForConfirmation', description: 'Asks the user a yes/no question to confirm a high-level plan or a destructive action before executing it. The user will respond in the next turn.', parameters: { type: Type.OBJECT, properties: { question: { type: 'string' } }, required: ['question'] } },
+            { name: 'projectComplete', description: 'Call this when you believe the user\'s request is fully complete.', parameters: { type: Type.OBJECT, properties: { message: { type: 'string' } }, required: ['message'] } }
+        ]}];
+
+        // --- IndexedDB Wrapper ---
+        const DB = {
+            db: null,
+            init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open('ArchieDB', 2); // Version 2 for rules
+                    request.onerror = () => reject("Error opening DB");
+                    request.onsuccess = (e) => {
+                        this.db = e.target.result;
+                        resolve();
+                    };
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'name' });
+                        if (!db.objectStoreNames.contains('commits')) {
+                            const commitStore = db.createObjectStore('commits', { keyPath: 'id' });
+                            commitStore.createIndex('by_project', 'projectName', { unique: false });
+                        }
+                        if (!db.objectStoreNames.contains('fileSnapshots')) {
+                            const fileStore = db.createObjectStore('fileSnapshots', { keyPath: ['commitId', 'path'] });
+                            fileStore.createIndex('by_commit', 'commitId', { unique: false });
+                        }
+                    };
+                });
+            },
+            promisifyRequest(request) {
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            async getStore(name, mode = 'readonly') {
+                return this.db.transaction(name, mode).objectStore(name);
+            },
+            async getProjects() {
+                const store = await this.getStore('projects');
+                return this.promisifyRequest(store.getAll());
+            },
+            async saveProject(projectData) {
+                const store = await this.getStore('projects', 'readwrite');
+                return this.promisifyRequest(store.put(projectData));
+            },
+            async deleteProject(projectName) {
+                const commits = await this.getCommits(projectName);
+                const commitIds = commits.map(c => c.id);
+
+                const snapshotStore = await this.getStore('fileSnapshots', 'readwrite');
+                for (const commitId of commitIds) {
+                    const index = snapshotStore.index('by_commit');
+                    const snapshots = await this.promisifyRequest(index.getAll(commitId));
+                    for (const snapshot of snapshots) {
+                        await this.promisifyRequest(snapshotStore.delete([snapshot.commitId, snapshot.path]));
+                    }
+                }
+
+                const commitStore = await this.getStore('commits', 'readwrite');
+                for (const commitId of commitIds) {
+                    await this.promisifyRequest(commitStore.delete(commitId));
+                }
+
+                const projectStore = await this.getStore('projects', 'readwrite');
+                return this.promisifyRequest(projectStore.delete(projectName));
+            },
+            async getCommits(projectName) {
+                const store = await this.getStore('commits');
+                const index = store.index('by_project');
+                return this.promisifyRequest(index.getAll(projectName));
+            },
+            async saveCommit(commitData) {
+                const store = await this.getStore('commits', 'readwrite');
+                return this.promisifyRequest(store.put(commitData));
+            },
+            async getLatestFileSnapshots(projectName) {
+                const commits = await this.getCommits(projectName);
+                if (commits.length === 0) return {};
+                const latestCommit = commits.sort((a, b) => b.timestamp - a.timestamp)[0];
+                const store = await this.getStore('fileSnapshots');
+                const index = store.index('by_commit');
+                const snapshots = await this.promisifyRequest(index.getAll(latestCommit.id));
+                const files = {};
+                snapshots.forEach(s => { files[s.path] = s.content; });
+                return files;
+            },
+            async saveFileSnapshots(snapshots) {
+                const store = await this.getStore('fileSnapshots', 'readwrite');
+                for (const snapshot of snapshots) {
+                    await this.promisifyRequest(store.put(snapshot));
+                }
+            }
+        };
+
+        // --- Virtual File System ---
+        function VirtualFileSystem() {
+            this.files = {};
+            this.load = function(baseFiles) { this.files = { ...baseFiles }; };
+            this.applyChange = function(path, newContent) {
+                if (newContent === null) { delete this.files[path]; } 
+                else { this.files[path] = newContent; }
+            };
+            this.read = function(path) { return this.files[path]; };
+            this.getTree = function() {
+                const tree = {};
+                Object.keys(this.files).sort().forEach(path => {
+                    let currentLevel = tree;
+                    const parts = path.split('/').filter(p => p);
+                    parts.forEach((part, i) => {
+                        const isFile = (i === parts.length - 1 && this.files[path] !== null);
+                        if (isFile) {
+                            currentLevel[part] = 'file';
+                        } else {
+                            currentLevel[part] = currentLevel[part] || {};
+                            currentLevel = currentLevel[part];
+                        }
+                    });
+                });
+                return tree;
+            };
+            this.getTreeString = function() {
+                let output = '';
+                const generate = (level, indent) => {
+                    for (const name in level) {
+                        const isFile = level[name] === 'file';
+                        output += `${' '.repeat(indent*2)}${isFile ? '📄' : '📁'} ${name}\n`;
+                        if (!isFile) {
+                            generate(level[name], indent + 1);
+                        }
+                    }
+                }
+                generate(this.getTree(), 0);
+                return output || '(No files in project)';
+            }
+        }
+
+		function renderFileExplorer() {
+            const tree = App.vfs.getTree();
+            const container = $('#file-tree');
+            container.innerHTML = '';
+            
+            const createTreeHTML = (node, path = '') => {
+                const ul = document.createElement('ul');
+                if (path === '') ul.style.paddingLeft = '0';
+                
+                Object.keys(node).sort((a, b) => {
+                    const aIsFile = node[a] === 'file';
+                    const bIsFile = node[b] === 'file';
+                    if (aIsFile === bIsFile) return a.localeCompare(b);
+                    return aIsFile ? 1 : -1;
+                }).forEach(key => {
+                    const currentPath = path ? `${path}/${key}` : key;
+                    const li = document.createElement('li');
+                    li.dataset.path = currentPath;
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'file-item-wrapper';
+                    wrapper.addEventListener('contextmenu', (e) => showContextMenu(e, currentPath));
+
+                    const icon = document.createElement('span');
+                    icon.className = 'icon';
+                    
+                    const name = document.createElement('span');
+                    name.textContent = key;
+
+                    wrapper.appendChild(icon);
+                    wrapper.appendChild(name);
+                    li.appendChild(wrapper);
+
+                    if (node[key] === 'file') {
+                        icon.innerHTML = ICONS.file;
+                        wrapper.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            openFileInEditor(currentPath);
+                        });
+                    } else {
+                        icon.innerHTML = ICONS.folder;
+                        const childrenUl = createTreeHTML(node[key], currentPath);
+                        li.appendChild(childrenUl);
+                    }
+                     if (currentPath === App.activeFile) {
+                        li.classList.add('active');
+                    }
+                    ul.appendChild(li);
+                });
+                return ul;
+            }
+            container.appendChild(createTreeHTML(tree));
+        }
+
+        function renderEditor() {
+            const tabsContainer = $('#editor-tabs');
+            const panesContainer = $('#editor-panes');
+            tabsContainer.innerHTML = '';
+            panesContainer.querySelectorAll('.editor-pane:not(#welcome-pane)').forEach(p => p.remove());
+
+            $('#welcome-pane').style.display = App.openFiles.size === 0 ? 'block' : 'none';
+
+            App.openFiles.forEach(path => {
+                const tab = document.createElement('div');
+                tab.className = 'editor-tab';
+                tab.dataset.path = path;
+                tab.textContent = path.split('/').pop();
+                if (path === App.activeFile) tab.classList.add('active');
+                
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'tab-close-btn';
+                closeBtn.innerHTML = ICONS.close;
+                closeBtn.addEventListener('click', e => { e.stopPropagation(); closeFile(path); });
+                tab.appendChild(closeBtn);
+
+                if (path.endsWith('.html') || path.endsWith('.md') || path.endsWith('.markdown')) {
+                    const previewBtn = document.createElement('button');
+                    previewBtn.className = 'tab-preview-btn';
+                    previewBtn.innerHTML = ICONS.eye;
+                    if (App.previewModeFiles.has(path)) previewBtn.classList.add('active');
+                    previewBtn.addEventListener('click', e => { e.stopPropagation(); toggleLivePreview(path); });
+                    tab.appendChild(previewBtn);
+                }
+                
+                tab.addEventListener('click', () => setActiveFile(path));
+                tabsContainer.appendChild(tab);
+
+                const pane = document.createElement('div');
+                pane.className = 'editor-pane';
+                pane.dataset.path = path;
+                if (path === App.activeFile) pane.classList.add('active');
+
+                if (App.previewModeFiles.has(path)) {
+                    if (path.endsWith('.html')) {
+                        const iframe = document.createElement('iframe');
+                        iframe.title = `Live Preview for ${path}`;
+                        iframe.sandbox = "allow-scripts allow-same-origin";
+                        pane.appendChild(iframe);
+                    } else if (path.endsWith('.md') || path.endsWith('.markdown')) {
+                        const previewDiv = document.createElement('div');
+                        previewDiv.className = 'markdown-preview';
+                        const mdContent = App.vfs.read(path) ?? '';
+                        previewDiv.innerHTML = markdownConverter.makeHtml(mdContent);
+                        pane.appendChild(previewDiv);
+                    }
+                } else {
+                    const editor = document.createElement('textarea');
+                    editor.className = 'code-editor';
+                    editor.value = App.vfs.read(path) ?? '';
+                    editor.dataset.path = path;
+                    editor.addEventListener('input', handleEditorInput);
+                    pane.appendChild(editor);
+                }
+                panesContainer.appendChild(pane);
+            });
+            updateLivePreview();
+        }
+
+        function toggleLivePreview(path) {
+            if (App.previewModeFiles.has(path)) {
+                App.previewModeFiles.delete(path);
+            } else {
+                App.previewModeFiles.add(path);
+            }
+            renderEditor();
+        }
+
+        // --- HELPER FUNCTIONS FOR THE NEW updateLivePreview ---
+        function getMimeType(path) {
+            if (path.endsWith('.css')) return 'text/css';
+            if (path.endsWith('.js')) return 'application/javascript';
+            if (path.endsWith('.svg')) return 'image/svg+xml';
+            if (path.endsWith('.png')) return 'image/png';
+            if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg';
+            if (path.endsWith('.gif')) return 'image/gif';
+            if (path.endsWith('.webp')) return 'image/webp';
+            if (path.endsWith('.woff')) return 'font/woff';
+            if (path.endsWith('.woff2')) return 'font/woff2';
+            return 'text/plain';
+        }
+
+        function toDataURL(content, mimeType) {
+            if (content.startsWith('data:')) {
+                return content; // Already a data URL
+            }
+            if (mimeType === 'image/svg+xml') {
+                // URI-encode SVGs. It's more efficient and robust for XML text.
+                const encoded = encodeURIComponent(content)
+                    .replace(/'/g, '%27').replace(/"/g, '%22')
+                    .replace(/</g, '%3C').replace(/>/g, '%3E')
+                    .replace(/#/g, '%23').replace(/&/g, '%26');
+                return `data:image/svg+xml,${encoded}`;
+            }
+            // For all other content (including binary read as text), base64 is the safest bet.
+            // This trick handles Unicode characters correctly before encoding.
+            const base64 = btoa(unescape(encodeURIComponent(content)));
+            return `data:${mimeType};base64,${base64}`;
+        }
+
+        // --- REPLACEMENT updateLivePreview FUNCTION ---
+        function updateLivePreview() {
+            App.previewModeFiles.forEach(htmlPath => {
+                if (!htmlPath.endsWith('.html')) return; // Only process HTML files here
+
+                const pane = $(`#editor-panes .editor-pane[data-path="${htmlPath}"]`);
+                if (!pane) return;
+                const frame = pane.querySelector('iframe');
+                if (!frame) return;
+
+                const htmlContent = App.vfs.read(htmlPath);
+                if (htmlContent === undefined) {
+                    frame.srcdoc = `<html><body>File not found: ${htmlPath}</body></html>`;
+                    return;
+                }
+
+                const basePath = htmlPath.includes('/') ? htmlPath.substring(0, htmlPath.lastIndexOf('/') + 1) : '';
+
+                const resolvePath = (base, relative) => {
+                    if (relative.startsWith('/') || relative.startsWith('http') || relative.startsWith('https:') || relative.startsWith('data:')) {
+                        return relative;
+                    }
+                    const stack = base.split('/').filter(p => p);
+                    if (base.endsWith('/')) stack.pop();
+                    const parts = relative.split('/');
+                    for (const part of parts) {
+                        if (part === '.') continue;
+                        if (part === '..') {
+                            if (stack.length > 0) stack.pop();
+                        } else {
+                            stack.push(part);
+                        }
+                    }
+                    return stack.join('/');
+                };
+
+                let processedContent = htmlContent.replace(/(href|src)=["'](.+?)["']/g, (match, attr, value) => {
+                    if (value.startsWith('data:') || value.startsWith('http')) return match;
+                    
+                    const absolutePath = resolvePath(basePath, value);
+                    const fileContent = App.vfs.read(absolutePath);
+
+                    if (fileContent !== undefined) {
+                        let finalContent = fileContent;
+                        const mimeType = getMimeType(absolutePath);
+
+                        // If it's CSS, we must process its internal url() paths first
+                        if (mimeType === 'text/css') {
+                            const cssDir = absolutePath.includes('/') ? absolutePath.substring(0, absolutePath.lastIndexOf('/') + 1) : '';
+                            finalContent = fileContent.replace(/url\((['"]?)(.*?)\1\)/g, (cssMatch, quote, cssPath) => {
+                                if (cssPath.startsWith('data:') || cssPath.startsWith('http')) return cssMatch;
+                                const assetPath = resolvePath(cssDir, cssPath);
+                                const assetContent = App.vfs.read(assetPath);
+                                if (assetContent) {
+                                    return `url(${toDataURL(assetContent, getMimeType(assetPath))})`;
+                                }
+                                return cssMatch; // Asset not found in VFS
+                            });
+                        }
+                        
+                        // Convert the (potentially processed) content to a data URL for the main HTML
+                        return `${attr}="${toDataURL(finalContent, mimeType)}"`;
+                    }
+                    return match; // File not in VFS
+                });
+
+                frame.srcdoc = processedContent;
+            });
+        }        
+        function logToTerminal(message, source = 'system', imageBase64 = null) {
+            const terminal = $('#terminal-output');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${source}`;
+            
+            const prefix = document.createElement('span');
+            prefix.className = 'log-prefix';
+            prefix.textContent = `[${source.toUpperCase()}]`;
+            
+            const content = document.createElement('span');
+            content.textContent = message;
+
+            entry.appendChild(prefix);
+            entry.appendChild(content);
+
+            if (source === 'user' || source === 'ai') {
+                const controls = document.createElement('div');
+                controls.className = 'log-entry-controls';
+                const saveRuleBtn = document.createElement('button');
+                saveRuleBtn.textContent = 'Save as Rule';
+                saveRuleBtn.className = 'log-save-rule-btn';
+                saveRuleBtn.onclick = () => {
+                    const ruleName = prompt("Enter a name for this new rule:", `Rule from ${source} message`);
+                    if (ruleName && ruleName.trim()) {
+                        const messageContent = content.textContent;
+                        App.rules[ruleName.trim()] = messageContent;
+                        saveProjectState().then(() => {
+                            renderRulesUI();
+                            logToTerminal(`Saved message as rule: "${ruleName.trim()}"`, 'system');
+                            switchRightPaneTab('rules');
+                            selectRule(ruleName.trim());
+                        });
+                    }
+                };
+                controls.appendChild(saveRuleBtn);
+                entry.appendChild(controls);
+            }
+
+            if (imageBase64) {
+                const img = document.createElement('img');
+                img.src = imageBase64;
+                entry.appendChild(img);
+            }
+
+            terminal.appendChild(entry);
+            terminal.scrollTop = terminal.scrollHeight;
+            return entry;
+        }
+
+        function logToolCallSummary(reasoning, calls, responses) {
+            const terminal = $('#terminal-output');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry log-tool-summary';
+
+            let summaryText = `AI is executing ${calls.length} tool call(s)...`;
+            if (calls.length === 1) {
+                const call = calls[0];
+                summaryText = `AI is calling \`${call.name}\` on \`${call.args.path || call.args.oldPath || ''}\``;
+            }
+
+            let detailsHtml = `<div class="tool-details">`;
+            if (reasoning) {
+                detailsHtml += `<div class="tool-reasoning">${reasoning.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`;
+            }
+
+            calls.forEach((call, index) => {
+                const response = responses[index].functionResponse.response;
+                const statusClass = response.success ? 'success' : 'failure';
+                const statusIcon = response.success ? '✅' : '❌';
+                detailsHtml += `
+                    <div class="tool-call-item">
+                        <strong class="${statusClass}">${statusIcon} ${call.name}</strong>
+                        <pre>Args: ${JSON.stringify(call.args, null, 2)}</pre>
+                        <pre>Result: ${JSON.stringify(response, null, 2)}</pre>
+                    </div>
+                `;
+            });
+            detailsHtml += `</div>`;
+
+            entry.innerHTML = `
+                <details>
+                    <summary>${summaryText}</summary>
+                    ${detailsHtml}
+                </details>
+            `;
+            
+            terminal.appendChild(entry);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // --- UI Interaction Handlers ---
+        async function handleEditorInput(e) {
+            const path = e.target.dataset.path;
+            const newContent = e.target.value;
+            const baseFiles = await DB.getLatestFileSnapshots(App.currentProjectName);
+            const oldContent = uncommittedChanges[path] ? uncommittedChanges[path].oldContent : (baseFiles[path] || '');
+
+            uncommittedChanges[path] = { oldContent, newContent };
+            App.vfs.applyChange(path, newContent);
+            updateChangesUI();
+            
+            if (App.previewModeFiles.has(path)) {
+                if (path.endsWith('.md') || path.endsWith('.markdown')) {
+                    const pane = $(`#editor-panes .editor-pane[data-path="${path}"]`);
+                    const previewDiv = pane ? pane.querySelector('.markdown-preview') : null;
+                    if (previewDiv) {
+                        previewDiv.innerHTML = markdownConverter.makeHtml(newContent);
+                    }
+                } else {
+                    updateLivePreview(); // This is for HTML files
+                }
+            }
+        }
+
+        function openFileInEditor(path) {
+            if (!App.openFiles.has(path)) {
+                App.openFiles.add(path);
+            }
+            setActiveFile(path);
+            if (App.isMobile()) {
+                setMobileView('editor');
+            }
+        }
+
+        function setActiveFile(path) {
+            App.activeFile = path;
+            renderFileExplorer();
+            renderEditor();
+        }
+
+        function closeFile(path) {
+            App.openFiles.delete(path);
+            App.previewModeFiles.delete(path); // Ensure preview is off when closed
+            if (App.activeFile === path) {
+                App.activeFile = App.openFiles.values().next().value || null;
+            }
+            renderEditor();
+        }
+
+        function switchRightPaneTab(tabName) {
+            document.querySelectorAll('.right-pane-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+            document.querySelectorAll('.right-pane-view').forEach(v => v.classList.toggle('active', v.id === `${tabName}-view`));
+        }
+
+        // --- Core Logic & AI Interaction ---
+        function stageChange(path, newContent) {
+            const oldContent = App.vfs.read(path) ?? '';
+            uncommittedChanges[path] = { oldContent, newContent };
+            App.vfs.applyChange(path, newContent);
+        }
+
+        const symbolRegexPatterns = {
+            javascript: [
+                { type: 'function', regex: /^(?:async\s+)?function\s+([a-zA-Z0-9_$]+)\s*\(/gm },
+                { type: 'function', regex: /^(?:const|let|var)\s+([a-zA-Z0-9_$]+)\s*=\s*(?:async\s*)?\(/gm },
+                { type: 'class', regex: /^class\s+([a-zA-Z0-9_$]+)/gm },
+            ],
+            css: [
+                { type: 'class', regex: /^\.([a-zA-Z0-9_-]+)/gm },
+                { type: 'id', regex: /^#([a-zA-Z0-9_-]+)/gm },
+            ],
+            html: [
+                { type: 'id', regex: /id="([^"]+)"/g },
+            ]
+        };
+
+        function parseCodeForSymbols(content, path) {
+            const extension = path.split('.').pop();
+            let lang;
+            if (['js', 'mjs', 'cjs'].includes(extension)) lang = 'javascript';
+            else if (extension === 'css') lang = 'css';
+            else if (['html', 'htm'].includes(extension)) lang = 'html';
+            else return [];
+
+            const patterns = symbolRegexPatterns[lang];
+            if (!patterns) return [];
+
+            const symbols = [];
+            const lines = content.split('\n');
+
+            lines.forEach((line, index) => {
+                patterns.forEach(patternInfo => {
+                    const regex = new RegExp(patternInfo.regex);
+                    let match;
+                    while ((match = regex.exec(line)) !== null) {
+                        symbols.push({
+                            name: match[1],
+                            type: patternInfo.type,
+                            line: index + 1
+                        });
+                    }
+                });
+            });
+            return symbols;
+        }
+
+        const functionHandlers = {
+            createFile: (args) => {
+                stageChange(args.path, args.content || '');
+                return { success: true, message: `File ${args.path} staged for creation.` };
+            },
+            applyChange: (args) => {
+                return new Promise(resolve => {
+                    const { path, explanation, originalContent, newContent } = args;
+                    const currentFileContent = App.vfs.read(path);
+
+                    if (typeof currentFileContent !== 'string') {
+                        return resolve({ success: false, error: `File not found at path: ${path}` });
+                    }
+                    if (!currentFileContent.includes(originalContent)) {
+                        return resolve({ success: false, error: `The 'originalContent' to be replaced was not found in ${path}. The file may have changed. Please read the file again and retry.` });
+                    }
+
+                    if (App.isMobile()) setMobileView('terminal');
+                    switchRightPaneTab('terminal');
+
+                    const entry = logToTerminal('', 'ai');
+                    entry.classList.add('log-change-proposal');
+
+                    const diff = Diff.diffLines(originalContent, newContent);
+                    const diffHtml = diff.map(part => {
+                        const tag = part.added ? 'ins' : part.removed ? 'del' : 'span';
+                        const el = document.createElement(tag);
+                        el.textContent = part.value;
+                        return el.outerHTML;
+                    }).join('');
+
+                    entry.innerHTML = `
+                        <div class="proposal-header">Proposed change for <b>${path}</b>:</div>
+                        <div class="proposal-explanation">${explanation}</div>
+                        <div class="proposal-diff">${diffHtml}</div>
+                        <div class="log-actions"></div>
+                    `;
+
+                    const actionsDiv = entry.querySelector('.log-actions');
+                    const applyBtn = document.createElement('button');
+                    applyBtn.textContent = 'Apply';
+                    const rejectBtn = document.createElement('button');
+                    rejectBtn.textContent = 'Reject';
+                    const rejectWithFeedbackBtn = document.createElement('button');
+                    rejectWithFeedbackBtn.textContent = 'Reject with Feedback';
+
+                    const cleanup = () => {
+                        applyBtn.disabled = true;
+                        rejectBtn.disabled = true;
+                        rejectWithFeedbackBtn.disabled = true;
+                    };
+
+                    applyBtn.onclick = () => {
+                        cleanup();
+                        const updatedFileContent = currentFileContent.replace(originalContent, newContent);
+                        stageChange(path, updatedFileContent);
+                        updateChangesUI();
+                        renderAll();
+                        // CHANGE: Refresh PAD view if it was the file that changed.
+                        if (path === 'PROJECT_ARCHITECTURE.md') {
+                            renderPadView();
+                        }
+                        logToTerminal(`You approved the change for ${path}.`, 'user');
+                        resolve({ success: true, message: 'Change applied successfully.' });
+                    };
+
+                    rejectBtn.onclick = () => {
+                        cleanup();
+                        logToTerminal(`You rejected the change for ${path}.`, 'user');
+                        resolve({ success: false, user_response: 'User rejected the change.' });
+                    };
+
+                    rejectWithFeedbackBtn.onclick = () => {
+                        cleanup();
+                        const feedback = prompt(`Please provide feedback for rejecting the change to ${path}:`);
+                        if (feedback) {
+                            logToTerminal(`You rejected the change for ${path} with feedback: "${feedback}"`, 'user');
+                            resolve({ success: false, user_response: `User rejected the change with feedback: ${feedback}` });
+                        } else {
+                            logToTerminal(`You rejected the change for ${path}.`, 'user');
+                            resolve({ success: false, user_response: 'User rejected the change.' });
+                        }
+                    };
+
+                    actionsDiv.appendChild(applyBtn);
+                    actionsDiv.appendChild(rejectBtn);
+                    actionsDiv.appendChild(rejectWithFeedbackBtn);
+
+                    // CHANGE: Auto-approve if in Auto Mode
+                    if (App.isAutoMode) {
+                        logToTerminal(`Auto Mode: Auto-approving change for ${path}.`, 'system');
+                        applyBtn.onclick();
+                    }
+                });
+            },
+            deleteFile: (args) => {
+                 if (typeof App.vfs.files[args.path] === 'undefined') return { success: false, message: `Error: File ${args.path} not found.`};
+                 stageChange(args.path, null);
+                 return { success: true, message: `File ${args.path} staged for deletion.` };
+            },
+            renamePath: (args) => {
+                const content = App.vfs.read(args.oldPath);
+                stageChange(args.oldPath, null);
+                stageChange(args.newPath, content);
+                return { success: true, message: `Path ${args.oldPath} staged for rename.` };
+            },
+            readFile: (args) => {
+                const content = App.vfs.read(args.path);
+                if (content === undefined) return { success: false, error: 'File not found.' };
+                return { success: true, content: content };
+            },
+            readFileLines: (args) => {
+                const content = App.vfs.read(args.path);
+                if (content === undefined) return { success: false, error: 'File not found.' };
+                const lines = content.split('\n');
+                const start = Math.max(0, args.startLine - 1);
+                const end = Math.min(lines.length, args.endLine);
+                if (start >= end) return { success: false, error: 'Invalid line range.' };
+                return { success: true, content: lines.slice(start, end).join('\n') };
+            },
+            get_code_symbols_outline: (args) => {
+                const { path, symbolName } = args;
+                const content = App.vfs.read(path);
+                if (content === undefined) return { success: false, error: 'File not found.' };
+
+                if (symbolName) {
+                    const lines = content.split('\n');
+                    let definition = '';
+                    let inDefinition = false;
+                    let braceCount = 0;
+                    const symbolRegex = new RegExp(`\\b${symbolName}\\b`);
+
+                    for (const line of lines) {
+                        if (!inDefinition && line.match(symbolRegex)) {
+                            inDefinition = true;
+                        }
+                        if (inDefinition) {
+                            definition += line + '\n';
+                            braceCount += (line.match(/{/g) || []).length;
+                            braceCount -= (line.match(/}/g) || []).length;
+                            if (braceCount === 0 && definition.length > 10) { // Heuristic to end
+                                break;
+                            }
+                        }
+                    }
+                    if (definition) {
+                        return { success: true, definition };
+                    } else {
+                        return { success: false, error: `Symbol '${symbolName}' not found.` };
+                    }
+                } else {
+                    const symbols = parseCodeForSymbols(content, path);
+                    return { success: true, symbols };
+                }
+            },
+            searchProject: (args) => {
+                const results = [];
+                const regex = new RegExp(args.query, args.isRegex ? 'g' : 'gi');
+                Object.keys(App.vfs.files).forEach(path => {
+                    const content = App.vfs.read(path);
+                    if (content === null) return;
+                    const lines = content.split('\n');
+                    lines.forEach((line, index) => {
+                        if (line.match(regex)) {
+                            results.push({ path, line: index + 1, content: line.trim() });
+                        }
+                    });
+                });
+                return { success: true, results };
+            },
+            fetchProjectRules: (args) => {
+                if (args.ruleName) {
+                    const content = App.rules[args.ruleName];
+                    if (content) {
+                        return { success: true, name: args.ruleName, content: content };
+                    } else {
+                        return { success: false, error: `Rule '${args.ruleName}' not found.` };
+                    }
+                } else {
+                    const ruleNames = Object.keys(App.rules);
+                    return { success: true, ruleNames: ruleNames };
+                }
+            },
+            askUserForConfirmation: (args) => {
+                if (App.isAutoMode) {
+                    logToTerminal(`Auto-confirming: ${args.question}`, 'ai');
+                    return { success: true, user_response: 'yes' };
+                }
+                return new Promise(resolve => {
+                    if (App.isMobile()) setMobileView('terminal');
+                    const entry = logToTerminal(`Q: ${args.question}`, 'ai');
+                    entry.classList.add('log-confirmation');
+
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'log-actions';
+
+                    const yesBtn = document.createElement('button');
+                    yesBtn.textContent = 'Yes';
+                    const noBtn = document.createElement('button');
+                    noBtn.textContent = 'No';
+
+                    const listener = (response) => {
+                        yesBtn.disabled = true;
+                        noBtn.disabled = true;
+                        logToTerminal(`You responded: ${response}`, 'user');
+                        resolve({ success: true, user_response: response });
+                    };
+
+                    yesBtn.onclick = () => listener('yes');
+                    noBtn.onclick = () => listener('no');
+
+                    actionsDiv.appendChild(yesBtn);
+                    actionsDiv.appendChild(noBtn);
+                    entry.appendChild(actionsDiv);
+                    switchRightPaneTab('terminal');
+                });
+            },
+            projectComplete: (args) => {
+                logToTerminal(`Project Complete: ${args.message}`, 'ai');
+                return { success: true, final_message: args.message };
+            }
+        };
+
+        async function handleUserInput(e) {
+            e.preventDefault();
+            let userText = $('#user-input').value.trim();
+            if ((!userText && !stagedImage) || isGenerating) return;
+            
+            const imageToSend = stagedImage;
+            stagedImage = null;
+            $('#staged-image-container').style.display = 'none';
+            $('#staged-image-container').innerHTML = '';
+
+            $('#user-input').value = '';
+            $('#user-input').style.height = 'auto';
+
+            const toolMatch = userText.match(/^\/tool (\w+)\s*/);
+            if (toolMatch) {
+                const toolName = toolMatch[1];
+                const actualPrompt = userText.replace(toolMatch[0], '');
+                userText = `IMPERATIVE: Use the '${toolName}' tool. The user's request is: "${actualPrompt}"`;
+            }
+
+            await submitPrompt(userText, imageToSend);
+        }
+
+        async function submitPrompt(promptText, image = null) {
+            if (isGenerating) return;
+
+            if (App.isMobile()) setMobileView('terminal');
+            switchRightPaneTab('terminal');
+            logToTerminal(promptText || '(Image attached)', 'user', image ? image.base64 : null);
+            toggleLoading(true, promptText);
+
+            try {
+                const result = await callGemini(promptText, image);
+                renderAll();
+                updateChangesUI();
+                return result;
+            } catch (error) {
+                // The error is already logged inside callGemini.
+                // This catch block prevents the error from crashing the auto-mode loop.
+                console.error("Error during submitPrompt, but it was handled.", error);
+                return null; // Return null to indicate failure to the caller.
+            } finally {
+                // This is the crucial part: always re-enable the UI.
+                toggleLoading(false);
+            }
+        }
+
+        function pruneHistoryForApiCall(history) {
+            const MAX_HISTORY_LENGTH = 30; // Keep up to 30 entries (15 user/ai pairs)
+            if (history.length <= MAX_HISTORY_LENGTH) {
+                return history;
+            }
+
+            logToTerminal(`History exceeds ${MAX_HISTORY_LENGTH} entries. Pruning for API call...`, 'system');
+            
+            // Always keep the system prompt and the first AI response.
+            const systemMessages = history.slice(0, 2); 
+            // Keep the most recent N-2 messages.
+            const recentMessages = history.slice(history.length - (MAX_HISTORY_LENGTH - 2));
+
+            return [...systemMessages, ...recentMessages];
+        }
+
+        async function throttleApiCall(apiFunction) {
+            let retries = 3; 
+            while (retries > 0) {
+                const now = Date.now();
+                const timeSinceLastCall = now - lastApiCallTimestamp;
+                if (timeSinceLastCall < MIN_API_CALL_INTERVAL_MS) {
+                    const delay = MIN_API_CALL_INTERVAL_MS - timeSinceLastCall;
+                    logToTerminal(`Rate limit protection: Waiting for ${Math.round(delay/1000)}s...`, 'system');
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+                
+                lastApiCallTimestamp = Date.now();
+
+                try {
+                    const result = await apiFunction();
+                    return result;
+                } catch (error) {
+                    let shouldRetry = false;
+                    let delayMs = 0;
+
+                    if (error.message && error.message.includes('429')) {
+                        logToTerminal(`Hit 429 Rate Limit error. Checking for retry delay...`, 'error');
+                        const retryDelayMatch = error.message.match(/"retryDelay":\s*"(\d+)s"/);
+                        if (retryDelayMatch && retries > 1) {
+                            const delaySeconds = parseInt(retryDelayMatch[1], 10);
+                            delayMs = (delaySeconds + 1) * 1000; // Add a 1s buffer
+                            logToTerminal(`API suggests retrying in ${delaySeconds}s. Waiting...`, 'system');
+                            shouldRetry = true;
+                        }
+                    } else if (error.message && (error.message.includes('503') || error.message.toLowerCase().includes('model is overloaded'))) {
+                        if (retries > 1) {
+                            // Exponential backoff with jitter: 1s, 2s, 4s... + random up to 1s
+                            const backoff = (2 ** (4 - retries)) * 1000;
+                            delayMs = backoff + Math.random() * 1000;
+                            logToTerminal(`Model is overloaded (503). Retrying in ~${Math.round(delayMs / 1000)}s... (${retries-1} retries left)`, 'error');
+                            shouldRetry = true;
+                        }
+                    }
+
+                    if (shouldRetry) {
+                        await new Promise(resolve => setTimeout(resolve, delayMs));
+                        retries--;
+                        continue; // Retry the loop
+                    }
+                    
+                    // If not a recognized retryable error, or retries exhausted, re-throw
+                    throw error;
+                }
+            }
+        }
+
+        async function callGemini(prompt, image = null) {
+            let projectIsComplete = false;
+            let result;
+
+            const originalHistoryLength = conversationHistory.length;
+            const apiHistory = JSON.parse(JSON.stringify(conversationHistory));
+
+            let contextBlock = `\n\n== PROJECT CONTEXT ==\n`;
+            contextBlock += `Current Project Name: ${App.currentProjectName}\n`;
+            contextBlock += `File tree:\n${App.vfs.getTreeString()}\n`;
+            if (App.activeFile) {
+                let activeFileContent = App.vfs.read(App.activeFile) || '';
+                if (activeFileContent.length > 2000) {
+                    activeFileContent = activeFileContent.substring(0, 2000) + "\n... (file truncated, use readFile for full content)";
+                }
+                contextBlock += `\nCurrently active file is "${App.activeFile}". Its content is:\n---\n${activeFileContent}\n---`;
+            } else {
+                contextBlock += `\nNo file is currently active.`;
+            }
+
+            const userPartsWithContext = [{ text: prompt + contextBlock }];
+            if (image) {
+                userPartsWithContext.push({
+                    inlineData: { data: image.base64.split(',')[1], mimeType: image.mimeType }
+                });
+            }
+            apiHistory.push({ role: 'user', parts: userPartsWithContext });
+
+            try {
+                const generate = () => ai.models.generateContent({ model: App.selectedModel, contents: pruneHistoryForApiCall(apiHistory), config: { tools: toolsConfig } });
+                result = await throttleApiCall(generate);
+
+                if (result.usageMetadata) {
+                    const { promptTokenCount, candidatesTokenCount, totalTokenCount } = result.usageMetadata;
+                    logToTerminal(`Token Usage: ${promptTokenCount} prompt, ${candidatesTokenCount} candidates, ${totalTokenCount} total.`, 'system');
+                }
+
+                while (true) {
+                    const functionCalls = result.functionCalls;
+                    if (!functionCalls || functionCalls.length === 0) {
+                        const aiResponseText = result.text;
+                        if(aiResponseText) {
+                            logToTerminal(aiResponseText, 'ai');
+                            $('#commit-message').value = aiResponseText;
+                        }
+                        apiHistory.push(result.candidates[0].content);
+                        break; 
+                    }
+                    
+                    apiHistory.push(result.candidates[0].content);
+                    const functionResponses = [];
+                    const reasoning = result.text;
+
+                    for (const call of functionCalls) {
+                        if (call.name === 'projectComplete') {
+                            projectIsComplete = true;
+                        }
+                        const handler = functionHandlers[call.name];
+                        if (handler) {
+                            const response = await handler(call.args);
+                            functionResponses.push({ functionResponse: { name: call.name, response: response } });
+                        }
+                    }
+                    
+                    logToolCallSummary(reasoning, functionCalls, functionResponses);
+
+                    if (functionResponses.length === 0) {
+                        logToTerminal('AI tried to call a function that does not exist. Halting operation.', 'error');
+                        console.error("AI hallucinated function calls with no matching handlers:", functionCalls);
+                        break;
+                    }
+
+                    apiHistory.push({ role: 'user', parts: functionResponses });
+                    
+                    const nextGenerate = () => ai.models.generateContent({ model: App.selectedModel, contents: pruneHistoryForApiCall(apiHistory), config: { tools: toolsConfig } });
+                    result = await throttleApiCall(nextGenerate);
+                    
+                    if (result.usageMetadata) {
+                        const { promptTokenCount, candidatesTokenCount, totalTokenCount } = result.usageMetadata;
+                        logToTerminal(`Token Usage: ${promptTokenCount} prompt, ${candidatesTokenCount} candidates, ${totalTokenCount} total.`, 'system');
+                    }
+                }
+
+                const newMessages = apiHistory.slice(originalHistoryLength);
+                const cleanedMessages = pruneHistoryForStorage(newMessages);
+                conversationHistory.push(...cleanedMessages);
+            } catch (error) {
+                console.error("Error during Gemini interaction:", error);
+                logToTerminal(`An error occurred: ${error.message}. Check console.`, 'error');
+                if (App.isAutoMode) {
+                    logToTerminal("Disabling Auto Mode due to error.", "system");
+                    App.isAutoMode = false;
+                    $('#auto-mode-btn').classList.remove('active');
+                }
+                throw error; // Re-throw the error so the caller (submitPrompt) can handle it
+            } 
+
+            const lastAiResponse = result.text || "";
+            const screenshotRequested = lastAiResponse.includes('[ACTION:screenshot]');
+            
+            return { projectIsComplete, screenshotRequested, finalText: lastAiResponse };
+        }
+        
+        // --- Persistence & Project Management ---
+        const LAST_SESSION_KEY = 'archieIDE_lastSession';
+
+        async function saveProjectState() {
+            if (!App.currentProjectName) return;
+            const projectData = {
+                name: App.currentProjectName,
+                lastModified: Date.now(),
+                history: pruneHistoryForStorage(conversationHistory), // Prune before saving!
+                rules: App.rules
+            };
+            await DB.saveProject(projectData);
+        }
+
+        async function loadProject(projectName) {
+            App.openFiles = new Set();
+            App.activeFile = null;
+            App.previewModeFiles = new Set();
+
+            App.currentProjectName = projectName;
+            const projects = await DB.getProjects();
+            const projectData = projects.find(proj => proj.name === projectName);
+            
+            if (!projectData) {
+                console.error("Project not found in DB");
+                return false;
+            }
+            
+            const files = await DB.getLatestFileSnapshots(projectName);
+            App.vfs.load(files);
+            App.rules = projectData.rules || {};
+
+			conversationHistory = pruneHistoryForStorage(projectData.history || []);
+
+            uncommittedChanges = {};
+
+            $('#project-title-display').textContent = App.currentProjectName;
+            renderAll();
+            renderPadView();
+            renderTerminalFromHistory();
+            renderRulesUI();
+            updateChangesUI();
+            localStorage.setItem(LAST_SESSION_KEY, projectName);
+            return true;
+        }
+
+		function pruneHistoryForStorage(history) {
+            if (!history) return [];
+            
+            const contextMarker = '== PROJECT CONTEXT ==';
+
+            return history.map(entry => {
+                const newEntry = JSON.parse(JSON.stringify(entry)); // Deep copy to avoid side effects
+
+                if (newEntry.role === 'model' && newEntry.parts) {
+                    newEntry.parts.forEach(part => {
+                        if (part.functionCall) {
+                            const call = part.functionCall;
+                            if (call.name === 'createFile' && call.args.content) {
+                                call.args.content = `(Content of ${call.args.path} was created, not stored in history)`;
+                            }
+                            if (call.name === 'applyChange') {
+                                if (call.args.newContent) {
+                                    call.args.newContent = `(New content for ${call.args.path} was applied, not stored in history)`;
+                                }
+                                if (call.args.originalContent && call.args.originalContent.length > 200) {
+                                     call.args.originalContent = `(Original content for ${call.args.path} was provided, not stored in history)`;
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                if (newEntry.role === 'user' && newEntry.parts) {
+                    newEntry.parts = newEntry.parts.map(part => {
+                        if (part.inlineData) {
+                            return { text: '(Image was provided, not stored in history)' };
+                        }
+                        return part;
+                    }).filter(Boolean);
+
+                    const firstPart = newEntry.parts[0];
+                    if (firstPart && firstPart.text) {
+                        const contextIndex = firstPart.text.indexOf(contextMarker);
+                        if (contextIndex !== -1) {
+                            firstPart.text = firstPart.text.substring(0, contextIndex).trim();
+                        }
+                    }
+                }
+                return newEntry;
+            });
+        }
+
+		async function startNewProject(description) {
+            const projectName = prompt("Enter a name for your new project:", "My New App");
+            if (!projectName) return;
+
+            App.currentProjectName = projectName;
+            App.vfs.load({});
+            App.rules = {};
+            uncommittedChanges = {};
+            conversationHistory = [
+                { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
+                { role: 'model', parts: [{ text: "Okay, I am Archie. I'm ready to start." }] }
+            ];
+            
+            const padContent = PAD_TEMPLATE.replace('[ProjectHandle]', projectName).replace('{timestamp}', new Date().toISOString());
+            App.vfs.applyChange('PROJECT_ARCHITECTURE.md', padContent);
+
+            await DB.saveProject({ name: projectName, lastModified: Date.now(), history: pruneHistoryForStorage(conversationHistory), rules: App.rules });
+            localStorage.setItem(LAST_SESSION_KEY, projectName);
+            
+            $('#project-title-display').textContent = App.currentProjectName;
+            renderAll();
+            renderPadView();
+            renderTerminalFromHistory();
+            renderRulesUI();
+            updateChangesUI();
+
+            $('#project-start-modal').style.display = 'none';
+            $('#app-container').style.display = 'flex';
+            
+            const initialPrompt = `The user wants to start a new project called "${projectName}". Here is their description: "${description}". Please scaffold the necessary files and folder structure for this project based on the PROJECT_ARCHITECTURE.md file. Use your tools to create the files.`;
+            if (App.isMobile()) setMobileView('terminal');
+            switchRightPaneTab('terminal');
+            logToTerminal(`Scaffolding new project: ${description}`, 'system');
+            
+            await submitPrompt(initialPrompt);
+        }
+
+        function renderAll() {
+            renderFileExplorer();
+            renderEditor();
+        }
+
+        function renderTerminalFromHistory() {
+            const terminal = $('#terminal-output');
+            terminal.innerHTML = '';
+            const historyToRender = conversationHistory.slice(2); 
+            historyToRender.forEach(entry => {
+                let role = entry.role === 'model' ? 'ai' : 'user';
+                let textContent = '';
+                let imageContent = null;
+                let isConfirmationResponse = false;
+
+                if (entry.parts) { 
+                    entry.parts.forEach(part => {
+                        if (part.text) {
+                            textContent += part.text;
+                        } else if (part.inlineData) {
+                            imageContent = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                        } else if (part.functionResponse && part.functionResponse.name === 'askUserForConfirmation') {
+                            isConfirmationResponse = true;
+                            textContent = `You responded: ${part.functionResponse.response.user_response}`;
+                        }
+                    });
+                }
+                
+                if (textContent.trim() || imageContent) {
+                     if (isConfirmationResponse) {
+                        logToTerminal(textContent, 'user');
+                    } else {
+                        logToTerminal(textContent || (role === 'user' ? '(Image attached)' : ''), role, imageContent);
+                    }
+                }
+            });
+        }
+
+        // --- Versioning & Changes UI ---
+        function updateChangesUI() {
+            const changeCount = Object.keys(uncommittedChanges).length;
+            const badge = $('#history-tab-badge');
+            const historyView = $('#history-view');
+            
+            badge.style.display = changeCount > 0 ? 'block' : 'none';
+            badge.textContent = changeCount;
+
+            historyView.classList.toggle('show-changes', changeCount > 0);
+            historyView.classList.toggle('show-history-log', changeCount === 0);
+
+            if (changeCount > 0) {
+                const changesList = $('#changes-list');
+                changesList.innerHTML = '<h4>Uncommitted Changes</h4>';
+                Object.keys(uncommittedChanges).forEach(path => {
+                    const item = document.createElement('div');
+                    item.className = 'change-item';
+                    item.textContent = path;
+                    item.onclick = () => displayDiff(path);
+                    changesList.appendChild(item);
+                });
+                const firstChange = changesList.querySelector('.change-item');
+                if (firstChange) {
+                    firstChange.click();
+                } else {
+                    $('#diff-view').innerHTML = '';
+                }
+            } else {
+                loadAndDisplayHistory();
+            }
+        }
+
+        function displayDiff(path) {
+            const diffView = $('#diff-view');
+            const change = uncommittedChanges[path];
+            if (!change) {
+                diffView.innerHTML = '';
+                return;
+            }
+            const oldStr = change.oldContent || '';
+            const newStr = change.newContent ?? '';
+            
+            const diff = Diff.diffLines(oldStr, newStr);
+            const fragment = document.createDocumentFragment();
+
+            diff.forEach(part => {
+                const tag = part.added ? 'ins' : part.removed ? 'del' : 'span';
+                const node = document.createElement(tag);
+                node.textContent = part.value;
+                fragment.appendChild(node);
+            });
+
+            diffView.innerHTML = '';
+            diffView.appendChild(fragment);
+            
+            document.querySelectorAll('.change-item').forEach(el => el.classList.toggle('selected', el.textContent === path));
+        }
+
+        async function commitChanges() {
+            const message = $('#commit-message').value.trim();
+            if (!message) {
+                alert("Please enter a commit message.");
+                return;
+            }
+
+            const commitId = `commit_${Date.now()}`;
+            const commitData = {
+                id: commitId,
+                projectName: App.currentProjectName,
+                message: message,
+                timestamp: Date.now(),
+                changes: Object.keys(uncommittedChanges)
+            };
+
+            const snapshots = Object.entries(App.vfs.files).map(([path, content]) => ({
+                commitId: commitId,
+                path: path,
+                content: content
+            }));
+
+            await DB.saveFileSnapshots(snapshots);
+            await DB.saveCommit(commitData);
+            
+            await saveProjectState();
+
+            uncommittedChanges = {};
+            $('#commit-message').value = '';
+            updateChangesUI();
+            logToTerminal(`Changes committed: "${message}"`, 'system');
+        }
+
+        async function restoreToLastCommit() {
+            if (!confirm("Are you sure you want to discard all uncommitted changes? This cannot be undone.")) {
+                return;
+            }
+            const files = await DB.getLatestFileSnapshots(App.currentProjectName);
+            App.vfs.load(files);
+            uncommittedChanges = {};
+            renderAll();
+            renderPadView();
+            updateChangesUI();
+            logToTerminal('Uncommitted changes have been discarded and restored to the last commit.', 'system');
+        }
+
+        async function loadAndDisplayHistory() {
+            const historyLog = $('#history-log');
+            historyLog.innerHTML = '<h4>Commit History</h4>';
+            if (!App.currentProjectName) return;
+            const commits = (await DB.getCommits(App.currentProjectName)).sort((a, b) => b.timestamp - a.timestamp);
+            
+            if (commits.length === 0) {
+                historyLog.innerHTML += '<p style="padding: 10px; color: var(--subtle-text-color);">No commits yet.</p>';
+                return;
+            }
+
+            commits.forEach(commit => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.innerHTML = `
+                    <p class="commit-msg">${commit.message}</p>
+                    <p class="commit-date">${new Date(commit.timestamp).toLocaleString()}</p>
+                `;
+                historyLog.appendChild(item);
+            });
+        }
+
+        // --- Rules Management ---
+        function renderRulesUI() {
+            const list = $('#rules-list');
+            list.innerHTML = '';
+            const editor = $('#rule-editor-container');
+            editor.style.display = 'none';
+            
+            Object.keys(App.rules).sort().forEach(ruleName => {
+                const item = document.createElement('div');
+                item.className = 'rule-item';
+                item.textContent = ruleName;
+                item.dataset.name = ruleName;
+                item.addEventListener('click', () => selectRule(ruleName));
+                list.appendChild(item);
+            });
+        }
+
+        function selectRule(ruleName) {
+            document.querySelectorAll('.rule-item').forEach(item => item.classList.remove('selected'));
+            const item = $(`.rule-item[data-name="${ruleName}"]`);
+            if (item) item.classList.add('selected');
+
+            const editor = $('#rule-editor-container');
+            editor.style.display = 'flex';
+            editor.dataset.currentRule = ruleName;
+            $('#rule-name-input').value = ruleName;
+            $('#rule-content-input').value = App.rules[ruleName] || '';
+        }
+
+        async function saveRule() {
+            const editor = $('#rule-editor-container');
+            const originalName = editor.dataset.currentRule;
+            const newName = $('#rule-name-input').value.trim();
+            const content = $('#rule-content-input').value;
+
+            if (!newName) {
+                alert("Rule name cannot be empty.");
+                return;
+            }
+
+            if (originalName && originalName !== newName) {
+                delete App.rules[originalName];
+            }
+            App.rules[newName] = content;
+            
+            await saveProjectState();
+            renderRulesUI();
+            selectRule(newName);
+            logToTerminal(`Rule "${newName}" saved.`, 'system');
+        }
+
+        async function deleteRule() {
+            const editor = $('#rule-editor-container');
+            const ruleName = editor.dataset.currentRule;
+            if (ruleName && confirm(`Are you sure you want to delete the rule "${ruleName}"?`)) {
+                delete App.rules[ruleName];
+                await saveProjectState();
+                renderRulesUI();
+                editor.style.display = 'none';
+                logToTerminal(`Rule "${ruleName}" deleted.`, 'system');
+            }
+        }
+
+        function setupRules() {
+            $('#add-rule-btn').addEventListener('click', () => {
+                const newRuleName = `New-Rule-${Date.now()}`;
+                App.rules[newRuleName] = "";
+                renderRulesUI();
+                selectRule(newRuleName);
+            });
+            $('#save-rule-btn').addEventListener('click', saveRule);
+            $('#delete-rule-btn').addEventListener('click', deleteRule);
+        }
+
+        // --- PAD Management ---
+        function renderPadView() {
+            const container = $('#pad-interactive-view');
+            container.innerHTML = '';
+            const padContent = App.vfs.read('PROJECT_ARCHITECTURE.md');
+
+            if (!padContent) {
+                container.innerHTML = `<p style="color: var(--subtle-text-color); padding: 20px;">No Project Architecture Document found. Use the <code>/generate_pad</code> command to create one.</p>`;
+                return;
+            }
+
+            // Split by H3 headings, keeping the heading in the result
+            const sections = padContent.split(/(?=^###\s)/m);
+            
+            sections.forEach((sectionContent, index) => {
+                if (!sectionContent.trim()) return;
+
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'pad-section';
+
+                const header = document.createElement('div');
+                header.className = 'pad-section-header';
+                
+                const titleMatch = sectionContent.match(/^###\s*(.*)/);
+                const title = titleMatch ? titleMatch[1] : `Section ${index + 1}`;
+                
+                const h3 = document.createElement('h3');
+                h3.textContent = title;
+
+                const reviseBtn = document.createElement('button');
+                reviseBtn.className = 'pad-revise-btn';
+                reviseBtn.textContent = 'Revise with AI';
+                reviseBtn.onclick = () => revisePadSection(title, sectionContent);
+
+                header.appendChild(h3);
+                header.appendChild(reviseBtn);
+
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'pad-section-content';
+                // Render the content part of the section as markdown
+                const contentMarkdown = titleMatch ? sectionContent.substring(titleMatch[0].length) : sectionContent;
+                contentDiv.innerHTML = markdownConverter.makeHtml(contentMarkdown);
+
+                sectionDiv.appendChild(header);
+                sectionDiv.appendChild(contentDiv);
+                container.appendChild(sectionDiv);
+            });
+        }
+
+        async function revisePadSection(sectionTitle, oldSectionContent) {
+            const instructions = prompt(`Enter instructions to revise the "${sectionTitle}" section:`);
+            if (!instructions || !instructions.trim()) return;
+
+            logToTerminal(`Revising PAD section "${sectionTitle}" with AI...`, 'system');
+
+            const revisionPrompt = `You are a planning assistant. The user wants to revise a section of their Project Architecture Document (PAD).
+
+**Section to Revise:** "${sectionTitle}"
+
+**User's Instructions:**
+"${instructions}"
+
+**Current Content of the Section:**
+\`\`\`markdown
+${oldSectionContent}
+\`\`\`
+
+Please act on the user's instructions and provide the complete, new, updated markdown for this entire section. Your response should ONLY be the new markdown for this section, starting with the "### ${sectionTitle}" heading.`;
+
+            const result = await submitPrompt(revisionPrompt);
+
+            if (result && result.finalText) {
+                const newSectionContent = result.finalText;
+                const fullPadContent = App.vfs.read('PROJECT_ARCHITECTURE.md');
+                const updatedFullPadContent = fullPadContent.replace(oldSectionContent, newSectionContent);
+                
+                stageChange('PROJECT_ARCHITECTURE.md', updatedFullPadContent);
+                renderPadView();
+                updateChangesUI();
+                logToTerminal(`PAD section "${sectionTitle}" was updated successfully.`, 'system');
+            } else {
+                logToTerminal(`Failed to revise PAD section. The AI did not return a valid response.`, 'error');
+            }
+        }
+
+        // --- Mobile View Management ---
+        function setMobileView(view) {
+            App.mobileView = view;
+            const appContainer = $('#app-container');
+            appContainer.className = `mobile-view-${view}`;
+
+            document.querySelectorAll('.mobile-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.view === view);
+            });
+        }
+
+        function setupMobileTabs() {
+            const tabs = document.querySelectorAll('.mobile-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    setMobileView(tab.dataset.view);
+                });
+            });
+            // Set initial icons
+            $('.mobile-tab[data-view="explorer"] .icon').innerHTML = ICONS.mobileExplorer;
+            $('.mobile-tab[data-view="editor"] .icon').innerHTML = ICONS.mobileEditor;
+            $('.mobile-tab[data-view="terminal"] .icon').innerHTML = ICONS.mobileTerminal;
+        }
+
+        // --- Initialization and Event Listeners ---
+        async function init() {
+            await DB.init();
+            
+            markdownConverter = new showdown.Converter({tables: true, simplifiedAutoLink: true, strikethrough: true, tasklists: true});
+
+            $('#api-key-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                handleApiKeySubmit();
+            });
+            
+            // New project start flow listeners
+            $('#restore-btn').addEventListener('click', async () => {
+                const lastProjectName = localStorage.getItem(LAST_SESSION_KEY);
+                if (lastProjectName && await loadProject(lastProjectName)) {
+                    $('#project-start-modal').style.display = 'none';
+                    $('#app-container').style.display = 'flex';
+                } else {
+                    alert("Could not restore session.");
+                }
+            });
+            $('#load-project-start-btn').addEventListener('click', () => {
+                $('#project-start-modal').style.display = 'none';
+                showProjectManager();
+            });
+            $('#start-fresh-btn').addEventListener('click', () => {
+                $('#start-options-view').style.display = 'none';
+                $('#new-project-prompt').style.display = 'block';
+            });
+            $('#cancel-new-project-btn').addEventListener('click', () => {
+                $('#start-options-view').style.display = 'block';
+                $('#new-project-prompt').style.display = 'none';
+            });
+            $('#import-start-btn').addEventListener('click', () => {
+                $('#import-project-input').click();
+            });
+            $('#import-project-input').addEventListener('change', handleProjectImport);
+
+            $('#new-project-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const description = $('#new-project-input').value.trim();
+                if (description) startNewProject(description);
+            });
+
+            $('#input-form').addEventListener('submit', handleUserInput);
+            $('#auto-mode-guidance-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const guidanceInput = $('#guidance-input');
+                const guidanceText = guidanceInput.value.trim();
+                if (guidanceText) {
+                    pendingGuidance = guidanceText;
+                    logToTerminal(`Guidance queued for next step: "${guidanceText}"`, 'user');
+                    guidanceInput.value = '';
+                }
+            });
+            $('#user-input').addEventListener('input', handleSlashCommand);
+            $('#user-input').addEventListener('paste', handleImagePaste);
+            $('#user-input').addEventListener('keydown', handleCommandMenuKeydown);
+            document.querySelectorAll('.right-pane-tab').forEach(tab => tab.addEventListener('click', e => {
+                switchRightPaneTab(e.currentTarget.dataset.tab);
+            }));
+
+            $('#import-files-input').addEventListener('change', handleFileImport);
+            $('#commit-btn').addEventListener('click', commitChanges);
+            $('#restore-changes-btn').addEventListener('click', restoreToLastCommit);
+            $('#clear-terminal-btn').addEventListener('click', () => {
+                $('#terminal-output').innerHTML = '';
+            });
+
+            setupHeaderControls();
+            setupResizers();
+            setupContextMenu();
+            setupProjectManager();
+            setupMobileTabs();
+            setupRules();
+            
+            if (App.isMobile()) {
+                setMobileView('editor');
+            }
+        }
+
+        async function handleApiKeySubmit() {
+            const apiKey = $('#api-key-input').value.trim();
+            if (apiKey) {
+                try {
+                    ai = new GoogleGenAI({ apiKey });
+                    
+                    await migrateFromLocalStorage();
+
+                    $('#api-key-modal').style.display = 'none';
+                    $('#project-start-modal').style.display = 'flex';
+                    
+                    const lastProjectName = localStorage.getItem(LAST_SESSION_KEY);
+                    const restoreBtn = $('#restore-btn');
+                    if (lastProjectName) {
+                        restoreBtn.disabled = false;
+                        restoreBtn.textContent = `Restore "${lastProjectName}"`;
+                    } else {
+                        restoreBtn.disabled = true;
+                        restoreBtn.textContent = 'No Project to Restore';
+                    }
+
+                    const allProjects = await DB.getProjects();
+                    const loadProjectBtn = $('#load-project-start-btn');
+                    if (allProjects.length > 0) {
+                        loadProjectBtn.disabled = false;
+                    } else {
+                        loadProjectBtn.disabled = true;
+                        loadProjectBtn.textContent = 'No Projects to Load';
+                    }
+
+                } catch (error) {
+                    alert("Failed to initialize AI. Check API Key or console for errors.");
+                    console.error(error);
+                }
+            }
+        }
+
+        const isBinary = (file) => {
+            const binaryTypes = ['image/', 'audio/', 'video/', 'application/octet-stream', 'application/zip', 'application/pdf'];
+            const binaryExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp3', '.mp4', '.woff', '.woff2', '.ttf', '.eot'];
+            return binaryTypes.some(type => file.type.startsWith(type)) || binaryExtensions.some(ext => file.name.endsWith(ext));
+        }
+
+        const readFileAsPromise = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve({ path: file.webkitRelativePath || file.name, content: e.target.result });
+                reader.onerror = reject;
+                if (isBinary(file)) {
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.readAsText(file);
+                }
+            });
+        };
+
+        async function handleProjectImport(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+
+            const defaultName = files.length > 0 && files[0].webkitRelativePath ? files[0].webkitRelativePath.split('/')[0] : 'imported-project';
+            const projectName = prompt("Enter a name for your new imported project:", defaultName);
+            if (!projectName) {
+                event.target.value = '';
+                return;
+            }
+
+            App.currentProjectName = projectName;
+            App.vfs.load({});
+            App.rules = {};
+            uncommittedChanges = {};
+            conversationHistory = [
+                { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
+                { role: 'model', parts: [{ text: "Okay, I am Archie. I'm ready to start." }] }
+            ];
+            await DB.saveProject({ name: projectName, lastModified: Date.now(), history: pruneHistoryForStorage(conversationHistory), rules: App.rules });
+            localStorage.setItem(LAST_SESSION_KEY, projectName);
+            $('#project-title-display').textContent = App.currentProjectName;
+
+            const filePromises = Array.from(files).map(readFileAsPromise);
+            const fileResults = await Promise.all(filePromises);
+            fileResults.forEach(result => App.vfs.applyChange(result.path, result.content));
+
+            const commitId = `commit_import_${Date.now()}`;
+            const commitData = { id: commitId, projectName: App.currentProjectName, message: "Initial project import", timestamp: Date.now(), changes: Object.keys(App.vfs.files) };
+            const snapshots = Object.entries(App.vfs.files).map(([path, content]) => ({ commitId, path, content }));
+            await DB.saveFileSnapshots(snapshots);
+            await DB.saveCommit(commitData);
+
+            $('#project-start-modal').style.display = 'none';
+            $('#app-container').style.display = 'flex';
+            renderAll();
+            renderPadView();
+            renderRulesUI();
+            updateChangesUI();
+            logToTerminal(`Project "${projectName}" created from ${files.length} imported files.`, 'system');
+            event.target.value = '';
+        }
+
+        // --- Data Migration from localStorage ---
+        async function migrateFromLocalStorage() {
+            const oldProjectListKey = 'archieIDE_projectList';
+            const oldProjectListJSON = localStorage.getItem(oldProjectListKey);
+
+            if (!oldProjectListJSON) {
+                return;
+            }
+
+            console.log("Old project data found. Starting migration to IndexedDB...");
+            let migrationCount = 0;
+            
+            try {
+                const oldProjectNames = JSON.parse(oldProjectListJSON);
+                for (const name of oldProjectNames) {
+                    const oldProjectKey = `archieIDE_project_${name}`;
+                    const oldProjectJSON = localStorage.getItem(oldProjectKey);
+                    if (!oldProjectJSON) continue;
+
+                    const oldProjectData = JSON.parse(oldProjectJSON);
+                    
+                    const projectEntry = {
+                        name: oldProjectData.name || name,
+                        lastModified: Date.now(),
+                        history: oldProjectData.history || [],
+                        rules: oldProjectData.rules || {} // Migrate rules
+                    };
+                    await DB.saveProject(projectEntry);
+
+                    const commitId = `commit_migrated_${Date.now()}`;
+                    const commitData = {
+                        id: commitId,
+                        projectName: projectEntry.name,
+                        message: "Initial migration from localStorage",
+                        timestamp: Date.now(),
+                        changes: Object.keys(oldProjectData.files || {})
+                    };
+                    await DB.saveCommit(commitData);
+
+                    const snapshots = Object.entries(oldProjectData.files || {}).map(([path, content]) => ({
+                        commitId: commitId,
+                        path: path,
+                        content: content
+                    }));
+                    await DB.saveFileSnapshots(snapshots);
+                    
+                    console.log(`Successfully migrated project: ${name}`);
+                    migrationCount++;
+                }
+
+                oldProjectNames.forEach(name => {
+                    localStorage.removeItem(`archieIDE_project_${name}`);
+                });
+                localStorage.removeItem(oldProjectListKey);
+                
+                if (migrationCount > 0) {
+                    alert(`Successfully migrated ${migrationCount} project(s) to the new, more robust storage system!`);
+                }
+            } catch (error) {
+                console.error("Error during data migration:", error);
+                alert("An error occurred while trying to migrate your old projects. Please check the console for details.");
+            }
+        }
+
+        function toggleLoading(isLoading, promptText = "") {
+            isGenerating = isLoading;
+            $('#send-btn').disabled = isLoading;
+            $('#user-input').disabled = isLoading;
+            $('#auto-mode-guidance-form').classList.toggle('visible', isLoading && App.isAutoMode);
+
+
+            const terminal = $('#terminal-output');
+            let indicator = $('#thinking-indicator');
+
+            if (isLoading) {
+                if (indicator) indicator.remove();
+                if (promptText) $('#commit-message').value = promptText;
+
+                indicator = document.createElement('div');
+                indicator.id = 'thinking-indicator';
+                indicator.className = 'log-entry log-thinking';
+                indicator.textContent = 'Archie is thinking...';
+                terminal.appendChild(indicator);
+                terminal.scrollTop = terminal.scrollHeight;
+            } else {
+                if (indicator) indicator.remove();
+            }
+        }
+
+        async function autoModeLoop() {
+            if (!App.isAutoMode) {
+                logToTerminal("Auto Mode has been disabled. Halting loop.", "system");
+                return;
+            }
+
+            logToTerminal("Auto Mode: Starting next cycle...", "system");
+            
+            let nextPrompt = "You are in Auto Mode. Read the `PROJECT_ARCHITECTURE.md` file, find the first task in the 'Implementation Plan' table with a 'PENDING' status, and execute it using your tools. After you succeed, your next step MUST be to update the PAD to mark the task as 'COMPLETED' and add an entry to the 'Execution Log'.";
+            
+            if (pendingGuidance) {
+                logToTerminal(`Injecting user guidance into auto-mode: "${pendingGuidance}"`, 'system');
+                nextPrompt = `The user has provided guidance: "${pendingGuidance}". Please prioritize this, then continue with the PAD-driven workflow.`;
+                pendingGuidance = null;
+            }
+
+            const result = await submitPrompt(nextPrompt);
+
+            if (App.isAutoMode && result && !result.projectIsComplete) {
+                // Check if there are still pending tasks before looping
+                const padContent = App.vfs.read('PROJECT_ARCHITECTURE.md') || '';
+                if (padContent.includes('| PENDING |')) {
+                    autoModeLoop(); // Continue the loop
+                } else {
+                    logToTerminal("Auto Mode: All tasks in PAD are complete. Halting.", 'system');
+                    App.isAutoMode = false;
+                    $('#auto-mode-btn').classList.remove('active');
+                }
+            } else {
+                if (result && result.projectIsComplete) {
+                    logToTerminal("Auto Mode: Project marked as complete by AI. Halting.", 'system');
+                }
+                App.isAutoMode = false;
+                $('#auto-mode-btn').classList.remove('active');
+            }
+        }
+
+        async function toggleAutoMode() {
+            const btn = $('#auto-mode-btn');
+            App.isAutoMode = !App.isAutoMode;
+
+            if (App.isAutoMode) {
+                if (!App.vfs.read('PROJECT_ARCHITECTURE.md')) {
+                     alert("Cannot start Auto Mode. Please create or generate a Project Architecture Document (PAD) first using the /generate_pad command.");
+                     App.isAutoMode = false;
+                     return;
+                }
+                btn.classList.add('active');
+                logToTerminal(`Auto Mode enabled. The AI will now execute tasks from the PAD.`, 'system');
+                autoModeLoop();
+            } else {
+                btn.classList.remove('active');
+                logToTerminal("Auto Mode disabled by user. AI will halt after its current action.", 'system');
+            }
+        }
+
+        function setupHeaderControls() {
+            $('#auto-mode-btn').innerHTML = `<span class="icon">${ICONS.robot}</span>`;
+            $('#auto-mode-btn').addEventListener('click', toggleAutoMode);
+
+            $('#model-selector').addEventListener('change', (e) => {
+                App.selectedModel = e.target.value;
+                logToTerminal(`Model switched to: ${e.target.options[e.target.selectedIndex].text}`, 'system');
+            });
+
+            // Moved to explorer-footer:
+            $('#projects-btn').innerHTML = `<span class="icon">${ICONS.project}</span>`;
+            $('#projects-btn').addEventListener('click', showProjectManager);
+
+            $('#import-files-btn').innerHTML = `<span class="icon">${ICONS.import}</span>`;
+            $('#import-files-btn').addEventListener('click', () => $('#import-files-input').click());
+
+            $('#download-zip-btn').innerHTML = `<span class="icon">${ICONS.download}</span>`;
+            $('#download-zip-btn').addEventListener('click', downloadProjectAsZip);
+
+            $('#mobile-menu-btn').addEventListener('click', () => {
+                $('.header-controls').classList.toggle('visible');
+            });
+        }
+
+        async function generatePadForProject() {
+            if (App.vfs.read('PROJECT_ARCHITECTURE.md') && !confirm("A PAD file already exists. Do you want to overwrite it based on the current project state? This will stage a change.")) {
+                logToTerminal("PAD generation cancelled by user.", 'system');
+                return;
+            }
+
+            logToTerminal("Analyzing project to generate a new PAD...", 'system');
+
+            let analysisPrompt = `Please act as a senior software architect. Analyze the following project files and generate a complete Project Architecture Document (PAD) for the project named "${App.currentProjectName}". 
+            
+        Your task is to infer the project's objective, features, data structures, and technical details directly from the provided code. Fill out the template as accurately and completely as possible.
+
+        **PAD Template to use:**
+        \`\`\`markdown
+        ${PAD_TEMPLATE}
+        \`\`\`
+
+        ---
+        **PROJECT FILES FOR ANALYSIS:**
+
+        `;
+
+            analysisPrompt += `File Tree:\n${App.vfs.getTreeString()}\n\n`;
+
+            // Smartly select up to 5 key files to include in the context to avoid exceeding limits
+            const filesToAnalyze = Object.keys(App.vfs.files).filter(path =>
+                (path.endsWith('.html') || path.endsWith('.js') || path.endsWith('.css') || path.endsWith('.json')) && path !== 'PROJECT_ARCHITECTURE.md'
+            ).slice(0, 5);
+
+            for (const path of filesToAnalyze) {
+                const content = App.vfs.read(path);
+                if (content) {
+                    // Add file content, truncated to avoid excessive length
+                    analysisPrompt += `### File: ${path}\n\`\`\`\n${content.substring(0, 2500)}\n\`\`\`\n\n`;
+                }
+            }
+
+            analysisPrompt += "Now, based on your analysis, generate the complete and updated markdown for the PROJECT_ARCHITECTURE.md file. Your response should ONLY be the markdown content itself.";
+
+            const result = await submitPrompt(analysisPrompt);
+            
+            if (result && result.finalText) {
+                const newPadContent = result.finalText;
+                if (newPadContent.includes('# PAD:')) {
+                    stageChange('PROJECT_ARCHITECTURE.md', newPadContent);
+                    renderFileExplorer();
+                    renderPadView();
+                    updateChangesUI();
+                    logToTerminal("Project Architecture Document generated successfully! It has been staged as a change.", 'system');
+                    switchRightPaneTab('pad'); // Switch to the PAD tab to show the result
+                } else {
+                    logToTerminal("Failed to generate PAD. The AI did not return the expected markdown format.", 'error');
+                    console.error("Unexpected AI response for PAD generation:", newPadContent);
+                }
+            } else {
+                 logToTerminal("Failed to generate PAD. The AI call did not produce a result.", 'error');
+            }
+        }
+
+        const COMMANDS = { 
+            screenshot: { 
+                desc: "Capture the live preview pane.", 
+                action: () => {
+                    capturePreview().catch(err => alert(err.message || "Failed to capture screenshot."));
+                }
+            },
+            generate_pad: {
+                desc: "Analyze the project and generate a Project Architecture Document.",
+                action: generatePadForProject
+            },
+            tool: { desc: "Suggest a tool for the AI to use.", isPrefix: true },
+            clean_history: { desc: "Reconstructs history to match the terminal log, removing bloat.", action: reconstructAndCleanHistory }
+        };
+
+        async function reconstructAndCleanHistory() {
+            if (conversationHistory.length < 2) {
+                logToTerminal("History is too short to clean.", 'system');
+                return;
+            }
+
+            logToTerminal("Reconstructing history to match chat log...", 'system');
+            const originalHistory = conversationHistory;
+            const reconstructedHistory = [originalHistory[0], originalHistory[1]]; // Keep system prompt + initial AI response
+
+            for (let i = 2; i < originalHistory.length; i++) {
+                const entry = originalHistory[i];
+                const newParts = [];
+
+                if (entry.role === 'user') {
+                    const textPart = entry.parts.find(p => p.text);
+                    const imagePart = entry.parts.find(p => p.inlineData || (p.text && p.text.includes('(Image was provided')));
+                    if (textPart) newParts.push(textPart);
+                    if (imagePart && !textPart) {
+                        newParts.push({ text: '(Image was provided, not stored in history)' });
+                    }
+                } else if (entry.role === 'model') {
+                    const textPart = entry.parts.find(p => p.text);
+                    if (textPart && textPart.text.trim()) {
+                        newParts.push(textPart);
+                    }
+                }
+                
+                if (newParts.length > 0) {
+                    reconstructedHistory.push({ role: entry.role, parts: newParts });
+                }
+            }
+            
+            conversationHistory = pruneHistoryForStorage(reconstructedHistory);
+            renderTerminalFromHistory();
+            await saveProjectState();
+            logToTerminal("History reconstruction complete. Bloat has been removed and the clean history has been saved.", 'system');
+        }
+
+        async function capturePreview() {
+            const allFiles = Object.keys(App.vfs.files);
+            let htmlPath = allFiles.find(p => p.toLowerCase() === 'index.html');
+            if (!htmlPath) {
+                htmlPath = allFiles.find(p => p.toLowerCase().endsWith('.html') || p.toLowerCase().endsWith('.htm'));
+            }
+
+            if (!htmlPath) {
+                throw new Error("No HTML file found in the project to preview.");
+            }
+
+            let wasInitiallyHidden = false;
+            if (!App.previewModeFiles.has(htmlPath)) {
+                wasInitiallyHidden = true;
+                App.previewModeFiles.add(htmlPath);
+                if (!App.openFiles.has(htmlPath)) App.openFiles.add(htmlPath);
+                setActiveFile(htmlPath);
+            } else {
+                setActiveFile(htmlPath);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100)); 
+
+            const pane = $(`.editor-pane.active[data-path="${htmlPath}"]`);
+            const frame = pane ? pane.querySelector('iframe') : null;
+
+            if (!frame) {
+                if (wasInitiallyHidden) {
+                    App.previewModeFiles.delete(htmlPath);
+                    renderEditor();
+                }
+                throw new Error("Could not find the preview iframe after attempting to open it.");
+            }
+            if (!frame.contentWindow || !frame.contentWindow.document.body.innerHTML.trim()) {
+                 if (wasInitiallyHidden) {
+                    App.previewModeFiles.delete(htmlPath);
+                    renderEditor();
+                }
+                throw new Error("Preview is empty, nothing to capture.");
+            }
+
+            try {
+                logToTerminal("Capturing screenshot of preview...", "system");
+                const canvas = await html2canvas(frame.contentWindow.document.body, { useCORS: true, allowTaint: true, logging: false });
+                const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                stageImage(imgData, 'image/jpeg');
+                logToTerminal("Screenshot captured and staged.", "system");
+            } catch (err) {
+                console.error("html2canvas error:", err);
+                throw new Error("Error during screenshot generation.");
+            } finally {
+                if (wasInitiallyHidden) {
+                    App.previewModeFiles.delete(htmlPath);
+                    renderEditor();
+                }
+            }
+        }
+
+        function handleImagePaste(e) { const items = e.clipboardData.items; for (const item of items) { if (item.type.indexOf('image') !== -1) { e.preventDefault(); const file = item.getAsFile(); const reader = new FileReader(); reader.onload = (event) => { stageImage(event.target.result, file.type); }; reader.readAsDataURL(file); break; } } }
+        function stageImage(base64, mimeType) { stagedImage = { base64, mimeType }; const container = $('#staged-image-container'); container.innerHTML = `<img src="${base64}" alt="Staged image"><button id="staged-image-remove-btn">×</button>`; container.style.display = 'block'; $('#staged-image-remove-btn').addEventListener('click', () => { stagedImage = null; container.style.display = 'none'; container.innerHTML = ''; }); }
+        function handleSlashCommand() { const input = $('#user-input'); const menu = $('#slash-command-menu'); const text = input.value; if (text.startsWith('/')) { const query = text.substring(1).toLowerCase(); let filteredCommands = Object.keys(COMMANDS).filter(cmd => cmd.startsWith(query)); if (COMMANDS.tool.isPrefix && 'tool'.startsWith(query)) { const toolQuery = query.replace(/^tool\s*/, ''); Object.keys(functionHandlers).forEach(toolName => { if (toolName.startsWith(toolQuery)) { filteredCommands.push(`tool ${toolName}`); } }); } if (filteredCommands.length > 0) { renderCommandMenu(filteredCommands.slice(0, 10)); menu.style.display = 'block'; } else { menu.style.display = 'none'; } } else { menu.style.display = 'none'; } }
+        function renderCommandMenu(commands) { const menu = $('#slash-command-menu'); menu.innerHTML = ''; commands.forEach((cmd, index) => { const item = document.createElement('div'); item.className = 'command-item'; if (index === 0) item.classList.add('selected'); item.dataset.command = cmd; if (cmd.startsWith('tool ')) { const toolName = cmd.split(' ')[1]; item.innerHTML = `<span class="command-name">/tool ${toolName}</span>`; } else { item.innerHTML = `<span class="command-name">/${cmd}</span><span class="command-desc">${COMMANDS[cmd].desc}</span>`; } item.addEventListener('click', () => selectCommand(cmd)); menu.appendChild(item); }); }
+        function selectCommand(cmd) { const input = $('#user-input'); const menu = $('#slash-command-menu'); if (cmd.startsWith('tool ')) { input.value = `/${cmd} `; } else if (COMMANDS[cmd] && COMMANDS[cmd].action) { COMMANDS[cmd].action(); input.value = ''; } menu.style.display = 'none'; input.focus(); }
+        function handleCommandMenuKeydown(e) { const menu = $('#slash-command-menu'); if (menu.style.display === 'none') return; const items = Array.from(menu.querySelectorAll('.command-item')); if (items.length === 0) return; let currentIndex = items.findIndex(item => item.classList.contains('selected')); if (e.key === 'ArrowDown') { e.preventDefault(); currentIndex = (currentIndex + 1) % items.length; } else if (e.key === 'ArrowUp') { e.preventDefault(); currentIndex = (currentIndex - 1 + items.length) % items.length; } else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); if (currentIndex > -1) { selectCommand(items[currentIndex].dataset.command); } return; } else { return; } items.forEach((item, index) => { item.classList.toggle('selected', index === currentIndex); }); }
+        function setupResizers() { const explorerResizer = $('#explorer-resizer'); const previewResizer = $('#preview-resizer'); const ideLayout = $('#ide-layout'); const onMouseMove = (callback) => (e) => { e.preventDefault(); callback(e); }; const onMouseUp = (mouseMoveHandler) => () => { window.removeEventListener('mousemove', mouseMoveHandler); window.removeEventListener('mouseup', onMouseUp); }; explorerResizer.addEventListener('mousedown', (e) => { e.preventDefault(); const mouseMoveHandler = onMouseMove((e) => { document.documentElement.style.setProperty('--explorer-width', `${e.clientX}px`); }); window.addEventListener('mousemove', mouseMoveHandler); window.addEventListener('mouseup', onMouseUp(mouseMoveHandler)); }); previewResizer.addEventListener('mousedown', (e) => { e.preventDefault(); const mouseMoveHandler = onMouseMove((e) => { const totalWidth = ideLayout.offsetWidth; const newWidth = totalWidth - e.clientX; document.documentElement.style.setProperty('--right-pane-width', `${newWidth}px`); }); window.addEventListener('mousemove', mouseMoveHandler); window.addEventListener('mouseup', onMouseUp(mouseMoveHandler)); }); }
+        function setupContextMenu() { const menu = $('#context-menu'); let contextPath = null; window.showContextMenu = (e, path) => { e.preventDefault(); e.stopPropagation(); contextPath = path; menu.style.display = 'block'; menu.style.left = `${e.clientX}px`; menu.style.top = `${e.clientY}px`; }; document.addEventListener('click', () => menu.style.display = 'none'); menu.addEventListener('click', (e) => { const action = e.target.dataset.action; if (!action || !contextPath) return; const isFolder = App.vfs.files[contextPath] === null; const basePath = isFolder ? contextPath : contextPath.substring(0, contextPath.lastIndexOf('/') + 1); switch (action) { case 'new-file': { const fileName = prompt("Enter new file name:", "new-file.txt"); if (fileName) stageChange(basePath + fileName, ''); break; } case 'new-folder': { const folderName = prompt("Enter new folder name:", "new-folder"); if (folderName) stageChange(basePath + folderName + '/', null); break; } case 'rename': { const newName = prompt(`Enter new name for "${contextPath}":`, contextPath); if (newName && newName !== contextPath) { const content = App.vfs.read(contextPath); stageChange(contextPath, null); stageChange(newName, content); if (App.openFiles.has(contextPath)) { App.openFiles.delete(contextPath); App.openFiles.add(newName); } if (App.activeFile === contextPath) App.activeFile = newName; renderEditor(); } break; } case 'delete': { if (confirm(`Are you sure you want to delete "${contextPath}"?`)) { stageChange(contextPath, null); if (App.openFiles.has(contextPath)) closeFile(contextPath); } break; } case 'copy-path': { navigator.clipboard.writeText(contextPath).then(() => { logToTerminal(`Path copied to clipboard: ${contextPath}`, 'system'); }).catch(err => { logToTerminal(`Failed to copy path: ${err}`, 'error'); }); break; } } updateChangesUI(); renderFileExplorer(); }); }
+        async function showProjectManager() { const modal = $('#project-manager-modal'); const list = $('#project-list'); list.innerHTML = ''; const projects = await DB.getProjects(); projects.forEach(proj => { const li = document.createElement('li'); li.textContent = proj.name; li.dataset.name = proj.name; li.addEventListener('click', () => { list.querySelectorAll('li').forEach(i => i.classList.remove('selected')); li.classList.add('selected'); }); list.appendChild(li); }); modal.style.display = 'flex'; }
+        function setupProjectManager() {
+            const modal = $('#project-manager-modal');
+            $('#close-pm-btn').addEventListener('click', () => {
+                modal.style.display = 'none';
+                if (!App.currentProjectName) {
+                    $('#project-start-modal').style.display = 'flex';
+                }
+            });
+            $('#save-project-btn').addEventListener('click', async () => {
+                const oldProjectName = App.currentProjectName || "new-project";
+                const newProjectName = prompt("Enter new name to save a copy of the project:", oldProjectName + "-copy");
+
+                if (newProjectName && newProjectName.trim()) {
+                    const finalNewName = newProjectName.trim();
+                    
+                    const projectDataToSave = {
+                        name: finalNewName,
+                        lastModified: Date.now(),
+                        history: pruneHistoryForStorage(conversationHistory),
+                        rules: App.rules
+                    };
+                    await DB.saveProject(projectDataToSave);
+
+                    const commitId = `commit_save_as_${Date.now()}`;
+                    const commitData = {
+                        id: commitId,
+                        projectName: finalNewName,
+                        message: `Copied from project: ${App.currentProjectName || 'Unsaved Project'}`,
+                        timestamp: Date.now(),
+                        changes: Object.keys(App.vfs.files)
+                    };
+
+                    const snapshots = Object.entries(App.vfs.files).map(([path, content]) => ({
+                        commitId: commitId,
+                        path: path,
+                        content: content
+                    }));
+
+                    await DB.saveFileSnapshots(snapshots);
+                    await DB.saveCommit(commitData);
+
+                    await showProjectManager(); // Refresh the list
+                    logToTerminal(`Project copied as "${finalNewName}".`, 'system');
+                }
+            });
+            $('#load-project-btn').addEventListener('click', () => {
+                const selected = $('#project-list .selected');
+                if (selected) {
+                    loadProject(selected.dataset.name);
+                    modal.style.display = 'none';
+                    $('#app-container').style.display = 'flex';
+                } else {
+                    alert("Please select a project to load.");
+                }
+            });
+            $('#delete-project-btn').addEventListener('click', async () => {
+                const selected = $('#project-list .selected');
+                if (selected) {
+                    const name = selected.dataset.name;
+                    if (confirm(`Are you sure you want to permanently delete project "${name}"? This cannot be undone.`)) {
+                        await DB.deleteProject(name);
+                        logToTerminal(`Project "${name}" deleted.`, 'system');
+                        if (App.currentProjectName === name) {
+                            App.currentProjectName = null;
+                            App.vfs.load({});
+                            renderAll();
+                            updateChangesUI();
+                        }
+                        showProjectManager();
+                    }
+                } else {
+                    alert("Please select a project to delete.");
+                }
+            });
+        }
+        
+        async function handleFileImport(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+            const filePromises = Array.from(files).map(readFileAsPromise);
+            const fileResults = await Promise.all(filePromises);
+            fileResults.forEach(result => {
+                stageChange(result.path, result.content);
+                logToTerminal(`Staged import of file: ${result.path}`, 'system');
+            });
+            renderFileExplorer();
+            updateChangesUI();
+            event.target.value = '';
+        }
+
+        async function downloadProjectAsZip() {
+            const zip = new JSZip();
+            Object.keys(App.vfs.files).forEach(path => {
+                const content = App.vfs.files[path];
+                if (content === null) { // It's a folder
+                    if (!Object.keys(App.vfs.files).some(p => p.startsWith(path) && p !== path)) {
+                        zip.folder(path.slice(0, -1));
+                    }
+                } else { // It's a file
+                    if (content.startsWith('data:')) {
+                        // Handle Base64 data URL
+                        const [_, base64Data] = content.split(',', 2);
+                        zip.file(path, base64Data, { base64: true });
+                    } else {
+                        // Handle plain text
+                        zip.file(path, content);
+                    }
+                }
+            });
+            const zipBlob = await zip.generateAsync({type:"blob"});
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${App.currentProjectName.replace(/\s+/g, '-') || 'archie-project'}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        init();
+    </script>
+</body>
+</html>
