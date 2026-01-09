@@ -485,7 +485,52 @@ const CONFIG = {
     }
 };
 
-const SMARTSHEET_PALETTE = ["none","transparent","#000000","#0B347D","#1061C3","#237F2E","#40B14B","#592C00","#5FB3F9","#61058B","#757575","#7ED085","#9210AD","#974C00","#991310","#B9DDFC","#BDBDBD","#C6E7C8","#D0AF8F","#D190DA","#E2F2FE","#E5E5E5","#E7F5E9","#EA352E","#EA5000","#EBC700","#EBC7EF","#EEDCCA","#F2E8DE","#F4E4F5","#F87E7D","#FEFF00","#FEFF85","#FF8D00","#FFCCD2","#FFCD7A","#FFE1AF","#FFEBEE","#FFED00","#FFF3DF","#FFFEE6","#FFFFFF"];
+// UPDATED SMARTSHEET_PALETTE BASED ON USER INPUT
+// Index 0 to 41 mapped from provided data.
+const SMARTSHEET_PALETTE = [
+    "transparent", // 0 (None)
+    "#000000", // 1 (Black, from User Data)
+    "#FFFFFF", // 2 (White, from User Data)
+    "transparent", // 3 (Filler)
+    "#FFEBEE", // 4
+    "#FFF3DF", // 5
+    "#FFFEE6", // 6
+    "#E7F5E9", // 7
+    "#E2F2FE", // 8
+    "#F4E4F5", // 9
+    "#F2E8DE", // 10
+    "#FFCCD2", // 11
+    "#FFE1AF", // 12
+    "#FEFF85", // 13
+    "#C6E7C8", // 14
+    "#B9DDFC", // 15
+    "#EBC7EF", // 16
+    "#EEDCCA", // 17
+    "#E5E5E5", // 18
+    "#F87E7D", // 19
+    "#FFCD7A", // 20
+    "#FEFF00", // 21
+    "#7ED085", // 22
+    "#5FB3F9", // 23
+    "#D190DA", // 24
+    "#D0AF8F", // 25
+    "#BDBDBD", // 26
+    "#EA352E", // 27
+    "#FF8D00", // 28
+    "#FFED00", // 29
+    "#40B14B", // 30
+    "#1061C3", // 31
+    "#9210AD", // 32
+    "#974C00", // 33
+    "#757575", // 34
+    "#991310", // 35
+    "#EA5000", // 36
+    "#EBC700", // 37
+    "#237F2E", // 38
+    "#0B347D", // 39
+    "#61058B", // 40
+    "#592C00"  // 41
+];
 
 // GLOBAL STATE
 let STATE = { 
@@ -613,7 +658,7 @@ function checkConflictsDone() { if(STATE.conflicts.length === 0) { bootstrap.Mod
 function convertDeletedRowToNew(oldId) { const edits = STATE.edits[oldId]; if(!edits) return; const tempId = 'NEW_REC_' + Date.now(); const newRow = { id: tempId, cells: [], rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", toTop: true }; STATE.edits[tempId] = {...edits}; delete STATE.edits[oldId]; STATE.adds.push(newRow); }
 
 // --- FORMATTING PARSER ---
-// --- 3. FIX: PREVENT ACCIDENTAL BLACK BACKGROUNDS ---
+// --- 3. FIX: UPDATED FOR SPECIFIC PALETTE INDICES ---
 function getFormatInfo(fmt) {
     if (!fmt) return { style: '', bg: null };
     const p = fmt.split(','); 
@@ -623,20 +668,27 @@ function getFormatInfo(fmt) {
     // Index 9 is Background Color
     if (p.length > 9) { 
         const bgIdx = parseInt(p[9]); 
-        // Smartsheet Palette: 0=None, 1=White, 2=Black, 3...Colors
-        // We only apply if it's not 0 (None), 1 (White), or if it's a specific color.
-        // If your sheet is turning black, index 2 is being triggered. 
-        // We will skip 0, 1, and 2 to keep backgrounds clean by default.
-        if (!isNaN(bgIdx) && bgIdx > 2 && SMARTSHEET_PALETTE[bgIdx]) {
-            bg = SMARTSHEET_PALETTE[bgIdx];
+        // Ensure index is valid and defined in our palette
+        if (!isNaN(bgIdx) && SMARTSHEET_PALETTE[bgIdx]) {
+            const color = SMARTSHEET_PALETTE[bgIdx];
+            // Don't apply if it's explicitly "none" or "transparent" (Index 0 or 3 filler)
+            if (color !== 'none' && color !== 'transparent') {
+                bg = color;
+            }
         }
     }
     
     // Index 8 is Text Color
     if (p.length > 8) { 
         const txtIdx = parseInt(p[8]); 
-        if (!isNaN(txtIdx) && txtIdx > 1 && SMARTSHEET_PALETTE[txtIdx]) {
-            s += `color: ${SMARTSHEET_PALETTE[txtIdx]} !important;`;
+        if (!isNaN(txtIdx) && SMARTSHEET_PALETTE[txtIdx]) {
+            const color = SMARTSHEET_PALETTE[txtIdx];
+            if (color !== 'none' && color !== 'transparent' && color !== '#000000') {
+                 s += `color: ${color} !important;`;
+            } else if (color === '#000000') {
+                 // Explicit black text
+                 s += `color: ${color} !important;`;
+            }
         }
     }
 
