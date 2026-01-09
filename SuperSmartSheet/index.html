@@ -209,14 +209,6 @@
             color: var(--primary-dark);
         }
         
-        .badge-cell { padding: 12px 8px; height: 100%; min-height: 100%; display: flex; align-items: flex-start; gap: 4px; overflow: hidden; cursor: pointer; white-space: normal; position: relative; flex-wrap: wrap;}
-        .badge-pill { background: var(--primary-soft); color: var(--primary-dark); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
-        
-        #multiPopover { display: none; position: fixed; z-index: 1050; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); min-width: 150px; max-height: 350px; overflow: hidden; flex-direction: column; color: var(--text-main); }
-        #multiPopover.show { display: flex !important; } 
-        #multiPopover .popover-content { padding: 8px; overflow-y: auto; flex-grow: 1; }
-        #multiPopover .form-check:hover { background-color: var(--bg); }
-        
         #columnFilterPopover { display: none; position: fixed; z-index: 1050; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 320px; color: var(--text-main); }
         #columnFilterPopover.show { display: block !important; }
 
@@ -245,6 +237,56 @@
         
         .log-line { font-family: monospace; font-size: 0.8rem; border-bottom: 1px solid #333; padding: 4px; }
 
+        /* HYBRID PICKER STYLES */
+        #pickerBackdrop {
+            display: none;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2999;
+        }
+        #universalPicker {
+            display: none;
+            position: fixed; 
+            z-index: 3000;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            overflow: hidden;
+            flex-direction: column;
+            width: 300px;
+            max-height: 400px;
+        }
+        #universalPicker.show { display: flex; }
+        .picker-header { padding: 8px; border-bottom: 1px solid var(--border); background: var(--bg); }
+        .picker-body { overflow-y: auto; flex: 1; padding: 4px 0; }
+        .picker-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+        .picker-option:hover { background-color: var(--primary-soft); color: var(--primary-dark); }
+        .picker-option.selected { font-weight: 600; color: var(--primary); background-color: var(--primary-soft); }
+        .picker-option i { width: 24px; font-size: 1.1em; }
+        
+        .cell-value-display {
+            width: 100%; height: 100%; min-height: 100%; padding: 4px 6px;
+            display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+            cursor: pointer; overflow: hidden;
+        }
+        .cell-value-display::after {
+            content: ''; margin-left: auto; width: 0; height: 0;
+            border-left: 4px solid transparent; border-right: 4px solid transparent;
+            border-top: 4px solid var(--text-muted); opacity: 0.5;
+        }
+        .picker-badge {
+            background: var(--primary-soft); color: var(--primary-dark);
+            font-size: 0.75rem; font-weight: 600; padding: 1px 6px; border-radius: 99px;
+            white-space: nowrap;
+        }
+
+        /* MOBILE OVERRIDES FOR PICKER */
         @media (max-width: 768px) {
             .glass-header { padding: 0.5rem; }
             .toolbar { padding: 0.5rem; }
@@ -258,8 +300,23 @@
             .mobile-toggle-btn { display: flex; justify-content: center; align-items: center; cursor: pointer; } 
             .actions-wrapper { display: none; position: absolute; left: 40px; top: 5px; background: var(--surface); padding: 4px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid var(--border); width: auto; z-index: 1000; } 
             .actions-wrapper.show { display: flex; animation: fadeIn 0.1s ease-out; } 
+            
+            /* Mobile Sheet Style */
+            #pickerBackdrop.show { display: block; }
+            #universalPicker {
+                position: fixed;
+                top: auto !important; bottom: 0; left: 0; right: 0;
+                width: 100% !important;
+                max-height: 70vh;
+                border-radius: 16px 16px 0 0;
+                border: none;
+                box-shadow: 0 -5px 25px rgba(0,0,0,0.2);
+                animation: slideUp 0.2s ease-out;
+            }
+            .picker-option { padding: 12px 16px; font-size: 1rem; border-bottom: 1px solid var(--border); }
         }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -446,11 +503,20 @@
 <div class="modal fade" id="logsModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content bg-dark text-light"><div class="modal-header border-secondary"><h5 class="modal-title">System Logs</h5><button class="btn btn-sm btn-outline-light ms-auto me-2" onclick="copyLogs()">Copy</button><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 bg-black" id="logContent" style="min-height:300px;"></div></div></div></div>
 <div class="modal fade" id="rawDataModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-lg-down"><div class="modal-content"><div class="modal-header bg-light border-bottom"><h5 class="modal-title font-monospace fw-bold"><i class="bi bi-database me-2 text-primary"></i>Raw Data Inspector</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 position-relative"><div class="table-container" style="height: 100%;"><table id="rawTable" style="width:100%"><thead id="rawHead"></thead><tbody id="rawBody"></tbody></table></div></div></div></div></div>
 
+<!-- HYBRID PICKER -->
+<div id="pickerBackdrop" onclick="closeUniversalPicker()"></div>
+<div id="universalPicker">
+    <div class="picker-header">
+        <input type="text" id="pickerSearch" class="form-control form-control-sm" placeholder="Search options..." onkeyup="filterPickerOptions(this.value)">
+    </div>
+    <div class="picker-body" id="pickerBody">
+        <!-- Items injected here -->
+    </div>
+</div>
 
 <!-- UTILS -->
 <div id="loader" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center;"><div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div><h6 class="fw-bold text-dark">Processing...</h6></div>
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toastArea"></div>
-<div id="multiPopover" style="display:none"><div class="popover-content" id="multiOptions"></div><div class="popover-footer"><button class="btn btn-primary btn-sm w-100" onclick="saveMultiFromPopover()">Apply</button></div></div>
 <div id="columnFilterPopover">
     <div class="p-3">
         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -485,8 +551,6 @@ const CONFIG = {
     }
 };
 
-// UPDATED SMARTSHEET_PALETTE BASED ON USER INPUT
-// Index 0 to 41 mapped from provided data.
 const SMARTSHEET_PALETTE = [
     "transparent", // 0 (None)
     "#000000", // 1 (Black, from User Data)
@@ -536,9 +600,10 @@ const SMARTSHEET_PALETTE = [
 let STATE = { 
     sheetId: null, serverRows: [], allRows: [], cols: [], selectedCol: null, selectedRowIds: new Set(), adds: [], dels: new Set(), edits: {}, hierarchyChanges: {}, 
     meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set(), maxDepth: 0 }, 
-    tempMulti: null, tempFilterCol: null, logs: [], lastModifiedAt: null, autoRefresh: false, autoRefreshInterval: 60, conflicts: [], views: [], currentViewId: null,
+    tempFilterCol: null, logs: [], lastModifiedAt: null, autoRefresh: false, autoRefreshInterval: 60, conflicts: [], views: [], currentViewId: null,
     rowMap: new Map(), childMap: new Map(), flatRenderList: [], isRendering: false,
 };
+let PICKER_STATE = { rid: null, cid: null, mode: 'SINGLE', values: [] };
 
 let sortableInstance = null;
 let refreshInterval = null;
@@ -559,8 +624,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tableContainer) {
         tableContainer.addEventListener('scroll', () => {
             renderVisibleRows(); 
-            if (STATE.tempMulti) repositionPopover(document.getElementById('multiPopover'), STATE.tempMulti.cell);
             if (STATE.tempFilterCol) repositionPopover(document.getElementById('columnFilterPopover'), STATE.tempFilterCol.btn);
+            closeUniversalPicker(); // Close picker on scroll for safety
         });
     }
 });
@@ -658,7 +723,6 @@ function checkConflictsDone() { if(STATE.conflicts.length === 0) { bootstrap.Mod
 function convertDeletedRowToNew(oldId) { const edits = STATE.edits[oldId]; if(!edits) return; const tempId = 'NEW_REC_' + Date.now(); const newRow = { id: tempId, cells: [], rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", toTop: true }; STATE.edits[tempId] = {...edits}; delete STATE.edits[oldId]; STATE.adds.push(newRow); }
 
 // --- FORMATTING PARSER ---
-// --- 3. FIX: UPDATED FOR SPECIFIC PALETTE INDICES ---
 function getFormatInfo(fmt) {
     if (!fmt) return { style: '', bg: null };
     const p = fmt.split(','); 
@@ -668,10 +732,8 @@ function getFormatInfo(fmt) {
     // Index 9 is Background Color
     if (p.length > 9) { 
         const bgIdx = parseInt(p[9]); 
-        // Ensure index is valid and defined in our palette
         if (!isNaN(bgIdx) && SMARTSHEET_PALETTE[bgIdx]) {
             const color = SMARTSHEET_PALETTE[bgIdx];
-            // Don't apply if it's explicitly "none" or "transparent" (Index 0 or 3 filler)
             if (color !== 'none' && color !== 'transparent') {
                 bg = color;
             }
@@ -686,13 +748,11 @@ function getFormatInfo(fmt) {
             if (color !== 'none' && color !== 'transparent' && color !== '#000000') {
                  s += `color: ${color} !important;`;
             } else if (color === '#000000') {
-                 // Explicit black text
                  s += `color: ${color} !important;`;
             }
         }
     }
 
-    // Alignment and other styles...
     if (p[6]) { const h = ['','left','center','right']; if (h[p[6]]) s += `text-align: ${h[p[6]]};`; }
     if (p[7]) { const v = ['','top','middle','bottom']; if (v[p[7]]) s += `vertical-align: ${v[p[7]]};`; }
     if (p[2] === '1') s += 'font-weight: bold;';
@@ -702,9 +762,7 @@ function getFormatInfo(fmt) {
 }
 
 // --- SETUP MODAL ---
-// --- 2. FIX: PERSISTENT OUTLINE BUTTONS ---
 function generateOutlineButtonsHTML(context) { 
-    // Use the absolute maximum depth of the sheet, not the current view
     const maxLevel = (STATE.meta.absoluteMaxDepth || 0) + 1; 
     let html = ''; 
     for(let i = 1; i <= maxLevel; i++) { 
@@ -719,7 +777,6 @@ function setOutline(level, context) {
     targetSet.clear(); 
     if(level < 99) { 
         indexAllData();
-        // Use allRows because it now contains everything
         const rowMap = new Map(STATE.allRows.map(r => [r.id, r]));
         const getDepth = (id) => { let d = 0; let curr = rowMap.get(id); while(curr && curr.parentId) { d++; curr = rowMap.get(curr.parentId); } return d; };
         STATE.allRows.forEach(r => { const d = getDepth(r.id); if(d >= level - 1) targetSet.add(r.id); }); 
@@ -752,40 +809,23 @@ function renderSetupCols() {
 function applySetup() { const curView = STATE.views.find(v => v.id === STATE.currentViewId); if (!curView) return; const checkboxes = document.querySelectorAll('#setupColList input:checked'); let newVisible = Array.from(checkboxes).map(cb => parseInt(cb.value)); const primaryColId = STATE.cols.find(c => c.primary)?.id; if (primaryColId && !newVisible.includes(primaryColId)) { newVisible.unshift(primaryColId); } curView.visibleCols = newVisible; saveViewsToStorage(); bootstrap.Modal.getInstance('#setupModal').hide(); renderTable(); }
 
 // --- DATA INDEXING & HIERARCHY ---
-// --- 1. FIX: RE-CALCULATE MAX DEPTH GLOBALLY ---
 function indexAllData() {
     STATE.rowMap.clear(); STATE.childMap.clear();
     let absoluteMaxDepth = 0;
-
-    // Helper to calculate depth of any row regardless of visibility
-    const getRowDepth = (row) => {
-        let d = 0;
-        let curr = row;
-        while (curr && curr.parentId) {
-            d++;
-            curr = STATE.allRows.find(r => r.id === curr.parentId);
-        }
-        return d;
-    };
-
+    const getRowDepth = (row) => { let d = 0; let curr = row; while (curr && curr.parentId) { d++; curr = STATE.allRows.find(r => r.id === curr.parentId); } return d; };
     STATE.allRows.forEach(r => {
         STATE.rowMap.set(r.id, r);
         const d = getRowDepth(r);
-        if (d > absoluteMaxDepth) absoluteMaxDepth = d; // Track the sheet's total depth
-
-        if (r.parentId) {
-            if (!STATE.childMap.has(r.parentId)) STATE.childMap.set(r.parentId, []);
-            STATE.childMap.get(r.parentId).push(r.id);
-        }
+        if (d > absoluteMaxDepth) absoluteMaxDepth = d; 
+        if (r.parentId) { if (!STATE.childMap.has(r.parentId)) STATE.childMap.set(r.parentId, []); STATE.childMap.get(r.parentId).push(r.id); }
     });
-    STATE.meta.absoluteMaxDepth = absoluteMaxDepth; // Store this for the buttons
+    STATE.meta.absoluteMaxDepth = absoluteMaxDepth; 
 }
 
 function getVisibleIds() {
     const currentView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView();
     let visibleIds = new Set(STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id)).map(r => r.id));
     STATE.adds.forEach(r => visibleIds.add(r.id));
-
     if (currentView?.filters?.length > 0) {
         const filteredIds = new Set();
         for (const id of visibleIds) {
@@ -802,7 +842,6 @@ function getVisibleIds() {
         }
         visibleIds = filteredIds;
     }
-
     const term = document.getElementById('desktopSearch').value.toLowerCase();
     if (term) {
         const searchIds = new Set();
@@ -812,13 +851,8 @@ function getVisibleIds() {
         }
         visibleIds = searchIds;
     }
-    
     const finalIds = new Set();
-    for(const id of visibleIds) {
-        finalIds.add(id);
-        let curr = STATE.rowMap.get(id);
-        while(curr && curr.parentId) { finalIds.add(curr.parentId); curr = STATE.rowMap.get(curr.parentId); }
-    }
+    for(const id of visibleIds) { finalIds.add(id); let curr = STATE.rowMap.get(id); while(curr && curr.parentId) { finalIds.add(curr.parentId); curr = STATE.rowMap.get(curr.parentId); } }
     return finalIds;
 }
 
@@ -827,33 +861,19 @@ function flattenTree() {
     const flatList = [];
     const rootNodes = STATE.allRows.filter(r => !r.parentId);
     let maxGlobalDepth = 0;
-
     function traverse(nodeId, depth) {
         if(depth > maxGlobalDepth) maxGlobalDepth = depth;
         if (!visibleIds.has(nodeId)) return;
         flatList.push({ id: nodeId, depth });
-        if (!STATE.meta.collapsed.has(nodeId)) {
-            const children = STATE.childMap.get(nodeId) || [];
-            children.forEach(childId => traverse(childId, depth + 1));
-        }
+        if (!STATE.meta.collapsed.has(nodeId)) { const children = STATE.childMap.get(nodeId) || []; children.forEach(childId => traverse(childId, depth + 1)); }
     }
     rootNodes.forEach(node => traverse(node.id, 0));
     STATE.flatRenderList = flatList;
     STATE.meta.maxDepth = maxGlobalDepth; 
 }
 
-// --- TABLE RENDERING (VIRTUALIZED) ---
-function renderTable() {
-    if (STATE.isRendering) return;
-    STATE.isRendering = true;
-    indexAllData();
-    renderHeader();
-    flattenTree();
-    renderVisibleRows();
-    initSortable();
-    STATE.isRendering = false;
-}
-
+// --- TABLE RENDERING ---
+function renderTable() { if (STATE.isRendering) return; STATE.isRendering = true; indexAllData(); renderHeader(); flattenTree(); renderVisibleRows(); initSortable(); STATE.isRendering = false; }
 function renderHeader() {
     const th = document.getElementById('tHead'); th.innerHTML = '';
     const curView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView();
@@ -882,11 +902,9 @@ function renderVisibleRows() {
         const container = document.getElementById('tableContainer');
         const tbody = document.getElementById('tBody');
         const { scrollTop, clientHeight } = container;
-        
         const totalRows = STATE.flatRenderList.length;
         const startIndex = Math.max(0, Math.floor(scrollTop / CONFIG.virtualScroll.rowHeight) - CONFIG.virtualScroll.buffer);
         const endIndex = Math.min(totalRows, Math.ceil((scrollTop + clientHeight) / CONFIG.virtualScroll.rowHeight) + CONFIG.virtualScroll.buffer);
-        
         let html = [];
         if (startIndex > 0) html.push(`<tr class="virtual-spacer" style="height: ${startIndex * CONFIG.virtualScroll.rowHeight}px"><td colspan="100%"></td></tr>`);
         for (let i = startIndex; i < endIndex; i++) {
@@ -913,7 +931,6 @@ function generateRowHtml(r, depth) {
     const rowTextStyle = rowFmtInfo.style;
     
     let rowHtml = `<tr data-id="${r.id}" ${r.parentId ? `data-parent-id="${r.parentId}"` : ''} class="${rowClass}" style="${rowBgStyle} ${rowTextStyle}">`;
-    
     rowHtml += `<td class="text-center border-end p-0">`;
     if (STATE.dels.has(r.id)) {
         rowHtml += `<button class="btn btn-sm border-0 text-secondary" onclick="restoreRow('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>`;
@@ -924,20 +941,12 @@ function generateRowHtml(r, depth) {
     
     STATE.cols.forEach(c => {
         if (!visibleSet.has(c.id)) return;
-        
         let val = STATE.edits[r.id]?.[c.id];
         const cell = (r.cells || []).find(x => x.columnId === c.id);
         let cellFormat = cell ? cell.format : null;
-        if (val === undefined) {
-            val = cell ? (cell.displayValue ?? cell.value ?? '') : '';
-        }
-
+        if (val === undefined) { val = cell ? (cell.displayValue ?? cell.value ?? '') : ''; }
         const cellFmtInfo = getFormatInfo(cellFormat);
-        let tdStyle = '';
-        if (cellFmtInfo.bg) {
-            tdStyle = `style="background-color: ${cellFmtInfo.bg} !important;"`;
-        }
-        
+        let tdStyle = cellFmtInfo.bg ? `style="background-color: ${cellFmtInfo.bg} !important;"` : '';
         rowHtml += `<td ${tdStyle}>`;
         if (c.primary) {
             rowHtml += `<div class="tree-wrap">`;
@@ -946,36 +955,23 @@ function generateRowHtml(r, depth) {
             if (hasChild) {
                 const isCollapsed = STATE.meta.collapsed.has(r.id);
                 rowHtml += `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggle('${r.id}')"><i class="bi bi-caret-right-fill"></i></div>`;
-            } else {
-                rowHtml += `<div style="width:28px"></div>`;
-            }
+            } else { rowHtml += `<div style="width:28px"></div>`; }
         }
-
         if (STATE.dels.has(r.id)) {
             rowHtml += `<div class="p-2 small text-muted">${String(val || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`;
         } else {
             rowHtml += getCellHtml(r.id, c, val, cellFormat);
         }
-
         if (c.primary) rowHtml += `</div>`;
         rowHtml += `</td>`;
     });
-    
     rowHtml += `</tr>`;
     return rowHtml;
 }
 
-function toggle(id) {
-    const realId = isNaN(id) ? id : parseInt(id);
-    if (STATE.meta.collapsed.has(realId)) STATE.meta.collapsed.delete(realId);
-    else STATE.meta.collapsed.add(realId);
-    renderTable();
-}
-
+function toggle(id) { const realId = isNaN(id) ? id : parseInt(id); if (STATE.meta.collapsed.has(realId)) STATE.meta.collapsed.delete(realId); else STATE.meta.collapsed.add(realId); renderTable(); }
 function toggleMobileActions(btn) { const wrap = btn.nextElementSibling; if (wrap.classList.contains('show')) wrap.classList.remove('show'); else { document.querySelectorAll('.actions-wrapper.show').forEach(el => el.classList.remove('show')); wrap.classList.add('show'); } }
 function startResize(e, resizer) { e.preventDefault(); e.stopPropagation(); let x = e.touches ? e.touches[0].clientX : e.clientX; let th = resizer.parentElement; let w = th.getBoundingClientRect().width; resizer.classList.add('resizing'); const onMove = (evt) => { if(evt.cancelable) evt.preventDefault(); const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX; const newWidth = Math.max(50, w + (clientX - x)); th.style.width = `${newWidth}px`; }; const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp); if(th.dataset.colId) updateViewColState(parseInt(th.dataset.colId), parseInt(th.style.width)); resizer.classList.remove('resizing'); }; document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); document.addEventListener('touchmove', onMove, { passive: false }); document.addEventListener('touchend', onUp); }
-
-// --- ROW OPERATIONS ---
 function getAllDescendants(parentId) { const results = []; const children = STATE.childMap.get(parentId) || []; for (const childId of children) { results.push(childId); results.push(...getAllDescendants(childId)); } return results; }
 function initSortable() { 
     if(sortableInstance) sortableInstance.destroy(); 
@@ -986,14 +982,7 @@ function initSortable() {
             const rid = isNaN(evt.item.dataset.id) ? evt.item.dataset.id : parseInt(evt.item.dataset.id); 
             const descendants = getAllDescendants(rid);
             descendants.forEach(dId => { const row = document.querySelector(`tr[data-id="${dId}"]`); if(row) row.style.display = 'none'; }); 
-            if(descendants.length > 0) { 
-                evt.item.classList.add('dragging-parent'); 
-                const cell = evt.item.querySelector('.tree-wrap'); 
-                if(cell) { 
-                    const badge = document.createElement('span'); badge.className = "badge bg-primary rounded-pill ms-2 fw-normal"; 
-                    badge.innerText = `+ ${descendants.length} sub-rows`; badge.id = "dragBadge"; cell.appendChild(badge); 
-                } 
-            } 
+            if(descendants.length > 0) { evt.item.classList.add('dragging-parent'); const cell = evt.item.querySelector('.tree-wrap'); if(cell) { const badge = document.createElement('span'); badge.className = "badge bg-primary rounded-pill ms-2 fw-normal"; badge.innerText = `+ ${descendants.length} sub-rows`; badge.id = "dragBadge"; cell.appendChild(badge); } } 
         }, 
         onEnd: function (evt) {
             const item = evt.item; const rid = isNaN(item.dataset.id) ? item.dataset.id : parseInt(item.dataset.id);
@@ -1006,16 +995,8 @@ function initSortable() {
                 const prevRowObj = STATE.rowMap.get(prevRowId);
                 const nextRowId = nextEl ? (isNaN(nextEl.dataset.id) ? nextEl.dataset.id : parseInt(nextEl.dataset.id)) : null;
                 const nextRowObj = nextRowId ? STATE.rowMap.get(nextRowId) : null;
-                if (nextRowObj && nextRowObj.parentId === prevRowObj.id) { newParentId = prevRowObj.id; toTop = true; } 
-                else { newParentId = prevRowObj.parentId; siblingId = prevRowObj.id; }
-            } else {
-                if (nextEl) {
-                    const nextRowId = isNaN(nextEl.dataset.id) ? nextEl.dataset.id : parseInt(nextEl.dataset.id);
-                    const nextRowObj = STATE.rowMap.get(nextRowId);
-                    if (nextRowObj) newParentId = nextRowObj.parentId;
-                }
-                toTop = true;
-            }
+                if (nextRowObj && nextRowObj.parentId === prevRowObj.id) { newParentId = prevRowObj.id; toTop = true; } else { newParentId = prevRowObj.parentId; siblingId = prevRowObj.id; }
+            } else { if (nextEl) { const nextRowId = isNaN(nextEl.dataset.id) ? nextEl.dataset.id : parseInt(nextEl.dataset.id); const nextRowObj = STATE.rowMap.get(nextRowId); if (nextRowObj) newParentId = nextRowObj.parentId; } toTop = true; }
             const rowToUpdate = STATE.rowMap.get(rid); if (rowToUpdate) rowToUpdate.parentId = newParentId;
             STATE.hierarchyChanges[rid] = { type: 'MOVE', parentId: newParentId, siblingId: toTop ? undefined : siblingId, toTop: toTop };
             renderTable(); updateSyncUI();
@@ -1030,91 +1011,150 @@ function outdentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const row =
 function delRow(id) { if(String(id).startsWith('NEW')) { STATE.adds = STATE.adds.filter(r => r.id !== id); } else STATE.dels.add(parseInt(id)); renderTable(); updateSyncUI(); }
 function restoreRow(id) { STATE.dels.delete(parseInt(id)); renderTable(); updateSyncUI(); }
 function hasChanges() { return Object.keys(STATE.edits).length > 0 || STATE.adds.length > 0 || STATE.dels.size > 0 || Object.keys(STATE.hierarchyChanges).length > 0; }
+function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); const row = document.querySelector(`tr[data-id="${rid}"]`); if(row && !row.classList.contains('row-modified') && !String(rid).startsWith('NEW')) { row.classList.add('row-modified'); } }
+function addNewRowAbove(id) { const rid = String(id).startsWith('NEW') ? id : parseInt(id); const idx = STATE.allRows.findIndex(r => r.id === rid); if (idx === -1) return; const target = STATE.allRows[idx]; const newRow = { id: 'NEW_' + Date.now(), cells: [], parentId: target.parentId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", siblingId: undefined, toTop: false }; STATE.allRows.splice(idx, 0, newRow); STATE.adds.push(newRow); renderTable(); updateSyncUI(); setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${newRow.id}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100); }
+function addNewRowBelow(id) { const rid = String(id).startsWith('NEW') ? id : parseInt(id); const idx = STATE.allRows.findIndex(r => r.id === rid); if (idx === -1) return; const target = STATE.allRows[idx]; const descendants = getAllDescendants(rid); let insertIdx = idx + 1; if(descendants.length > 0) { const lastId = descendants[descendants.length - 1]; insertIdx = STATE.allRows.findIndex(r => r.id === lastId) + 1; } const newRow = { id: 'NEW_' + Date.now(), cells: [], parentId: target.parentId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", siblingId: undefined, toTop: false }; STATE.allRows.splice(insertIdx, 0, newRow); STATE.adds.push(newRow); renderTable(); updateSyncUI(); setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${newRow.id}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100); }
 
+/* --- HYBRID PICKER LOGIC --- */
 function getCellHtml(rid, col, val, fmt) { 
     const safeVal = String(val || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const fmtInfo = getFormatInfo(fmt);
     let inlineStyle = fmtInfo.style;
+    const bgStyle = fmtInfo.bg ? `background-color: ${fmtInfo.bg} !important;` : '';
 
     if(col.type === 'CHECKBOX') { 
         const checked = (val === true || val === 'true'); 
-        return `<div class="d-flex justify-content-center align-items-center h-100" style="${inlineStyle}"><input type="checkbox" class="form-check-input" ${checked?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)" style="transform:scale(1.2); cursor:pointer;"></div>`; 
+        return `<div class="d-flex justify-content-center align-items-center h-100" style="${inlineStyle}; ${bgStyle}"><input type="checkbox" class="form-check-input" ${checked?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)" style="transform:scale(1.2); cursor:pointer;"></div>`; 
     } 
-    const isMulti = col.type.includes('MULTI') || (col.type === 'TEXT_NUMBER' && col.options && col.options.length > 0); 
-    if(isMulti) { 
-        let arr = (Array.isArray(val)) ? val : (val ? String(val).split(',').map(s=>s.trim()).filter(s=>s!=='') : []); 
-        let badges = (arr.length === 0) ? `<span class="text-muted small ps-1 opacity-50 fst-italic">Select...</span>` : arr.map(t => `<span class="badge-pill">${t}</span>`).join(''); 
-        const safeArr = encodeURIComponent(JSON.stringify(arr)); 
-        return `<div class="badge-cell" onclick="openMultiPopover(event, '${rid}', ${col.id}, '${safeArr}')" style="${inlineStyle}">${badges}</div>`; 
-    } 
-    if(col.options && col.options.length > 0) { 
-        let opts = `<option value=""></option>`; 
-        col.options.forEach(o => { const sel = String(val) === String(o) ? 'selected' : ''; opts += `<option value="${o}" ${sel}>${o}</option>`; }); 
 
-        const hasLightText = inlineStyle.toLowerCase().includes('color: #f') || inlineStyle.includes('color: white');
-        if (hasLightText) {
-            const whiteArrowSvg = `background-image: url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23FFFFFF' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e\");`;
-            inlineStyle += whiteArrowSvg;
-        }
-        return `<select class="cell-textarea form-select" style="${inlineStyle}" onchange="edit('${rid}', ${col.id}, this.value)">${opts}</select>`; 
-    } 
-    return `<textarea class="cell-textarea" style="${inlineStyle}" onfocus="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" onchange="edit('${rid}', ${col.id}, this.value)">${safeVal}</textarea>`;
-}
+    const isMulti = col.type.includes('MULTI') || (col.type === 'TEXT_NUMBER' && col.options && col.options.length > 0 && String(val).includes(','));
+    const isSingleDropdown = (col.options && col.options.length > 0);
 
-function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); const row = document.querySelector(`tr[data-id="${rid}"]`); if(row && !row.classList.contains('row-modified') && !String(rid).startsWith('NEW')) { row.classList.add('row-modified'); } }
-
-// NEW ADD ROW LOGIC
-function addNewRowAbove(id) {
-    const rid = String(id).startsWith('NEW') ? id : parseInt(id);
-    const idx = STATE.allRows.findIndex(r => r.id === rid);
-    if (idx === -1) return;
-    const target = STATE.allRows[idx];
-    const newRow = { id: 'NEW_' + Date.now(), cells: [], parentId: target.parentId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", siblingId: undefined, toTop: false };
-    STATE.allRows.splice(idx, 0, newRow);
-    STATE.adds.push(newRow);
-    renderTable(); updateSyncUI();
-    setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${newRow.id}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100);
-}
-
-function addNewRowBelow(id) {
-    const rid = String(id).startsWith('NEW') ? id : parseInt(id);
-    const idx = STATE.allRows.findIndex(r => r.id === rid);
-    if (idx === -1) return;
-    const target = STATE.allRows[idx];
-    
-    // Find where the block ends (target + all its descendants)
-    const descendants = getAllDescendants(rid);
-    let insertIdx = idx + 1;
-    if(descendants.length > 0) {
-        const lastId = descendants[descendants.length - 1];
-        insertIdx = STATE.allRows.findIndex(r => r.id === lastId) + 1;
+    if (isMulti || isSingleDropdown) {
+        let displayHtml = '';
+        let rawArr = [];
+        if (val) { rawArr = (Array.isArray(val)) ? val : String(val).split(',').map(s=>s.trim()).filter(s=>s!==''); }
+        if (rawArr.length === 0) { displayHtml = `<span class="text-muted small opacity-50 fst-italic">Select...</span>`; } 
+        else { displayHtml = rawArr.map(t => `<span class="picker-badge">${t}</span>`).join(''); }
+        const safeArr = encodeURIComponent(JSON.stringify(rawArr));
+        const mode = isMulti ? 'MULTI' : 'SINGLE';
+        return `<div class="cell-value-display" style="${inlineStyle}; ${bgStyle}" onclick="openUniversalPicker(event, '${rid}', ${col.id}, '${mode}', '${safeArr}')">${displayHtml}</div>`;
     }
-
-    const newRow = { id: 'NEW_' + Date.now(), cells: [], parentId: target.parentId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", siblingId: undefined, toTop: false };
-    STATE.allRows.splice(insertIdx, 0, newRow);
-    STATE.adds.push(newRow);
-    renderTable(); updateSyncUI();
-    setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${newRow.id}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100);
+    return `<textarea class="cell-textarea" style="${inlineStyle}; ${bgStyle}" onfocus="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" onchange="edit('${rid}', ${col.id}, this.value)">${safeVal}</textarea>`;
 }
 
-function findLastDescendant(parentId) { let lastId = parentId; const children = STATE.childMap.get(parentId); if (children && children.length > 0) { const lastChildId = children[children.length - 1]; return findLastDescendant(lastChildId); } return lastId; }
+function openUniversalPicker(event, rid, cid, mode, encodedVals) {
+    event.stopPropagation();
+    const currentVals = JSON.parse(decodeURIComponent(encodedVals));
+    PICKER_STATE = { rid, cid, mode, values: currentVals };
+    const col = STATE.cols.find(c => c.id === cid);
+    const options = col.options || [];
 
-// --- POPOVERS & UTILS ---
-function openMultiPopover(event, rid, cid, encoded) { event.stopPropagation(); const popover = document.getElementById('multiPopover'); if (STATE.tempMulti && STATE.tempMulti.rid === rid && STATE.tempMulti.cid === cid && popover.classList.contains('show')) { closeMultiPopover(); return; } const cell = event.currentTarget; const vals = JSON.parse(decodeURIComponent(encoded)); const col = STATE.cols.find(c => c.id === cid); STATE.tempMulti = { rid, cid, cell }; const box = document.getElementById('multiOptions'); box.innerHTML = ''; const opts = Array.from(new Set([...(col.options || []), ...vals])); opts.forEach((o, i) => { if (!o) return; const checked = vals.includes(o) ? 'checked' : ''; const safeVal = String(o).replace(/"/g, '&quot;'); const uId = `opt_${i}`; box.innerHTML += `<div class="form-check"><input class="form-check-input" type="checkbox" value="${safeVal}" id="${uId}" ${checked}><label class="form-check-label w-100 ps-2" for="${uId}">${o}</label></div>`; }); repositionPopover(popover, cell); popover.classList.add('show'); }
-function repositionPopover(popover, triggerEl) { if (!triggerEl) return; const rect = triggerEl.getBoundingClientRect(); if(popover.id === 'multiPopover') popover.style.width = `${rect.width}px`; popover.style.top = `${rect.bottom}px`; popover.style.left = `${rect.left}px`; }
-function closeMultiPopover() { document.getElementById('multiPopover').classList.remove('show'); STATE.tempMulti = null; }
-function saveMultiFromPopover() { if (!STATE.tempMulti) return; const { rid, cid } = STATE.tempMulti; const selected = Array.from(document.querySelectorAll('#multiOptions input:checked')).map(cb => cb.value); edit(rid, cid, selected.join(', ')); renderVisibleRows(); closeMultiPopover(); }
-function handleClickOutside(event) { const multiPopover = document.getElementById('multiPopover'); if (multiPopover.classList.contains('show')) { if (!multiPopover.contains(event.target) && !event.target.closest('.badge-cell')) { closeMultiPopover(); } } const filterPopover = document.getElementById('columnFilterPopover'); if (filterPopover.classList.contains('show')) { if (!filterPopover.contains(event.target) && !event.target.closest('.col-filter-btn')) { closeColumnFilterPopover(); } } }
+    // Render Items
+    const body = document.getElementById('pickerBody');
+    body.innerHTML = '';
+    const allOptions = Array.from(new Set([...options, ...currentVals])).filter(x => x);
+    allOptions.forEach(opt => {
+        const isSelected = currentVals.includes(opt);
+        const div = document.createElement('div');
+        div.className = `picker-option ${isSelected ? 'selected' : ''}`;
+        div.dataset.value = opt;
+        div.onclick = () => togglePickerOption(opt, mode);
+        let icon = mode === 'MULTI' 
+            ? (isSelected ? '<i class="bi bi-check-square-fill text-primary me-2"></i>' : '<i class="bi bi-square text-muted me-2"></i>')
+            : (isSelected ? '<i class="bi bi-circle-fill text-primary me-2"></i>' : '<i class="bi bi-circle text-muted me-2"></i>');
+        div.innerHTML = `${icon}<span>${opt}</span>`;
+        body.appendChild(div);
+    });
+
+    document.getElementById('pickerSearch').value = '';
+    const picker = document.getElementById('universalPicker');
+    const backdrop = document.getElementById('pickerBackdrop');
+    
+    // Positioning Logic
+    const isMobile = window.innerWidth <= 768;
+    picker.classList.add('show');
+    
+    if (isMobile) {
+        backdrop.classList.add('show');
+        picker.style.top = 'auto';
+        picker.style.bottom = '0';
+        picker.style.left = '0';
+        picker.style.width = '100%';
+        picker.style.height = 'auto';
+    } else {
+        // Desktop Popover Style
+        const rect = event.currentTarget.getBoundingClientRect();
+        picker.style.top = `${rect.bottom}px`;
+        picker.style.left = `${rect.left}px`;
+        picker.style.width = `${Math.max(300, rect.width)}px`;
+        // Collision detection (basic)
+        if (rect.bottom + 400 > window.innerHeight) {
+            picker.style.top = `${rect.top - picker.offsetHeight}px`; // Flip up if room
+        }
+    }
+}
+
+function togglePickerOption(val, mode) {
+    if (mode === 'SINGLE') {
+        PICKER_STATE.values = [val];
+        savePicker();
+    } else {
+        const idx = PICKER_STATE.values.indexOf(val);
+        if (idx > -1) PICKER_STATE.values.splice(idx, 1); else PICKER_STATE.values.push(val);
+        // Re-render to show selection state immediately
+        const safeVals = encodeURIComponent(JSON.stringify(PICKER_STATE.values));
+        // Hacky re-open to refresh list visual state without full re-render logic
+        openUniversalPicker({stopPropagation:()=>{}, currentTarget: {getBoundingClientRect: () => ({bottom: parseFloat(document.getElementById('universalPicker').style.top), left: parseFloat(document.getElementById('universalPicker').style.left), width: parseFloat(document.getElementById('universalPicker').style.width)}) }}, PICKER_STATE.rid, PICKER_STATE.cid, mode, safeVals);
+        // Save automatically on multi change? Or wait for click outside?
+        // Let's autosave for responsiveness
+        savePicker();
+    }
+}
+
+function savePicker() {
+    const finalVal = PICKER_STATE.mode === 'SINGLE' ? (PICKER_STATE.values[0] || '') : PICKER_STATE.values.join(', ');
+    edit(PICKER_STATE.rid, PICKER_STATE.cid, finalVal);
+    renderVisibleRows(); 
+    if (PICKER_STATE.mode === 'SINGLE') closeUniversalPicker();
+}
+
+function closeUniversalPicker() {
+    document.getElementById('universalPicker').classList.remove('show');
+    document.getElementById('pickerBackdrop').classList.remove('show');
+    PICKER_STATE = { rid: null, cid: null, mode: 'SINGLE', values: [] };
+}
+
+function filterPickerOptions(term) {
+    term = term.toLowerCase();
+    const items = document.querySelectorAll('.picker-option');
+    items.forEach(item => {
+        const txt = item.querySelector('span').innerText.toLowerCase();
+        item.style.display = txt.includes(term) ? 'flex' : 'none';
+    });
+}
+
+function handleClickOutside(event) { 
+    const filterPopover = document.getElementById('columnFilterPopover'); 
+    if (filterPopover && filterPopover.classList.contains('show')) { 
+        if (!filterPopover.contains(event.target) && !event.target.closest('.col-filter-btn')) { 
+            closeColumnFilterPopover(); 
+        } 
+    }
+    // Desktop click outside for picker (Mobile uses backdrop)
+    const picker = document.getElementById('universalPicker');
+    if (window.innerWidth > 768 && picker.classList.contains('show')) {
+        if (!picker.contains(event.target) && !event.target.closest('.cell-value-display')) {
+            closeUniversalPicker();
+        }
+    }
+}
 function selectColumn(e, colId) { if(e.target.closest('.col-filter-btn') || e.target.closest('.resizer')) return; e.stopPropagation(); if (STATE.selectedCol === colId) STATE.selectedCol = null; else STATE.selectedCol = colId; renderHeader(); }
-function deselectColumn(e) { if (!e.target.closest('th')) { if(STATE.selectedCol !== null) { STATE.selectedCol = null; renderHeader(); } } }
-
-// --- COLUMN FILTERS ---
 function openColumnFilterPopover(event, colId) { event.stopPropagation(); const popover = document.getElementById('columnFilterPopover'); if (STATE.tempFilterCol && STATE.tempFilterCol.id === colId && popover.classList.contains('show')) { closeColumnFilterPopover(); return; } STATE.tempFilterCol = { id: colId, btn: event.currentTarget }; const curView = STATE.views.find(v => v.id === STATE.currentViewId); const filter = curView.filters.find(f => f.colId === colId); const colDef = STATE.cols.find(c => c.id === colId); const oldInput = document.getElementById('filterValInput'); const oldSelect = document.getElementById('filterOpSelect'); let inputHtml = ''; let defaultOp = filter ? filter.operator : 'contains'; let defaultVal = filter ? filter.value : ''; if (colDef.type === 'CHECKBOX') { inputHtml = `<select id="filterValInput" class="form-select form-select-sm"><option value="true">Checked</option><option value="false">Unchecked</option></select>`; if(!filter) defaultOp = 'eq'; oldSelect.innerHTML = `<option value="eq">Is</option>`; oldSelect.disabled = true; } else if (colDef.options && colDef.options.length > 0) { let opts = `<option value="">Select Option...</option>`; colDef.options.forEach(o => { const sel = String(defaultVal) === String(o) ? 'selected' : ''; opts += `<option value="${o}" ${sel}>${o}</option>`; }); inputHtml = `<select id="filterValInput" class="form-select form-select-sm">${opts}</select>`; oldSelect.innerHTML = `<option value="eq">Equals</option><option value="contains">Contains</option><option value="empty">Is Empty</option><option value="notempty">Not Empty</option>`; oldSelect.disabled = false; if(!filter) defaultOp = 'eq'; } else { inputHtml = `<input type="text" id="filterValInput" class="form-control form-control-sm" placeholder="Value..." value="${defaultVal}">`; oldSelect.innerHTML = `<option value="contains">Contains</option><option value="eq">Equals</option><option value="empty">Is Empty</option><option value="notempty">Not Empty</option>`; oldSelect.disabled = false; } const wrapper = document.createElement('div'); wrapper.innerHTML = inputHtml; const newInput = wrapper.firstChild; oldInput.replaceWith(newInput); document.getElementById('filterOpSelect').value = defaultOp; if(newInput.tagName === 'INPUT' || newInput.tagName === 'SELECT') newInput.value = defaultVal; repositionPopover(popover, event.currentTarget); popover.classList.add('show'); }
+function repositionPopover(popover, triggerEl) { if (!triggerEl) return; const rect = triggerEl.getBoundingClientRect(); popover.style.top = `${rect.bottom}px`; popover.style.left = `${rect.left}px`; }
 function closeColumnFilterPopover() { document.getElementById('columnFilterPopover').classList.remove('show'); STATE.tempFilterCol = null; }
 function applyColumnFilter() { if (!STATE.tempFilterCol) return; const colId = STATE.tempFilterCol.id; const op = document.getElementById('filterOpSelect').value; const val = document.getElementById('filterValInput').value; const curView = STATE.views.find(v => v.id === STATE.currentViewId); curView.filters = curView.filters.filter(f => f.colId !== colId); if(val || op === 'empty' || op === 'notempty') { curView.filters.push({ colId: colId, operator: op, value: val }); } saveViewsToStorage(); renderTable(); closeColumnFilterPopover(); }
 function clearColumnFilter() { if (!STATE.tempFilterCol) return; const colId = STATE.tempFilterCol.id; const curView = STATE.views.find(v => v.id === STATE.currentViewId); curView.filters = curView.filters.filter(f => f.colId !== colId); saveViewsToStorage(); renderTable(); closeColumnFilterPopover(); }
-
-// --- DEBUG & UTILITY ---
 function showLoader(s) { document.getElementById('loader').style.display=s?'flex':'none'; }
 function showToast(msg, type='primary') { const t = document.createElement('div'); t.className = `toast align-items-center text-white bg-${type} border-0 show mb-2 shadow`; t.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`; document.getElementById('toastArea').appendChild(t); setTimeout(() => t.remove(), 4000); }
 function openSettings() { document.getElementById('apiToken').value = localStorage.getItem('smToken') || ''; new bootstrap.Modal('#settingsModal').show(); }
