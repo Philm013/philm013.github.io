@@ -12,30 +12,30 @@
     </script>
     <style>
         /* --- SCROLLBARS --- */
-        #planner-table-container, .modal-content, #progression-table-view, #summary-content, #popover-content {
+        #planner-table-container, .modal-content, #progression-table-view, #summary-content, #popover-content, #mobile-detail-tray-content {
             scrollbar-width: thin;
             scrollbar-color: #a0aec0 #e2e8f0;
         }
-        #planner-table-container::-webkit-scrollbar, .modal-content::-webkit-scrollbar, #progression-table-view::-webkit-scrollbar, #summary-content::-webkit-scrollbar, #popover-content::-webkit-scrollbar {
+        #planner-table-container::-webkit-scrollbar, .modal-content::-webkit-scrollbar, #progression-table-view::-webkit-scrollbar, #summary-content::-webkit-scrollbar, #popover-content::-webkit-scrollbar, #mobile-detail-tray-content::-webkit-scrollbar {
             width: 8px; height: 8px;
         }
-        #planner-table-container::-webkit-scrollbar-track, .modal-content::-webkit-scrollbar-track, #progression-table-view::-webkit-scrollbar-track, #summary-content::-webkit-scrollbar-track, #popover-content::-webkit-scrollbar-track {
+        #planner-table-container::-webkit-scrollbar-track, .modal-content::-webkit-scrollbar-track, #progression-table-view::-webkit-scrollbar-track, #summary-content::-webkit-scrollbar-track, #popover-content::-webkit-scrollbar-track, #mobile-detail-tray-content::-webkit-scrollbar-track {
             background: #e2e8f0;
         }
-        #planner-table-container::-webkit-scrollbar-thumb, .modal-content::-webkit-scrollbar-thumb, #progression-table-view::-webkit-scrollbar-thumb, #summary-content::-webkit-scrollbar-thumb, #popover-content::-webkit-scrollbar-thumb {
+        #planner-table-container::-webkit-scrollbar-thumb, .modal-content::-webkit-scrollbar-thumb, #progression-table-view::-webkit-scrollbar-thumb, #summary-content::-webkit-scrollbar-thumb, #popover-content::-webkit-scrollbar-thumb, #mobile-detail-tray-content::-webkit-scrollbar-thumb {
             background-color: #a0aec0; border-radius: 10px; border: 2px solid #e2e8f0;
         }
-        .dark #planner-table-container, .dark .modal-content, .dark #progression-table-view, .dark #summary-content, .dark #popover-content {
+        .dark #planner-table-container, .dark .modal-content, .dark #progression-table-view, .dark #summary-content, .dark #popover-content, .dark #mobile-detail-tray-content {
             scrollbar-color: #4a5568 #2d3748;
         }
-        .dark #planner-table-container::-webkit-scrollbar-track, .dark .modal-content::-webkit-scrollbar-track, .dark #progression-table-view::-webkit-scrollbar-track, .dark #summary-content::-webkit-scrollbar-track, .dark #popover-content::-webkit-scrollbar-track {
+        .dark #planner-table-container::-webkit-scrollbar-track, .dark .modal-content::-webkit-scrollbar-track, .dark #progression-table-view::-webkit-scrollbar-track, .dark #summary-content::-webkit-scrollbar-track, .dark #popover-content::-webkit-scrollbar-track, .dark #mobile-detail-tray-content::-webkit-scrollbar-track {
             background: #2d3748;
         }
-        .dark #planner-table-container::-webkit-scrollbar-thumb, .dark .modal-content::-webkit-scrollbar-thumb, .dark #progression-table-view::-webkit-scrollbar-thumb, .dark #summary-content::-webkit-scrollbar-thumb, .dark #popover-content::-webkit-scrollbar-thumb {
+        .dark #planner-table-container::-webkit-scrollbar-thumb, .dark .modal-content::-webkit-scrollbar-thumb, .dark #progression-table-view::-webkit-scrollbar-thumb, .dark #summary-content::-webkit-scrollbar-thumb, .dark #popover-content::-webkit-scrollbar-thumb, .dark #mobile-detail-tray-content::-webkit-scrollbar-thumb {
             background-color: #4a5568; border-color: #2d3748;
         }
         
-        /* --- STRICT FIXED LAYOUT --- */
+        /* --- DESKTOP: STRICT FIXED LAYOUT --- */
         table.fixed-layout {
             table-layout: fixed;
             width: max-content; min-width: 100%;
@@ -67,7 +67,7 @@
             justify-content: flex-start;
         }
 
-        /* --- STICKY COLUMNS --- */
+        /* --- DESKTOP: STICKY COLUMNS --- */
         .sticky-col-1 { position: sticky; left: 0; z-index: 25; width: 65px; min-width: 65px; }
         .sticky-col-2 { position: sticky; left: 65px; z-index: 24; width: 40px; min-width: 40px; }
         .sticky-col-3 { 
@@ -95,6 +95,95 @@
         details > summary { list-style: none; }
         details > summary::-webkit-details-marker { display: none; }
         .group-toggle-header { top: 0; z-index: 21 !important; height: auto !important; vertical-align: middle !important; padding: 4px !important; }
+
+        /* --- MOBILE OVERHAUL STYLES (md breakpoint: 768px) --- */
+        @media (max-width: 768px) {
+            /* Full screen modals */
+            .modal-backdrop .modal {
+                width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh;
+                border-radius: 0;
+            }
+
+            /* Hide desktop table elements */
+            #planner-table-container thead,
+            #planner-table-container .data-col,
+            #planner-table-container .sticky-col-1, /* Hide desktop action buttons */
+            #planner-table-container .sticky-col-2 /* Hide desktop scope cell */
+            {
+                display: none;
+            }
+
+            /* Convert table to a list of cards */
+            #planner-table-container {
+                border: none; background-color: transparent;
+            }
+            table.table-view, table.fixed-layout, #planner-table-container tbody {
+                display: block;
+            }
+            #planner-table-container tr {
+                display: flex; /* Make rows flex containers */
+                flex-wrap: wrap;
+                margin-bottom: 8px;
+                border-radius: 0.5rem;
+                background-color: #fff;
+                border: 1px solid #e2e8f0;
+                box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+            }
+            .dark #planner-table-container tr {
+                background-color: #2d3748;
+                border-color: #4a5568;
+            }
+            #planner-table-container tr.lesson-set-row {
+                display: block;
+                padding: 0.75rem 1rem;
+                background-color: #3182ce;
+                color: white;
+                font-weight: bold;
+            }
+             .dark #planner-table-container tr.lesson-set-row {
+                background-color: #2c5282;
+            }
+
+            /* Restyle the main title cell to be the card content */
+            #planner-table-container .sticky-col-3 {
+                position: static;
+                width: 100%;
+                min-width: 100%;
+                box-shadow: none;
+                padding: 0.75rem 1rem;
+                cursor: pointer;
+            }
+            #planner-table-container .lesson-row .sticky-col-3 {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            /* Mobile-only summary badges */
+            .mobile-summary-badges {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin-top: 8px;
+            }
+
+            /* Mobile-only chevron */
+            .mobile-chevron {
+                display: inline-block;
+                font-size: 1.5rem;
+                color: #a0aec0;
+            }
+            .dark .mobile-chevron { color: #718096; }
+        }
+
+        /* --- MOBILE SLIDE-OUT TRAY --- */
+        #mobile-detail-tray {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        body.tray-open #mobile-detail-tray {
+            transform: translateX(0);
+        }
     </style>
 </head>
 <body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased">
@@ -132,7 +221,7 @@
                     <!-- Streamlined Header & Toolbar -->
                     <div class="flex flex-col gap-2 mb-2 border-b border-gray-200 dark:border-gray-700 pb-2">
                         <!-- Row 1: Title, Settings, and Info -->
-                        <div class="flex justify-between items-start gap-4">
+                        <div class="flex flex-wrap justify-between items-start gap-4">
                             <div>
                                 <div class="flex items-center gap-2">
                                     <h1 id="planner-title" class="text-2xl font-bold text-gray-800 dark:text-gray-100 leading-tight"></h1>
@@ -140,12 +229,12 @@
                                 </div>
                                 <p id="planner-subtitle" class="text-sm text-gray-500 dark:text-gray-400"></p>
                             </div>
-                            <div class="text-right">
+                            <div class="text-right flex-shrink-0">
                                 <details class="group relative">
                                     <summary class="list-none cursor-pointer text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1 text-xs">
                                         <span class="group-open:rotate-90 transition-transform">▶</span> Show Phenomenon & Driving Question
                                     </summary>
-                                    <div class="absolute top-full right-0 mt-1 z-50 w-96 p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-lg shadow-xl text-sm">
+                                    <div class="absolute top-full right-0 mt-1 z-50 w-80 md:w-96 p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-lg shadow-xl text-sm">
                                         <p class="font-bold text-blue-800 dark:text-blue-200">Anchoring Phenomenon:</p>
                                         <p id="planner-phenomenon" class="mb-2 text-gray-700 dark:text-gray-300 italic"></p>
                                         <p class="font-bold text-blue-800 dark:text-blue-200">Driving Question:</p>
@@ -157,7 +246,7 @@
                         </div>
 
                         <!-- Row 2: Actions, Tabs, and History -->
-                        <div class="flex justify-between items-center gap-2">
+                        <div class="flex flex-wrap justify-between items-center gap-2">
                              <div class="flex items-center gap-2">
                                 <button id="add-lesson-set-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">+ Set</button>
                                 <button id="add-lesson-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">+ Lesson</button>
@@ -167,7 +256,7 @@
                                 </label>
                             </div>
 
-                            <div id="tab-container" class="tabs flex border-b-2 border-gray-300 dark:border-gray-700 -mb-px flex-1"></div>
+                            <div id="tab-container" class="tabs flex border-b-2 border-gray-300 dark:border-gray-700 -mb-px flex-1 overflow-x-auto whitespace-nowrap"></div>
 
                             <div class="flex items-center gap-2">
                                 <div class="relative group">
@@ -187,7 +276,7 @@
                         </div>
                     </div>
 
-                    <div id="planner-table-container" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50"></div>
+                    <div id="planner-table-container" class="flex-grow overflow-auto md:border md:border-gray-300 dark:md:border-gray-700 md:rounded-lg md:bg-white dark:md:bg-gray-800/50"></div>
                 </div>
                 
                 <div id="progression-view" class="view flex-1 flex flex-col">
@@ -219,9 +308,21 @@
             </main>
         </div>
     </div>
+    
+    <!-- MOBILE DETAIL TRAY -->
+    <div id="mobile-detail-tray" class="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl z-[1500] flex flex-col border-l border-gray-200 dark:border-gray-700">
+        <div class="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
+            <h3 id="mobile-tray-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">Lesson Details</h3>
+            <button id="mobile-tray-close" class="px-3 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 font-semibold text-sm">Close</button>
+        </div>
+        <div id="mobile-detail-tray-content" class="overflow-y-auto p-4 space-y-4">
+            <!-- Mobile tray content will be generated here -->
+        </div>
+    </div>
+
 
     <!-- Modals -->
-    <div id="planner-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+    <div id="planner-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div class="p-6 border-b dark:border-gray-700">
                  <h3 id="planner-modal-title" class="text-xl font-semibold text-gray-900 dark:text-gray-100">New Planner</h3>
@@ -286,7 +387,7 @@
         </div>
     </div>
     
-    <div id="pe-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+    <div id="pe-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
             <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100 sticky top-0 bg-white dark:bg-gray-800">Assign Performance Expectations</h3>
             <div class="modal-content p-6 overflow-y-auto" id="pe-modal-list"></div>
@@ -296,7 +397,7 @@
             </div>
         </div>
     </div>
-    <div id="element-detail-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+    <div id="element-detail-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <h3 id="element-modal-title" class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Element Details</h3>
             <div class="modal-content p-6 space-y-4 overflow-y-auto">
@@ -309,7 +410,7 @@
             </div>
         </div>
     </div>
-    <div id="export-master-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+    <div id="export-master-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
              <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">XLSX Export Options</h3>
             <div class="modal-content p-6 overflow-y-auto">
@@ -324,7 +425,7 @@
             </div>
         </div>
     </div>
-     <div id="lesson-details-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+     <div id="lesson-details-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <h3 id="lesson-details-modal-title" class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Lesson Details</h3>
             <div class="modal-content p-6 space-y-4 overflow-y-auto">
@@ -346,7 +447,7 @@
             </div>
         </div>
     </div>
-    <div id="import-options-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-[60] hidden items-center justify-center p-4">
+    <div id="import-options-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-[60] hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
              <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Import Options</h3>
             <div class="modal-content p-6 overflow-y-auto space-y-4">
@@ -471,6 +572,7 @@
                 this.render.navigator();
                 this.attachEventListeners();
                 this.popover.init();
+                this.mobile.init();
                 this.render.welcomeView();
                 this.utils.showView('welcome-view');
 
@@ -765,7 +867,116 @@
             },
         };
 
-        // ... (App.popover, App.db, App.persistence - No changes needed) ...
+        App.mobile = {
+            init() {
+                document.getElementById('mobile-tray-close').addEventListener('click', () => this.hideDetailTray());
+                document.getElementById('mobile-detail-tray-content').addEventListener('change', (e) => {
+                    if (e.target.type === 'radio') this.handleSelectionChange(e.target);
+                });
+            },
+            showDetailTray(rowId) {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                const rowData = App.utils.findRowData(planner, rowId);
+                if (!rowData) return;
+
+                document.getElementById('mobile-tray-title').textContent = rowData.title;
+                const contentContainer = document.getElementById('mobile-detail-tray-content');
+                contentContainer.dataset.rowId = rowId;
+                
+                let html = '';
+                const allColumns = App.utils.gatherColumns(planner.gradeBand);
+
+                Object.values(allColumns).forEach(dim => {
+                    if (dim.key === 'pe') {
+                        const assignedPes = planner.assignedPes || [];
+                        if (assignedPes.length > 0) {
+                            html += `<h4 class="text-lg font-bold border-b pb-2 mb-2">${dim.name}</h4>`;
+                            assignedPes.forEach(peObj => {
+                                html += this.renderMobileElement(peObj.id, rowData, 'pe');
+                            });
+                        }
+                    } else {
+                        html += `<h4 class="text-lg font-bold border-b pb-2 mb-2">${dim.name}</h4>`;
+                        Object.values(dim.groups).forEach(group => {
+                            if (group.cols.length > 0) {
+                                html += `<h5 class="font-semibold text-gray-700 dark:text-gray-300 mt-3 mb-1">${group.name}</h5>`;
+                                group.cols.forEach(col => {
+                                    html += this.renderMobileElement(col.code, rowData, '3d');
+                                });
+                            }
+                        });
+                    }
+                });
+                
+                contentContainer.innerHTML = html;
+                App.dom.body.classList.add('tray-open');
+            },
+            hideDetailTray() {
+                App.dom.body.classList.remove('tray-open');
+                // Re-render the main table to update summary badges on the mobile card view
+                App.render.renderPlannerContent();
+            },
+            renderMobileElement(code, rowData, type) {
+                let element, title, description, subElements = [];
+                const currentStatus = rowData.trackingData[code] || '';
+                const u = `mobile-status-${code}`;
+
+                if (type === 'pe') {
+                    element = App.dataMaps.peMap.get(code);
+                    title = element.id;
+                    description = element.description;
+                } else { // 3d element
+                    element = App.dataMaps.parentToChildrenMap.get(code);
+                    title = element.name;
+                    subElements = element.children || [];
+                }
+
+                let contentHTML = '';
+                if (subElements.length > 0) {
+                    contentHTML = subElements.map(child => {
+                        const childStatus = rowData.trackingData[child.code] || '';
+                        const childU = `mobile-status-${child.code}`;
+                        return `<div class="ml-4 pl-4 border-l dark:border-gray-600 py-2">
+                                    <p class="font-semibold">${child.code}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">${child.text}</p>
+                                    ${this.renderStatusRadios(childU, childStatus)}
+                                </div>`;
+                    }).join('');
+                } else {
+                    contentHTML = `<div class="mt-2">${this.renderStatusRadios(u, currentStatus)}</div>`;
+                }
+
+                return `<div class="p-3 border-b dark:border-gray-700">
+                            <strong class="font-bold">${title}</strong>
+                            ${description ? `<p class="text-sm text-gray-500 dark:text-gray-400">${description}</p>` : ''}
+                            ${contentHTML}
+                        </div>`;
+            },
+            renderStatusRadios(uniqueName, currentStatus) {
+                return `<div class="flex gap-1.5 flex-shrink-0">
+                    <input type="radio" id="${uniqueName}-none" name="${uniqueName}" value="" ${!currentStatus&&'checked'} class="hidden peer/none"><label for="${uniqueName}-none" title="None" class="w-8 h-8 flex items-center justify-center rounded-full cursor-pointer border border-gray-300 dark:border-gray-600 font-bold text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 peer-checked/none:ring-2 ring-gray-400">-</label>
+                    <input type="radio" id="${uniqueName}-i" name="${uniqueName}" value="I" ${currentStatus==='I'&&'checked'} class="hidden peer/i"><label for="${uniqueName}-i" title="Introduced" class="w-8 h-8 flex items-center justify-center rounded-full cursor-pointer border border-yellow-400 font-bold text-sm bg-yellow-200 text-yellow-800 hover:bg-yellow-300 peer-checked/i:ring-2 ring-yellow-500">I</label>
+                    <input type="radio" id="${uniqueName}-d" name="${uniqueName}" value="D" ${currentStatus==='D'&&'checked'} class="hidden peer/d"><label for="${uniqueName}-d" title="Developed" class="w-8 h-8 flex items-center justify-center rounded-full cursor-pointer border border-green-400 font-bold text-sm bg-green-200 text-green-800 hover:bg-green-300 peer-checked/d:ring-2 ring-green-500">D</label>
+                    <input type="radio" id="${uniqueName}-a" name="${uniqueName}" value="A" ${currentStatus==='A'&&'checked'} class="hidden peer/a"><label for="${uniqueName}-a" title="Assessed" class="w-8 h-8 flex items-center justify-center rounded-full cursor-pointer border border-blue-400 font-bold text-sm bg-blue-200 text-blue-800 hover:bg-blue-300 peer-checked/a:ring-2 ring-blue-500">A</label>
+                </div>`;
+            },
+            handleSelectionChange(radioInput) {
+                const rowId = document.getElementById('mobile-detail-tray-content').dataset.rowId;
+                if (!rowId) return;
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                const rowData = App.utils.findRowData(planner, rowId);
+                if (!rowData) return;
+                App.history.saveState();
+                const code = radioInput.name.replace('mobile-status-', '');
+                if (radioInput.value) {
+                    rowData.trackingData[code] = radioInput.value;
+                } else {
+                    delete rowData.trackingData[code];
+                }
+                App.persistence.debouncedSave();
+            }
+        };
+
         App.popover = {
             dom: {},
             state: { isVisible: false, activeCell: null, activeRowId: null },
@@ -1227,7 +1438,7 @@
                         <td class="sticky-col-1 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab mr-2">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors" title="Delete Lesson Set">✖</span></td>
                         <td class="sticky-col-2 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
                         <td class="sticky-col-3 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>
-                        <td class="p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50" colspan="${totalCols}"></td>`;
+                        <td class="data-col p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50" colspan="${totalCols}"></td>`;
 
                 } else {
                     if (parentId) row.dataset.parentId = parentId;
@@ -1238,6 +1449,19 @@
 					const notesIcon = `<span class="notes-btn cursor-pointer text-base" title="Edit Notes & Links">📝</span>`;
 					const addRowIcon = `<span class="add-below-btn cursor-pointer hover:text-green-500 transition-colors" title="Add Lesson Below">+</span>`;
 					const copyRowIcon = `<span class="copy-row-btn cursor-pointer hover:text-blue-500 transition-colors" title="Duplicate Lesson">❐</span>`;
+                    
+                    // Mobile summary badges
+                    const trackedCounts = { I: 0, D: 0, A: 0 };
+                    Object.values(rowData.trackingData || {}).forEach(status => {
+                        if (trackedCounts[status] !== undefined) trackedCounts[status]++;
+                    });
+                    const mobileBadges = `
+                        <div class="mobile-summary-badges">
+                            ${trackedCounts.I > 0 ? `<span class="px-1.5 py-0.5 text-xs font-bold rounded ${App.constants.statusBadgeClasses.I}">I: ${trackedCounts.I}</span>` : ''}
+                            ${trackedCounts.D > 0 ? `<span class="px-1.5 py-0.5 text-xs font-bold rounded ${App.constants.statusBadgeClasses.D}">D: ${trackedCounts.D}</span>` : ''}
+                            ${trackedCounts.A > 0 ? `<span class="px-1.5 py-0.5 text-xs font-bold rounded ${App.constants.statusBadgeClasses.A}">A: ${trackedCounts.A}</span>` : ''}
+                        </div>`;
+                    
                     let cellsHTML = `
                         <td class="sticky-col-1 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle">
                             <div class="flex items-center justify-start gap-2 text-gray-400 w-full overflow-hidden">
@@ -1251,7 +1475,13 @@
                             </div>
                         </td>
                         <td data-scope-cell="true" class="sticky-col-2 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle font-bold text-center cursor-pointer ${scopeClass}" data-tooltip="Click to cycle Assessment Scope">${scope}</td>
-                        <td class="sticky-col-3 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 text-left ${parentId ? 'pl-10' : ''}"><div class="truncate">${editableSpan}</div></td>`;
+                        <td class="sticky-col-3 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 text-left ${parentId ? 'pl-10' : ''}">
+                            <div>
+                                <div class="truncate">${editableSpan}</div>
+                                ${mobileBadges}
+                            </div>
+                            <span class="mobile-chevron">&rsaquo;</span>
+                        </td>`;
 
                     Object.keys(columnGroups).forEach(key => {
                          if (key === 'pe') {
@@ -1989,6 +2219,12 @@
                 
                 const rowId = rowEl.dataset.id;
                 
+                // MOBILE: Open slide tray for lesson rows
+                if (window.innerWidth <= 768 && rowEl.classList.contains('lesson-row')) {
+                    App.mobile.showDetailTray(rowId);
+                    return;
+                }
+
                 const notesBtn = target.closest('.notes-btn');
                 if (notesBtn) { App.utils.openLessonDetailsModal(rowId); return; }
                 

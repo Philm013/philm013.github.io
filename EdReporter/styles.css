@@ -1,0 +1,1742 @@
+/* --- START OF FILE styles.css --- */
+
+:root {
+	--primary-color: #2c3e50;
+	--secondary-color: #3498db;
+	--accent-color: #e74c3c;
+	--light-gray: #f5f5f5;
+	--medium-gray: #e0e0e0;
+	--dark-gray: #777;
+		--text-color: #333;
+	--success-color: #27ae60;
+	--warning-color: #f39c12;
+	--danger-color: #c0392b;
+	--box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	--border-radius: 4px;
+	--transition-speed: 0.3s;
+}
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+	line-height: 1.6;
+	color: var(--text-color);
+	background-color: #f9f9f9;
+}
+
+header {
+	background-color: var(--primary-color);
+	color: white;
+	padding: 1rem 2rem;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	box-shadow: var(--box-shadow);
+	/* Add these properties for sticky behavior */
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	width: 100%;
+	z-index: 998;
+    flex-wrap: wrap; /* Allow header items to wrap on small screens */
+    /*gap: 10px; /* Add gap for wrapped items */
+}
+header .logo-container {
+    flex-shrink: 0; /* Prevent logo from shrinking */
+}
+header .logo-container h1 {
+    margin: 0;
+    font-size: 1.5rem; /* Adjust size for fixed header */
+}
+
+
+.actions {
+	display: flex;
+	gap: 10px;
+    flex-wrap: wrap; /* Allow action buttons to wrap */
+    align-items: center; /* Align items nicely when wrapped */
+}
+.actions .ai-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Smaller gap within AI group */
+}
+.actions .ai-controls label,
+.actions .form-control {
+    vertical-align: middle; /* Align text and selects */
+    margin-bottom: 0; /* Remove default form-group margin */
+	max-width: 250px;
+}
+.actions .dropdown {
+    position: relative; /* Needed for dropdown positioning */
+}
+.actions .dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%; /* Position below the button */
+    right: 0;
+    background-color: white;
+    min-width: 160px;
+    box-shadow: var(--box-shadow);
+    z-index: 100; /* Ensure dropdown is above other content */
+    border-radius: var(--border-radius);
+    overflow: hidden; /* Contain border-radius */
+}
+.actions .dropdown-content a {
+    color: var(--text-color);
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+.actions .dropdown-content a:hover {
+    background-color: var(--light-gray);
+}
+.actions .dropdown:hover .dropdown-content {
+    display: block;
+}
+
+
+main {
+	max-width: 1600px;
+	margin: 2rem auto;
+	padding: 0 2rem;
+	/* Add top padding equal to header height plus some extra space */
+	padding-top: 6rem; /* Adjusted to match header height */
+}
+
+.btn {
+	padding: 0.5rem 1rem;
+	border: none;
+	border-radius: var(--border-radius);
+	cursor: pointer;
+	font-weight: 500;
+	transition: background-color var(--transition-speed);
+    flex-shrink: 0; /* Prevent buttons from shrinking */
+}
+
+.btn.primary {
+	background-color: var(--secondary-color);
+	color: white;
+}
+
+.btn.primary:hover {
+	background-color: #2980b9;
+}
+
+.btn.secondary {
+	background-color: #ecf0f1;
+	color: var(--primary-color);
+}
+
+.btn.secondary:hover {
+	background-color: var(--medium-gray);
+}
+.btn.danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+.btn.danger:hover {
+    background-color: #a93226;
+}
+
+.btn.small {
+	padding: 0.25rem 0.5rem;
+	font-size: 0.85rem;
+}
+
+
+.form-group {
+    margin-bottom: 1rem; /* Standard vertical spacing */
+}
+.form-group label {
+	display: block;
+	margin-bottom: 0.5rem;
+	font-weight: 500;
+    color: #555; /* Slightly darker label text */
+}
+
+.form-control {
+	width: 100%;
+	padding: 0.5rem;
+	border: 1px solid var(--medium-gray);
+	border-radius: var(--border-radius);
+	font-family: inherit;
+	font-size: 1rem;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.075); /* subtle inset shadow */
+    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+}
+.form-control:focus {
+    border-color: var(--secondary-color);
+    outline: 0;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.075), 0 0 5px rgba(52,152,219,.3); /* Blue focus shadow */
+}
+
+textarea.form-control {
+	resize: vertical;
+	min-height: 100px;
+}
+
+.review-metadata {
+	background-color: white;
+	padding: 0.5rem 1.5rem;
+	border-radius: var(--border-radius);
+	box-shadow: var(--box-shadow);
+	margin-bottom: 2rem;
+	position: relative; /* Needed for toggle button positioning */
+	transition: max-height 0.3s ease; /* Smooth collapse animation */
+	overflow: hidden; /* Hide overflowing content when collapsed */
+}
+.review-metadata.collapsed {
+	max-height: 60px; /* Set a specific max height when collapsed */
+}
+.review-metadata h2 {
+	margin-bottom: 1rem;
+	color: var(--primary-color);
+}
+.review-metadata-toggle {
+	position: absolute;
+	top: 15px;
+	right: 15px;
+	background: var(--primary-color);
+	color: white;
+	border: none;
+	border-radius: 50%;
+	width: 24px;
+	height: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	font-size: 16px;
+	transition: transform 0.3s ease;
+    z-index: 1; /* Ensure it's clickable */
+}
+.review-metadata.collapsed .review-metadata-toggle {
+	transform: rotate(180deg);
+}
+.review-metadata-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 1rem;
+}
+
+
+.review-content {
+	background-color: white;
+	border-radius: var(--border-radius);
+	box-shadow: var(--box-shadow);
+	overflow: hidden;
+    padding: 0; /* Remove padding from the container, add to tabs/content */
+}
+
+.tabs {
+	display: flex;
+	background-color: var(--light-gray);
+	border-bottom: 1px solid var(--medium-gray);
+    flex-wrap: wrap; /* Allow tabs to wrap */
+}
+
+.tab-btn {
+	padding: 1rem 1.5rem;
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-weight: 500;
+	color: var(--dark-gray);
+	transition: all var(--transition-speed);
+    flex-grow: 1; /* Allow tabs to grow to fill space */
+    text-align: center; /* Center tab text */
+    min-width: 100px; /* Minimum width for tabs */
+}
+
+.tab-btn:hover {
+	background-color: rgba(0, 0, 0, 0.05);
+}
+
+.tab-btn.active {
+	background-color: white;
+	color: var(--primary-color);
+	border-bottom: 3px solid var(--secondary-color);
+}
+
+.tab-content {
+	display: none;
+	padding: 2rem;
+}
+
+.tab-content.active {
+	display: block;
+}
+
+.gateway-description {
+	color: var(--dark-gray);
+	margin-bottom: 1.5rem; /* Reduced margin */
+	font-size: 1.1rem; /* Reduced font size */
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--medium-gray); /* Add separator */
+}
+.gateway-content {
+     padding: 1rem 0; /* Padding for the content area within the tab, separates description */
+}
+
+.criterion-section {
+	margin-bottom: 2rem; /* Reduced margin */
+	border: 1px solid var(--medium-gray);
+	border-radius: var(--border-radius);
+	overflow: hidden;
+}
+
+.criterion-section h3 {
+	padding: 1rem;
+	background-color: var(--light-gray);
+	margin: 0;
+	border-bottom: 1px solid var(--medium-gray);
+    font-size: 1.2rem; /* Reduced font size */
+}
+
+.criterion-section > p {
+	padding: 0.8rem 1rem; /* Reduced padding */
+	color: var(--dark-gray);
+	background-color: #fafafa;
+	border-bottom: 1px solid var(--medium-gray);
+	font-size: 0.95rem; /* Reduced font size */
+}
+
+.indicator {
+	border-bottom: 1px solid var(--medium-gray);
+}
+
+.indicator:last-child {
+	border-bottom: none;
+}
+
+/* Style for the main indicator group header *container* */
+.main-indicator-group {
+	background-color: #e6f3f7; /* Light blue background */
+	padding: 1rem;
+	margin: 15px 0; /* Separate group visually */
+	border-radius: 4px;
+	border-left: 4px solid #2980b9; /* Blue left border */
+	font-weight: 600; /* Bold font for group titles */
+	color: var(--primary-color);
+    cursor: pointer; /* Make group header clickable */
+     transition: background-color 0.2s ease;
+}
+.main-indicator-group:hover {
+    background-color: #d0eaf2;
+}
+/* Style for the actual H4 title inside the group container */
+.main-indicator-group h4 {
+    margin: 0; /* Remove default h4 margin */
+    font-size: 1.1rem;
+    color: inherit; /* Inherit color from parent div */
+}
+
+/* Container for sub-indicators within a group */
+.sub-indicators {
+    margin-left: 25px; /* Indent sub-indicators */
+    margin-bottom: 20px;
+}
+
+/* Individual indicator styling within a group */
+.indicator-group .indicator {
+    margin-left: 0; /* Remove default indicator margin */
+    border-left: none; /* Remove individual indicator border */
+    border-right: none;
+    border-top: 1px solid var(--medium-gray); /* Add top border for separation */
+    border-bottom: 1px solid var(--medium-gray);
+    padding-left: 0; /* Remove padding as indentation is on .sub-indicators */
+}
+.indicator-group .indicator .indicator-header {
+	padding-left: 2rem;
+}
+
+
+
+.indicator-header {
+	padding: 1rem;
+	background-color: #f8f9fa;
+	display: flex;
+	justify-content: space-between;
+	align-items: center; /* Align items vertically in the center */
+	cursor: pointer;
+    flex-wrap: nowrap; /* Don't allow header items to wrap */
+    gap: 10px; /* Add gap between items */
+     transition: background-color 0.2s ease;
+}
+.indicator-header:hover {
+    background-color: #f0f2f4;
+}
+
+
+.indicator-header h4 {
+	margin: 0;
+	font-size: 1rem;
+	color: var(--primary-color);
+    flex-grow: 1; /* Allow title to take available space */
+	margin-right: auto; /* Push buttons/options to the right */
+}
+
+/* New container for AI button and scoring options */
+.indicator-actions-group {
+    display: flex;
+    flex-direction: column; /* Stack items vertically */
+    align-items: flex-end; /* Align items to the right */
+    gap: 5px; /* Space between AI button and scores */
+    flex-shrink: 0; /* Prevent this group from shrinking */
+}
+
+.scoring-options {
+	display: flex;
+	gap: 1rem;
+    /* flex-shrink: 0; Already on .indicator-actions-group */
+    white-space: nowrap; /* Keep options on a single line */
+}
+
+.scoring-options label {
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+     margin-bottom: 0; /* Remove default margin */
+     flex-shrink: 0; /* Prevent label/input pairs from shrinking */
+}
+/* Style for narrative-only indicator label */
+.indicator-header span.narrative-only {
+     font-style: italic;
+     color: #555;
+     font-size: 0.95em;
+     /* flex-grow: 1; No longer needed here */
+     margin-right: 10px; /* Add some margin if next to the actions group */
+}
+
+
+.indicator-content {
+	padding: 1rem;
+	border-top: 1px solid var(--medium-gray);
+	display: none; /* Hidden by default, controlled by JS 'open' class */
+}
+
+.indicator.open .indicator-content,
+.indicator-group.open > .indicator-content.group-content { /* Corrected target for group content */
+	display: block;
+}
+/* Hide content of the group header itself */
+.indicator-group .indicator-content {
+     display: none;
+}
+
+
+.indicator-content h5 {
+    margin-top: 1rem; /* Space above criteria/evidence header */
+    margin-bottom: 0.5rem; /* Space below header */
+    color: #495057; /* Dark grey */
+    font-size: 0.95em;
+}
+.indicator-content ul {
+    margin-left: 20px;
+    padding-left: 5px;
+    font-size: 0.9em;
+    margin-bottom: 1rem; /* Space after criteria list */
+}
+.indicator-content li {
+    margin-bottom: 4px;
+}
+
+.indicator-expectation-statement {
+    background-color: #e8f4fd; /* Light blue background, similar to final rating */
+    border: 1px solid #d1e9fc;
+    border-left: 4px solid #0b5ed7; /* Darker blue left border */
+    padding: 12px 15px;
+    margin: 1rem 0; /* Space above and below */
+    border-radius: var(--border-radius);
+    color: #0a4a99; /* Dark blue text */
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+
+.indicator-expectation-statement:empty {
+    display: none; /* Hide it if it has no content */
+}
+
+.indicator-expectation-statement h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    color: inherit;
+}
+
+.indicator-expectation-statement p {
+    margin: 0;
+}
+
+/* Style for displaying an error within this box */
+.indicator-expectation-statement .ai-error-display {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    padding: 10px;
+    border-radius: var(--border-radius);
+}
+.indicator-expectation-statement .ai-error-display h4 {
+    margin-top: 0;
+    color: inherit;
+}
+.indicator-expectation-statement .ai-error-display pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-top: 5px;
+    font-size: 0.9em;
+}
+
+.evidence-section {
+	margin-top: 1rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--medium-gray);
+}
+
+.evidence-section h5 {
+    display: flex; /* Use flex to align title and spinner */
+    align-items: center;
+    gap: 8px;
+}
+
+.evidence-entry {
+	margin-bottom: 1rem;
+	border: 1px solid var(--medium-gray);
+	border-radius: var(--border-radius);
+	overflow: hidden;
+	background-color: #fff; /* Add background for clarity */
+     position: relative; /* Needed for absolute positioning of remove button */
+}
+.evidence-entry .tinymce-editor-placeholder {
+	padding: 5px; /* Add some padding around the editor */
+}
+.evidence-entry .tox-tinymce { /* Target TinyMCE container */
+	border: none !important; /* Remove TinyMCE's default border */
+	 min-height: 100px;
+}
+.evidence-entry blockquote {
+    margin: 10px 20px; /* Standard blockquote styling */
+    padding-left: 15px;
+    border-left: 4px solid #ccc;
+    font-style: italic;
+    color: #555;
+}
+.evidence-entry blockquote p {
+    margin: 0; /* Remove default margin from paragraphs inside blockquote */
+}
+.evidence-entry em {
+    font-style: normal; /* Reset italic for the "Explanation:" label */
+}
+.evidence-entry p {
+    margin: 0 10px 10px 10px; /* Margin for explanation paragraphs */
+}
+.evidence-entry p:last-child {
+    margin-bottom: 0; /* No bottom margin on the last paragraph */
+}
+
+
+.evidence-header {
+	display: flex;
+	justify-content: flex-end;
+	padding: 5px;
+	background-color: #f8f9fa;
+	border-bottom: 1px solid var(--medium-gray);
+}
+
+.remove-evidence {
+	background-color: var(--danger-color);
+	color: white;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	line-height: 1;
+	font-size: 16px;
+    border-radius: var(--border-radius); /* Match other buttons */
+    display: flex; /* Center the X */
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* Style for TinyMCE-rendered images within evidence */
+.evidence-text img {
+	max-width: 100%;
+	height: auto;
+	display: block; /* Center image if it's the only content on a line */
+	margin: 5px auto;
+	border: 1px solid #ccc;
+	cursor: pointer; /* Indicate clickability */
+}
+
+
+.gateway-summary {
+	margin-top: 2rem;
+	padding: 1rem;
+	background-color: var(--light-gray);
+	border-radius: var(--border-radius);
+}
+
+.gateway-rating {
+	margin-top: 0.5rem;
+	font-weight: bold;
+    color: var(--secondary-color); /* Color rating text */
+}
+
+.final-summary {
+	margin-top: 1rem;
+}
+
+.gateway-ratings {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 1rem;
+	margin: 1.5rem 0;
+}
+
+.gateway-rating-item {
+	background-color: var(--light-gray);
+	padding: 1rem;
+	border-radius: var(--border-radius);
+    border-left: 3px solid var(--secondary-color); /* Visual separator */
+}
+.gateway-rating-item h4 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-size: 1.1em;
+    color: var(--primary-color);
+}
+.gateway-rating-item p {
+    margin: 0;
+    font-size: 0.9em;
+    color: var(--dark-gray);
+}
+
+.final-rating {
+	margin: 1.5rem 0;
+	padding: 1.5rem; /* Increased padding */
+	background-color: #e8f4fd; /* Light blue background */
+	border-radius: var(--border-radius);
+	border: 1px solid #d1e9fc; /* Light blue border */
+	text-align: center;
+    font-size: 1.2em; /* Larger font size */
+    font-weight: bold;
+    color: #0b5ed7; /* Darker blue text */
+}
+.final-rating h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.5em;
+    color: inherit; /* Inherit text color */
+}
+
+
+/* Modal Styles (General) */
+.modal {
+	display: none; /* Hidden by default */
+	position: fixed;
+	z-index: 1000; /* High z-index */
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	overflow: auto; /* Enable scroll if needed */
+	background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black background */
+    /* These flex properties are for centering the modal-content when modal is visible */
+    justify-content: center;
+    align-items: center;
+    padding: 20px; /* Padding around the modal content */
+    box-sizing: border-box; /* Include padding in width/height */
+}
+
+.modal-content {
+	position: relative; /* Needed for close button absolute positioning */
+	background-color: #fff;
+	padding: 20px;
+	border-radius: var(--border-radius);
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+	width: 90%; /* Default width */
+	max-width: 800px; /* Default max-width */
+	max-height: 90vh; /* Max height based on viewport */
+	overflow-y: auto; /* Enable scrolling for content */
+    box-sizing: border-box;
+	margin: auto;
+}
+.modal-content.large {
+    max-width: 1000px; /* Larger modal */
+}
+
+
+/* Modal Close Button */
+.modal .close {
+	position: absolute;
+	right: 15px;
+	top: 10px;
+	font-size: 28px; /* Larger close button */
+	font-weight: bold;
+	color: #aaa;
+	cursor: pointer;
+	line-height: 1;
+    transition: color 0.2s ease;
+}
+.modal .close:hover,
+.modal .close:focus {
+	color: #777;
+	text-decoration: none;
+}
+
+/* Saved Reviews List in Load Modal */
+#savedReviewsList {
+	margin-top: 15px;
+}
+.saved-review-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 10px;
+	border: 1px solid var(--medium-gray);
+	margin-bottom: 8px; /* Slightly less margin */
+	border-radius: var(--border-radius);
+	cursor: pointer;
+	transition: background-color var(--transition-speed);
+    word-break: break-word; /* Allow long titles/publishers to wrap */
+}
+.saved-review-item:hover {
+	background-color: var(--light-gray);
+}
+.review-item-content {
+	flex: 1; /* Allow content to take available space */
+	padding-right: 10px; /* Space between content and buttons */
+}
+.review-item-content div {
+    margin-bottom: 3px; /* Space between lines of metadata */
+}
+.review-item-content div:last-child {
+    margin-bottom: 0;
+}
+.review-item-content strong {
+    color: var(--primary-color);
+}
+.review-item-actions {
+	display: flex; /* Use flex for buttons */
+	gap: 5px; /* Space between buttons */
+    flex-shrink: 0; /* Prevent buttons from shrinking */
+}
+
+/* PDF Management Modal */
+#loadPdfModal .pdf-add-section,
+#loadPdfModal .pdf-manage-section {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: var(--border-radius);
+    background-color: #fcfcfc;
+}
+#loadPdfModal h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+    font-size: 1.1em;
+}
+#loadPdfModal .form-group {
+    margin-bottom: 10px;
+}
+#pdfFileInput {
+    display: inline-block; /* Align file input */
+    margin-top: 0;
+}
+#pdfAddStatus {
+    margin-left: 10px;
+    font-style: italic;
+    color: var(--dark-gray);
+}
+#loadedPdfsList {
+    max-height: 200px; /* Scrollable list */
+    overflow-y: auto;
+    border-top: 1px solid var(--medium-gray);
+    margin-top: 10px;
+    padding-top: 10px;
+}
+.loaded-pdf-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border: 1px solid #eee;
+    margin-bottom: 5px;
+    border-radius: var(--border-radius);
+    background-color: #fff;
+}
+.loaded-pdf-item span {
+    flex: 1; /* PDF name takes space */
+    word-break: break-word;
+    padding-right: 10px;
+}
+.loaded-pdf-item div { /* Button group */
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+.loaded-pdf-item input[type="radio"] {
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+#loadPdfModal .modal-actions {
+    margin-top: 15px;
+    text-align: right;
+    display: block; /* Reset flex */
+}
+#loadPdfModal .modal-actions button {
+    /* inherit button styles */
+}
+
+
+/* PDF Viewer Modal */
+.pdf-viewer-modal .modal-content {
+	max-width: 90%; /* Use more screen width */
+	max-height: 95vh; /* Use more screen height */
+	display: flex;
+	flex-direction: column;
+	overflow: hidden; /* Prevent content overflow */
+	height: 100%; /* Fill modal height */
+    padding: 15px; /* Reduced padding */
+	margin: auto;
+}
+.pdf-viewer-modal .modal-content .close {
+    top: 5px; /* Adjusted close button position */
+    right: 10px;
+}
+
+
+.pdf-viewer-modal h3 {
+	margin-top: 0;
+	margin-bottom: 10px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #eee;
+	flex-shrink: 0; /* Prevent title from shrinking */
+    font-size: 1.3em;
+    color: var(--primary-color);
+}
+
+.pdf-viewer-modal .pdf-iframe-container {
+	flex-grow: 1; /* Allow iframe container to fill space */
+	overflow: hidden; /* Hide any potential overflow */
+	border: 1px solid #ccc; /* Optional border */
+    background-color: #e9e9e9; /* Background while loading */
+}
+
+.pdf-viewer-modal #pdfViewerIframe {
+	width: 100%;
+	height: 100%;
+	border: none;
+}
+
+/* Image Viewer Modal */
+.image-viewer-modal.modal { /* Use combined class */
+	z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.8); /* Darker background */
+    /* Flexbox for centering is already in .modal */
+}
+.image-viewer-modal .modal-content { /* Use combined class */
+    background-color: transparent; /* No background for image */
+    padding: 0; /* No padding */
+    box-shadow: none; /* No shadow */
+    display: flex; /* Flex for centering image */
+    align-items: center;
+    justify-content: center;
+    width: auto; /* Auto width based on content */
+    height: auto; /* Auto height based on content */
+    max-width: 90%;
+    max-height: 90%;
+    overflow: visible; /* Allow image to overflow if needed */
+	margin: auto;
+}
+.image-viewer-modal .modal-content .close {
+    color: white; /* White close button */
+    top: 10px;
+    right: 10px;
+    font-size: 30px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Shadow for visibility */
+}
+.image-viewer-modal #viewerImage {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    margin: auto; /* Center image */
+}
+
+
+/* Clickable Page Link Styles */
+.page-link {
+	color: #007bff;
+	text-decoration: underline;
+	cursor: pointer;
+	font-weight: bold;
+	padding: 0 2px; /* Add slight padding */
+	border-radius: 2px;
+	transition: background-color 0.2s ease;
+    white-space: nowrap; /* Prevent breaking page links */
+}
+
+.page-link:hover {
+	background-color: #eaf4ff; /* Light blue highlight on hover */
+}
+
+/* Ensure links within AI responses and evidence are also styled */
+#chatLog .chat-message a,
+.evidence-text a { /* Assuming evidence text might render HTML from TinyMCE */
+	color: #007bff;
+	text-decoration: underline;
+}
+#chatLog .chat-message a:hover,
+.evidence-text a:hover {
+	color: #0056b3;
+}
+
+/* AI Analyze Button */
+.ai-analyze-btn {
+	background-color: #8e44ad; /* Purple color */
+	color: white;
+	/* margin-left: 10px; /* Removed, as positioning is handled by .indicator-actions-group */
+	padding: 0.2rem 0.5rem;
+	font-size: 0.8rem;
+	/* vertical-align: middle; /* Removed, not needed in flex context */
+    border-radius: var(--border-radius); /* Match other buttons */
+     flex-shrink: 0; /* Prevent shrinking */
+}
+
+.ai-analyze-btn i {
+	margin-right: 4px;
+}
+
+.ai-analyze-btn:hover {
+	background-color: #702f8a;
+}
+
+.ai-analyze-btn.loading {
+	background-color: #f39c12; /* Orange for loading */
+	cursor: not-allowed;
+}
+
+.ai-analyze-btn.loading i::before {
+	content: "\f110"; /* Font Awesome spinner icon */
+	display: inline-block;
+	animation: fa-spin 1s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Small loading spinner for evidence section */
+.evidence-loading-spinner {
+	display: none; /* Hidden by default */
+	border: 3px solid #f3f3f3; /* Light grey */
+	border-top: 3px solid var(--secondary-color); /* Blue */
+	border-radius: 50%;
+	width: 16px;
+	height: 16px;
+	animation: spin 1s linear infinite;
+	margin-left: 10px;
+	vertical-align: middle;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* AI Instruction Modal Styles */
+#aiInstructionModal .modal-content {
+	max-width: 600px;
+	margin: auto;
+}
+#aiInstructionModal h3 {
+	margin-top: 0;
+	margin-bottom: 10px;
+	font-size: 1.3em;
+    color: var(--primary-color);
+}
+#aiCustomInstruction { /* This will be replaced by TinyMCE, but keep for structure */
+	width: 100%;
+	min-height: 150px;
+	border: 1px solid var(--medium-gray);
+	border-radius: var(--border-radius);
+	padding: 10px;
+	font-family: inherit;
+}
+#aiInstructionModal .modal-actions {
+	margin-top: 20px;
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}
+#aiInstructionModal #indicatorTitleDisplay {
+	font-style: italic;
+	color: var(--dark-gray);
+	margin-bottom: 15px;
+	padding: 8px;
+	background-color: #f9f9f9;
+	border-left: 3px solid var(--secondary-color);
+	border-radius: 3px;
+    font-size: 0.95em;
+}
+
+
+/* Notification Styles */
+#notification-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 2000; /* Ensure it's above everything */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    max-width: 300px;
+    pointer-events: none; /* Clicks pass through container */
+}
+
+.notification {
+    padding: 12px 20px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+    transform: translateX(100%);
+    cursor: pointer;
+    pointer-events: auto; /* Clicks enabled on notification */
+    color: white;
+    font-size: 0.9em;
+    word-break: break-word;
+}
+
+/* Notification type colors */
+.notification.success { background-color: #28a745; }
+.notification.error { background-color: #dc3545; }
+.notification.warning { background-color: #ffc107; color: #212529; } /* Warning text needs to be dark */
+.notification.info { background-color: #17a2b8; }
+
+
+/* Floating Action Button */
+.floating-btn {
+	position: fixed;
+	bottom: 30px;
+	right: 30px;
+	width: 50px; /* Slightly smaller */
+	height: 50px;
+	background-color: #007bff; /* Primary button color */
+	color: white;
+	border: none;
+	border-radius: 50%; /* Make it circular */
+	font-size: 20px; /* Icon size */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+	z-index: 999; /* Ensure it's above most content, below modals */
+	transition: background-color 0.3s ease, transform 0.2s ease;
+}
+.floating-btn:hover {
+	background-color: #0056b3; /* Darker shade on hover */
+    transform: translateY(-2px); /* Slight lift on hover */
+}
+.floating-btn:active {
+    transform: translateY(0); /* Press effect */
+}
+
+
+/* ----- Chat Query Modal Styles ----- */
+#chatQueryModal {
+	z-index: 1001; /* Ensure it's above floating button */
+}
+
+#chatQueryModal .modal-content {
+	display: flex;
+	flex-direction: column;
+	max-width: 700px; /* Overall width */
+	width: 80%; /* Adjust width relative to viewport */
+	overflow: hidden; /* Prevent content overflow */
+	padding: 20px;
+	border-radius: 8px; /* Rounded corners for the modal itself */
+	background-color: #fff;
+	box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+#chatQueryModal h2 {
+	margin-top: 0;
+	margin-bottom: 5px;
+	font-size: 1.4em;
+	color: #333;
+	flex-shrink: 0; /* Don't shrink title */
+}
+
+#chatQueryModal .ai-note {
+	font-size: 0.85em;
+	color: #666;
+	margin-bottom: 15px; /* More space after note */
+	flex-shrink: 0;
+}
+
+#chatQueryModal #chatControls { /* Container for model selector, send, and clear */
+	margin-top: 10px;
+	flex-shrink: 0; /* Don't shrink */
+	display: flex;
+	align-items: center;
+	gap: 10px;
+    flex-wrap: wrap; /* Allow controls to wrap */
+}
+#chatQueryModal #chatControls label {
+	margin-bottom: 0; /* Align label with select */
+	font-weight: 500;
+	color: #555;
+     flex-shrink: 0;
+}
+
+#chatQueryModal #aiModelSelectorChat {
+	flex-grow: 1; /* Allow selector to take space */
+    min-width: 120px; /* Ensure selector is wide enough */
+}
+
+/* Chat Log Styling */
+#chatQueryModal #chatLog {
+	flex-grow: 1; /* Fill remaining vertical space */
+	overflow-y: auto; /* Enable scrolling */
+	padding: 15px; /* More internal padding */
+	border: 1px solid #e0e0e0; /* Lighter border */
+	background-color: #f8f9fa; /* Slightly off-white background */
+	border-radius: 8px; /* Rounded corners */
+	margin-bottom: 15px; /* Space before input area */
+	min-height: 150px; /* Ensure it has some height even when empty initially */
+    display: flex; /* Use flex for message flow */
+    flex-direction: column;
+}
+
+/* Placeholder text when chat log is empty */
+#chatQueryModal #chatLog .chat-placeholder {
+	text-align: center;
+	color: #999;
+	font-style: italic;
+	padding: 30px 10px; /* More padding for placeholder */
+     flex-grow: 1; /* Center placeholder vertically */
+     display: flex;
+     align-items: center;
+     justify-content: center;
+}
+
+/* Message Bubble Styling */
+#chatQueryModal .chat-message {
+	padding: 10px 15px;
+	margin-bottom: 10px; /* Increased spacing */
+	border-radius: 18px; /* More pronounced bubble shape */
+	max-width: 85%; /* Limit bubble width */
+	word-wrap: break-word;
+	position: relative;
+	clear: both; /* Ensure bubbles don't overlap weirdly */
+	line-height: 1.4; /* Default line height for chat messages */
+	border: 1px solid transparent; /* Base border */
+}
+
+#chatQueryModal .chat-message.user {
+	background-color: #007bff; /* Primary blue for user */
+	color: white;
+	margin-left: auto; /* Push to the right */
+	border-bottom-right-radius: 5px; /* Slightly flatten one corner */
+	border-color: #0069d9; /* Slightly darker border */
+}
+
+#chatQueryModal .chat-message.ai {
+	background-color: #e9ecef; /* Light grey for AI */
+	color: #212529; /* Darker grey text */
+	margin-right: auto; /* Push to the left */
+	border-bottom-left-radius: 5px; /* Slightly flatten one corner */
+	border-color: #ced4da; /* Subtle border */
+    line-height: 1.6; /* Match TinyMCE content line-height for better readability */
+}
+
+#chatQueryModal .chat-message.ai p {
+    margin-top: 0; /* Ensure no top margin for first p */
+    margin-bottom: 0.75em; /* Add consistent bottom margin to paragraphs */
+}
+
+#chatQueryModal .chat-message.ai p:last-child {
+    margin-bottom: 0; /* No margin for the last paragraph in a bubble */
+}
+
+#chatQueryModal .chat-message.ai.error { /* Style for error messages */
+	background-color: #f8d7da; /* Light red */
+	color: #721c24; /* Dark red text */
+	border-color: #f5c6cb;
+}
+
+
+/* List Styling within Messages */
+#chatQueryModal .chat-message ul,
+#chatQueryModal .chat-message ol {
+	padding-left: 20px; /* Appropriate list indent */
+	margin-top: 0.5em; /* Consistent top/bottom margin for lists */
+	margin-bottom: 0.75em;
+}
+#chatQueryModal .chat-message li {
+	margin-bottom: 0.25em; /* Space between list items */
+}
+/* Ensure bullets/numbers are visible and aligned */
+#chatQueryModal .chat-message ul li::marker {
+	color: inherit; /* Inherit color from parent text */
+}
+
+
+/* Code Styling within Messages */
+#chatQueryModal .chat-message pre {
+	background-color: #f1f1f1; /* Slightly different background for pre */
+	border: 1px solid #ddd;
+	padding: 10px;
+	border-radius: 5px;
+	overflow-x: auto; /* Allow horizontal scroll for long code */
+	margin-top: 0.5em;  /* Consistent top/bottom margin */
+    margin-bottom: 0.75em;
+	font-family: Consolas, 'Courier New', monospace;
+	font-size: 0.85em;
+	line-height: 1.5;
+	color: #333;
+    white-space: pre-wrap; /* Wrap code lines */
+    word-break: break-all; /* Break long words */
+}
+
+#chatQueryModal .chat-message code:not(pre code) { /* Inline code */
+	background-color: #f1f1f1;
+	padding: 2px 5px;
+	border-radius: 3px;
+	font-size: 0.9em;
+	font-family: Consolas, 'Courier New', monospace;
+	color: #c7254e; /* Bootstrap's inline code color */
+}
+/* Blockquote within messages */
+#chatQueryModal .chat-message blockquote {
+    margin-top: 0.5em; /* Consistent top/bottom margin */
+    margin-bottom: 0.75em;
+    margin-left: 20px; /* Match TinyMCE blockquote margin */
+    margin-right: 0; /* No right margin needed for chat bubbles */
+    padding-left: 15px;
+    border-left: 4px solid #ccc;
+    font-style: italic;
+    color: #555;
+}
+#chatQueryModal .chat-message blockquote p {
+     margin: 0; /* Remove default margin from paragraphs inside blockquote */
+}
+
+
+/* Timestamp Styling */
+#chatQueryModal .chat-message .timestamp {
+	font-size: 0.7em;
+	color: #888; /* Slightly darker timestamp */
+	display: block;
+	margin-top: 5px;
+	text-align: inherit; /* Inherit alignment */
+	padding-right: 5px;
+}
+#chatQueryModal .chat-message.user .timestamp {
+	color: #b3d7ff; /* Lighter timestamp on user bubble */
+}
+#chatQueryModal .chat-message.ai .timestamp {
+	color: #6c757d; /* Standard secondary text color */
+}
+
+
+/* Input Area Styling */
+#chatQueryModal .form-group label[for="chatQueryInput"] { /* Hide label visually, but keep for accessibility */
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+
+#chatQueryModal #chatQueryInput {
+	width: 100%;
+	border-radius: 8px; /* Standard input border radius */
+	padding: 10px 15px;
+	border: 1px solid #ced4da; /* Standard input border */
+	resize: vertical; /* Allow vertical resize */
+	line-height: 1.4;
+	min-height: 42px; /* Ensure minimum height */
+	max-height: 150px; /* Limit max height */
+	overflow-y: auto;
+	font-size: 1em; /* Standard font size */
+	transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+}
+#chatQueryModal #chatQueryInput:focus {
+	 border-color: #80bdff;
+	 outline: 0;
+	 box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+/* Button Styling within Input Area (Delegated styles via .btn classes) */
+#chatQueryModal .modal-content button {
+    flex-shrink: 0;
+    height: fit-content;
+    margin-bottom: 0;
+}
+
+
+/* Thinking Spinner (Placeholder) Styling */
+#chatQueryModal .chat-message.ai-pending {
+	background-color: #e9ecef; /* Match AI bubble background */
+	color: #6c757d; /* Dimmer text */
+	font-style: italic;
+	display: flex;
+	align-items: center;
+	justify-content: flex-start; /* Align left */
+	gap: 8px;
+	min-height: 42px; /* Match input height */
+	border-bottom-left-radius: 5px; /* Match AI bubble */
+	margin-right: auto; /* Push left */
+	border-color: #ced4da; /* Match AI bubble border */
+	padding: 10px 15px; /* Match bubble padding */
+}
+#chatQueryModal .chat-message.ai-pending i { /* Spinner icon */
+	font-size: 1em; /* Match text size */
+	line-height: 1; /* Prevent extra space */
+}
+
+/* Close button styling */
+#chatQueryModal .close {
+	position: absolute;
+	top: 10px;
+	right: 15px;
+	font-size: 2rem; /* Larger close button */
+	font-weight: bold;
+	color: #aaa;
+	cursor: pointer;
+	line-height: 1;
+	padding: 0 5px;
+}
+#chatQueryModal .close:hover {
+	color: #666;
+}
+
+/* Responsive modal adjustments (optional) */
+@media (max-width: 600px) {
+	#chatQueryModal .modal-content {
+		max-width: 95%;
+		max-height: 80vh;
+        padding: 15px;
+	}
+	#chatQueryModal .chat-message {
+		font-size: 0.9em; /* Smaller font for readability */
+	}
+    #chatQueryModal #chatControls {
+        flex-direction: column; /* Stack controls on small screens */
+        align-items: stretch; /* Stretch controls */
+    }
+    #chatQueryModal #chatControls label {
+        margin-bottom: 5px;
+    }
+}
+
+
+/* TinyMCE Editor Styles */
+/* Target the TinyMCE editor container when inside evidence-entry */
+.evidence-entry .tox-tinymce {
+    border: 1px solid #ddd; /* Add a subtle border around the editor itself */
+    border-radius: 4px;
+    margin-bottom: 5px; /* Space below the editor */
+}
+/* Style the editor body itself */
+.evidence-entry .tox-editor-container iframe body {
+     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Match app font */
+     font-size: 14px; /* Match app font size */
+     line-height: 1.6;
+     color: var(--text-color);
+     padding: 8px; /* Add padding inside the editor body */
+}
+/* Style for blockquotes inside TinyMCE */
+.evidence-entry .tox-editor-container iframe body blockquote {
+    margin: 10px 20px; /* Standard blockquote styling */
+    padding-left: 15px;
+    border-left: 4px solid #ccc;
+    font-style: italic;
+    color: #555;
+}
+/* Style for paragraphs inside blockquotes inside TinyMCE */
+.evidence-entry .tox-editor-container iframe body blockquote p {
+     margin: 0;
+}
+/* Style for explanations (em) inside TinyMCE */
+.evidence-entry .tox-editor-container iframe body em {
+    font-style: normal; /* Reset italic for the Explanation label */
+}
+/* Style for explanation paragraphs inside TinyMCE */
+.evidence-entry .tox-editor-container iframe body p {
+     margin: 0 0 10px 0; /* Add some space below paragraphs */
+}
+.evidence-entry .tox-editor-container iframe body p:last-child {
+    margin-bottom: 0; /* No bottom margin on the last paragraph */
+}
+/* Style for lists inside TinyMCE */
+.evidence-entry .tox-editor-container iframe body ul,
+.evidence-entry .tox-editor-container iframe body ol {
+    padding-left: 20px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+.evidence-entry .tox-editor-container iframe body li {
+    margin-bottom: 4px;
+}
+
+
+/* Style for code blocks inside TinyMCE */
+.evidence-entry .tox-editor-container iframe body pre {
+	background-color: #f1f1f1;
+	border: 1px solid #ddd;
+	padding: 10px;
+	border-radius: 5px;
+	overflow-x: auto;
+	margin: 8px 0;
+	font-family: Consolas, 'Courier New', monospace;
+	font-size: 0.85em;
+	line-height: 1.5;
+	color: #333;
+     white-space: pre-wrap;
+     word-break: break-all;
+}
+/* Style for inline code inside TinyMCE */
+.evidence-entry .tox-editor-container iframe body code:not(pre code) {
+	background-color: #f1f1f1;
+	padding: 2px 5px;
+	border-radius: 3px;
+	font-size: 0.9em;
+	font-family: Consolas, 'Courier New', monospace;
+	color: #c7254e;
+}
+
+/* TinyMCE Statusbar height adjustment */
+.evidence-entry .tox-statusbar {
+    min-height: 20px !important; /* Reduce status bar height */
+    height: 20px !important;
+}
+
+/* --- styles.css (snippet) --- */
+
+/* Chat Modal - Selected Indicator Context Display */
+#chatSelectedIndicatorContext {
+    font-size: 0.85em;
+    color: #555;
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    border-radius: var(--border-radius);
+    max-height: 100px; /* Limit height and make scrollable if too much */
+    overflow-y: auto;
+}
+#chatSelectedIndicatorContext p {
+    margin: 0 0 5px 0;
+}
+#chatSelectedIndicatorContext ul {
+    list-style-type: disc;
+    margin-left: 20px;
+    padding-left: 0;
+}
+#chatSelectedIndicatorContext li {
+    margin-bottom: 3px;
+}
+#chatSelectedIndicatorContext .no-context {
+    font-style: italic;
+    color: #777;
+}
+#chatSelectedIndicatorContext .clear-context-btn {
+    margin-left: 10px;
+    font-size: 0.9em;
+    padding: 2px 5px;
+}
+
+/* Select Indicator for Chat Modal */
+#selectIndicatorForChatModal .modal-content {
+    max-width: 700px; /* Adjust as needed */
+}
+#selectIndicatorForChatModal {
+	z-index: 1050;
+}
+#indicatorForChatListContainer {
+    margin-top: 15px;
+    border: 1px solid var(--medium-gray);
+    border-radius: var(--border-radius);
+    padding: 10px;
+    max-height: 40vh; /* Make the list scrollable */
+    overflow-y: auto;
+    background-color: #fdfdfd;
+}
+.indicator-chat-list-item {
+    display: block; /* Each item on a new line */
+    margin-bottom: 8px;
+    padding: 5px;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+.indicator-chat-list-item:hover {
+    background-color: #f0f0f0;
+}
+.indicator-chat-list-item label {
+    font-weight: normal;
+    display: flex; /* Align checkbox and text */
+    align-items: center;
+    cursor: pointer;
+    margin-bottom: 0; /* Override form-group label style */
+}
+.indicator-chat-list-item input[type="checkbox"] {
+    margin-right: 8px;
+    flex-shrink: 0; /* Prevent checkbox from shrinking */
+}
+.indicator-chat-list-item .indicator-name {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+.indicator-chat-list-item .indicator-path {
+    font-size: 0.8em;
+    color: #777;
+    margin-left: 5px;
+}
+
+/* Ensure add indicator context button doesn't get too squished */
+#addIndicatorContextBtn {
+    white-space: nowrap;
+}
+
+/* --- END OF CSS snippet --- */
+
+
+
+/* NEW: Evidence Guide Button */
+.evidence-guide-btn {
+    background-color: #7f8c8d; /* A neutral gray */
+    color: white;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    border-radius: var(--border-radius);
+}
+.evidence-guide-btn:hover {
+    background-color: #626f70;
+}
+.evidence-guide-btn i {
+    margin-right: 4px;
+}
+
+/* NEW: Evidence Guide Modal Styles */
+#evidenceGuideModal {
+    z-index: 1010; /* Ensure it appears above other modals if needed */
+}
+/* Make the modal content a flex column container to fix header/footer */
+#evidenceGuideModal .modal-content {
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Prevent the whole modal from scrolling */
+    padding: 0; /* Remove padding from the main container */
+}
+.indicator-buttons {
+    display: flex;
+    gap: 5px; /* Adjust spacing between the buttons as needed */
+}
+/* Modal Title (Header) */
+#evidenceGuideTitle {
+    font-size: 1.2em;
+    color: var(--primary-color);
+    font-weight: 600;
+    border-bottom: 2px solid var(--secondary-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0; /* Prevent header from shrinking */
+    padding: 20px; /* Add padding here instead of on modal-content */
+    margin: 0; /* Reset margin */
+}
+
+/* Main Content Area (The part that will scroll) */
+.evidence-guide-content {
+    line-height: 1.7;
+    flex-grow: 1; /* Allow this section to fill available space */
+    overflow-y: auto; /* Enable vertical scrolling ONLY for this section */
+    padding: 20px; /* Add padding for internal content */
+}
+
+/* Guiding Question "Hero" Section */
+.guide-hero-section {
+    background: linear-gradient(135deg, #e9f3f9, #d1e9fc); /* Light blue gradient */
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid #cce5ff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.guide-hero-section h4 {
+    font-size: 1.2em;
+    color: #0b5ed7; /* Dark blue */
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.guide-hero-section p {
+    font-size: 1.1em;
+    font-style: italic;
+    color: #212529;
+    margin-bottom: 0;
+}
+
+/* General Section Styling */
+.guide-section {
+    margin-bottom: 2rem;
+}
+.guide-section h3 {
+    font-size: 1.3em;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--medium-gray);
+    padding-bottom: 8px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between icon and text */
+}
+.guide-section h3 .fas {
+    color: var(--secondary-color); /* Accent color for icons */
+    font-size: 0.9em;
+}
+.guide-section-content {
+    padding-left: 10px; /* Indent content slightly */
+}
+.guide-section-content p, .guide-section-content blockquote {
+    margin-bottom: 1rem;
+}
+
+/* Research Connection Blockquote */
+.guide-section-content blockquote {
+    background-color: #fff;
+    border-left: 5px solid var(--secondary-color);
+    padding: 1rem;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    margin-left: 0;
+    font-style: italic;
+    color: #495057;
+}
+
+/* List Styling */
+.guide-section-content ul {
+    list-style-type: none; /* Remove default bullets */
+    padding-left: 5px;
+}
+.guide-section-content ul li {
+    margin-bottom: 0.75rem;
+    padding-left: 25px;
+    position: relative;
+}
+.guide-section-content ul li::before {
+    content: '\f058'; /* Font Awesome check-circle icon */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    left: 0;
+    top: 2px;
+    color: var(--success-color);
+}
+.na-value {
+    color: var(--dark-gray);
+    font-style: italic;
+}
+
+/* Scoring Details Grid */
+.scoring-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.scoring-detail-card {
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden; /* To contain header background */
+}
+.scoring-detail-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--box-shadow);
+}
+.scoring-detail-header {
+    background-color: #e9ecef;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    border-bottom: 1px solid #e0e0e0;
+}
+.scoring-detail-body {
+    padding: 1rem;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+
+/* Modal Actions (Footer) */
+#evidenceGuideModal .modal-actions {
+    text-align: right;
+    padding: 20px;
+    border-top: 1px solid var(--medium-gray);
+    flex-shrink: 0; /* Prevent footer from shrinking */
+    background-color: #fff; /* Give footer a solid background to hide scrolled content behind it */
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.05); /* Add a subtle shadow to separate from content */
+    margin: 0; /* Reset margin */
+}
+
+/* Styles for Strengths vs Gaps */
+.evidence-divider {
+    border: none;
+    border-top: 1px dashed var(--medium-gray);
+    margin: 1.5rem 0;
+}
+
+.evidence-section.strengths h5 {
+    color: var(--success-color);
+}
+
+.evidence-section.gaps h5 {
+    color: var(--danger-color);
+}
+
+.evidence-section .add-evidence {
+    background-color: transparent;
+    border: 1px solid var(--dark-gray);
+    transition: background-color 0.2s ease;
+}
+
+.evidence-section .add-evidence[data-type="strength"] {
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+.evidence-section .add-evidence[data-type="strength"]:hover {
+    background-color: #eafaf1;
+}
+
+.evidence-section .add-evidence[data-type="gap"] {
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+.evidence-section .add-evidence[data-type="gap"]:hover {
+    background-color: #fdedec;
+}
