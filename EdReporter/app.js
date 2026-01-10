@@ -11,6 +11,79 @@ let chatSelectedIndicatorData = [];
 
 
 /**
+ * Centralized function to update the entire AI-related UI based on the current state.
+ * It checks if the AI is initialized and if PDFs are loaded, then enables/disables
+ * buttons and selectors accordingly, providing helpful tooltips and notifications.
+ */
+function updateAiFeatureUI() {
+    const aiInitialized = !!window.genAiInstance;
+    const pdfsLoaded = window.loadedPdfs && window.loadedPdfs.length > 0;
+
+    const elementsToToggle = [
+        ...document.querySelectorAll('.ai-analyze-btn'),
+        document.getElementById('floatingQueryBtn')
+    ];
+    
+    const selectorsToToggle = [
+        ...document.querySelectorAll('.aiModelSelectorIndicator'),
+        ...document.querySelectorAll('#aiModelSelectorChat')
+    ];
+
+    if (!aiInitialized) {
+        // AI is not working at all (no valid key)
+        elementsToToggle.forEach(el => {
+            if (!el) return;
+            el.disabled = true;
+            el.title = "Set API Key in PDF menu to enable";
+            el.style.opacity = "0.5";
+            el.style.cursor = "not-allowed";
+        });
+        selectorsToToggle.forEach(sel => {
+            if (!sel) return;
+            sel.disabled = true;
+            sel.title = "Set API Key in PDF menu to enable";
+        });
+        const floatingBtn = document.getElementById('floatingQueryBtn');
+        if (floatingBtn) floatingBtn.style.display = 'none';
+        showNotification("AI features disabled. Set your API Key in the 'Manage & Load PDFs' menu.", "info", 8000);
+    } else if (!pdfsLoaded) {
+        // AI is initialized, but no documents are loaded
+        elementsToToggle.forEach(el => {
+            if (!el) return;
+            el.disabled = true;
+            el.title = "Load at least one PDF to enable AI features";
+            el.style.opacity = "0.5";
+            el.style.cursor = "not-allowed";
+        });
+        selectorsToToggle.forEach(sel => {
+            if (!sel) return;
+            sel.disabled = false; // Selectors can be enabled
+            sel.title = "Select AI model";
+        });
+        const floatingBtn = document.getElementById('floatingQueryBtn');
+        if (floatingBtn) floatingBtn.style.display = 'none'; // Hide chat if no PDFs
+        showNotification("AI is ready. Load PDFs to enable analysis and chat.", "info", 5000);
+    } else {
+        // AI is initialized AND PDFs are loaded - enable everything
+        elementsToToggle.forEach(el => {
+            if (!el) return;
+            el.disabled = false;
+            el.title = el.dataset.originalTitle || ''; // Restore original title
+            el.style.opacity = "";
+            el.style.cursor = "";
+        });
+        selectorsToToggle.forEach(sel => {
+            if (!sel) return;
+            sel.disabled = false;
+            sel.title = "Select AI model";
+        });
+        const floatingBtn = document.getElementById('floatingQueryBtn');
+        if (floatingBtn) floatingBtn.style.display = 'flex'; // Show chat button
+    }
+}
+
+
+/**
  * Initializes the entire application.
  * Sets up UI elements, event listeners, database connection, AI services,
  * loads rubric data, and initializes the initial review state.
@@ -38,36 +111,9 @@ async function initApp() {
         // 3. Initialize Exports functionality
         initializeExports();
 
-        // 4. Initialize AI Services
-        const aiInitialized = initializeAI(); // Checks window.genAiInstance
-
-        // 5. Setup AI UI based on initialization result
-        if (!aiInitialized) {
-            console.warn("[App] AI Initialization failed or was skipped. AI features disabled.");
-            try {
-                document.querySelectorAll('.ai-analyze-btn, #floatingQueryBtn').forEach(el => {
-                    el.disabled = true;
-                    el.title = "AI Service Unavailable";
-                    el.style.opacity = "0.5";
-                    el.style.cursor = "not-allowed";
-                });
-                document.querySelectorAll('.aiModelSelectorIndicator, #aiModelSelectorChat').forEach(sel => {
-                    sel.disabled = true;
-                    sel.title = "AI Service Unavailable";
-                });
-                const floatingBtn = document.getElementById('floatingQueryBtn');
-                if (floatingBtn) floatingBtn.style.display = 'none';
-            } catch (uiError) {
-                console.error("[App] Error disabling AI UI elements:", uiError);
-            }
-            showNotification("AI features disabled. Check API key and console.", "info", 8000);
-        } else {
-            // AI initialized successfully
-            if (loadedPdfs.length === 0) {
-                showNotification("Load PDFs using 'Manage & Load PDFs' to enable AI analysis.", "info", 5000);
-            }
-            // AI Model Selectors are populated with HTML defaults or could be dynamically updated here.
-        }
+        // 4. Initialize AI Services and set up UI
+        initializeAI(); // Checks window.genAiInstance and sets up the local 'genAI' in ai-analyzer.js
+        updateAiFeatureUI(); // Centralized function to enable/disable all AI UI based on current state
 
         // 6. Setup Modals (generic structures are defined in HTML)
         setupLoadReviewModal();
@@ -570,11 +616,12 @@ function setupLoadReviewModal() {
 
 /**
  * Sets up the PDF Load/Management Modal.
- * Handles UI for adding PDFs via URL or file input, and manages the list of loaded PDFs.
+ * Handles UI for adding PDFs via URL or file input, manages the list of loaded PDFs,
+ * and manages saving the user's Gemini API key.
  */
 function setupPdfLoadModal() {
     const modal = document.getElementById('loadPdfModal');
-    const loadPdfBtn = document.getElementById('loadPdfBtn'); // Button to open the modal
+    const loadPdfBtn = document.getElementById('loadPdfBtn');
     if (!modal || !loadPdfBtn) {
         console.warn("PDF Load Modal trigger or container not found. PDF management may be disabled.");
         return;
@@ -582,31 +629,98 @@ function setupPdfLoadModal() {
 
     const closeBtnTop = modal.querySelector('#closePdfModalBtn');
     const closeBtnBottom = modal.querySelector('#closePdfModalBtnBottom');
+    
+    // PDF Loading elements
     const urlInput = document.getElementById('pdfUrlInput');
     const fileInput = document.getElementById('pdfFileInput');
     const addBtn = document.getElementById('addPdfConfirmBtn');
     const statusDiv = document.getElementById('pdfAddStatus');
     const listDiv = document.getElementById('loadedPdfsList');
 
-    if (!closeBtnTop || !closeBtnBottom || !urlInput || !fileInput || !addBtn || !statusDiv || !listDiv) {
+    // API Key Settings elements
+    const apiKeyInput = document.getElementById('geminiApiKeyInput');
+    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+    const apiKeyStatus = document.getElementById('apiKeyStatus');
+
+    if (!closeBtnTop || !closeBtnBottom || !urlInput || !fileInput || !addBtn || !statusDiv || !listDiv || !apiKeyInput || !saveApiKeyBtn || !apiKeyStatus) {
         console.error("One or more PDF Load Modal elements not found inside #loadPdfModal. PDF Management disabled.");
         loadPdfBtn.disabled = true; // Disable trigger if modal is broken
         return;
     }
 
+    // --- Modal Opening ---
     loadPdfBtn.addEventListener('click', () => {
         modal.style.display = 'block';
         renderPdfList(); // Render the current list of PDFs when opening
         statusDiv.textContent = ''; // Clear previous status messages
-        urlInput.value = '';      // Clear input fields
+        urlInput.value = '';
         fileInput.value = '';
+
+        // Populate API Key from localStorage
+        const storedKey = localStorage.getItem('geminiApiKey');
+        if (storedKey) {
+            apiKeyInput.value = storedKey;
+            apiKeyStatus.textContent = "API Key is set.";
+            apiKeyStatus.style.color = "green";
+        } else {
+            apiKeyInput.value = '';
+            apiKeyStatus.textContent = "API Key not set.";
+            apiKeyStatus.style.color = "red";
+        }
     });
 
+    // --- Modal Closing ---
     const closeModal = () => modal.style.display = 'none';
     closeBtnTop.addEventListener('click', closeModal);
     closeBtnBottom.addEventListener('click', closeModal);
-    window.addEventListener('click', (event) => { if (event.target === modal) closeModal(); }); // Close on outside click
+    window.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
 
+    // --- API Key Saving Logic ---
+    saveApiKeyBtn.addEventListener('click', async () => {
+        const newApiKey = apiKeyInput.value.trim();
+
+        // If key is empty, clear it and disable AI
+        if (!newApiKey) {
+            localStorage.removeItem('geminiApiKey');
+            apiKeyStatus.textContent = "API Key removed.";
+            apiKeyStatus.style.color = 'orange';
+            showNotification("API Key cleared. AI features disabled.", "warning");
+            window.genAiInstance = null;
+            initializeAI(); // This will fail and trigger UI disabling
+            return;
+        }
+
+        saveApiKeyBtn.disabled = true;
+        saveApiKeyBtn.textContent = 'Verifying...';
+        apiKeyStatus.textContent = 'Verifying key...';
+        apiKeyStatus.style.color = 'blue';
+
+        const success = await window.initializeGeminiSDK(newApiKey);
+
+        if (success) {
+            localStorage.setItem('geminiApiKey', newApiKey);
+            apiKeyStatus.textContent = "API Key saved.";
+            apiKeyStatus.style.color = "green";
+            showNotification("API Key saved. AI features enabled.", "success");
+            
+            initializeAI(); // Re-initialize the local genAI variable in ai-analyzer.js
+            updateAiFeatureUI(); // Update UI based on new state
+        } else {
+            // This block will now likely only be hit if the SDK fails to load/import.
+            apiKeyStatus.textContent = "Error initializing AI. Check console.";
+            apiKeyStatus.style.color = "red";
+            showNotification("Failed to initialize AI SDK. Check console for errors.", "error");
+            window.genAiInstance = null;
+            initializeAI(); // Clear the local genAI variable
+            updateAiFeatureUI(); // Update UI to show AI is disabled
+        }
+        
+        saveApiKeyBtn.disabled = false;
+        saveApiKeyBtn.textContent = 'Save & Verify Key';
+    });
+
+
+    // --- PDF Adding Logic ---
     addBtn.addEventListener('click', async () => {
         addBtn.disabled = true; addBtn.textContent = 'Adding...'; statusDiv.textContent = 'Processing...';
         const file = fileInput.files[0];
@@ -628,27 +742,9 @@ function setupPdfLoadModal() {
                 statusDiv.textContent = `Added: ${sourceName.substring(0, 50)}${sourceName.length > 50 ? '...' : ''}`;
                 urlInput.value = ''; fileInput.value = ''; // Clear inputs on success
 
-                // If AI was disabled due to no PDFs, re-enable relevant UI elements
-                if (genAI && loadedPdfs.length > 0) {
-                    document.querySelectorAll('.ai-analyze-btn, #floatingQueryBtn').forEach(el => {
-                        if (el.disabled) {
-                            el.disabled = false;
-                            el.title = el.dataset.originalTitle || ''; // Restore original title if available
-                            el.style.opacity = "";
-                            el.style.cursor = "";
-                        }
-                    });
-                    document.querySelectorAll('.aiModelSelectorIndicator, #aiModelSelectorChat').forEach(sel => {
-                        if (sel.disabled) {
-                            sel.disabled = false;
-                            sel.title = sel.dataset.originalTitle || '';
-                        }
-                    });
-                    const floatingBtn = document.getElementById('floatingQueryBtn');
-                    if (floatingBtn && floatingBtn.style.display === 'none') {
-                        floatingBtn.style.display = ''; // Make visible again
-                    }
-                }
+                // After adding a PDF, just update the entire AI UI state
+                updateAiFeatureUI();
+
             } catch (error) {
                 statusDiv.textContent = `Error: ${error.message}`;
                 console.error("Error adding PDF:", error);

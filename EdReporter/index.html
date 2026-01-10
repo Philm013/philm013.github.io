@@ -10,63 +10,54 @@
     <script src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js" referrerpolicy="origin"></script>
 
 	<script type="module">
-        // --- Configuration ---
-        // IMPORTANT: Replace "YOUR_GEMINI_API_KEY" with your actual API key.
-        // For production, this key should be managed securely (e.g., via a backend proxy) and not exposed client-side.
-        const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"; // <-- REPLACE THIS with your actual API key
-
         // --- Initialize global rubrics object ---
         // This object will be populated by individual rubric JS files.
         if (!window.rubrics) {
 		    window.rubrics = {};
 		};
 
-        // --- Promise for SDK Initialization ---
+        // --- NEW: Function to initialize the SDK ---
+        window.initializeGeminiSDK = async (apiKey) => {
+            window.genAiInstance = null; // Reset instance
+            if (!apiKey) {
+                console.warn("[SDK Loader] No API Key provided for initialization.");
+                return false;
+            }
+            try {
+                const sdkUrl = "https://cdn.jsdelivr.net/npm/@google/genai@0.9.0/dist/web/index.mjs";
+                const module = await import(sdkUrl);
+                const AiClass = module.GoogleGenerativeAI || module.GoogleGenAI;
+                if (AiClass) {
+                    // Just instantiate the class. The key will be validated on the first API call.
+                    window.genAiInstance = new AiClass({apiKey: apiKey});
+                    console.log("[SDK Loader] Google AI SDK instance created. Key will be validated on first use.");
+                    return true;
+                } else {
+                    console.error("[SDK Loader] Failed to find GoogleGenerativeAI class in SDK module.");
+                    return false;
+                }
+            } catch (err) {
+                console.error("[SDK Loader] Failed to load or instantiate Google AI SDK:", err);
+                return false;
+            }
+        };
+
+        // --- Promise for Initial SDK Initialization ---
         // Creates a promise that the main application (app.js) can await
         // to ensure the AI SDK is loaded (or load attempt has completed) before proceeding.
         window.sdkInitializationPromise = new Promise(async (resolve) => {
-            window.genAiInstance = null; // Initialize to null; will be set upon successful SDK load
-
-            try {
-                if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY") {
-                    console.warn("[SDK Loader] Gemini API Key not configured in HTML. AI features will be disabled.");
-                    // Resolve the promise even if API key is missing, so the app doesn't hang.
-                    // The app.js (initializeAI) will handle the null genAiInstance.
-                    resolve();
-                    return;
-                }
-
-                // Original SDK URL and instantiation pattern
-                const sdkUrl = "https://cdn.jsdelivr.net/npm/@google/genai@0.9.0/dist/web/index.mjs";
-                console.log(`[SDK Loader] Attempting to load Google AI SDK from: ${sdkUrl}`);
-                const module = await import(sdkUrl); // Load the SDK module
-                const AiClass = module.GoogleGenerativeAI || module.GoogleGenAI; // Check for expected class
-
-                if (AiClass) {
-                    console.log("[SDK Loader] SDK Class loaded successfully.");
-                    try {
-                        // Instantiate the AI SDK with the API key
-                        window.genAiInstance = new AiClass({apiKey:GEMINI_API_KEY});
-                        console.log("[SDK Loader] Google AI SDK instance created and attached to window.genAiInstance.");
-                    } catch (instantiationError) {
-                        console.error("[SDK Loader] Error instantiating Google AI SDK:", instantiationError);
-                        // genAiInstance will remain null if instantiation fails
-                         if (instantiationError.message && instantiationError.message.includes('API_KEY_INVALID')) {
-                             console.error("[SDK Loader] API Key appears invalid.");
-                         }
-                    }
-                } else {
-                    console.error(`[SDK Loader] Loaded Google AI SDK module from ${sdkUrl}, but couldn't find expected class.`);
-                }
-            } catch (err) {
-                console.error("[SDK Loader] Failed to load Google AI SDK module:", err);
-            } finally {
-                // --- IMPORTANT ---
-                // Resolve the promise *after* attempting SDK load/instantiation,
-                // regardless of success or failure. This unblocks app.js.
-                console.log("[SDK Loader] Resolving SDK initialization promise.");
-                resolve();
+            const storedApiKey = localStorage.getItem('geminiApiKey');
+            if (storedApiKey) {
+                console.log("[SDK Loader] Found API key in localStorage. Attempting to initialize SDK.");
+                await window.initializeGeminiSDK(storedApiKey);
+            } else {
+                console.log("[SDK Loader] No API key in localStorage. AI features disabled until key is set.");
             }
+            // --- IMPORTANT ---
+            // Always resolve the promise *after* attempting SDK load/instantiation,
+            // regardless of success or failure. This unblocks app.js.
+            console.log("[SDK Loader] Initial SDK check complete. Resolving promise.");
+            resolve();
         });
     </script>
 
@@ -81,11 +72,9 @@
 
 
     <!-- External Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> <!-- For PDF generation (if used in export) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js"></script> <!-- For Markdown to HTML conversion -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.0/purify.min.js"></script> <!-- For HTML sanitization -->
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script> <!-- For saving files (e.g., exports) -->
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script> <!-- For capturing HTML as image (if used) -->
 
 </head>
 <body>
@@ -103,10 +92,9 @@
 				 <label for="aiModelSelectorIndicator" style="margin-left: 10px; margin-right: 5px; vertical-align: middle;">AI Model:</label>
 				 <select id="aiModelSelectorIndicator" class="aiModelSelectorIndicator form-control small" title="Select AI model for indicator analysis">
 					 <!-- AI Model options for indicator analysis -->
-					 <option value="gemini-2.5-pro" selected>Gemini 2.5 Pro</option>
-					 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-					 <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-				 </select>
+					 <option value="gemini-3-pro-preview" selected>Gemini 3 Pro</option>
+					 <option value="gemini-flash-latest">Gemini Flash</option>
+					 </select>
 			 </div>
              <!-- Main action buttons -->
 			<button id="loadPdfBtn" class="btn secondary">Manage & Load PDFs</button>
@@ -187,6 +175,16 @@
         <div class="modal-content large">
             <span class="close" id="closePdfModalBtn">×</span>
             <h2>Manage & Load PDFs for AI Analysis</h2>
+            <div class="api-key-section" style="background-color: #f0f5f9; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                <h4>Settings</h4>
+                <div class="form-group">
+                    <label for="geminiApiKeyInput">Google Gemini API Key:</label>
+                    <input type="password" id="geminiApiKeyInput" class="form-control" placeholder="Enter your API key">
+                </div>
+                <button id="saveApiKeyBtn" class="btn primary small">Save & Verify Key</button>
+                <span id="apiKeyStatus" style="margin-left: 10px; font-style: italic;"></span>
+            </div>
+            <hr style="margin: 20px 0;">
             <div class="pdf-add-section">
                 <h4>Add New PDF</h4>
                 <div class="form-group">

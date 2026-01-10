@@ -14,6 +14,14 @@ const maxChatHistoryLength = 10; // Controls how many past messages are sent as 
 /** @type {string|null} Stores the Blob URL for the currently viewed PDF to allow revocation. */
 let currentBlobUrl = null; // Used by the PDF viewer modal.
 
+/** @const {Array<object>} Default safety settings for all Gemini API calls. */
+const DEFAULT_SAFETY_SETTINGS = [
+    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+];
+
 /**
  * Initializes the AI service by checking for the globally available SDK instance.
  * Validates the instance and sets the local `genAI` variable.
@@ -141,7 +149,8 @@ async function addPdfToList(source, name) {
 
 /**
  * Removes a PDF from the `window.loadedPdfs` list by its ID.
- * If the removed PDF was the active one, sets the new active PDF (if any remain).
+ * If the removed PDF was the active one, it sets a new active PDF.
+ * It then calls the global UI update function to reflect the new state.
  * @param {string} pdfId - The ID of the PDF to remove.
  */
 function removePdf(pdfId) {
@@ -158,18 +167,11 @@ function removePdf(pdfId) {
         }
         showNotification(`PDF removed.`, "info");
 
-        // If no PDFs are left, disable AI features that depend on them
-        if (window.loadedPdfs.length === 0 && window.genAiInstance) { // Check genAiInstance to avoid errors if AI isn't even on
-            document.querySelectorAll('.ai-analyze-btn, #floatingQueryBtn').forEach(el => {
-                el.disabled = true;
-                el.dataset.originalTitle = el.title; // Store original title
-                el.title = "Load PDFs to enable AI features";
-                el.style.opacity = "0.5";
-                el.style.cursor = "not-allowed";
-            });
-            const floatingBtn = document.getElementById('floatingQueryBtn');
-            if (floatingBtn) floatingBtn.style.display = 'none'; // Hide chat button
-            showNotification("No PDFs loaded. AI analysis and chat disabled until PDFs are added.", "warning", 7000);
+        // Centralized UI update
+        if (typeof window.updateAiFeatureUI === 'function') {
+            window.updateAiFeatureUI();
+        } else {
+            console.error("updateAiFeatureUI function not found. UI may be inconsistent.");
         }
     }
 }
@@ -484,12 +486,7 @@ async function analyzeIndicatorWithAI(indicatorId, analyzeButton, customInstruct
     const modelName = modelSelector ? modelSelector.value : "gemini-1.5-pro-latest";
     const pdfPartsForApi = getAllLoadedPdfDataForRequest();
     
-    const safetySettings = [
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-    ];
+    const safetySettings = DEFAULT_SAFETY_SETTINGS;
     
     const errorDisplaySection = indicatorElement.querySelector('.evidence-section.expectation');
 
@@ -852,12 +849,7 @@ async function customQueryWithAI(fullPromptForAI, modelName) {
         throw new Error("No PDFs loaded to query. Please load PDF documents first.");
     }
     
-    const safetySettings = [
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-    ];
+    const safetySettings = DEFAULT_SAFETY_SETTINGS;
 
     const parts = [{ text: fullPromptForAI }, ...pdfPartsForApi];
     const contents = [{ role: 'user', parts }];

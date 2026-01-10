@@ -360,9 +360,6 @@ function generateHTML(data) {
 function buildIndicatorHTML(indicatorData) {
     if (!indicatorData || !indicatorData.title) return '';
 
-    const strengths = (indicatorData.evidence || []).filter(e => e.type === 'strength' || e.type === undefined);
-    const gaps = (indicatorData.evidence || []).filter(e => e.type === 'gap');
-
     let html = `<div class="indicator" data-indicator="${sanitizeHTML(indicatorData.id || 'no-id')}"><h4>${sanitizeHTML(indicatorData.title)}</h4>`;
 
     if (!indicatorData.isNarrativeOnly) {
@@ -371,7 +368,7 @@ function buildIndicatorHTML(indicatorData) {
         html += `<div><span class="narrative-only">(Narrative Evidence Only)</span></div>`;
     }
 
-    // Add the expectation statement if it exists (it's already HTML)
+    // Add the expectation statement if it exists
     if (indicatorData.expectation) {
         html += `<div class="indicator-expectation-statement">${indicatorData.expectation}</div>`;
     }
@@ -380,26 +377,32 @@ function buildIndicatorHTML(indicatorData) {
         html += `<div class="scoring-criteria"><h5>Scoring Criteria:</h5><ul>${indicatorData.scoringCriteria.map(c => `<li>${sanitizeHTML(c)}</li>`).join('')}</ul></div>`;
     }
 
-    // Render Strengths
-    if (strengths.length > 0) {
-        html += `<div class="evidence-section strengths"><h5>Evidence of Strengths</h5>`;
-        strengths.forEach((evidenceItem, i) => {
-            html += `<div class="evidence-entry" id="${sanitizeHTML(indicatorData.id)}-strength-${i}"><div class="evidence-text">${evidenceItem.text || ''}</div></div>`;
-        });
-        html += `</div>`;
+    const evidenceByType = {
+        strength: (indicatorData.evidence || []).filter(e => e.type === 'strength' || e.type === undefined),
+        gap: (indicatorData.evidence || []).filter(e => e.type === 'gap')
+    };
+
+    const sectionTitles = {
+        strength: 'Evidence of Strengths',
+        gap: 'Analysis of Gaps & Weaknesses'
+    };
+
+    let evidenceRendered = false;
+    for (const type in evidenceByType) {
+        const items = evidenceByType[type];
+        const title = sectionTitles[type];
+        if (items.length > 0) {
+            evidenceRendered = true;
+            html += `<div class="evidence-section ${type}s"><h5>${title}</h5>`;
+            items.forEach((evidenceItem, i) => {
+                html += `<div class="evidence-entry" id="${sanitizeHTML(indicatorData.id)}-${type}-${i}"><div class="evidence-text">${evidenceItem.text || ''}</div></div>`;
+            });
+            html += `</div>`;
+        }
     }
 
-    // Render Gaps
-    if (gaps.length > 0) {
-        html += `<div class="evidence-section gaps"><h5>Analysis of Gaps & Weaknesses</h5>`;
-        gaps.forEach((evidenceItem, i) => {
-            html += `<div class="evidence-entry" id="${sanitizeHTML(indicatorData.id)}-gap-${i}"><div class="evidence-text">${evidenceItem.text || ''}</div></div>`;
-        });
-        html += `</div>`;
-    }
-
-    if (strengths.length === 0 && gaps.length === 0) {
-        html += `<div class="evidence-section"><div class="na-value">No evidence provided for this indicator.</div></div>`;
+    if (!evidenceRendered) {
+        html += `<div class="evidence-section"><p class="na-value">No evidence provided for this indicator.</p></div>`;
     }
 
     html += `</div>`;

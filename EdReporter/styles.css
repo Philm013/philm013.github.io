@@ -937,24 +937,6 @@ textarea.form-control {
   100% { transform: rotate(360deg); }
 }
 
-/* Small loading spinner for evidence section */
-.evidence-loading-spinner {
-	display: none; /* Hidden by default */
-	border: 3px solid #f3f3f3; /* Light grey */
-	border-top: 3px solid var(--secondary-color); /* Blue */
-	border-radius: 50%;
-	width: 16px;
-	height: 16px;
-	animation: spin 1s linear infinite;
-	margin-left: 10px;
-	vertical-align: middle;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 /* AI Instruction Modal Styles */
 #aiInstructionModal .modal-content {
 	max-width: 600px;

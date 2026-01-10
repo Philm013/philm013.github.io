@@ -327,26 +327,19 @@ function updateEvidenceData() {
                 }
             }
 
-            // Process strengths
-            indicatorElement.querySelectorAll('.evidence-section.strengths .evidence-entry').forEach(entry => {
-                const editor = tinymce.get(entry.querySelector('.tinymce-editor-placeholder')?.id);
-                if (editor?.initialized) {
-                    const content = editor.getContent().trim();
-                    if (content && content !== '<p><br data-mce-bogus="1"></p>') {
-                        currentIndicatorData.evidence.push({ type: 'strength', text: content });
+            // Process strengths and gaps with a single loop
+            ['strength', 'gap'].forEach(evidenceType => {
+                const sectionSelector = `.evidence-section.${evidenceType}s`; // e.g., .evidence-section.strengths
+                indicatorElement.querySelectorAll(`${sectionSelector} .evidence-entry`).forEach(entry => {
+                    const editor = tinymce.get(entry.querySelector('.tinymce-editor-placeholder')?.id);
+                    if (editor?.initialized) {
+                        const content = editor.getContent().trim();
+                        // TinyMCE can leave an empty paragraph with a bogus br tag
+                        if (content && content !== '<p><br data-mce-bogus="1"></p>') {
+                            currentIndicatorData.evidence.push({ type: evidenceType, text: content });
+                        }
                     }
-                }
-            });
-
-            // Process gaps
-            indicatorElement.querySelectorAll('.evidence-section.gaps .evidence-entry').forEach(entry => {
-                const editor = tinymce.get(entry.querySelector('.tinymce-editor-placeholder')?.id);
-                if (editor?.initialized) {
-                    const content = editor.getContent().trim();
-                    if (content && content !== '<p><br data-mce-bogus="1"></p>') {
-                        currentIndicatorData.evidence.push({ type: 'gap', text: content });
-                    }
-                }
+                });
             });
         });
     });
