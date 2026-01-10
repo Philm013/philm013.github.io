@@ -1027,7 +1027,7 @@ function getCellHtml(rid, col, val, fmt) {
         return `<div class="d-flex justify-content-center align-items-center h-100" style="${inlineStyle}; ${bgStyle}"><input type="checkbox" class="form-check-input" ${checked?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)" style="transform:scale(1.2); cursor:pointer;"></div>`; 
     } 
 
-    const isMulti = col.type.includes('MULTI') || (col.type === 'TEXT_NUMBER' && col.options && col.options.length > 0 && String(val).includes(','));
+    const isMulti = col.type.includes('MULTI') || (col.type === 'TEXT_NUMBER' && col.options && col.options.length > 0);
     const isSingleDropdown = (col.options && col.options.length > 0);
 
     if (isMulti || isSingleDropdown) {
