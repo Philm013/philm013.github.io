@@ -51,9 +51,9 @@ To use the AI features of the tool, you must configure your Google Gemini API ke
 1.  Open the `index.html` file.
 2.  Locate the following line of code near the top in the `<script type="module">` block:
     ```javascript
-    const GEMINI_API_KEY = "AIzaSyC70cXxItO4NGCEWo2B9lM9ZfbBSepASRM"; // <-- REPLACE THIS
+    const GEMINI_API_KEY = "key"; // <-- REPLACE THIS
     ```
-3.  Replace `"AIzaSyC70cXxItO4NGCEWo2B9lM9ZfbBSepASRM"` with your actual Gemini API key.
+3.  Replace key with your actual Gemini API key.
 
 **Note**: For security reasons, it is not recommended to expose API keys on the client-side in a production environment. For personal or internal use, this method is acceptable, but for a public-facing application, the key should be managed via a secure backend proxy.
 
