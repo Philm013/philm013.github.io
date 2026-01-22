@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-12 Science Assessment Review (Pro)</title>
+    
+    <!-- PDF.js Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <style>
+        :root {
+            /* Light Theme */
+            --bg-app: #f1f5f9;
+            --bg-panel: #ffffff;
+            --bg-header: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-light: #eff6ff;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --highlight: rgba(255, 235, 59, 0.4);
+            --highlight-border: #fbc02d;
+            --search-highlight: rgba(255, 87, 34, 0.5);
+            --search-border: #f4511e;
+            --splitter-width: 6px;
+            
+            /* Sticky Dimensions */
+            --h-section: 48px;
+            --h-tabs: 42px;
+        }
+
+        [data-theme="dark"] {
+            --bg-app: #0f172a;
+            --bg-panel: #1e293b;
+            --bg-header: #1e293b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #60a5fa;
+            --primary-light: #172554;
+            --border: #334155;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+            --highlight: rgba(255, 235, 59, 0.3);
+        }
+
+        /* Base & Reset */
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            background: var(--bg-app); 
+            color: var(--text-main); 
+            overflow: hidden; 
+        }
+
+        /* Utility */
+        .hidden { display: none !important; }
+        .btn { 
+            background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-main); 
+            padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; 
+            transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn:hover { background: var(--bg-app); border-color: var(--text-muted); }
+        .btn-primary { background: var(--primary); color: white; border: 1px solid var(--primary); }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-danger { color: var(--danger); border-color: var(--border); }
+        .btn-danger:hover { background: #fef2f2; border-color: var(--danger); }
+        [data-theme="dark"] .btn-danger:hover { background: #450a0a; }
+
+        .tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase; }
+        .tag-green { background: #dcfce7; color: #166534; }
+        .tag-red { background: #fee2e2; color: #991b1b; }
+        [data-theme="dark"] .tag-green { background: #052e16; color: #4ade80; }
+        [data-theme="dark"] .tag-red { background: #450a0a; color: #f87171; }
+
+        /* HEADER */
+        header { 
+            height: 56px; background: var(--bg-header); border-bottom: 1px solid var(--border); 
+            display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; 
+            flex-shrink: 0; z-index: 50; box-shadow: var(--shadow);
+        }
+        .brand { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
+        
+        /* MAIN LAYOUT */
+        .layout-container { display: flex; flex: 1; height: calc(100vh - 56px); overflow: hidden; position: relative; }
+        
+        /* WORK PANEL (LEFT) */
+        .work-col { 
+            width: 50%; min-width: 350px; display: flex; flex-direction: column; background: var(--bg-app);
+            height: 100%;
+        }
+        
+        /* SPLITTER */
+        .splitter {
+            width: var(--splitter-width); background: var(--border); cursor: col-resize; 
+            position: relative; z-index: 40; transition: background 0.2s; flex-shrink: 0;
+        }
+        .splitter:hover, .splitter.dragging { background: var(--primary); }
+
+        /* PDF PANEL (RIGHT) */
+        .pdf-col { 
+            flex: 1; min-width: 350px; display: flex; flex-direction: column; 
+            background: #525659; position: relative; overflow: hidden; 
+        }
+
+        /* ACCORDION SYSTEM */
+        .accordion-wrapper { 
+            flex: 1; overflow-y: auto; padding: 0; scrollbar-width: thin; 
+            position: relative;
+        }
+        
+        .section-card { 
+            background: var(--bg-panel); border-bottom: 1px solid var(--border); 
+            overflow: visible; /* Required for sticky children */
+            position: relative;
+        }
+
+        /* 1. STICKY HEADER */
+        .section-header { 
+            padding: 0 16px; 
+            height: var(--h-section);
+            cursor: pointer; display: flex; justify-content: space-between; 
+            align-items: center; font-weight: 600; user-select: none;
+            background: var(--bg-panel);
+            position: sticky; top: 0; z-index: 30;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+        .section-header:hover { background: var(--bg-app); }
+        .section-card.active .section-header { 
+            background: var(--primary-light); color: var(--primary); border-bottom: 1px solid var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .section-card:not(.active) .section-header {
+            height: 40px; color: var(--text-muted); font-size: 0.9rem; background: var(--bg-app);
+        }
+
+        .section-body { display: none; }
+        .section-card.active .section-body { display: block; }
+
+        /* 2. STICKY TABS (Under Header) */
+        .ref-tabs-container {
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            position: sticky; 
+            top: var(--h-section); /* 48px */
+            z-index: 29;
+            box-shadow: 0 4px 6px -4px rgba(0,0,0,0.1);
+            height: var(--h-tabs);
+            display: flex;
+            align-items: center;
+        }
+        
+        .ref-label {
+            font-size: 0.7rem; font-weight: 700; color: var(--text-muted); padding: 0 10px;
+            text-transform: uppercase; border-right: 1px solid var(--border); margin-right: 5px;
+        }
+
+        .ref-tabs-scroll {
+            flex: 1; display: flex; overflow-x: auto; scrollbar-width: none; height: 100%;
+        }
+
+        .ref-tab {
+            padding: 0 16px; display: flex; align-items: center;
+            font-size: 0.8rem; cursor: pointer; color: var(--text-muted);
+            border-bottom: 3px solid transparent; white-space: nowrap; font-weight: 500;
+            height: 100%;
+        }
+        .ref-tab:hover { color: var(--text-main); background: var(--bg-app); }
+        .ref-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--primary-light); }
+
+        /* 3. SCROLLABLE DETAILS (Not Sticky) */
+        .rubric-content { 
+            padding: 20px; font-size: 0.9rem; line-height: 1.6; background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            /* Important: Scroll margin ensures when we scroll to it, it isn't hidden behind header/tabs */
+            scroll-margin-top: 90px; 
+        }
+
+        .rubric-content h4 { margin: 15px 0 8px 0; color: var(--text-main); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+        .rubric-content h4:first-child { margin-top: 0; }
+        .rubric-content ul { margin: 0; padding-left: 1.2rem; }
+        .rubric-content li { margin-bottom: 8px; }
+
+        /* ENTRY FORMS */
+        .entry-container { padding: 20px; border-top: 1px solid var(--border); position: relative; }
+        .entry-container:first-of-type { border-top: none; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; }
+        
+        textarea { 
+            width: 100%; min-height: 80px; padding: 12px; border: 1px solid var(--border); 
+            border-radius: 6px; font-family: inherit; font-size: 0.9rem;
+            background: var(--bg-app); color: var(--text-main); resize: vertical; display: block; line-height: 1.5;
+        }
+        textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
+
+        /* IMAGE CARDS (GRID) */
+        .img-grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; 
+        }
+        .img-card { 
+            border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--bg-panel);
+            display: flex; flex-direction: column;
+        }
+        .img-preview { 
+            height: 120px; width: 100%; object-fit: cover; cursor: pointer; background: #000;
+        }
+        .img-meta { padding: 8px; display: flex; flex-direction: column; gap: 5px; background: var(--bg-app); flex: 1; }
+        .img-caption { 
+            width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 4px; font-size: 0.8rem; 
+        }
+        .img-actions { display: flex; justify-content: flex-end; }
+
+        /* CITATION BOX */
+        .citation-list { margin-top: 5px; display: flex; flex-direction: column; gap: 5px; }
+        .citation-item { 
+            display: flex; align-items: flex-start; background: var(--primary-light); 
+            padding: 8px; border-radius: 4px; border: 1px solid var(--primary); 
+            font-size: 0.8rem; cursor: pointer; 
+        }
+        .citation-item:hover { filter: brightness(0.95); }
+        [data-theme="dark"] .citation-item { background: rgba(37, 99, 235, 0.2); border-color: var(--primary); }
+
+        /* PDF VIEWER CUSTOMS */
+        .pdf-toolbar { 
+            height: 48px; background: #333; color: white; display: flex; align-items: center; 
+            justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #111; 
+        }
+        
+        .search-group { display: flex; align-items: center; background: #444; border-radius: 4px; padding: 2px; border: 1px solid #555; }
+        .search-input { background: transparent; border: none; color: white; padding: 4px 8px; font-size: 0.85rem; width: 150px; outline: none; }
+        .search-btn { background: transparent; border: none; color: #ccc; cursor: pointer; padding: 4px 8px; font-size: 0.8rem; }
+        .search-btn:hover { color: white; background: #555; border-radius: 2px; }
+        .search-count { font-size: 0.75rem; color: #aaa; padding: 0 8px; min-width: 50px; text-align: center; }
+
+        #pdf-scroller {
+            flex: 1; overflow-y: auto; position: relative; padding: 30px; 
+            display: flex; flex-direction: column; align-items: center; scroll-behavior: smooth;
+        }
+        
+        .pdf-page-container { 
+            position: relative; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+            margin-bottom: 20px; direction: ltr;
+        }
+
+        .canvasWrapper { overflow: hidden; width: 100%; height: 100%; }
+        .canvasWrapper canvas { display: block; margin: 0; width: 100%; height: 100%; }
+        
+        .highlightLayer { position: absolute; inset: 0; pointer-events: none; z-index: 5; mix-blend-mode: multiply; }
+        .highlight-box { position: absolute; background-color: var(--highlight); border: 1px solid var(--highlight-border); cursor: pointer; pointer-events: auto; }
+        .highlight-box:hover { opacity: 0.8; border-color: red; }
+        
+        .search-box-hlt { position: absolute; background-color: var(--search-highlight); border: 2px solid var(--search-border); pointer-events: none; }
+        .search-box-hlt.active { background-color: rgba(255, 87, 34, 0.8); border: 2px solid red; z-index: 10; }
+
+        .textLayer {
+            position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; opacity: 1; line-height: 1.0; text-align: initial; transform-origin: 0 0; z-index: 2;
+        }
+        .textLayer > span { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
+        .textLayer ::selection { background: rgba(0, 0, 255, 0.2); color: transparent; }
+
+        /* MODALS */
+        .modal { 
+            position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); 
+            z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px);
+        }
+        .modal.open { display: flex; }
+        .modal-box { 
+            background: var(--bg-panel); width: 600px; max-height: 85vh; overflow-y: hidden; 
+            padding: 0; border-radius: 12px; position: relative; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); 
+            display: flex; flex-direction: column;
+        }
+        .modal-lg { width: 900px; }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: var(--bg-panel); }
+        .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+
+        /* KEY STYLES */
+        .key-toolbar {
+            padding: 10px 20px; background: var(--bg-app); border-bottom: 1px solid var(--border);
+            display: flex; gap: 10px; align-items: center; flex-shrink: 0;
+        }
+        .key-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+        .key-header { 
+            padding: 12px 15px; background: var(--bg-panel); font-weight: 600; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center; select-none: none;
+        }
+        .key-header:hover { background: var(--bg-app); }
+        .key-body { display: none; padding: 15px; border-top: 1px solid var(--border); background: var(--bg-panel); }
+        .key-card.open .key-body { display: block; }
+        .key-card.open .key-header { background: var(--primary-light); color: var(--primary); }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #475569; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">
+        <span style="font-size:1.2rem;">🧪</span>
+        K-12 Science Assessment Review
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+        <span id="save-status" style="font-size:0.75rem; color:var(--text-muted);">Ready</span>
+        <div style="height:20px; width:1px; background:var(--border); margin:0 5px;"></div>
+        <button class="btn" onclick="app.toggleTheme()" title="Toggle Dark Mode">◑ Theme</button>
+        <button class="btn" onclick="app.modals.key.open()">📖 Rubric Key</button>
+        <button class="btn" onclick="app.modals.saves.open()">💾 Saves</button>
+        <button class="btn" onclick="app.modals.report.open()">🖨️ Report</button>
+        <button class="btn btn-primary" onclick="app.exportJSON()">Export JSON</button>
+    </div>
+</header>
+
+<div class="layout-container" id="main-layout">
+    <!-- LEFT: WORK PANEL -->
+    <div class="work-col" id="work-pane">
+        <div class="accordion-wrapper" id="accordion">
+            <!-- JS Injected Sections -->
+        </div>
+    </div>
+
+    <!-- DRAGGER -->
+    <div class="splitter" id="drag-handle"></div>
+
+    <!-- RIGHT: PDF ENGINE -->
+    <div class="pdf-col" id="pdf-pane">
+        <div class="pdf-toolbar">
+            <div class="search-group">
+                <input type="text" id="pdf-search-in" class="search-input" placeholder="Search PDF..." onkeydown="if(event.key==='Enter') pdfEngine.findNext()">
+                <span id="pdf-search-count" class="search-count"></span>
+                <button class="search-btn" onclick="pdfEngine.findPrev()" title="Previous Match">▲</button>
+                <button class="search-btn" onclick="pdfEngine.findNext()" title="Next Match">▼</button>
+            </div>
+            <div style="font-size:0.85rem; color:#ddd;">
+                Page <span id="pg-num">0</span> / <span id="pg-count">0</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div style="display:flex; align-items:center; background:#444; border-radius:4px; border:1px solid #555;">
+                    <button class="search-btn" onclick="pdfEngine.zoomOut()">－</button>
+                    <span id="zoom-level" style="font-size:0.8rem; width:45px; text-align:center;">100%</span>
+                    <button class="search-btn" onclick="pdfEngine.zoomIn()">＋</button>
+                </div>
+                <label class="btn btn-primary" style="font-size:0.8rem; padding:4px 10px;">
+                    📂 Load PDF <input type="file" accept=".pdf" class="hidden" onchange="app.handlePdfUpload(this)">
+                </label>
+            </div>
+        </div>
+        
+        <div id="pdf-scroller" onscroll="pdfEngine.handleScroll()">
+            <div id="pdf-empty" style="margin-top:20%; color:#aaa; text-align:center;">
+                <h3>No PDF Loaded</h3>
+                <p>Upload a file to enable highlighting & referencing.</p>
+            </div>
+            <div id="pdf-container"></div>
+        </div>
+    </div>
+</div>
+
+<!-- RUBRIC KEY MODAL -->
+<div id="modal-key" class="modal">
+    <div class="modal-box modal-lg">
+        <div class="modal-header">
+            <h2 style="margin:0;">Reference Guide (Key)</h2>
+            <button class="btn" onclick="document.getElementById('modal-key').classList.remove('open')">Close</button>
+        </div>
+        <div class="key-toolbar">
+            <input type="text" id="key-search" placeholder="Filter topics (e.g. 'equity')..." style="flex:1; padding:8px; border:1px solid var(--border); border-radius:6px;" onkeyup="app.modals.key.filter(this.value)">
+            <button class="btn" onclick="app.modals.key.toggleAll(true)">Expand All</button>
+            <button class="btn" onclick="app.modals.key.toggleAll(false)">Collapse All</button>
+        </div>
+        <div class="modal-body" id="key-content">
+            <!-- Content Injected via JS -->
+        </div>
+    </div>
+</div>
+
+<!-- SAVES MODAL -->
+<div id="modal-saves" class="modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 style="margin:0;">Manage Analyses</h2>
+            <button class="btn" onclick="document.getElementById('modal-saves').classList.remove('open')">Close</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <input type="text" id="save-name-input" placeholder="Name this analysis..." style="flex:1; padding:10px; border:1px solid var(--border); border-radius:6px;">
+                <button class="btn btn-primary" onclick="app.db.saveSnapshot()">Save New</button>
+            </div>
+            <div id="saves-list" style="border:1px solid var(--border); max-height:300px; overflow-y:auto; border-radius:6px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- REPORT MODAL -->
+<div id="modal-report" class="modal">
+    <div class="modal-box modal-lg">
+        <div class="modal-header">
+            <h2 style="margin:0;">Analysis Report</h2>
+            <button class="btn" onclick="document.getElementById('modal-report').classList.remove('open')">Close</button>
+        </div>
+        <div class="modal-body">
+            <button class="btn btn-primary" onclick="window.print()" style="margin-bottom:20px;">Print / Save as PDF</button>
+            <div id="report-content" style="font-size:0.9rem; line-height:1.6;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- IMAGE PREVIEW MODAL -->
+<div id="modal-img" class="modal" onclick="this.classList.remove('open')">
+    <img id="modal-img-tag" style="max-width:95%; max-height:95%; border-radius:4px; box-shadow:0 0 20px rgba(0,0,0,0.5);">
+</div>
+
+<script>
+/**
+ * ==========================================
+ * 1. CONTENT DATA (Refined Names)
+ * ==========================================
+ */
+const SECTIONS = [
+    { id: 'formative', title: '1. Formative Assessment', ref: ['I_FRAMEWORK', 'III_MONITORING', 'V_FEEDBACK'] },
+    { id: 'summative', title: '2. Summative Assessment', ref: ['I_FRAMEWORK', 'III_MONITORING', 'VI_SCORING'] },
+    { id: 'pre', title: '3. Pre-Assessment', ref: ['I_FRAMEWORK', 'IV_PERSONALIZATION', 'VII_EQUITY'] },
+    { id: 'self', title: '4. Self-Assessment', ref: ['V_FEEDBACK'] },
+    { id: 'scoring', title: '5. Scoring Guidance', ref: ['VI_SCORING'] },
+    { id: 'peer', title: '6. Peer Assessment', ref: ['V_FEEDBACK'] },
+    { id: 'align', title: '7. Assessment Alignment', ref: ['I_FRAMEWORK', 'VIII_COHERENCE'] },
+    { id: 'data', title: '8. Data Collection', ref: ['II_DATA'] },
+    { id: 'feedback', title: '9. Feedback Loop', ref: ['V_FEEDBACK'] },
+    { id: 'coherence', title: '10. Coherence', ref: ['VIII_COHERENCE'] },
+    { id: 'practice', title: '11. Practice-Specific Assessment', ref: ['IX_OPP_LEARN', 'III_MONITORING'] },
+    { id: 'ccc', title: '12. Crosscutting Concepts', ref: ['III_MONITORING'] }
+];
+
+const RUBRICS = {
+    I_FRAMEWORK: {
+        title: "Framework",
+        identify: [
+            "Stated purpose and rationale for assessments, explaining how they evaluate student learning and inform instruction.",
+            "Presence of pre-assessments, formative assessments, summative assessments, and self-assessments, with clarity on how they interact to form a coherent system.",
+            "Targets specifying whether assessments focus on lesson-level objectives, unit-level goals, or Performance Expectations (PEs).",
+            "Evidence that assessments are tied to real-world phenomena to foster authentic three-dimensional learning.",
+            "Alignment of assessments with NGSS dimensions: Disciplinary Core Ideas (DCIs), Science and Engineering Practices (SEPs), and Crosscutting Concepts (CCCs)."
+        ],
+        questions: [
+            "Are assessment targets explicitly stated and aligned with three-dimensional learning objectives?",
+            "Is the role of each assessment type clearly defined within the instructional sequence?",
+            "Do assessments consistently connect to phenomena and require students to apply DCIs, SEPs, and CCCs?"
+        ],
+        redflags: [
+            "Lack of explicit alignment between assessment targets and three-dimensional learning objectives.",
+            "Undefined roles of assessment types within the instructional sequence.",
+            "Assessments that fail to connect to phenomena or require application of DCIs, SEPs, and CCCs."
+        ],
+        actions: [
+            "Define assessment targets and rationale, ensuring explicit connections to learning objectives and grounding in three-dimensional learning.",
+            "Finalize summative assessments to provide clear measures of student progress toward unit-level goals.",
+            "Design assessments that require students to make sense of real-world phenomena using DCIs, SEPs, and CCCs."
+        ]
+    },
+    II_DATA: {
+        title: "Data Collection",
+        identify: [
+            "Types of student artifacts collected by teachers (e.g., graphic organizer, foldable, data tables, notebooks, models, simulations) for assessing performance.",
+            "Clarity of tools and procedures provided to teachers for collecting and analyzing student performance data.",
+            "Structures for evaluating both quantitative (measurable) and qualitative (observational) aspects of student work."
+        ],
+        questions: [
+            "Are teachers provided with explicit guidance for collecting and interpreting student artifacts to assess understanding and performance?",
+            "Do teacher materials include strategies for analyzing student progress across the three dimensions (DCI, SEP, CCC)?",
+            "Is there support for teachers to identify trends in student performance and adjust instruction accordingly?"
+        ],
+        redflags: [
+            "Lack of clarity in how teachers should collect and interpret student artifacts for assessment purposes.",
+            "Absence of tools or rubrics for evaluating student performance across the three dimensions.",
+            "Over-reliance on generic or repetitive assessment methods that fail to capture nuanced student progress."
+        ],
+        actions: [
+            "Develop detailed teacher instructions for collecting and analyzing student artifacts aligned with NGSS dimensions.",
+            "Provide rubrics and scoring guidelines that help teachers interpret student progress and performance meaningfully.",
+            "Include strategies for teachers to track and reflect on student growth over time."
+        ]
+    },
+    III_MONITORING: {
+        title: "3D Learning",
+        identify: [
+            "Evidence that student artifacts require integrated use of SEPs, CCCs, and DCIs at grade-appropriate levels.",
+            "Alignment of tasks and artifacts with targeted Learning Goals or Performance Expectations (PEs)."
+        ],
+        questions: [
+            "Do tasks require and elicit combined, grade-appropriate use of SEPs, CCCs, and DCIs to make sense of phenomena?",
+            "Are the targeted elements explicitly named and assessed within the tasks?"
+        ],
+        redflags: [
+            "Tasks assess only one dimension at a time, rather than integrating SEPs, CCCs, and DCIs.",
+            "Use of below-grade-level SEP or CCC elements that do not match the targeted PEs.",
+            "Implicit use of CCCs without explicit prompts or criteria for their application."
+        ],
+        actions: [
+            "Embed explicit prompts and criteria for CCC and SEP use within tasks to ensure their integration with DCIs.",
+            "Revise tasks to ensure student artifacts demonstrate targeted PEs with grade-appropriate elements.",
+            "Provide clear guidance for teachers to assess the integration of SEPs, CCCs, and DCIs in student work."
+        ]
+    },
+    IV_PERSONALIZATION: {
+        title: "Personalization",
+        identify: [
+            "Supports for multilingual learners, accessibility accommodations, advanced learners, struggling learners, and technology-based adjustments.",
+            "Availability of modality options for expressing understanding (e.g., verbal, written, visual, digital).",
+            "Where teachers are offered support and guidance on adjusting instructional sequences based on data-driven student performance and proficiency."
+        ],
+        questions: [
+            "Do materials provide multiple modalities, language supports, and individualized adjustments in assessment contexts?",
+            "Are there explicit strategies for addressing diverse learner needs, including scaffolds and extensions?",
+            "Do teacher materials include guidance for analyzing student performance data and adjusting instructional sequences accordingly?"
+        ],
+        redflags: [
+            "Generic whole-class decisions that fail to address individual needs.",
+            "Limited modalities for demonstrating understanding, relying primarily on written responses.",
+            "Insufficient guidance for accessibility adaptations or multilingual learner supports.",
+            "Lack of teacher-facing tools or strategies for using student performance data to refine instructional approaches."
+        ],
+        actions: [
+            "Expand multimodal and accessibility supports to ensure equitable access for all learners.",
+            "Provide differentiated next steps beyond reteaching, including individualized scaffolds and enrichment opportunities."
+        ]
+    },
+    V_FEEDBACK: {
+        title: "Feedback",
+        identify: [
+            "Teacher and peer feedback routines, including timing, modality (oral, written, digital), and opportunities for revision.",
+            "Evidence of structured feedback loops that inform student growth before subsequent assessments."
+        ],
+        questions: [
+            "Is feedback cyclical, specific to learning targets, and timed to allow revisions before subsequent assessments?",
+            "Do feedback mechanisms support individualized next steps and scaffolded improvement?"
+        ],
+        redflags: [
+            "Generic yes/no decision trees that lack specificity in feedback.",
+            "Feedback stems not visible at the point of use, leaving teachers without actionable guidance.",
+            "Few structured opportunities for peer or self-feedback, limiting student reflection and growth."
+        ],
+        actions: [
+            "Add cyclical, multimodal feedback routines with specific revision windows to support student growth.",
+            "Ensure feedback is targeted to learning objectives and includes individualized strategies for improvement.",
+            "Develop clear routines for peer and self-feedback to promote collaborative sense-making and reflection."
+        ]
+    },
+    VI_SCORING: {
+        title: "Scoring",
+        identify: [
+            "Teacher-facing scoring guidance, including rubrics, exemplars, and non-exemplars.",
+            "Tools for interpreting student responses across three-dimensional NGSS targets (DCIs, SEPs, CCCs)."
+        ],
+        questions: [
+            "Are rubrics aligned to grade-level SEP, CCC, and DCI elements?",
+            "Do rubrics provide clear criteria for interpreting varied student responses and levels of proficiency?"
+        ],
+        redflags: [
+            "Missing or incomplete scoring guidance for major assessments.",
+            "Student-facing rubrics that reveal sensemaking content (e.g., DCI answers) rather than focusing on performance criteria.",
+            "Unclear or overly generic success criteria that fail to support meaningful interpretation of student work."
+        ],
+        actions: [
+            "Provide aligned rubrics and interpretation guidance for every major assessment, ensuring consistency and equity.",
+            "Remove DCI 'answers' from student rubrics to focus on performance criteria and reasoning.",
+            "Include annotated exemplars and non-exemplars to clarify expectations for both teachers and students."
+        ]
+    },
+    VII_EQUITY: {
+        title: "Equity/Access",
+        identify: [
+            "Balance of modalities used in assessments, ensuring tasks are accessible through visual, text, and audio options.",
+            "Culturally responsive strategies embedded in assessment design.",
+            "Accessible representations of content and explicit on-ramping supports for diverse learners."
+        ],
+        questions: [
+            "Do tasks use multiple modalities to present expectations and allow students to respond in various ways?",
+            "Are assessments designed to be culturally responsive and accessible to all students?"
+        ],
+        redflags: [
+            "Over-reliance on written responses, limiting access for students with diverse needs.",
+            "Limited choice in response modalities, reducing opportunities for students to demonstrate understanding in different ways.",
+            "Lack of explicit accessibility supports or culturally responsive strategies in assessment design."
+        ],
+        actions: [
+            "Add equivalent alternatives and accessibility supports to ensure all students can engage with tasks.",
+            "Balance expected response modalities to include oral, visual, and digital options alongside written responses."
+        ]
+    },
+    VIII_COHERENCE: {
+        title: "Coherence",
+        identify: [
+            "Sequencing and alignment of assessments across lessons and units.",
+            "Connection of assessments to learning targets and phenomena.",
+            "Explicit purpose and rationale for the assessment system."
+        ],
+        questions: [
+            "Is there a coherent description of how assessment components work together over time to inform instruction and learning?",
+            "Are assessments aligned to three-dimensional objectives and phenomena?"
+        ],
+        redflags: [
+            "Incomplete or missing assessment maps that disrupt coherence.",
+            "Unclear roles for transfer tasks or other major assessments.",
+            "Implicit or missing rationale for how assessments support three-dimensional learning."
+        ],
+        actions: [
+            "Publish an assessment rationale and map that clarifies how components work together.",
+            "Ensure assessments are explicitly linked to learning targets and phenomena."
+        ]
+    },
+    IX_OPP_LEARN: {
+        title: "Opportunity",
+        identify: [
+            "Iterative opportunities for students to demonstrate individual performances.",
+            "Practice-specific progressions that reduce scaffolds over time.",
+            "Multiple feedback cycles that allow students to revise and improve their work."
+        ],
+        questions: [
+            "Do students have multiple, progressive chances to demonstrate three-dimensional performances with feedback and revision?",
+            "Are practice progressions designed to gradually release responsibility to students?"
+        ],
+        redflags: [
+            "Static scaffolds that do not adjust to student growth or proficiency.",
+            "Whole-class artifacts that fail to capture individual student performance.",
+            "Limited opportunities for revision before subsequent assessments."
+        ],
+        actions: [
+            "Design iterative performances that target specific three-dimensional elements.",
+            "Require visible revisions informed by feedback to demonstrate student growth.",
+            "Build practice progressions that gradually release responsibility to students while maintaining alignment to learning objectives."
+        ]
+    }
+};
+
+const TEMPLATES = {
+    formative: {
+        intro: "Identify where, how, and with what artifacts formative assessment occurs. Determine where assessment supports instruction and provides actionable feedback, rather than simply auditing progress. Evaluate whether tasks focus on specific Learning Performances (LPs) rather than full Performance Expectations (PEs).",
+        actions: "Expand phenomena-based formative tasks to ensure alignment with LPs; Provide explicit teacher guidance for interpreting formative data and adjusting instruction."
+    },
+    summative: {
+        intro: "Identify unit- and lesson-set summative assessments. Confirm grounding in phenomena and use of multi-component tasks (e.g., scenarios with mixed item types). Evaluate alignment clarity to full PEs or bundles.",
+        actions: "Ensure tasks require application of knowledge to novel phenomena (transfer); Verify that multi-component structures cover the breadth and depth of three-dimensional targets."
+    },
+    pre: {
+        intro: "Identify tasks eliciting student prior knowledge, experiences, and interests related to phenomena. Confirm probes uncover partial understandings or misconceptions. Evaluate initial models or probes used to baseline learning.",
+        actions: "Connect student assets and interests to upcoming instruction; Use pre-assessment data to adjust instructional entry points; Ensure tasks are accessible and unbiased for all learners."
+    },
+    self: {
+        intro: "Identify structured reflection criteria aligned to three-dimensional goals. Evaluate revision prompts and opportunities for self-assessment.",
+        actions: "Add checklists and rubrics to support structured reflection; Prompt students to revisit unknown concepts and connect reflection to next steps."
+    },
+    scoring: {
+        intro: "Identify rubrics, look-fors, exemplars, and non-exemplars provided for major assessments. Evaluate teacher interpretation guidance for three-dimensional targets.",
+        actions: "Provide scoring tools for all major assessments; Include a range of sample responses and feedback guidance to support teacher interpretation."
+    },
+    peer: {
+        intro: "Identify peer feedback protocols across lessons. Evaluate guidance for high-quality feedback and revision opportunities.",
+        actions: "Add structured peer review routines beyond a single instance; Ensure revisions are required after peer feedback."
+    },
+    align: {
+        intro: "Specify targets for each assessment. Designate artifacts as individual or group-based. Confirm alignment to lesson and unit objectives.",
+        actions: "Clarify targets and artifact expectations; Ensure proportional three-dimensional alignment to objectives."
+    },
+    data: {
+        intro: "Identify opportunities for artifact generation or data collection that can feed into proficiency and performance models. Evaluate wholistic coverage and reporting throughout the assessment system (Pre, formative, summative measures).",
+        actions: "Specify tools and procedures for data collection; Establish a data collection cadence and system wide framework for monitoring, adapting, and personalizing feedback based on data driven insights."
+    },
+    feedback: {
+        intro: "Evaluate frequency, modality, and cyclicity of feedback. Confirm explicit revision time and individualization of feedback.",
+        actions: "Insert multi-modal, cyclical feedback routines with scheduled revisions; Ensure feedback is targeted and includes individualized next steps."
+    },
+    coherence: {
+        intro: "Identify purpose and rationale statements, assessment maps, and sequencing of assessment types over time.",
+        actions: "Publish coherent assessment maps; Clarify distinctions between formative and critical formative assessments; Align assessments to three-dimensional targets."
+    },
+    practice: {
+        intro: "Identify progressions for modeling, argumentation, data analysis, investigation, and obtaining/evaluating/communicating information.",
+        actions: "Reduce scaffolds over time to promote student independence; Include multiple artifacts for each practice, incorporating both oral and written outputs."
+    },
+    ccc: {
+        intro: "Identify explicit CCC prompts and criteria embedded in tasks.",
+        actions: "Add CCC-specific look-fors and rubrics; Require students to name and apply CCCs explicitly in reasoning tasks."
+    }
+};
+
+/**
+ * ==========================================
+ * 2. PDF ENGINE
+ * ==========================================
+ */
+const pdfEngine = {
+    doc: null,
+    scale: 1.0,
+    container: document.getElementById('pdf-container'),
+    scroller: document.getElementById('pdf-scroller'),
+    pages: [],
+    
+    // SEARCH STATE
+    search: {
+        index: [], 
+        matches: [], 
+        currentIndex: -1,
+        query: ''
+    },
+    
+    load: async function(arrayBuffer) {
+        await app.db.savePDF(arrayBuffer);
+        const loading = pdfjsLib.getDocument(arrayBuffer);
+        this.doc = await loading.promise;
+        document.getElementById('pg-count').innerText = this.doc.numPages;
+        document.getElementById('pdf-empty').style.display = 'none';
+        this.renderAllShells();
+        
+        // Reset Search
+        this.search = { index: [], matches: [], currentIndex: -1, query: '' };
+        document.getElementById('pdf-search-in').value = '';
+        document.getElementById('pdf-search-count').innerText = '';
+    },
+
+    loadFromDB: async function(arrayBuffer) {
+        const loading = pdfjsLib.getDocument(arrayBuffer);
+        this.doc = await loading.promise;
+        document.getElementById('pg-count').innerText = this.doc.numPages;
+        document.getElementById('pdf-empty').style.display = 'none';
+        this.renderAllShells();
+    },
+
+    renderAllShells: function() {
+        this.container.innerHTML = '';
+        this.pages = [];
+        for(let i=1; i<=this.doc.numPages; i++) {
+            const d = document.createElement('div');
+            d.className = 'pdf-page-container';
+            d.dataset.pageNum = i;
+            this.container.appendChild(d);
+            this.pages.push({ pageNum: i, div: d, loaded: false });
+        }
+        this.handleScroll(); 
+    },
+
+    handleScroll: function() {
+        if(!this.doc) return;
+        const mid = this.scroller.scrollTop + (this.scroller.clientHeight / 2);
+        let curr = 1;
+        for(let p of this.pages) {
+             if(p.div.offsetTop <= mid + 500 && (p.div.offsetTop + p.div.clientHeight) >= mid - 500) {
+                 if(!p.loaded) this.renderPage(p);
+             }
+             if(p.div.offsetTop <= mid && (p.div.offsetTop + p.div.clientHeight) >= mid) {
+                 curr = p.pageNum;
+             }
+        }
+        document.getElementById('pg-num').innerText = curr;
+    },
+
+    renderPage: async function(pObj) {
+        if(pObj.loaded || pObj.rendering) return;
+        pObj.rendering = true;
+
+        const page = await this.doc.getPage(pObj.pageNum);
+        const viewport = page.getViewport({ scale: this.scale });
+        
+        // 1. SET CONTAINER
+        pObj.div.style.width = `${viewport.width}px`;
+        pObj.div.style.height = `${viewport.height}px`;
+        pObj.div.style.setProperty('--scale-factor', viewport.scale);
+
+        // 2. CANVAS
+        const canvasWrapper = document.createElement('div');
+        canvasWrapper.className = 'canvasWrapper';
+        pObj.div.appendChild(canvasWrapper);
+
+        const canvas = document.createElement('canvas');
+        const outputScale = window.devicePixelRatio || 1;
+        canvas.style.width = Math.floor(viewport.width) + 'px';
+        canvas.style.height = Math.floor(viewport.height) + 'px';
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
+        
+        const ctx = canvas.getContext('2d');
+        const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null;
+
+        canvasWrapper.appendChild(canvas);
+
+        // 3. TEXT LAYER
+        const textDiv = document.createElement('div');
+        textDiv.className = 'textLayer';
+        pObj.div.appendChild(textDiv);
+
+        // 4. HIGHLIGHT LAYER
+        const hltDiv = document.createElement('div');
+        hltDiv.className = 'highlightLayer';
+        hltDiv.id = 'hlt-page-'+pObj.pageNum;
+        pObj.div.appendChild(hltDiv);
+
+        // RENDER
+        await page.render({ canvasContext: ctx, viewport: viewport, transform: transform }).promise;
+        const textContent = await page.getTextContent();
+        pdfjsLib.renderTextLayer({
+            textContentSource: textContent,
+            container: textDiv,
+            viewport: viewport,
+            textDivs: []
+        });
+
+        pObj.loaded = true;
+        pObj.rendering = false;
+        
+        this.drawHighlights(pObj.pageNum);
+        this.drawSearchHighlights(pObj.pageNum); 
+    },
+
+    zoomIn: function() { this.scale += 0.2; this.updateZoom(); },
+    zoomOut: function() { if(this.scale > 0.4) this.scale -= 0.2; this.updateZoom(); },
+    updateZoom: function() {
+        document.getElementById('zoom-level').innerText = Math.round(this.scale * 100) + '%';
+        this.pages.forEach(p => { p.loaded = false; p.div.innerHTML = ''; p.div.style.height='auto'; p.div.style.width='auto'; });
+        this.handleScroll();
+    },
+
+    /* --- SEARCH IMPLEMENTATION --- */
+    buildIndex: async function() {
+        const count = document.getElementById('pdf-search-count');
+        count.innerText = 'Scanning...';
+        this.search.index = [];
+        
+        for(let i=1; i<=this.doc.numPages; i++) {
+            const page = await this.doc.getPage(i);
+            const content = await page.getTextContent();
+            
+            let fullText = "";
+            let itemMap = []; 
+            
+            content.items.forEach((item, idx) => {
+                for(let c=0; c<item.str.length; c++) { itemMap.push(idx); }
+                fullText += item.str;
+            });
+
+            this.search.index.push({
+                pageNum: i,
+                fullText: fullText.toLowerCase(),
+                originalItems: content.items,
+                itemMap: itemMap,
+                viewport: page.getViewport({scale: 1.0})
+            });
+        }
+        count.innerText = '';
+    },
+
+    findNext: function() { this.findStep(1); },
+    findPrev: function() { this.findStep(-1); },
+
+    findStep: async function(dir) {
+        const q = document.getElementById('pdf-search-in').value.trim().toLowerCase();
+        if(!q) return;
+
+        if(this.search.index.length === 0) {
+            await this.buildIndex();
+        }
+
+        if(q !== this.search.query) {
+            this.search.query = q;
+            this.search.matches = [];
+            this.search.currentIndex = -1;
+
+            this.search.index.forEach(pData => {
+                let pos = 0;
+                while (pos < pData.fullText.length) {
+                    const foundAt = pData.fullText.indexOf(q, pos);
+                    if (foundAt === -1) break;
+                    const rects = this.getRectsForMatch(pData, foundAt, q.length);
+                    this.search.matches.push({ pageNum: pData.pageNum, rects: rects });
+                    pos = foundAt + 1;
+                }
+            });
+        }
+
+        if(this.search.matches.length === 0) {
+            document.getElementById('pdf-search-count').innerText = "0/0";
+            return;
+        }
+
+        this.search.currentIndex += dir;
+        if(this.search.currentIndex >= this.search.matches.length) this.search.currentIndex = 0;
+        if(this.search.currentIndex < 0) this.search.currentIndex = this.search.matches.length - 1;
+
+        document.getElementById('pdf-search-count').innerText = `${this.search.currentIndex+1}/${this.search.matches.length}`;
+        const match = this.search.matches[this.search.currentIndex];
+        this.goto(match.pageNum);
+        this.refreshHighlights(); 
+    },
+
+    getRectsForMatch: function(pData, startChar, len) {
+        const uniqueItems = new Set();
+        for(let i=startChar; i < startChar+len; i++) {
+            if(pData.itemMap[i] !== undefined) uniqueItems.add(pData.itemMap[i]);
+        }
+        const rects = [];
+        uniqueItems.forEach(idx => {
+            const item = pData.originalItems[idx];
+            if(!item) return;
+            const view = pData.viewport;
+            const normX = (item.transform[4]) / (view.viewBox[2]); 
+            const normY = (view.viewBox[3] - item.transform[5] - (item.height || item.transform[0])) / view.viewBox[3]; 
+            const normW = item.width / view.viewBox[2];
+            const normH = (item.height || item.transform[0]) / view.viewBox[3];
+            rects.push({ x: normX, y: normY, w: normW, h: normH });
+        });
+        return rects;
+    },
+
+    drawSearchHighlights: function(pageNum) {
+        const layer = document.getElementById('hlt-page-'+pageNum);
+        if(!layer) return;
+        
+        const old = layer.querySelectorAll('.search-box-hlt');
+        old.forEach(el => el.remove());
+
+        this.search.matches.forEach((m, idx) => {
+            if(m.pageNum === pageNum) {
+                const isActive = (idx === this.search.currentIndex);
+                m.rects.forEach(r => {
+                    const d = document.createElement('div');
+                    d.className = 'search-box-hlt' + (isActive ? ' active' : '');
+                    d.style.left = (r.x * 100) + '%';
+                    d.style.top = (r.y * 100) + '%';
+                    d.style.width = (r.w * 100) + '%';
+                    d.style.height = (r.h * 100) + '%';
+                    layer.appendChild(d);
+                });
+            }
+        });
+    },
+
+    /* --- STANDARD HIGHLIGHTS --- */
+    drawHighlights: function(pageNum) {
+        const layer = document.getElementById('hlt-page-'+pageNum);
+        if(!layer) return;
+        const userH = layer.querySelectorAll('.highlight-box');
+        userH.forEach(el => el.remove());
+        
+        SECTIONS.forEach(s => {
+            const entries = app.data[s.id]?.entries || [];
+            entries.forEach(e => {
+                if(e.citations) {
+                    e.citations.forEach(c => {
+                        if(c.page === pageNum && c.rects) {
+                            c.rects.forEach(r => {
+                                const d = document.createElement('div');
+                                d.className = 'highlight-box';
+                                d.style.left = (r.x * 100) + '%';
+                                d.style.top = (r.y * 100) + '%';
+                                d.style.width = (r.w * 100) + '%';
+                                d.style.height = (r.h * 100) + '%';
+                                d.title = c.text;
+                                d.onclick = (evt) => {
+                                    evt.stopPropagation();
+                                    app.scrollToEntry(s.id, e.id);
+                                };
+                                layer.appendChild(d);
+                            });
+                        }
+                    });
+                }
+            });
+        });
+        this.drawSearchHighlights(pageNum);
+    },
+
+    refreshHighlights: function() {
+        this.pages.filter(p => p.loaded).forEach(p => this.drawHighlights(p.pageNum));
+    },
+
+    getSelection: function() {
+        const sel = window.getSelection();
+        if(!sel || sel.rangeCount === 0 || !sel.toString().trim()) return null;
+        
+        let node = sel.anchorNode;
+        while(node && !node.classList?.contains('pdf-page-container')) {
+            node = node.parentNode;
+            if(!node) break;
+        }
+        if(!node) return null; // Not in PDF
+        
+        const pageNum = parseInt(node.dataset.pageNum);
+        const rects = sel.getRangeAt(0).getClientRects();
+        const pRect = node.getBoundingClientRect();
+        
+        const normRects = Array.from(rects).map(r => ({
+            x: (r.left - pRect.left) / pRect.width,
+            y: (r.top - pRect.top) / pRect.height,
+            w: r.width / pRect.width,
+            h: r.height / pRect.height
+        }));
+
+        return { text: sel.toString(), page: pageNum, rects: normRects };
+    },
+
+    goto: function(pageNum) {
+        const p = this.pages[pageNum-1];
+        if(p && p.div) p.div.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+};
+
+/**
+ * ==========================================
+ * 3. APP LOGIC
+ * ==========================================
+ */
+const DB_NAME = "SciReviewPro";
+const app = {
+    data: {},
+    activeSection: null,
+    activeRefTab: {}, 
+
+    init: async function() {
+        await this.db.open();
+        
+        // Load Draft
+        const draft = await this.db.getDraft();
+        this.data = draft || {};
+
+        Object.keys(this.data).forEach(k => {
+            if(this.data[k].entries) {
+                this.data[k].entries.forEach(e => {
+                    if(e.imgs && e.imgs.length > 0 && typeof e.imgs[0] === 'string') {
+                        e.imgs = e.imgs.map(str => ({ src: str, caption: '' }));
+                    }
+                });
+            }
+        });
+
+        SECTIONS.forEach(s => {
+            if(!this.data[s.id]) this.data[s.id] = { entries:[] };
+            if(this.data[s.id].entries.length === 0) this.addEntry(s.id, false);
+            if(!this.activeRefTab[s.id]) this.activeRefTab[s.id] = s.ref[0];
+        });
+
+        const pdfData = await this.db.getPDF();
+        if(pdfData) await pdfEngine.loadFromDB(pdfData);
+
+        this.renderAccordion();
+        this.initSplitter();
+        
+        if(localStorage.getItem('theme')==='dark') document.body.setAttribute('data-theme','dark');
+    },
+
+    initSplitter: function() {
+        const dragger = document.getElementById('drag-handle');
+        const left = document.getElementById('work-pane');
+        let isDragging = false;
+
+        dragger.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragger.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if(!isDragging) return;
+            let pct = (e.clientX / window.innerWidth) * 100;
+            if(pct < 20) pct = 20;
+            if(pct > 80) pct = 80;
+            left.style.width = pct + '%';
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragger.classList.remove('dragging');
+            document.body.style.cursor = 'default';
+        });
+    },
+
+    /* --- RENDERING --- */
+    renderAccordion: function() {
+        const div = document.getElementById('accordion');
+        
+        div.innerHTML = SECTIONS.map(s => {
+            const isActive = this.activeSection === s.id;
+            const entries = this.data[s.id].entries;
+            const hasData = entries.some(e => e.text.length > 10 || e.strengths || e.gaps);
+
+            return `
+            <div class="section-card ${isActive ? 'active' : ''}">
+                <div class="section-header" onclick="app.toggleSection('${s.id}')">
+                    <span>${s.title}</span>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                         ${hasData ? '<span class="tag tag-green">Started</span>' : '<span class="tag" style="background:var(--border)">Empty</span>'}
+                         <span style="font-size:0.8rem; color:var(--text-muted)">${isActive ? '▼' : '▶'}</span>
+                    </div>
+                </div>
+                <div class="section-body">
+                    ${isActive ? this.renderBody(s) : ''}
+                </div>
+            </div>`;
+        }).join('');
+    },
+
+    renderBody: function(s) {
+        const tmpl = TEMPLATES[s.id];
+        const entries = this.data[s.id].entries;
+        const currentRefKey = this.activeRefTab[s.id] || s.ref[0];
+        
+        // Ensure all references for this section are shown
+        const relevantRefs = s.ref; 
+
+        return `
+        <!-- REFERENCE PANEL (Sticky) -->
+        <div class="ref-tabs-container">
+            <div class="ref-label">Reference Material</div>
+            <div class="ref-tabs-scroll">
+                ${relevantRefs.map(key => {
+                    const r = RUBRICS[key];
+                    return `<div class="ref-tab ${currentRefKey===key ? 'active':''}" onclick="app.setRefTab('${s.id}', '${key}')">${r.title}</div>`;
+                }).join('')}
+            </div>
+        </div>
+        <div class="rubric-content" id="rubric-content-${s.id}">
+            ${this.renderRubricContent(currentRefKey)}
+        </div>
+
+        <!-- ENTRY FORM -->
+        <div style="padding:16px 16px 0 16px;">
+            <div style="background:var(--primary-light); border:1px solid var(--primary); padding:10px; border-radius:6px; font-size:0.85rem; margin-bottom:15px;">
+                <strong>INSTRUCTIONS:</strong> ${tmpl.intro}
+            </div>
+        </div>
+
+        <div>
+            ${entries.map((e, idx) => this.renderEntry(s.id, e, idx, entries.length, tmpl)).join('')}
+            
+            <div style="padding:0 16px 16px 16px;">
+                <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="app.addEntry('${s.id}')">+ Add Another Evidence Block</button>
+            </div>
+        </div>
+        `;
+    },
+
+    renderRubricContent: function(key) {
+        const r = RUBRICS[key];
+        return `
+            <div>
+                <h4>What to Identify</h4>
+                <ul>${r.identify.map(i => `<li>${i}</li>`).join('')}</ul>
+                
+                <h4>Guiding Questions</h4>
+                <ul>${r.questions.map(i => `<li>${i}</li>`).join('')}</ul>
+
+                ${r.redflags ? `
+                <h4 style="color:var(--danger)">🚩 Red Flags</h4>
+                <ul class="tag-red" style="padding:10px 10px 10px 25px; border-radius:4px;">${r.redflags.map(i => `<li>${i}</li>`).join('')}</ul>
+                ` : ''}
+
+                 ${r.actions ? `
+                <h4 style="color:var(--success)">✅ Recommended Actions</h4>
+                <ul class="tag-green" style="padding:10px 10px 10px 25px; border-radius:4px;">${r.actions.map(i => `<li>${i}</li>`).join('')}</ul>
+                ` : ''}
+            </div>
+        `;
+    },
+
+    renderEntry: function(secId, e, idx, total, tmpl) {
+        return `
+        <div class="entry-container" id="ent-${e.id}">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <span style="font-weight:700; font-size:0.8rem; color:var(--text-muted);">EVIDENCE BLOCK ${idx+1}</span>
+                ${total > 1 ? `<button class="btn btn-danger" style="font-size:0.7rem; padding:2px 8px;" onclick="app.delEntry('${secId}','${e.id}')">Remove Block</button>` : ''}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Instances & Evidence</label>
+                <textarea placeholder="Paste text, describe artifacts, or type analysis..." 
+                    oninput="app.update('${secId}','${e.id}','text',this.value)"
+                    onpaste="app.handlePaste(event, '${secId}', '${e.id}')">${e.text||''}</textarea>
+            </div>
+
+            <!-- CITATIONS -->
+            <div class="form-group">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label class="form-label">PDF Highlights</label>
+                    <button class="btn btn-primary" style="font-size:0.7rem; padding:2px 6px;" onclick="app.addCitation('${secId}','${e.id}')">+ Highlight Selection</button>
+                </div>
+                <div class="citation-list">
+                    ${(e.citations||[]).map((c, i) => `
+                        <div class="citation-item" onclick="pdfEngine.goto(${c.page})">
+                            <span style="flex:1;">📄 P.${c.page}: "${c.text.substring(0,50)}..."</span>
+                            <span style="font-weight:bold; padding:0 5px;" onclick="event.stopPropagation(); app.delCitation('${secId}','${e.id}',${i})">×</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- IMAGES -->
+            <div class="form-group">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label class="form-label">Visual Evidence</label>
+                    <label class="btn" style="font-size:0.75rem;">
+                        📷 Add Image <input type="file" accept="image/*" class="hidden" onchange="app.addImg(this,'${secId}','${e.id}')">
+                    </label>
+                </div>
+                <div class="img-grid">
+                    ${(e.imgs||[]).map((img, i) => `
+                        <div class="img-card">
+                            <img src="${img.src}" class="img-preview" onclick="app.showImg('${img.src}')">
+                            <div class="img-meta">
+                                <input type="text" class="img-caption" placeholder="Add caption..." value="${img.caption||''}" oninput="app.updateImgCap('${secId}','${e.id}',${i},this.value)">
+                                <div class="img-actions">
+                                    <button class="btn btn-danger" style="padding:2px 6px; font-size:0.7rem; margin-top:4px;" onclick="app.delImg('${secId}','${e.id}',${i})">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div class="form-group">
+                    <label class="form-label" style="color:var(--success)">Strengths</label>
+                    <textarea style="min-height:60px;" oninput="app.update('${secId}','${e.id}','strengths',this.value)">${e.strengths||''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="color:var(--danger)">Gaps</label>
+                    <textarea style="min-height:60px;" oninput="app.update('${secId}','${e.id}','gaps',this.value)">${e.gaps||''}</textarea>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Recommended Actions</label>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Sug: ${tmpl.actions}</div>
+                <textarea style="min-height:60px;" placeholder="Specific steps for improvement..." oninput="app.update('${secId}','${e.id}','actions',this.value)">${e.actions||''}</textarea>
+            </div>
+        </div>`;
+    },
+
+    /* --- INTERACTIONS --- */
+    toggleSection: function(id) { 
+        this.activeSection = (this.activeSection===id) ? null : id; 
+        this.renderAccordion(); 
+        if(this.activeSection) pdfEngine.refreshHighlights();
+    },
+    setRefTab: function(secId, refKey) {
+        this.activeRefTab[secId] = refKey;
+        this.renderAccordion(); 
+        
+        // AUTO-SCROLL TO REVEAL RUBRIC IF TAB CLICKED
+        setTimeout(() => {
+            const rubricDiv = document.getElementById('rubric-content-' + secId);
+            if(rubricDiv) {
+                rubricDiv.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+            }
+        }, 100);
+    },
+    
+    /* --- DATA MANIPULATION --- */
+    addEntry: function(secId, save=true) {
+        this.data[secId].entries.push({ 
+            id: Date.now().toString(), 
+            text:'', strengths:'', gaps:'', actions:'', 
+            citations:[], imgs:[] 
+        });
+        if(save) { this.save(); this.renderAccordion(); }
+    },
+    delEntry: function(secId, eId) {
+        if(!confirm("Delete this evidence block?")) return;
+        this.data[secId].entries = this.data[secId].entries.filter(e => e.id !== eId);
+        this.save(); this.renderAccordion();
+        pdfEngine.refreshHighlights();
+    },
+    update: function(secId, eId, field, val) {
+        const e = this.data[secId].entries.find(x => x.id === eId);
+        if(e) { e[field] = val; this.save(); }
+    },
+
+    /* --- IMAGE LOGIC --- */
+    addImg: function(inp, secId, eId) {
+        if(inp.files[0]) {
+            const r = new FileReader();
+            r.onload = ev => {
+                const e = this.data[secId].entries.find(x => x.id === eId);
+                if(!e.imgs) e.imgs = [];
+                e.imgs.push({ src: ev.target.result, caption: '' });
+                this.save(); this.renderAccordion();
+            };
+            r.readAsDataURL(inp.files[0]);
+        }
+    },
+    updateImgCap: function(secId, eId, idx, val) {
+        const e = this.data[secId].entries.find(x => x.id === eId);
+        if(e && e.imgs[idx]) {
+            e.imgs[idx].caption = val;
+            this.save();
+        }
+    },
+    delImg: function(secId, eId, idx) {
+        if(!confirm("Delete this image?")) return;
+        const e = this.data[secId].entries.find(x => x.id === eId);
+        e.imgs.splice(idx, 1);
+        this.save(); this.renderAccordion();
+    },
+    handlePaste: function(evt, secId, eId) {
+        const items = (evt.clipboardData || evt.originalEvent.clipboardData).items;
+        for (const item of items) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+                const blob = item.getAsFile();
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const e = this.data[secId].entries.find(x => x.id === eId);
+                    if(!e.imgs) e.imgs = [];
+                    e.imgs.push({ src: ev.target.result, caption: 'Pasted Image' });
+                    this.save(); this.renderAccordion();
+                };
+                reader.readAsDataURL(blob);
+            }
+        }
+    },
+    showImg: function(src) { document.getElementById('modal-img-tag').src=src; document.getElementById('modal-img').classList.add('open'); },
+
+    /* --- CITATIONS --- */
+    addCitation: function(secId, eId) {
+        const selData = pdfEngine.getSelection();
+        if(!selData) return alert("Select text in the PDF viewer first.");
+        
+        const e = this.data[secId].entries.find(x => x.id === eId);
+        if(!e.citations) e.citations = [];
+        e.citations.push(selData);
+        window.getSelection().removeAllRanges();
+        
+        this.save(); this.renderAccordion(); pdfEngine.refreshHighlights();
+    },
+    delCitation: function(secId, eId, idx) {
+        const e = this.data[secId].entries.find(x => x.id === eId);
+        e.citations.splice(idx, 1);
+        this.save(); this.renderAccordion(); pdfEngine.refreshHighlights();
+    },
+    scrollToEntry: function(secId, eId) {
+        if(this.activeSection !== secId) {
+            this.toggleSection(secId);
+            setTimeout(() => this.doScroll(eId), 300);
+        } else {
+            this.doScroll(eId);
+        }
+    },
+    doScroll: function(eId) {
+        const el = document.getElementById('ent-'+eId);
+        if(el) {
+            el.scrollIntoView({behavior:'smooth', block:'center'});
+            el.style.boxShadow = "0 0 0 2px var(--primary)";
+            setTimeout(() => el.style.boxShadow = "none", 2000);
+        }
+    },
+
+    /* --- UTILS --- */
+    handlePdfUpload: function(inp) {
+        if(inp.files[0]) {
+            const r = new FileReader();
+            r.onload = e => pdfEngine.load(e.target.result);
+            r.readAsArrayBuffer(inp.files[0]);
+        }
+    },
+    toggleTheme: function() {
+        if(document.body.hasAttribute('data-theme')) { document.body.removeAttribute('data-theme'); localStorage.setItem('theme','light'); }
+        else { document.body.setAttribute('data-theme','dark'); localStorage.setItem('theme','dark'); }
+    },
+    exportJSON: function() {
+        const b = new Blob([JSON.stringify(this.data, null, 2)],{type:'application/json'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'ScienceAnalysis_Complete.json'; a.click();
+    },
+
+    /* --- DB & SAVING --- */
+    save: function() {
+        if(this.db.conn) this.db.conn.transaction('data','readwrite').objectStore('data').put(this.data, 'draft');
+        document.getElementById('save-status').innerText = 'Saved ' + new Date().toLocaleTimeString();
+    },
+    db: {
+        conn: null,
+        open: function() { return new Promise(r => {
+            const req = indexedDB.open(DB_NAME, 2);
+            req.onupgradeneeded = e => {
+                const db = e.target.result;
+                if(!db.objectStoreNames.contains('data')) db.createObjectStore('data');
+                if(!db.objectStoreNames.contains('files')) db.createObjectStore('files');
+                if(!db.objectStoreNames.contains('saves')) db.createObjectStore('saves');
+            };
+            req.onsuccess = e => { this.conn = e.target.result; r(); };
+        })},
+        getDraft: function() { return new Promise(r => {
+            if(!this.conn) return r(null);
+            const req = this.conn.transaction('data').objectStore('data').get('draft');
+            req.onsuccess = () => r(req.result);
+        })},
+        savePDF: function(blob) { if(this.conn) this.conn.transaction('files','readwrite').objectStore('files').put(blob, 'currentPDF'); },
+        getPDF: function() { return new Promise(r => {
+            if(!this.conn) return r(null);
+            const req = this.conn.transaction('files').objectStore('files').get('currentPDF');
+            req.onsuccess = () => r(req.result);
+        })},
+        saveSnapshot: function() {
+            const name = document.getElementById('save-name-input').value;
+            if(!name) return alert("Enter a name");
+            this.conn.transaction('saves','readwrite').objectStore('saves').put(app.data, name);
+            app.modals.saves.open();
+        },
+        getSnapshotKeys: function() { return new Promise(r => {
+            const req = this.conn.transaction('saves').objectStore('saves').getAllKeys();
+            req.onsuccess = () => r(req.result);
+        })},
+        loadSnapshot: async function(key) {
+            if(!confirm("Load this snapshot? Current draft will be overwritten.")) return;
+            const req = this.conn.transaction('saves').objectStore('saves').get(key);
+            req.onsuccess = () => {
+                app.data = req.result;
+                app.save();
+                app.renderAccordion();
+                document.getElementById('modal-saves').classList.remove('open');
+                pdfEngine.refreshHighlights();
+            }
+        },
+        deleteSnapshot: function(key) {
+            if(!confirm("Delete?")) return;
+            this.conn.transaction('saves','readwrite').objectStore('saves').delete(key);
+            app.modals.saves.open();
+        }
+    },
+    modals: {
+        key: {
+            open: function() {
+                const box = document.getElementById('key-content');
+                let html = '';
+                Object.entries(RUBRICS).forEach(([k, r], idx) => {
+                    html += `
+                        <div class="key-card" data-key="${k}">
+                            <div class="key-header" onclick="app.modals.key.toggle(this)">
+                                <span>${r.title}</span>
+                                <span style="font-size:0.8rem; opacity:0.6;">▼</span>
+                            </div>
+                            <div class="key-body">
+                                <h4 style="margin-top:0;">What to Identify</h4>
+                                <ul>${r.identify.map(i => `<li>${i}</li>`).join('')}</ul>
+                                <h4>Guiding Questions</h4>
+                                <ul>${r.questions.map(i => `<li>${i}</li>`).join('')}</ul>
+                                ${r.redflags ? `
+                                    <div style="margin-top:15px; background:var(--bg-app); padding:10px; border-radius:6px; border-left:4px solid var(--danger);">
+                                        <strong style="color:var(--danger)">🚩 Red Flags</strong>
+                                        <ul style="margin-bottom:0; color:var(--danger)">${r.redflags.map(i => `<li>${i}</li>`).join('')}</ul>
+                                    </div>` : ''}
+                                ${r.actions ? `
+                                    <div style="margin-top:15px; background:var(--bg-app); padding:10px; border-radius:6px; border-left:4px solid var(--success);">
+                                        <strong style="color:var(--success)">✅ Recommended Actions</strong>
+                                        <ul style="margin-bottom:0; color:var(--success)">${r.actions.map(i => `<li>${i}</li>`).join('')}</ul>
+                                    </div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                box.innerHTML = html;
+                document.getElementById('modal-key').classList.add('open');
+                document.getElementById('key-search').value = '';
+                document.getElementById('key-search').focus();
+            },
+            toggle: function(el) {
+                el.parentElement.classList.toggle('open');
+            },
+            toggleAll: function(open) {
+                document.querySelectorAll('.key-card').forEach(c => {
+                    if(open) c.classList.add('open'); else c.classList.remove('open');
+                });
+            },
+            filter: function(val) {
+                val = val.toLowerCase();
+                document.querySelectorAll('.key-card').forEach(c => {
+                    const txt = c.innerText.toLowerCase();
+                    if(txt.includes(val)) {
+                        c.classList.remove('hidden');
+                        if(val.length > 2) c.classList.add('open');
+                    } else {
+                        c.classList.add('hidden');
+                    }
+                });
+            }
+        },
+        saves: {
+            open: async function() {
+                const list = document.getElementById('saves-list');
+                const keys = await app.db.getSnapshotKeys();
+                list.innerHTML = keys.map(k => `
+                    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid var(--border); align-items:center;">
+                        <strong>${k}</strong>
+                        <div>
+                            <button class="btn" onclick="app.db.loadSnapshot('${k}')">Load</button>
+                            <button class="btn btn-danger" onclick="app.db.deleteSnapshot('${k}')">Delete</button>
+                        </div>
+                    </div>`).join('') || '<div style="padding:15px; text-align:center; color:gray;">No saved snapshots found.</div>';
+                document.getElementById('modal-saves').classList.add('open');
+            }
+        },
+        report: {
+            open: function() {
+                const box = document.getElementById('report-content');
+                let html = '<h1>Assessment Review Findings</h1>';
+                SECTIONS.forEach(s => {
+                    const ents = app.data[s.id].entries.filter(e => e.text || e.strengths || e.gaps || e.imgs.length);
+                    if(!ents.length) return;
+                    html += `<h3 style="border-bottom:2px solid #333; margin-top:30px;">${s.title}</h3>`;
+                    ents.forEach((e,i) => {
+                        html += `
+                        <div style="margin-bottom:20px; page-break-inside: avoid;">
+                            <p><strong>Observation:</strong> ${e.text || 'N/A'}</p>
+                            ${e.strengths ? `<p style="color:green"><strong>Strength:</strong> ${e.strengths}</p>`:''}
+                            ${e.gaps ? `<p style="color:red"><strong>Gap:</strong> ${e.gaps}</p>`:''}
+                            ${e.actions ? `<p style="color:blue"><strong>Action:</strong> ${e.actions}</p>`:''}
+                            ${e.imgs.length ? `<div style="font-size:0.8rem; color:#666;">[${e.imgs.length} Images Attached]</div>`:''}
+                        </div>`;
+                    });
+                });
+                box.innerHTML = html || '<p>No analysis recorded yet.</p>';
+                document.getElementById('modal-report').classList.add('open');
+            }
+        }
+    }
+};
+
+window.onload = () => app.init();
+</script>
+</body>
+</html>
