@@ -431,22 +431,22 @@
 <script>
 /**
  * ==========================================
- * 1. CONTENT DATA (Refined Names)
+ * 1. CONTENT DATA (Refined & Mapped)
  * ==========================================
  */
 const SECTIONS = [
-    { id: 'formative', title: '1. Formative Assessment', ref: ['I_FRAMEWORK', 'III_MONITORING', 'V_FEEDBACK'] },
-    { id: 'summative', title: '2. Summative Assessment', ref: ['I_FRAMEWORK', 'III_MONITORING', 'VI_SCORING'] },
-    { id: 'pre', title: '3. Pre-Assessment', ref: ['I_FRAMEWORK', 'IV_PERSONALIZATION', 'VII_EQUITY'] },
-    { id: 'self', title: '4. Self-Assessment', ref: ['V_FEEDBACK'] },
-    { id: 'scoring', title: '5. Scoring Guidance', ref: ['VI_SCORING'] },
-    { id: 'peer', title: '6. Peer Assessment', ref: ['V_FEEDBACK'] },
-    { id: 'align', title: '7. Assessment Alignment', ref: ['I_FRAMEWORK', 'VIII_COHERENCE'] },
-    { id: 'data', title: '8. Data Collection', ref: ['II_DATA'] },
-    { id: 'feedback', title: '9. Feedback Loop', ref: ['V_FEEDBACK'] },
-    { id: 'coherence', title: '10. Coherence', ref: ['VIII_COHERENCE'] },
-    { id: 'practice', title: '11. Practice-Specific Assessment', ref: ['IX_OPP_LEARN', 'III_MONITORING'] },
-    { id: 'ccc', title: '12. Crosscutting Concepts', ref: ['III_MONITORING'] }
+    { id: 'formative', title: '1. Formative Assessment', ref: ['I_FRAMEWORK', 'III_MONITORING', 'V_FEEDBACK', 'II_DATA', 'IX_OPP_LEARN', 'VII_EQUITY'] },
+    { id: 'summative', title: '2. Summative Assessment', ref: ['I_FRAMEWORK', 'III_MONITORING', 'VI_SCORING', 'VII_EQUITY', 'VIII_COHERENCE'] },
+    { id: 'pre', title: '3. Pre-Assessment', ref: ['I_FRAMEWORK', 'IV_PERSONALIZATION', 'VII_EQUITY', 'II_DATA'] },
+    { id: 'self', title: '4. Self-Assessment', ref: ['V_FEEDBACK', 'VI_SCORING', 'IV_PERSONALIZATION'] },
+    { id: 'scoring', title: '5. Scoring Guidance', ref: ['VI_SCORING', 'III_MONITORING', 'VII_EQUITY'] },
+    { id: 'peer', title: '6. Peer Assessment', ref: ['V_FEEDBACK', 'VI_SCORING', 'IX_OPP_LEARN'] },
+    { id: 'align', title: '7. Assessment Alignment', ref: ['I_FRAMEWORK', 'VIII_COHERENCE', 'III_MONITORING'] },
+    { id: 'data', title: '8. Data Collection', ref: ['II_DATA', 'III_MONITORING', 'IV_PERSONALIZATION'] },
+    { id: 'feedback', title: '9. Feedback Loop', ref: ['V_FEEDBACK', 'IX_OPP_LEARN', 'II_DATA'] },
+    { id: 'coherence', title: '10. Coherence', ref: ['VIII_COHERENCE', 'I_FRAMEWORK'] },
+    { id: 'practice', title: '11. Practice-Specific Assessment', ref: ['IX_OPP_LEARN', 'III_MONITORING', 'VI_SCORING'] },
+    { id: 'ccc', title: '12. Crosscutting Concepts', ref: ['III_MONITORING', 'VIII_COHERENCE'] }
 ];
 
 const RUBRICS = {
