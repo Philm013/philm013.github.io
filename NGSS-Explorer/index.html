@@ -69,7 +69,7 @@
         .dci-major-header td { background-color: var(--dci-major-bg); color: var(--dci-major-text); font-weight: 600; position: sticky; top: 40px; z-index: 9; }
         .dci-minor-header td:first-child { padding-left: 2em; }
         td .item { margin-bottom: 0.5em; padding: 0.25rem; border-radius: 4px; transition: background-color 0.2s ease-in-out; }
-        td .item strong { display: block; color: #005a9c; font-weight: 600; }
+        td .item strong { display: inline; margin-right: 0.5em; color: #005a9c; font-weight: 600; }
         .copyable, .item, .statement { cursor: copy; position: relative; }
         .copyable::after, .item::after, .statement::after { content: 'Copied!'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--copy-feedback-bg); color: white; padding: 0.25em 0.75em; border-radius: 1em; font-size: 0.9em; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; z-index: 100; }
         .copyable.copied::after, .item.copied::after, .statement.copied::after { opacity: 1; }
@@ -712,7 +712,7 @@
     <div id="bundle-manager-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h2>Manage Saved Bundles</h2><button class="modal-close-btn" title="Close">&times;</button></div><div class="modal-body"><ul id="bundle-manager-list" class="bundle-manager-list"></ul></div></div></div>
     <div id="save-bundle-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h2>Save Bundle</h2><button class="modal-close-btn" title="Close">&times;</button></div><div class="modal-body" id="save-bundle-modal-body"><label for="bundle-name-input">Bundle Name:</label><input type="text" id="bundle-name-input" placeholder="e.g., First Grade Forces Unit"><div class="modal-actions"><button id="cancel-save-bundle-btn" class="filter-btn">Cancel</button><button id="confirm-save-bundle-btn" class="filter-btn active">Save</button></div></div></div></div>
     <div id="matrix-row-select-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h2>Select Matrix Rows</h2><button class="modal-close-btn" title="Close">&times;</button></div><div class="modal-body"><div class="modal-body-grid" id="matrix-row-choices"></div></div><div class="modal-footer"><button id="update-matrix-btn" class="filter-btn active">Update Matrix</button></div></div></div>
-    <div id="evidence-statements-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h2 id="evidence-statements-modal-title">Evidence Statements</h2><button class="modal-close-btn" title="Close">&times;</button></div><div class="modal-body ai-editable-content" id="evidence-statements-modal-body" data-part="evidenceStatements"></div><div class="modal-footer"><div class="ai-controls"><button id="analyze-es-btn" class="filter-btn active">Analyze with AI</button><button id="deconstruct-facets-btn" class="filter-btn">Deconstruct into 3D Facets</button><button class="filter-btn reset-btn reset-analysis-btn">Reset</button></div><button id="copy-es-html-btn" class="filter-btn">Copy HTML</button></div></div></div>
+    <div id="evidence-statements-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h2 id="evidence-statements-modal-title">Evidence Statements</h2><button class="modal-close-btn" title="Close">&times;</button></div><div class="modal-body ai-editable-content" id="evidence-statements-modal-body" data-part="evidenceStatements"></div><div class="modal-footer"><div class="ai-controls"><button id="analyze-es-btn" class="filter-btn active">Analyze with AI</button><button id="deconstruct-facets-btn" class="filter-btn">Deconstruct into 3D Facets</button><button class="filter-btn reset-btn reset-analysis-btn">Reset</button></div><button id="copy-es-text-btn" class="filter-btn">Copy Text</button><button id="copy-es-markdown-btn" class="filter-btn">Copy Markdown</button></div></div></div>
     <div id="facet-decomposition-modal" class="modal-overlay"><div class="modal-content" style="max-width: 900px;"><div class="modal-header"><h2 id="facet-modal-title"></h2><button class="modal-close-btn" title="Close">&times;</button></div><div class="modal-body" id="facet-modal-body"><div id="facet-tables-container"></div></div><div class="modal-footer"><button id="refresh-facets-btn" class="filter-btn reset-btn">Refresh with AI</button><button id="copy-facets-btn" class="filter-btn">Copy as Text</button><button id="close-facets-btn" class="filter-btn">Close</button></div></div></div>
     <div id="settings-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h2>Settings</h2><button class="modal-close-btn" title="Close">&times;</button></div><div class="modal-body" id="settings-modal-body"><div class="setting-group"><label for="api-key-input">Gemini API Key</label><input type="password" id="api-key-input" placeholder="Enter your Google AI Studio API Key"><p style="font-size: 0.85em; color: #555; margin-top: 0.5rem;">Your API key is saved only in your browser's local storage.</p></div><div class="setting-group"><label for="ai-model-select">AI Model</label><select id="ai-model-select"><option value="gemini-flash-latest">gemini-flash-latest</option><option value="gemini-2.5-pro">gemini-2.5-pro</option></select></div><div class="setting-group"><label>Cache Management</label><p style="font-size: 0.85em; color: #555; margin-top: 0; margin-bottom: 0.5rem;">App data and AI results are cached in your browser. Clearing caches can fix issues but may slow down the next page load.</p><div class="cache-buttons"><button id="clear-ai-cache-btn" class="filter-btn reset-btn">Clear AI Cache</button><button id="clear-data-cache-btn" class="filter-btn reset-btn">Clear Data Cache</button></div></div></div><div class="modal-footer"><button id="save-settings-btn" class="filter-btn active">Save Settings</button></div></div></div>
     
@@ -1518,6 +1518,7 @@ ${contentToModify}`;
             try {
                 const model = genAI.getGenerativeModel({ model: selectedAiModel });
                 const result = await model.generateContent(finalPrompt);
+                console.log('Final AI Prompt for Analysis:', finalPrompt);
                 const response = await result.response;
                 const htmlOutput = response.text();
                 stopAnalysisAnimation(targetElement);
@@ -1587,6 +1588,30 @@ The JSON object must contain:
             return JSON.parse(jsonText);
         };
         
+        const convertEvidenceToMarkdown = (element) => {
+            let markdown = '';
+            element.querySelectorAll('.es-entry').forEach(entry => {
+                const textEl = entry.querySelector('.es-text');
+                if (!textEl) return;
+                const text = textEl.innerText.trim();
+                const markerEl = entry.querySelector('.es-marker');
+                const marker = markerEl ? markerEl.innerText.trim() : '';
+        
+                if (entry.classList.contains('es-heading-entry')) {
+                    markdown += `### ${marker} ${text}\n\n`;
+                } else if (entry.classList.contains('es-deeply-nested-item')) {
+                    markdown += `        * ${marker} ${text}\n`;
+                } else if (entry.classList.contains('es-nested-item')) {
+                    markdown += `    * ${marker} ${text}\n`;
+                } else if (entry.classList.contains('es-item')) {
+                    markdown += `* ${marker} ${text}\n`;
+                } else if (text) {
+                    markdown += `* ${text}\n`;
+                }
+            });
+            return markdown.trim();
+        };
+
         const runFacetDecomposition = async (peId, forceRefresh = false) => {
             const deconstructBtn = document.getElementById('deconstruct-facets-btn');
             const refreshBtn = document.getElementById('refresh-facets-btn');
