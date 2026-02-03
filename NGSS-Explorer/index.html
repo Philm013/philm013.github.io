@@ -1612,6 +1612,25 @@ The JSON object must contain:
             return markdown.trim();
         };
 
+        const copyEvidenceToClipboard = (format = 'text') => {
+            const title = evidenceStatementsModalTitle.textContent;
+            const body = evidenceStatementsModalBody;
+            let content = '';
+
+            if (format === 'markdown') {
+                content = `## ${title}\n\n${convertEvidenceToMarkdown(body)}`;
+            } else {
+                content = `${title}\n\n${body.innerText}`;
+            }
+            
+            navigator.clipboard.writeText(content).then(() => {
+                alert(`Evidence Statements copied as ${format}.`);
+            }).catch(err => {
+                console.error(`Could not copy content as ${format}:`, err);
+                alert('Failed to copy content.');
+            });
+        };
+
         const runFacetDecomposition = async (peId, forceRefresh = false) => {
             const deconstructBtn = document.getElementById('deconstruct-facets-btn');
             const refreshBtn = document.getElementById('refresh-facets-btn');
@@ -1869,7 +1888,8 @@ The JSON object must contain:
             
             document.getElementById('analyze-es-btn').addEventListener('click', e => runAiAnalysis(e.target.closest('.modal-overlay').dataset.peId, 'evidenceStatements', evidenceStatementsModalBody));
             document.getElementById('deconstruct-facets-btn').addEventListener('click', e => runFacetDecomposition(e.target.closest('.modal-overlay').dataset.peId));
-            document.getElementById('copy-es-html-btn').addEventListener('click', () => navigator.clipboard.writeText(evidenceStatementsModalBody.innerHTML).then(() => alert('HTML copied.')));
+            document.getElementById('copy-es-text-btn').addEventListener('click', () => copyEvidenceToClipboard('text'));
+            document.getElementById('copy-es-markdown-btn').addEventListener('click', () => copyEvidenceToClipboard('markdown'));
             evidenceStatementsModal.addEventListener('click', e => { if (e.target.matches('.modal-close-btn, .modal-overlay')) evidenceStatementsModal.classList.remove('is-visible'); if (e.target.closest('.reset-analysis-btn')) { resetAnalysis(evidenceStatementsModal.dataset.peId, evidenceStatementsModalBody.dataset.part, evidenceStatementsModalBody); }});
             
             facetDecompositionModal.addEventListener('click', e => {
