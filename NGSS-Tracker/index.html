@@ -6,42 +6,39 @@
     <title>K-12 NGSS 3D Progression Planner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/js/shepherd.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shepherd.js@10.0.1/dist/css/shepherd.css"/>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script>
         tailwind.config = { darkMode: 'media' }
     </script>
     <style>
         /* --- SCROLLBARS --- */
-        #planner-table-container, .modal-content, #progression-table-view, #summary-content, #popover-content {
+        #planner-table-container, .modal-content, #progression-table-view, #summary-content, #popover-content, #mobile-detail-tray-content {
             scrollbar-width: thin;
             scrollbar-color: #a0aec0 #e2e8f0;
         }
-        #planner-table-container::-webkit-scrollbar, .modal-content::-webkit-scrollbar, #progression-table-view::-webkit-scrollbar, #summary-content::-webkit-scrollbar, #popover-content::-webkit-scrollbar {
+        #planner-table-container::-webkit-scrollbar, .modal-content::-webkit-scrollbar, #progression-table-view::-webkit-scrollbar, #summary-content::-webkit-scrollbar, #popover-content::-webkit-scrollbar, #mobile-detail-tray-content::-webkit-scrollbar {
             width: 8px; height: 8px;
         }
-        #planner-table-container::-webkit-scrollbar-track, .modal-content::-webkit-scrollbar-track, #progression-table-view::-webkit-scrollbar-track, #summary-content::-webkit-scrollbar-track, #popover-content::-webkit-scrollbar-track {
+        #planner-table-container::-webkit-scrollbar-track, .modal-content::-webkit-scrollbar-track, #progression-table-view::-webkit-scrollbar-track, #summary-content::-webkit-scrollbar-track, #popover-content::-webkit-scrollbar-track, #mobile-detail-tray-content::-webkit-scrollbar-track {
             background: #e2e8f0;
         }
-        #planner-table-container::-webkit-scrollbar-thumb, .modal-content::-webkit-scrollbar-thumb, #progression-table-view::-webkit-scrollbar-thumb, #summary-content::-webkit-scrollbar-thumb, #popover-content::-webkit-scrollbar-thumb {
+        #planner-table-container::-webkit-scrollbar-thumb, .modal-content::-webkit-scrollbar-thumb, #progression-table-view::-webkit-scrollbar-thumb, #summary-content::-webkit-scrollbar-thumb, #popover-content::-webkit-scrollbar-thumb, #mobile-detail-tray-content::-webkit-scrollbar-thumb {
             background-color: #a0aec0; border-radius: 10px; border: 2px solid #e2e8f0;
         }
-        .dark #planner-table-container, .dark .modal-content, .dark #progression-table-view, .dark #summary-content, .dark #popover-content {
+        .dark #planner-table-container, .dark .modal-content, .dark #progression-table-view, .dark #summary-content, .dark #popover-content, .dark #mobile-detail-tray-content {
             scrollbar-color: #4a5568 #2d3748;
         }
-        .dark #planner-table-container::-webkit-scrollbar-track, .dark .modal-content::-webkit-scrollbar-track, .dark #progression-table-view::-webkit-scrollbar-track, .dark #summary-content::-webkit-scrollbar-track, .dark #popover-content::-webkit-scrollbar-track {
+        .dark #planner-table-container::-webkit-scrollbar-track, .dark .modal-content::-webkit-scrollbar-track, .dark #progression-table-view::-webkit-scrollbar-track, .dark #summary-content::-webkit-scrollbar-track, .dark #popover-content::-webkit-scrollbar-track, .dark #mobile-detail-tray-content::-webkit-scrollbar-track {
             background: #2d3748;
         }
-        .dark #planner-table-container::-webkit-scrollbar-thumb, .dark .modal-content::-webkit-scrollbar-thumb, .dark #progression-table-view::-webkit-scrollbar-thumb, .dark #summary-content::-webkit-scrollbar-thumb, .dark #popover-content::-webkit-scrollbar-thumb {
+        .dark #planner-table-container::-webkit-scrollbar-thumb, .dark .modal-content::-webkit-scrollbar-thumb, .dark #progression-table-view::-webkit-scrollbar-thumb, .dark #summary-content::-webkit-scrollbar-thumb, .dark #popover-content::-webkit-scrollbar-thumb, .dark #mobile-detail-tray-content::-webkit-scrollbar-thumb {
             background-color: #4a5568; border-color: #2d3748;
         }
         
-        /* --- STRICT FIXED LAYOUT --- */
+        /* --- DESKTOP: STRICT FIXED LAYOUT --- */
         table.fixed-layout {
             table-layout: fixed;
-            width: max-content; 
-            min-width: 100%;
+            width: max-content; min-width: 100%;
             border-collapse: separate; 
             border-spacing: 0;
         }
@@ -55,7 +52,9 @@
             background-clip: padding-box;
         }
         .dark #planner-table-container thead th { border-bottom-color: #4a5568; }
-
+		#sidebar {
+		z-index: 20;
+		}
         .vertical-header-text {
             writing-mode: vertical-rl;
             transform: rotate(180deg);
@@ -68,26 +67,16 @@
             justify-content: flex-start;
         }
 
-        /* --- STICKY COLUMNS --- */
-        .sticky-col-1 { 
-            position: sticky; left: 0; z-index: 25; 
-            width: 65px; min-width: 65px; max-width: 65px;
-            overflow: hidden;
-        }
-        .sticky-col-2 { 
-            position: sticky; left: 65px; z-index: 24; 
-            width: 40px; min-width: 40px; max-width: 40px;
-            overflow: hidden;
-        }
+        /* --- DESKTOP: STICKY COLUMNS --- */
+        .sticky-col-1 { position: sticky; left: 0; z-index: 25; width: 65px; min-width: 65px; }
+        .sticky-col-2 { position: sticky; left: 65px; z-index: 24; width: 40px; min-width: 40px; }
         .sticky-col-3 { 
-            position: sticky; left: 105px; z-index: 23; 
-            width: 400px; min-width: 400px; max-width: 400px;
+            position: sticky; left: 105px; z-index: 23; width: 400px; min-width: 400px;
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.05);
-            overflow: hidden; text-overflow: ellipsis;
         }
         .dark .sticky-col-3 { box-shadow: 4px 0 5px -2px rgba(0,0,0,0.25); }
-
-        .data-col-header { width: 50px; min-width: 50px; max-width: 50px; }
+        
+        .data-col { width: 50px; min-width: 50px; }
 
         #planner-table-container thead th.sticky-col-1, 
         #planner-table-container thead th.sticky-col-2, 
@@ -102,20 +91,102 @@
         .pe-link-indicator { display: inline-block; font-size: 0.7em; padding: 1px 5px; background-color: #e6f4ff; color: #005a9c; border: 1px solid #b3d7ff; border-radius: 4px; font-weight: bold; vertical-align: middle; margin-left: 4px; }
         .dark .pe-link-indicator { background-color: #1e3a8a; color: #93c5fd; border-color: #3b82f6; }
         tr.filtered-out { display: none; }
-        .shepherd-button { background-color: #3b82f6; color: white; border-radius: 0.375rem; padding: 0.5rem 1rem; }
-        .shepherd-button:not(.shepherd-button-secondary):hover { background-color: #2563eb; }
-        .shepherd-button.shepherd-button-secondary { background-color: #6b7280; }
-        .shepherd-header { background-color: #1f2937; padding: 1rem; }
-        .shepherd-footer { padding: 0.5rem; }
-        .dark .shepherd-text, .dark .shepherd-header, .dark .shepherd-content { background-color: #374151; color: #e5e7eb; }
-        .dark .shepherd-arrow::before { background-color: #374151; }
         #pe-modal-list { overflow-y: auto; }
-        
         details > summary { list-style: none; }
         details > summary::-webkit-details-marker { display: none; }
+        .group-toggle-header { top: 0; z-index: 21 !important; height: auto !important; vertical-align: middle !important; padding: 4px !important; }
+
+        /* --- MOBILE OVERHAUL STYLES (md breakpoint: 768px) --- */
+        @media (max-width: 768px) {
+            /* Full screen modals */
+            .modal-backdrop .modal {
+                width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh;
+                border-radius: 0;
+            }
+
+            /* Hide desktop table elements */
+            #planner-table-container thead,
+            #planner-table-container .data-col,
+            #planner-table-container .sticky-col-1, /* Hide desktop action buttons */
+            #planner-table-container .sticky-col-2 /* Hide desktop scope cell */
+            {
+                display: none;
+            }
+
+            /* Convert table to a list of cards */
+            #planner-table-container {
+                border: none; background-color: transparent;
+            }
+            table.table-view, table.fixed-layout, #planner-table-container tbody {
+                display: block;
+            }
+            #planner-table-container tr {
+                display: flex; /* Make rows flex containers */
+                flex-wrap: wrap;
+                margin-bottom: 8px;
+                border-radius: 0.5rem;
+                background-color: #fff;
+                border: 1px solid #e2e8f0;
+                box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+            }
+            .dark #planner-table-container tr {
+                background-color: #2d3748;
+                border-color: #4a5568;
+            }
+            #planner-table-container tr.lesson-set-row {
+                display: block;
+                padding: 0.75rem 1rem;
+                background-color: #3182ce;
+                color: white;
+                font-weight: bold;
+            }
+             .dark #planner-table-container tr.lesson-set-row {
+                background-color: #2c5282;
+            }
+
+            /* Restyle the main title cell to be the card content */
+            #planner-table-container .sticky-col-3 {
+                position: static;
+                width: 100%;
+                min-width: 100%;
+                box-shadow: none;
+                padding: 0.75rem 1rem;
+                cursor: pointer;
+            }
+            #planner-table-container .lesson-row .sticky-col-3 {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            /* Mobile-only summary badges */
+            .mobile-summary-badges {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin-top: 8px;
+            }
+
+            /* Mobile-only chevron */
+            .mobile-chevron {
+                display: inline-block;
+                font-size: 1.5rem;
+                color: #a0aec0;
+            }
+            .dark .mobile-chevron { color: #718096; }
+        }
+
+        /* --- MOBILE SLIDE-OUT TRAY --- */
+        #mobile-detail-tray {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        body.tray-open #mobile-detail-tray {
+            transform: translateX(0);
+        }
     </style>
 </head>
-<body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased group">
+<body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased">
     <div id="loading-indicator" class="fixed inset-0 bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-lg text-gray-500 dark:text-gray-400 z-[2000] transition-opacity duration-500">Loading NGSS Planner...</div>
 
     <div class="relative flex h-screen overflow-hidden">
@@ -130,10 +201,11 @@
                 </div>
             </div>
             
-             <div class="grid grid-cols-1 gap-2 mb-4">
-                <button id="help-btn" class="w-full px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-semibold text-sm">Help / Tour</button>
-            </div>
             <ul id="navigator-list" class="overflow-y-auto space-y-1"></ul>
+
+            <div class="mt-auto pt-4 border-t border-gray-600">
+                <button id="reset-all-data-btn" class="w-full px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors font-semibold text-sm">Reset All Data</button>
+            </div>
         </aside>
 
         <div id="main-wrapper" class="flex-1 flex flex-col overflow-x-hidden">
@@ -141,82 +213,70 @@
             <div id="sidebar-backdrop" class="md:hidden fixed inset-0 bg-black/40 z-[999] opacity-0 pointer-events-none transition-opacity duration-300"></div>
 
             <main id="main-content" class="flex-1 flex flex-col p-3 md:p-5 min-h-0">
-                <div id="welcome-view" class="view active">
-                    <div class="text-center m-auto text-gray-500 dark:text-gray-400">
-                        <h2 class="text-2xl font-semibold mb-2">Welcome to the NGSS 3D Progression Planner</h2>
-                        <p>Select a planner from the navigator on the left to begin, or create a new one.</p>
-                        <button id="welcome-help-btn" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Show me how it works!</button>
-                    </div>
+                <div id="welcome-view" class="view active flex-col items-center justify-center">
+                    <!-- Content will be dynamically generated by App.render.welcomeView() -->
                 </div>
 
                 <div id="planner-view" class="view flex-1 flex flex-col h-full">
                     <!-- Streamlined Header & Toolbar -->
                     <div class="flex flex-col gap-2 mb-2 border-b border-gray-200 dark:border-gray-700 pb-2">
-                        <div class="flex flex-wrap justify-between items-end gap-x-4 gap-y-2">
-                            <!-- Title Section -->
-                            <div class="min-w-[200px]">
-                                <h1 id="planner-title" class="text-2xl font-bold text-gray-800 dark:text-gray-100 leading-tight"></h1>
+                        <!-- Row 1: Title, Settings, and Info -->
+                        <div class="flex flex-wrap justify-between items-start gap-4">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h1 id="planner-title" class="text-2xl font-bold text-gray-800 dark:text-gray-100 leading-tight"></h1>
+                                    <button id="edit-planner-btn" class="px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-lg" title="Planner Settings">⚙️</button>
+                                </div>
                                 <p id="planner-subtitle" class="text-sm text-gray-500 dark:text-gray-400"></p>
                             </div>
-
-                            <!-- Toolbar Section -->
-                            <div class="flex flex-wrap items-center gap-2 justify-end flex-1">
-                                <!-- Search -->
-                                <div class="relative">
-                                    <input type="search" id="search-input" placeholder="Search..." class="w-32 focus:w-48 transition-all pl-7 pr-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500">
-                                    <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400 text-xs">🔍</div>
-                                </div>
-
-                                <!-- Action Buttons -->
-                                <div class="flex gap-1">
-                                    <button id="assign-pe-btn" class="px-2 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-xs font-medium">PEs</button>
-                                    <button id="add-lesson-set-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium group-[.view-mode-active]:hidden">+ Set</button>
-                                    <button id="add-lesson-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium group-[.view-mode-active]:hidden">+ Lesson</button>
-                                </div>
-
-                                <!-- Undo/Redo -->
-                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-2">
-                                    <button id="undo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 text-xs">↶</button>
-                                    <button id="redo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 text-xs">↷</button>
-                                </div>
-
-                                <!-- Settings/View/Export -->
-                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-2">
-                                    <button id="edit-planner-btn" class="px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-xs group-[.view-mode-active]:hidden">⚙️</button>
-                                    <button id="view-mode-toggle" class="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-xs">View</button>
-                                    <button id="export-planner-btn" class="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Export</button>
-                                    <button id="import-planner-btn" class="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Import</button>
-                                </div>
+                            <div class="text-right flex-shrink-0">
+                                <details class="group relative">
+                                    <summary class="list-none cursor-pointer text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1 text-xs">
+                                        <span class="group-open:rotate-90 transition-transform">▶</span> Show Phenomenon & Driving Question
+                                    </summary>
+                                    <div class="absolute top-full right-0 mt-1 z-50 w-80 md:w-96 p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-lg shadow-xl text-sm">
+                                        <p class="font-bold text-blue-800 dark:text-blue-200">Anchoring Phenomenon:</p>
+                                        <p id="planner-phenomenon" class="mb-2 text-gray-700 dark:text-gray-300 italic"></p>
+                                        <p class="font-bold text-blue-800 dark:text-blue-200">Driving Question:</p>
+                                        <p id="planner-question" class="text-gray-700 dark:text-gray-300 italic"></p>
+                                    </div>
+                                </details>
+                                <span id="save-status" class="italic text-gray-400 text-xs mt-1 block"></span>
                             </div>
                         </div>
 
-                        <!-- Row 2: Toggles & Status (Compact) -->
-                        <div class="flex justify-between items-center text-xs">
-                             <!-- Collapsible Phenomenon Toggle -->
-                            <details class="group relative">
-                                <summary class="list-none cursor-pointer text-blue-600 dark:text-blue-400 font-medium hover:underline flex items-center gap-1">
-                                    <span class="group-open:rotate-90 transition-transform">▶</span> Show Phenomenon & Driving Question
-                                </summary>
-                                <div class="absolute top-full left-0 mt-1 z-50 w-96 p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-lg shadow-xl text-sm">
-                                    <p class="font-bold text-blue-800 dark:text-blue-200">Anchoring Phenomenon:</p>
-                                    <p id="planner-phenomenon" class="mb-2 text-gray-700 dark:text-gray-300 italic"></p>
-                                    <p class="font-bold text-blue-800 dark:text-blue-200">Driving Question:</p>
-                                    <p id="planner-question" class="text-gray-700 dark:text-gray-300 italic"></p>
-                                </div>
-                            </details>
-
-                            <div class="flex items-center gap-4">
-                                <label class="flex items-center gap-2 cursor-pointer text-gray-600 dark:text-gray-400">
+                        <!-- Row 2: Actions, Tabs, and History -->
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                             <div class="flex items-center gap-2">
+                                <button id="add-lesson-set-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">+ Set</button>
+                                <button id="add-lesson-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">+ Lesson</button>
+                                <label class="flex items-center gap-1.5 cursor-pointer text-gray-600 dark:text-gray-400 text-xs whitespace-nowrap pl-2 border-l ml-1">
                                     <span>Bundled PEs Only</span>
                                     <input type="checkbox" id="pe-bundle-toggle" class="accent-blue-600">
                                 </label>
-                                <span id="save-status" class="italic text-gray-400"></span>
+                            </div>
+
+                            <div id="tab-container" class="tabs flex border-b-2 border-gray-300 dark:border-gray-700 -mb-px flex-1 overflow-x-auto whitespace-nowrap"></div>
+
+                            <div class="flex items-center gap-2">
+                                <div class="relative group">
+                                    <button id="export-dropdown-btn" class="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Export</button>
+                                    <div id="export-dropdown-menu" class="absolute right-0 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border dark:border-gray-700 z-50 hidden group-hover:block">
+                                        <a href="#" id="export-xlsx-btn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Export to XLSX...</a>
+                                        <a href="#" id="export-json-btn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Export as JSON</a>
+                                        <a href="#" id="export-html-btn" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Export as HTML</a>
+                                    </div>
+                                </div>
+                                <button id="import-planner-btn" class="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Import</button>
+                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-2">
+                                    <button id="undo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed text-xs" title="Undo (Ctrl+Z)">↶</button>
+                                    <button id="redo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 disabled:cursor-not-allowed text-xs" title="Redo (Ctrl+Y)">↷</button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="tab-container" class="tabs flex border-b-2 border-gray-300 dark:border-gray-700 -mb-px"></div>
-                    <div id="planner-table-container" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-b-lg rounded-tr-lg bg-white dark:bg-gray-800/50"></div>
+                    <div id="planner-table-container" class="flex-grow overflow-auto md:border md:border-gray-300 dark:md:border-gray-700 md:rounded-lg md:bg-white dark:md:bg-gray-800/50"></div>
                 </div>
                 
                 <div id="progression-view" class="view flex-1 flex flex-col">
@@ -225,24 +285,44 @@
                             <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Progression Storyline</h1>
                             <p id="progression-subtitle" class="subtitle text-base text-gray-500 dark:text-gray-400"></p>
                         </div>
-                        <div class="flex items-center gap-2 p-1 bg-gray-200 dark:bg-gray-700 rounded-lg">
-                            <button id="progression-view-element" class="px-3 py-1 text-sm font-medium rounded-md">By Element</button>
-                            <button id="progression-view-lesson" class="px-3 py-1 text-sm font-medium rounded-md">By Lesson</button>
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-2 p-1 bg-gray-200 dark:bg-gray-700 rounded-lg">
+                                <button id="progression-view-element" class="px-3 py-1 text-sm font-medium rounded-md">By Element</button>
+                                <button id="progression-view-lesson" class="px-3 py-1 text-sm font-medium rounded-md">By Lesson</button>
+                            </div>
+                            <button id="export-progression-btn" class="px-3 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm font-medium transition-colors">Export View</button>
                         </div>
                      </div>
                      <div id="progression-table-view" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-lg p-4"></div>
                 </div>
                  <div id="summary-view" class="view flex-1 flex flex-col">
-                    <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Planner Summary & Analytics</h1>
-                    <p id="summary-subtitle" class="subtitle text-base text-gray-500 dark:text-gray-400 mb-4"></p>
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Planner Summary & Analytics</h1>
+                            <p id="summary-subtitle" class="subtitle text-base text-gray-500 dark:text-gray-400"></p>
+                        </div>
+                        <button id="export-summary-btn" class="flex-shrink-0 px-3 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm font-medium transition-colors">Export Summary</button>
+                    </div>
                     <div id="summary-content" class="flex-grow overflow-auto p-4 space-y-6"></div>
                 </div>
             </main>
         </div>
     </div>
+    
+    <!-- MOBILE DETAIL TRAY -->
+    <div id="mobile-detail-tray" class="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl z-[1500] flex flex-col border-l border-gray-200 dark:border-gray-700">
+        <div class="flex justify-between items-center p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
+            <h3 id="mobile-tray-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">Lesson Details</h3>
+            <button id="mobile-tray-close" class="px-3 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 font-semibold text-sm">Close</button>
+        </div>
+        <div id="mobile-detail-tray-content" class="overflow-y-auto p-4 space-y-4">
+            <!-- Mobile tray content will be generated here -->
+        </div>
+    </div>
 
-    <!-- Modals (Same as before) -->
-    <div id="planner-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+
+    <!-- Modals -->
+    <div id="planner-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div class="p-6 border-b dark:border-gray-700">
                  <h3 id="planner-modal-title" class="text-xl font-semibold text-gray-900 dark:text-gray-100">New Planner</h3>
@@ -307,7 +387,7 @@
         </div>
     </div>
     
-    <div id="pe-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+    <div id="pe-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
             <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100 sticky top-0 bg-white dark:bg-gray-800">Assign Performance Expectations</h3>
             <div class="modal-content p-6 overflow-y-auto" id="pe-modal-list"></div>
@@ -317,7 +397,7 @@
             </div>
         </div>
     </div>
-    <div id="element-detail-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+    <div id="element-detail-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <h3 id="element-modal-title" class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Element Details</h3>
             <div class="modal-content p-6 space-y-4 overflow-y-auto">
@@ -330,32 +410,22 @@
             </div>
         </div>
     </div>
-    <div id="export-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-        <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
-             <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Export Planner</h3>
-            <div class="modal-content p-6 overflow-y-auto" id="export-options-list">
-                <p class="text-gray-600 dark:text-gray-400 mb-4">Select a format to download your planner.</p>
-                <div class="space-y-3">
-                    <button class="export-option-btn w-full text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all" data-format="json">
-                        <strong class="text-blue-600 dark:text-blue-400">JSON File</strong>
-                        <small class="text-gray-500 dark:text-gray-400">Best for backing up and re-importing into this tool.</small>
-                    </button>
-                    <button class="export-option-btn w-full text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all" data-format="html">
-                        <strong class="text-blue-600 dark:text-blue-400">HTML File</strong>
-                        <small class="text-gray-500 dark:text-gray-400">A self-contained, viewable webpage of your planner.</small>
-                    </button>
-                    <button class="export-option-btn w-full text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all" data-format="xlsx">
-                        <strong class="text-blue-600 dark:text-blue-400">Excel (XLSX) File</strong>
-                        <small class="text-gray-500 dark:text-gray-400">For use in spreadsheets like Excel or Google Sheets.</small>
-                    </button>
+    <div id="export-master-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-0 md:p-4">
+        <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+             <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">XLSX Export Options</h3>
+            <div class="modal-content p-6 overflow-y-auto">
+                <p class="text-gray-600 dark:text-gray-400 mb-4">Select which XLSX formats you would like to export. All selected items will be bundled into a single file.</p>
+                <div id="export-master-options-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Options will be dynamically inserted here -->
                 </div>
             </div>
-            <div class="modal-actions p-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-700 rounded-b-lg text-right">
-                <button id="export-modal-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors font-semibold text-sm">Cancel</button>
+            <div class="modal-actions p-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-700 rounded-b-lg flex justify-end gap-2">
+                <button id="export-master-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 font-semibold text-sm">Cancel</button>
+                <button id="export-master-download" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-semibold text-sm">Download Selected</button>
             </div>
         </div>
     </div>
-     <div id="lesson-details-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+     <div id="lesson-details-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <h3 id="lesson-details-modal-title" class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Lesson Details</h3>
             <div class="modal-content p-6 space-y-4 overflow-y-auto">
@@ -377,7 +447,7 @@
             </div>
         </div>
     </div>
-    <div id="import-options-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-[60] hidden items-center justify-center p-4">
+    <div id="import-options-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-[60] hidden items-center justify-center p-0 md:p-4">
         <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
              <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Import Options</h3>
             <div class="modal-content p-6 overflow-y-auto space-y-4">
@@ -415,7 +485,9 @@
         <div id="popover-content" class="overflow-y-auto max-h-[50vh]"></div>
     </div>
 
-
+    <div id="scrollbar-tooltip" class="fixed bottom-2 right-1/2 translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-md z-[1002] pointer-events-none opacity-0 transition-opacity shadow-lg">
+        Tip: Hold <kbd class="px-1.5 py-0.5 border border-gray-600 bg-gray-700 rounded-md font-sans text-xs">Shift</kbd> + Scroll to scroll horizontally
+    </div>
     <div id="tooltip" class="fixed bg-gray-900 text-white px-3 py-1.5 rounded-md z-[1002] pointer-events-none opacity-0 transition-opacity text-sm max-w-md shadow-lg"></div>
     
     <script>
@@ -429,16 +501,19 @@
                 currentActiveTab: 'pe',
                 saveTimeout: null,
                 draggedGroup: null, 
-                isViewMode: false,
                 isPeBundleMode: false,
                 undoStack: [],
                 redoStack: [],
                 pendingImportData: null,
                 allNgssData: [],
                 allNgss3dElements: [],
+                availableExamples: [], // New state for dynamically loaded examples
                 progressionViewType: 'element',
                 summaryShowCoveredOnly: false,
                 summaryChartFilter: null,
+                scrollbarTooltipTimeout: null,
+                scrollbarTooltipShown: false,
+                activeCharts: {},
             },
 			dataMaps: {
                 peMap: new Map(),
@@ -449,12 +524,11 @@
                 nameToCodeMap: new Map(),
                 textToSpecificCodeMap: new Map(),
                 fuzzyMatchCache: new Map(),
-                // Updated to include ETS grade keys (K-2, 3-5, etc.)
                 gradeBandMap: { 
-                    'K': 'primary', '1': 'primary', '2': 'primary', 'K-2': 'primary',
-                    '3': 'elementary', '4': 'elementary', '5': 'elementary', '3-5': 'elementary',
-                    'MS': 'middle', '6-8': 'middle',
-                    'HS': 'high', '9-12': 'high'
+                    'K': 'primary', '1': 'primary', '2': 'primary', 'K-2': 'primary', 'Kindergarten': 'primary',
+                    '3': 'elementary', '4': 'elementary', '5': 'elementary', '3-5': 'elementary', 'Elementary': 'elementary', 'Elementary School': 'elementary',
+                    'MS': 'middle', '6-8': 'middle', 'Middle School': 'middle',
+                    'HS': 'high', '9-12': 'high', 'High School': 'high'
                 }
             },
             dom: {
@@ -466,13 +540,14 @@
                 tabContainer: document.getElementById('tab-container'),
                 saveStatus: document.getElementById('save-status'),
                 tooltip: document.getElementById('tooltip'),
+                scrollbarTooltip: document.getElementById('scrollbar-tooltip'),
                 loadingIndicator: document.getElementById('loading-indicator'),
                 body: document.getElementById('body-tag'),
                 undoBtn: document.getElementById('undo-btn'),
                 redoBtn: document.getElementById('redo-btn'),
-                searchInput: document.getElementById('search-input'),
                 plannerPhenomenon: document.getElementById('planner-phenomenon'),
                 plannerQuestion: document.getElementById('planner-question'),
+                welcomeView: document.getElementById('welcome-view'),
             },
             constants: {
                 statusClasses: {
@@ -487,6 +562,7 @@
                 },
                 scopeClasses: {
                     F: 'bg-indigo-200/60 dark:bg-indigo-700/40 border-indigo-300',
+                    CF: 'bg-amber-200/60 dark:bg-amber-700/40 border-amber-300',
                     S: 'bg-rose-200/60 dark:bg-rose-700/40 border-rose-300'
                 }
             },
@@ -495,23 +571,21 @@
                 this.persistence.loadProgramData();
                 this.render.navigator();
                 this.attachEventListeners();
-                this.tour.init();
                 this.popover.init();
+                this.mobile.init();
+                this.render.welcomeView();
                 this.utils.showView('welcome-view');
 
                 this.dom.loadingIndicator.style.opacity = '0';
                 setTimeout(() => {
                     this.dom.loadingIndicator.style.display = 'none';
-                    if (!localStorage.getItem('ngssPlannerTourCompleted')) {
-                        if (App.state.programData.planners.length > 0) {
-                           this.tour.start();
-                        }
-                    }
                 }, 500);
             },
             
             buildDataMaps() {
-                const { ngss3dMap, peMap, peTo3dMap, parentToChildrenMap, major3DMap, nameToCodeMap, textToSpecificCodeMap, fuzzyMatchCache } = this.dataMaps;
+                // destructured gradeBandMap here to ensure it is available in the loop
+                const { ngss3dMap, peMap, peTo3dMap, parentToChildrenMap, major3DMap, nameToCodeMap, textToSpecificCodeMap, fuzzyMatchCache, gradeBandMap } = this.dataMaps;
+                
                 ngss3dMap.clear(); peMap.clear(); peTo3dMap.clear(); parentToChildrenMap.clear(); major3DMap.clear(); nameToCodeMap.clear(); textToSpecificCodeMap.clear(); fuzzyMatchCache.clear();
                 
                 const processElementForMaps = (element) => {
@@ -544,7 +618,29 @@
                                              i.parentName = item.name;
                                              i.parentCode = item.name.split(':')[0].trim();
                                              i.dimension = dim.short_name;
-                                             i.allProgressions = item.progressions;
+                                             
+                                             // --- FIX: Enhanced Key Normalization ---
+                                             i.allProgressions = {};
+                                             if (item.progressions) {
+                                                Object.keys(item.progressions).forEach(k => {
+                                                    let cleanK = k.trim();
+                                                    // Robust matching for keys like "Grades 3-5", "3-5 ", or "Middle School"
+                                                    let normalizedKey = gradeBandMap[cleanK] || 
+                                                                        gradeBandMap[cleanK.replace(/\s+/g, '')] ||
+                                                                        gradeBandMap[cleanK.toLowerCase()] ||
+                                                                        k;
+
+                                                    // Specific fixes for common NGSS data variations
+                                                    if (cleanK.includes('K-2')) normalizedKey = 'primary';
+                                                    if (cleanK.includes('3-5')) normalizedKey = 'elementary';
+                                                    if (cleanK.includes('6-8')) normalizedKey = 'middle';
+                                                    if (cleanK.includes('9-12')) normalizedKey = 'high';
+
+                                                    i.allProgressions[normalizedKey] = item.progressions[k];
+                                                });
+                                             }
+                                             // --- END FIX ---
+
                                              i.relatedPes = new Set();
                                              ngss3dMap.set(i.code,i);
                                              textToSpecificCodeMap.set(i.text.trim(), i.code);
@@ -631,8 +727,12 @@
                     if (!parent.progressions) return;
                     const parentCode = parent.code || parent.name.split(':')[0].trim();
                     const children = [];
+                    // Flatten children for parent lookup map
                     Object.values(parent.progressions).forEach(bandProg => { if(bandProg) children.push(...bandProg) });
                     const uniqueChildren = Array.from(new Map(children.map(item => [item.code, item])).values());
+                    
+                    // Note: We don't need to normalize keys inside the *Parent* map because the children 
+                    // themselves now contain the normalized `allProgressions` property we added above.
                     parentToChildrenMap.set(parentCode, {name: parent.name, children: uniqueChildren, dimension: dimShortName});
                 };
 
@@ -654,43 +754,66 @@
                 document.getElementById('view-progression-btn').addEventListener('click', () => this.render.progressionViewer());
                 document.getElementById('view-summary-btn').addEventListener('click', () => this.render.summary());
                 
-                this.dom.navigatorList.addEventListener('click', e => { if (e.target.type === 'checkbox') return; const item = e.target.closest('.planner-item'); if (item) { this.render.plannerView(item.dataset.plannerId); if (window.innerWidth <= 768) this.dom.body.classList.remove('sidebar-open'); } });
-                document.getElementById('assign-pe-btn').addEventListener('click', () => this.utils.openPeAssignmentModal());
+                this.dom.navigatorList.addEventListener('click', e => { 
+                    if (e.target.type === 'checkbox') return; 
+                    const item = e.target.closest('.planner-item'); 
+                    if (item) { 
+                        const plannerId = item.dataset.plannerId;
+                        this.render.plannerView(plannerId); 
+                        item.querySelector('.planner-checkbox').checked = true;
+                        if (window.innerWidth <= 768) this.dom.body.classList.remove('sidebar-open'); 
+                    } 
+                });
+                this.dom.welcomeView.addEventListener('click', e => {
+                    const card = e.target.closest('.planner-card');
+                    if (card) {
+                        const plannerId = card.dataset.plannerId;
+                        this.render.plannerView(plannerId);
+                        const navItem = this.dom.navigatorList.querySelector(`[data-planner-id="${plannerId}"]`);
+                        if(navItem) navItem.querySelector('.planner-checkbox').checked = true;
+                    }
+
+                    const exampleBtn = e.target.closest('.load-example-btn');
+                    if (exampleBtn) {
+                        const plannerId = exampleBtn.dataset.plannerId;
+                        this.utils.loadPlannerFromFile(plannerId);
+                    }
+                });
+
                 document.getElementById('add-lesson-set-btn').addEventListener('click', () => this.utils.addRow('lesson-set', 'New Lesson Set...'));
                 document.getElementById('add-lesson-btn').addEventListener('click', () => this.utils.addRow('lesson', 'New Lesson...'));
                 document.getElementById('edit-planner-btn').addEventListener('click', () => { const p = this.utils.findPlanner(this.state.currentPlannerId); if(p) this.utils.openPlannerModal(p); });
                 
                 this.dom.undoBtn.addEventListener('click', () => this.history.undo());
                 this.dom.redoBtn.addEventListener('click', () => this.history.redo());
-                this.dom.searchInput.addEventListener('input', e => this.utils.performSearch(e.target.value));
-                document.getElementById('help-btn').addEventListener('click', () => this.tour.start());
-                document.getElementById('welcome-help-btn').addEventListener('click', () => this.tour.start());
                 document.getElementById('progression-view-element').addEventListener('click', () => { App.state.progressionViewType = 'element'; App.render.progressionViewer(); });
                 document.getElementById('progression-view-lesson').addEventListener('click', () => { App.state.progressionViewType = 'lesson'; App.render.progressionViewer(); });
+                document.getElementById('export-progression-btn').addEventListener('click', () => this.export.exportProgressionView());
+                document.getElementById('export-summary-btn').addEventListener('click', () => this.export.exportSummaryView());
 
-                document.getElementById('view-mode-toggle').addEventListener('click', () => this.utils.toggleViewMode());
                 document.getElementById('pe-bundle-toggle').addEventListener('change', e => { App.state.isPeBundleMode = e.target.checked; App.render.setActiveTab(App.state.currentActiveTab); });
-                document.getElementById('export-planner-btn').addEventListener('click', () => this.export.showExportOptions());
+                
+                // Export Dropdown Listeners
+                document.getElementById('export-xlsx-btn').addEventListener('click', (e) => { e.preventDefault(); this.export.showExportOptions(); });
+                document.getElementById('export-json-btn').addEventListener('click', (e) => { e.preventDefault(); this.export.asJson(); });
+                document.getElementById('export-html-btn').addEventListener('click', (e) => { e.preventDefault(); this.export.asHtml(); });
+                
                 document.getElementById('import-planner-btn').addEventListener('click', () => this.import.handleImport());
                 
-                document.getElementById('export-options-list').addEventListener('click', e => {
-                    const btn = e.target.closest('.export-option-btn');
-                    if (btn) {
-                        const format = btn.dataset.format;
-                        const planner = App.utils.findPlanner(App.state.currentPlannerId);
-                        if (!planner) return;
-                        App.export.handleExportClick(format, planner);
-                        if (format !== 'clipboard') {
-                            this.utils.closeAllModals();
-                        }
-                    }
-                });
+                document.getElementById('export-master-download').addEventListener('click', () => this.export.handleMasterExport());
                 
                 document.getElementById('import-options-confirm').addEventListener('click', () => this.import.processImport());
 
                 this.dom.plannerTableContainer.addEventListener('click', e => this.handlers.mainTableClick(e));
                 this.dom.plannerTableContainer.addEventListener('blur', e => { if (e.target.matches('.editable')) this.handlers.titleEdit(e) }, true);
-                this.dom.tabContainer.addEventListener('click', e => { if (e.target.matches('.tab-button')) this.render.setActiveTab(e.target.dataset.tab); });
+                this.dom.plannerTableContainer.addEventListener('mousemove', e => this.handlers.handleScrollbarTooltip(e));
+                this.dom.plannerTableContainer.addEventListener('mouseleave', () => this.handlers.hideScrollbarTooltip());
+                this.dom.tabContainer.addEventListener('click', e => {
+                    const tabBtn = e.target.closest('.tab-button');
+                    if (tabBtn) this.render.setActiveTab(tabBtn.dataset.tab);
+                    const peBtn = e.target.closest('#assign-pe-btn');
+                    if(peBtn) this.utils.openPeAssignmentModal();
+                });
                 document.body.addEventListener('mouseover', e => this.handlers.tooltipShow(e));
                 document.body.addEventListener('mouseout', () => this.handlers.tooltipHide());
 
@@ -701,28 +824,159 @@
 
                 document.getElementById('planner-modal-save').addEventListener('click', () => this.utils.savePlanner());
                 document.getElementById('pe-modal-save').addEventListener('click', () => this.utils.savePeAssignments());
-                document.getElementById('planner-modal-delete').addEventListener('click', () => { if (confirm('Are you sure? This cannot be undone.')) { const id = document.getElementById('planner-id-input').value; this.state.programData.planners = this.state.programData.planners.filter(p => p.id !== id); this.persistence.saveProgramData(); this.history.clear(); this.utils.closeAllModals(); this.utils.showView('welcome-view'); this.state.currentPlannerId = null; this.render.navigator(); } });
+                document.getElementById('planner-modal-delete').addEventListener('click', () => { if (confirm('Are you sure? This cannot be undone.')) { const id = document.getElementById('planner-id-input').value; this.state.programData.planners = this.state.programData.planners.filter(p => p.id !== id); this.persistence.saveProgramData(); this.history.clear(); this.utils.closeAllModals(); this.render.welcomeView(); this.utils.showView('welcome-view'); this.state.currentPlannerId = null; this.render.navigator(); } });
                 
                 document.getElementById('add-link-btn').addEventListener('click', () => this.utils.addLinkToDetailsModal());
                 document.getElementById('lesson-links-container').addEventListener('click', (e) => { if(e.target.classList.contains('remove-link-btn')) this.utils.removeLinkFromDetailsModal(e.target); });
                 document.getElementById('lesson-details-modal-close').addEventListener('click', () => this.utils.saveLessonDetails());
 
-                document.body.addEventListener('click', e => { if(e.target.matches('.modal-backdrop, [id$="-modal-cancel"], [id$="-modal-close"]')) this.utils.closeAllModals(); });
+                document.body.addEventListener('click', e => { if(e.target.matches('.modal-backdrop, [id$="-cancel"], [id$="-close"]')) this.utils.closeAllModals(); });
 
                 document.getElementById('menu-toggle').addEventListener('click', () => this.dom.body.classList.toggle('sidebar-open'));
                 document.getElementById('sidebar-backdrop').addEventListener('click', () => this.dom.body.classList.remove('sidebar-open'));
 
                 document.addEventListener('keydown', (e) => {
-                    if (document.activeElement.isContentEditable || document.querySelector('.modal-backdrop:not(.hidden)')) return;
+                    if (e.target.matches('input, textarea, [contenteditable]')) return;
+                    if (document.querySelector('.modal-backdrop:not(.hidden)')) return;
                     if (e.ctrlKey || e.metaKey) {
                         if (e.key === 'z') { e.preventDefault(); this.history.undo(); }
-                        if (e.key === 'y') { e.preventDefault(); this.history.redo(); }
+                        if (e.key === 'y' || (e.shiftKey && e.key === 'Z')) { e.preventDefault(); this.history.redo(); }
+                    }
+                });
+
+                document.getElementById('reset-all-data-btn').addEventListener('click', async () => {
+                    const confirmation = confirm("Are you absolutely sure?\n\nThis will permanently delete ALL your planners and reset the application to its initial state. This action cannot be undone.");
+                    if (confirmation) {
+                        try {
+                            App.dom.loadingIndicator.textContent = 'Resetting all data...';
+                            App.dom.loadingIndicator.style.display = 'flex';
+                            App.dom.loadingIndicator.style.opacity = '1';
+
+                            localStorage.removeItem('ngssProgramPlannerData');
+                            await App.db.clear();
+
+                            alert("All data has been reset. The application will now reload.");
+                            location.reload();
+                        } catch (error) {
+                            alert(`An error occurred while resetting data: ${error}`);
+                            console.error(error);
+                            App.dom.loadingIndicator.style.display = 'none';
+                        }
                     }
                 });
             },
         };
 
-        // ... (App.popover, App.db, App.persistence, App.history - No changes needed) ...
+        App.mobile = {
+            init() {
+                document.getElementById('mobile-tray-close').addEventListener('click', () => this.hideDetailTray());
+                document.getElementById('mobile-detail-tray-content').addEventListener('change', (e) => {
+                    if (e.target.type === 'radio') this.handleSelectionChange(e.target);
+                });
+            },
+            showDetailTray(rowId) {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                const rowData = App.utils.findRowData(planner, rowId);
+                if (!rowData) return;
+
+                document.getElementById('mobile-tray-title').textContent = rowData.title;
+                const contentContainer = document.getElementById('mobile-detail-tray-content');
+                contentContainer.dataset.rowId = rowId;
+                
+                let html = '';
+                const allColumns = App.utils.gatherColumns(planner.gradeBand);
+
+                Object.values(allColumns).forEach(dim => {
+                    if (dim.key === 'pe') {
+                        const assignedPes = planner.assignedPes || [];
+                        if (assignedPes.length > 0) {
+                            html += `<h4 class="text-lg font-bold border-b pb-2 mb-2">${dim.name}</h4>`;
+                            assignedPes.forEach(peObj => {
+                                html += this.renderMobileElement(peObj.id, rowData, 'pe');
+                            });
+                        }
+                    } else {
+                        html += `<h4 class="text-lg font-bold border-b pb-2 mb-2">${dim.name}</h4>`;
+                        Object.values(dim.groups).forEach(group => {
+                            if (group.cols.length > 0) {
+                                html += `<h5 class="font-semibold text-gray-700 dark:text-gray-300 mt-3 mb-1">${group.name}</h5>`;
+                                group.cols.forEach(col => {
+                                    html += this.renderMobileElement(col.code, rowData, '3d');
+                                });
+                            }
+                        });
+                    }
+                });
+                
+                contentContainer.innerHTML = html;
+                App.dom.body.classList.add('tray-open');
+            },
+            hideDetailTray() {
+                App.dom.body.classList.remove('tray-open');
+                // Re-render the main table to update summary badges on the mobile card view
+                App.render.renderPlannerContent();
+            },
+            renderMobileElement(code, rowData, type) {
+                let element, title, description, subElements = [];
+                const currentStatus = rowData.trackingData[code] || '';
+                const u = `mobile-status-${code}`;
+
+                if (type === 'pe') {
+                    element = App.dataMaps.peMap.get(code);
+                    title = element.id;
+                    description = element.description;
+                } else { // 3d element
+                    element = App.dataMaps.parentToChildrenMap.get(code);
+                    title = element.name;
+                    subElements = element.children || [];
+                }
+
+                let contentHTML = '';
+                if (subElements.length > 0) {
+                    contentHTML = subElements.map(child => {
+                        const childStatus = rowData.trackingData[child.code] || '';
+                        const childU = `mobile-status-${child.code}`;
+                        return `<div class="ml-4 pl-4 border-l dark:border-gray-600 py-2">
+                                    <p class="font-semibold">${child.code}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">${child.text}</p>
+                                    ${this.renderStatusRadios(childU, childStatus)}
+                                </div>`;
+                    }).join('');
+                } else {
+                    contentHTML = `<div class="mt-2">${this.renderStatusRadios(u, currentStatus)}</div>`;
+                }
+
+                return `<div class="p-3 border-b dark:border-gray-700">
+                            <strong class="font-bold">${title}</strong>
+                            ${description ? `<p class="text-sm text-gray-500 dark:text-gray-400">${description}</p>` : ''}
+                            ${contentHTML}
+                        </div>`;
+            },
+            renderStatusRadios(uniqueName, currentStatus) {
+                return `<div class="flex gap-1.5 flex-shrink-0">
+                    <input type="radio" id="${uniqueName}-none" name="${uniqueName}" value="" ${!currentStatus&&'checked'} class="hidden peer/none"><label for="${uniqueName}-none" title="None" class="w-8 h-8 flex items-center justify-center rounded-full cursor-pointer border border-gray-300 dark:border-gray-600 font-bold text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 peer-checked/none:ring-2 ring-gray-400">-</label>
+                    <input type="radio" id="${uniqueName}-i" name="${uniqueName}" value="I" ${currentStatus==='I'&&'checked'} class="hidden peer/i"><label for="${uniqueName}-i" title="Introduced" class="w-8 h-8 flex items-center justify-center rounded-full cursor-pointer border border-yellow-400 font-bold text-sm bg-yellow-200 text-yellow-800 hover:bg-yellow-300 peer-checked/i:ring-2 ring-yellow-500">I</label>
+                    <input type="radio" id="${uniqueName}-d" name="${uniqueName}" value="D" ${currentStatus==='D'&&'checked'} class="hidden peer/d"><label for="${uniqueName}-d" title="Developed" class="w-8 h-8 flex items-center justify-center rounded-full cursor-pointer border border-green-400 font-bold text-sm bg-green-200 text-green-800 hover:bg-green-300 peer-checked/d:ring-2 ring-green-500">D</label>
+                    <input type="radio" id="${uniqueName}-a" name="${uniqueName}" value="A" ${currentStatus==='A'&&'checked'} class="hidden peer/a"><label for="${uniqueName}-a" title="Assessed" class="w-8 h-8 flex items-center justify-center rounded-full cursor-pointer border border-blue-400 font-bold text-sm bg-blue-200 text-blue-800 hover:bg-blue-300 peer-checked/a:ring-2 ring-blue-500">A</label>
+                </div>`;
+            },
+            handleSelectionChange(radioInput) {
+                const rowId = document.getElementById('mobile-detail-tray-content').dataset.rowId;
+                if (!rowId) return;
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                const rowData = App.utils.findRowData(planner, rowId);
+                if (!rowData) return;
+                App.history.saveState();
+                const code = radioInput.name.replace('mobile-status-', '');
+                if (radioInput.value) {
+                    rowData.trackingData[code] = radioInput.value;
+                } else {
+                    delete rowData.trackingData[code];
+                }
+                App.persistence.debouncedSave();
+            }
+        };
+
         App.popover = {
             dom: {},
             state: { isVisible: false, activeCell: null, activeRowId: null },
@@ -776,7 +1030,26 @@
                 let children = [];
                 if (parentInfo) {
                     const parentProgressions = parentInfo.children[0]?.allProgressions || {};
-                    const gradeBandProgressions = parentProgressions[gradeBand] || [];
+                    // --- FIX: Fallback Logic ---
+                    // If the specific grade band doesn't exist, try related raw keys
+                    let gradeBandProgressions = parentProgressions[gradeBand] || [];
+                    if (gradeBandProgressions.length === 0) {
+                        const bandMapReverse = {
+                            'primary': ['K-2', 'K', '1', '2'],
+                            'elementary': ['3-5', '3', '4', '5'],
+                            'middle': ['6-8', 'MS', 'Middle School'],
+                            'high': ['9-12', 'HS', 'High School']
+                        };
+                        const fallbacks = bandMapReverse[gradeBand] || [];
+                        for (const fb of fallbacks) {
+                            if (parentProgressions[fb] && parentProgressions[fb].length > 0) {
+                                gradeBandProgressions = parentProgressions[fb];
+                                break;
+                            }
+                        }
+                    }
+                    // --- END FIX ---
+
                     const validCodesForBand = new Set(gradeBandProgressions.map(p => p.code));
                     children = parentInfo.children.filter(child => validCodesForBand.has(child.code));
                 }
@@ -813,7 +1086,7 @@
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
                 const rowData = App.utils.findRowData(planner, rowId);
                 if (!rowData) return;
-                App.history.saveState(planner);
+                App.history.saveState();
                 const code = radioInput.name.replace('status-', '');
                 if (radioInput.value) {
                     rowData.trackingData[code] = radioInput.value;
@@ -866,6 +1139,22 @@
                     request.onsuccess = () => resolve();
                     request.onerror = () => reject(request.error);
                 });
+            },
+            clear() {
+                return new Promise((resolve, reject) => {
+                    if (this.db) {
+                        this.db.close();
+                        this.db = null;
+                    }
+                    const request = indexedDB.deleteDatabase(this.DB_NAME);
+                    request.onsuccess = () => resolve();
+                    request.onerror = (event) => reject("Error clearing IndexedDB: " + event.target.error);
+                    request.onblocked = () => {
+                        console.warn("IndexedDB delete blocked. Please close other tabs with this app open.");
+                        alert("Could not clear data because another tab is using it. Please close all other tabs with this planner open and try again.");
+                        reject("IndexedDB delete blocked");
+                    };
+                });
             }
         };
         
@@ -907,12 +1196,22 @@
         };
 
         App.history = {
-            saveState(planner) {
+            saveState() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
                 if (!planner) return;
                 const stateCopy = JSON.parse(JSON.stringify(planner));
                 App.state.undoStack.push(stateCopy);
                 App.state.redoStack = []; 
                 this.updateUndoRedoButtons();
+            },
+            _restoreState(stateToApply) {
+                const plannerIndex = App.state.programData.planners.findIndex(p => p.id === App.state.currentPlannerId);
+                if (plannerIndex > -1) {
+                    App.state.programData.planners[plannerIndex] = stateToApply;
+                    App.render.plannerView(App.state.currentPlannerId);
+                    App.persistence.saveProgramData();
+                    this.updateUndoRedoButtons();
+                }
             },
             undo() {
                 if (App.state.undoStack.length === 0) return;
@@ -920,10 +1219,7 @@
                 const currentState = JSON.parse(JSON.stringify(planner));
                 App.state.redoStack.push(currentState);
                 const previousState = App.state.undoStack.pop();
-                Object.assign(planner, previousState);
-                App.render.plannerView(App.state.currentPlannerId);
-                App.persistence.saveProgramData(); 
-                this.updateUndoRedoButtons();
+                this._restoreState(previousState);
             },
             redo() {
                 if (App.state.redoStack.length === 0) return;
@@ -931,10 +1227,7 @@
                 const currentState = JSON.parse(JSON.stringify(planner));
                 App.state.undoStack.push(currentState);
                 const nextState = App.state.redoStack.pop();
-                Object.assign(planner, nextState);
-                App.render.plannerView(App.state.currentPlannerId);
-                App.persistence.saveProgramData();
-                this.updateUndoRedoButtons();
+                this._restoreState(nextState);
             },
             clear() {
                 App.state.undoStack = [];
@@ -949,11 +1242,85 @@
 
         App.render = {
             navigator() { App.dom.navigatorList.innerHTML = ''; App.state.programData.planners.forEach(planner => { const item = document.createElement('li'); item.className = `planner-item flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors user-select-none ${planner.id === App.state.currentPlannerId ? 'bg-blue-600 font-bold' : 'hover:bg-gray-700'}`; item.dataset.plannerId = planner.id; item.innerHTML = `<input type="checkbox" class="planner-checkbox" title="Select for progression view"><span class="planner-title flex-grow pointer-events-none">${planner.title}</span><span class="planner-band text-xs bg-gray-600 px-2 py-0.5 rounded-full text-white">${planner.gradeBand}</span>`; App.dom.navigatorList.appendChild(item); }); },
+            welcomeView() {
+                App.dom.welcomeView.innerHTML = '';
+                const planners = App.state.programData.planners;
+                let userPlannersHTML = '';
+
+                if (planners.length > 0) {
+                    userPlannersHTML = `
+                        <div class="w-full text-center">
+                            <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">Your Planners</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl w-full mx-auto">
+                                ${planners.map(p => `
+                                    <div class="planner-card bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer border dark:border-gray-700 flex flex-col" data-planner-id="${p.id}">
+                                        <div class="p-6 flex-grow">
+                                            <h3 class="text-xl font-semibold text-blue-600 dark:text-blue-400">${p.title}</h3>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">${p.course} (${p.gradeBand})</p>
+                                            <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">${p.description || 'No description provided.'}</p>
+                                        </div>
+                                        <div class="bg-gray-50 dark:bg-gray-700/50 px-6 py-3 text-right text-sm font-bold text-blue-600 dark:text-blue-400">Open Planner →</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <p class="mt-8 text-gray-500 dark:text-gray-400">Or, <button onclick="App.utils.openPlannerModal()" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline">create a new planner</button>.</p>
+                        </div>
+                        <hr class="my-12 w-full max-w-4xl border-gray-200 dark:border-gray-700">
+                    `;
+                }
+
+                const existingIds = new Set(planners.map(p => p.id));
+                const availableFiles = (App.state.availableExamples || []).filter(file => file && file.content && !existingIds.has(file.content.id));
+
+                let examplesHTML = '';
+                if (availableFiles.length > 0) {
+                    examplesHTML = `
+                        <div class="w-full text-center">
+                             <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">Available Templates & Examples</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl w-full mx-auto">
+                                ${availableFiles.map(file => {
+                                    const p = file.content;
+                                    const isExample = file.filename.includes('[EXAMPLE]');
+                                    const headerColor = isExample ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300';
+                                    const buttonColor = isExample ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 hover:bg-gray-700';
+                                    const tag = isExample ? '<span class="absolute top-0 right-0 bg-purple-100 text-purple-800 text-xs font-medium mr-2 mt-2 px-2.5 py-0.5 rounded-full dark:bg-purple-900 dark:text-purple-300">Example</span>' : '';
+
+                                    return `
+                                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 flex flex-col relative">
+                                            ${tag}
+                                            <div class="p-6 flex-grow">
+                                                <h3 class="text-xl font-semibold ${headerColor}">${p.title}</h3>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">${p.course} (${p.gradeBand})</p>
+                                                <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">${p.description || 'No description provided.'}</p>
+                                            </div>
+                                            <div class="bg-gray-50 dark:bg-gray-700/50 p-4 text-right">
+                                                <button class="load-example-btn px-4 py-2 text-white rounded-md font-semibold text-sm ${buttonColor}" data-planner-id="${p.id}">Load</button>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                let noPlannersHTML = '';
+                if (planners.length === 0) {
+                     noPlannersHTML = `
+                        <div class="text-center text-gray-500 dark:text-gray-400 mb-12">
+                            <h2 class="text-2xl font-semibold mb-2">Welcome to the NGSS 3D Progression Planner</h2>
+                            <p>You don't have any planners yet. Create one or load a template below to get started.</p>
+                        </div>
+                    `;
+                }
+
+                App.dom.welcomeView.innerHTML = userPlannersHTML + noPlannersHTML + examplesHTML;
+            },
             plannerView(plannerId) {
-                const planner = App.utils.findPlanner(plannerId); if (!planner) { App.utils.showView('welcome-view'); return; }
+                const planner = App.utils.findPlanner(plannerId); if (!planner) { this.render.welcomeView(); App.utils.showView('welcome-view'); return; }
                 App.state.currentPlannerId = plannerId;
                 App.history.clear(); 
-
+                
                 document.getElementById('planner-title').textContent = planner.title;
                 document.getElementById('planner-subtitle').textContent = `${planner.course} (${planner.gradeBand})`;
                 App.dom.plannerPhenomenon.textContent = planner.phenomenon || 'Not specified.';
@@ -975,39 +1342,58 @@
 
                 this.table(allColumns);
                 this.rowsFromState(planner.rows || []);
+                this.updateColumnVisibility();
             },
             table(columnGroups) {
                 App.dom.plannerTableContainer.innerHTML = ''; 
                 const table = document.createElement('table'); 
-                table.className = 'table-view fixed-layout'; // Using fixed-layout class
-                const thead = document.createElement('thead');
+                table.className = 'table-view fixed-layout';
                 
-                let headerRowHTML = `<tr>
-                    <th class="sticky-col-1 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700">Actions</th>
-                    <th class="sticky-col-2 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700">Scope</th>
-                    <th class="sticky-col-3 bg-gray-100 dark:bg-gray-800 border-b border-r border-gray-300 dark:border-gray-700 text-left pl-2">Instructional Sequence</th>`;
+                let groupHeaderRow = `<tr class="group-header-row">`;
+                let mainHeaderRow = `<tr>`;
                 
+                // Static sticky columns for header
+                groupHeaderRow += `<th class="sticky-col-1 bg-gray-100 dark:bg-gray-800"></th><th class="sticky-col-2 bg-gray-100 dark:bg-gray-800"></th><th class="sticky-col-3 bg-gray-100 dark:bg-gray-800"></th>`;
+                mainHeaderRow += `<th class="sticky-col-1 bg-gray-100 dark:bg-gray-800 border-b border-r">Actions</th><th class="sticky-col-2 bg-gray-100 dark:bg-gray-800 border-b border-r">Scope</th><th class="sticky-col-3 bg-gray-100 dark:bg-gray-800 border-b border-r text-left pl-2">Instructional Sequence</th>`;
+
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
 
                 Object.keys(columnGroups).forEach(key => {
                     if (key === 'pe') {
+                        const peCount = planner?.assignedPes?.length || 1;
+                        groupHeaderRow += `<th class="group-toggle-header bg-gray-200 dark:bg-gray-800" data-tab-group="pe" colspan="${peCount}">PEs</th>`;
+
                         (planner?.assignedPes || []).forEach(peObj => {
                              const peCode = peObj.id;
                              const peData = App.dataMaps.peMap.get(peCode);
                              const tooltip = peData ? `${peCode}: ${peData.description.replace(/"/g, '&quot;')}` : peCode;
                              const secondaryClass = peObj.isSecondary ? 'font-normal italic text-gray-500 dark:text-gray-400' : 'font-semibold';
-                             headerRowHTML += `<th class="data-col-header cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}"><div class="vertical-header-text">${peCode}</div></th>`;
+                             mainHeaderRow += `<th class="data-col cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}"><div class="vertical-header-text">${peCode}</div></th>`;
                         });
                         if (!planner?.assignedPes || planner.assignedPes.length === 0) {
-                            headerRowHTML += `<th class="font-normal" data-tab-group="pe"><div>Assign PEs</div></th>`;
+                             mainHeaderRow += `<th class="data-col font-normal" data-tab-group="pe"><div>Assign PEs</div></th>`;
                         }
                     } else {
-                        columnGroups[key].cols.forEach(col => {
-                            headerRowHTML += `<th class="data-col-header cursor-pointer" data-tab-group="${key}" data-code="${col.code}" data-tooltip="${col.title}"><div class="vertical-header-text">${col.title}</div></th>`;
+                        Object.entries(columnGroups[key].groups).forEach(([groupKey, groupData]) => {
+                            if (groupData.cols.length > 0) {
+                                const fullGroupKey = `${key}-${groupKey}`;
+                                const childCodes = groupData.cols.map(c => c.code).join(',');
+                                groupHeaderRow += `<th class="group-toggle-header bg-gray-200 dark:bg-gray-800 border-l border-r border-gray-300 dark:border-gray-700" data-tab-group="${key}" data-group-parent-of="${fullGroupKey}" data-child-codes="${childCodes}" colspan="${groupData.cols.length}">${groupData.name}</th>`;
+                                
+                                groupData.cols.forEach(col => {
+                                    mainHeaderRow += `<th class="data-col cursor-pointer" data-tab-group="${key}" data-group-parent="${fullGroupKey}" data-code="${col.code}" data-tooltip="${col.title}"><div class="vertical-header-text">${col.title}</div></th>`;
+                                });
+                            }
                         });
                     }
                 });
-                headerRowHTML += '</tr>'; thead.innerHTML = headerRowHTML; table.appendChild(thead); table.appendChild(document.createElement('tbody')); App.dom.plannerTableContainer.appendChild(table);
+                mainHeaderRow += '</tr>'; 
+                groupHeaderRow += '</tr>';
+                const thead = document.createElement('thead');
+                thead.innerHTML = groupHeaderRow + mainHeaderRow; 
+                table.appendChild(thead); 
+                table.appendChild(document.createElement('tbody')); 
+                App.dom.plannerTableContainer.appendChild(table);
             },
             rowsFromState(rowsData) {
                 const tbody = App.dom.plannerTableContainer.querySelector('tbody');
@@ -1027,16 +1413,9 @@
             },
             createRowElement(rowData, parentId = null) {
                 const row = document.createElement('tr');
-                const searchTerm = App.dom.searchInput.value.toLowerCase();
-                if (searchTerm && rowData.type === 'lesson') {
-                    const rowText = (rowData.title + ' ' + Object.keys(rowData.trackingData || {}).join(' ')).toLowerCase();
-                    if (!rowText.includes(searchTerm)) {
-                        row.classList.add('filtered-out');
-                    }
-                }
                 
-                row.className += ` ${rowData.type}-row group/row`; row.dataset.rowType = rowData.type; row.dataset.id = rowData.id;
-                row.draggable = !App.state.isViewMode;
+                row.className = `${rowData.type}-row group/row`; row.dataset.rowType = rowData.type; row.dataset.id = rowData.id;
+                row.draggable = true;
 
                 const planner = App.utils.findPlanner(App.state.currentPlannerId); const columnGroups = App.utils.gatherColumns(planner.gradeBand);
                 const borderClass = "border-b border-r border-gray-200 dark:border-gray-700";
@@ -1044,51 +1423,65 @@
                 if (rowData.type === 'lesson-set') {
                     const isCollapsedClass = rowData.isCollapsed ? 'is-collapsed' : '';
                     const rotateClass = rowData.isCollapsed ? '-rotate-90' : '';
-                    const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
+                    const editableSpan = `<span class="editable hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="true">${rowData.title}</span>`;
                     
-                    let cellsHTML = `
-                        <td class="sticky-col-1 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab group-[.view-mode-active]:hidden mr-2">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson Set">✖</span></td>
-                        <td class="sticky-col-2 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
-                        <td class="sticky-col-3 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>`;
-                    
-                    Object.keys(columnGroups).forEach(key => {
-                        if (key === 'pe') {
-                            const peCount = planner?.assignedPes?.length || 0;
-                            if (peCount > 0) {
-                                cellsHTML += `<td data-tab-group="pe" class="p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50" colspan="${peCount}"></td>`;
-                            } else {
-                                cellsHTML += `<td data-tab-group="pe" class="p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50"></td>`;
-                            }
+                    let totalCols = 1; // Start with 1 for the placeholder cell itself
+                    Object.values(columnGroups).forEach(dim => {
+                        if (dim.key === 'pe') {
+                            totalCols += planner?.assignedPes?.length || 1;
                         } else {
-                            columnGroups[key].cols.forEach(() => {
-                                cellsHTML += `<td data-tab-group="${key}" class="p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50"></td>`;
-                            });
+                            Object.values(dim.groups).forEach(group => totalCols += group.cols.length);
                         }
                     });
-                    row.innerHTML = cellsHTML;
+
+                    row.innerHTML = `
+                        <td class="sticky-col-1 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"><span class="drag-handle cursor-grab mr-2">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors" title="Delete Lesson Set">✖</span></td>
+                        <td class="sticky-col-2 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 align-middle"></td>
+                        <td class="sticky-col-3 p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>
+                        <td class="data-col p-2 ${borderClass} bg-blue-100 dark:bg-blue-900/50" colspan="${totalCols}"></td>`;
 
                 } else {
                     if (parentId) row.dataset.parentId = parentId;
                     const scope = rowData.scope || '';
                     const scopeClass = App.constants.scopeClasses[scope] || '';
-                    const scopeCursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer';
-                    const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
-                    const notesIcon = `<span class="notes-btn cursor-pointer text-base" title="Edit Notes & Links">📝</span>`;
+                    const editableSpan = `<span class="editable hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="true">${rowData.title}</span>`;
+                    const deleteIcon = `<span class="delete-btn cursor-pointer font-bold hover:text-red-500 transition-colors" title="Delete Lesson">✖</span>`;
+					const notesIcon = `<span class="notes-btn cursor-pointer text-base" title="Edit Notes & Links">📝</span>`;
+					const addRowIcon = `<span class="add-below-btn cursor-pointer hover:text-green-500 transition-colors" title="Add Lesson Below">+</span>`;
+					const copyRowIcon = `<span class="copy-row-btn cursor-pointer hover:text-blue-500 transition-colors" title="Duplicate Lesson">❐</span>`;
+                    
+                    // Mobile summary badges
+                    const trackedCounts = { I: 0, D: 0, A: 0 };
+                    Object.values(rowData.trackingData || {}).forEach(status => {
+                        if (trackedCounts[status] !== undefined) trackedCounts[status]++;
+                    });
+                    const mobileBadges = `
+                        <div class="mobile-summary-badges">
+                            ${trackedCounts.I > 0 ? `<span class="px-1.5 py-0.5 text-xs font-bold rounded ${App.constants.statusBadgeClasses.I}">I: ${trackedCounts.I}</span>` : ''}
+                            ${trackedCounts.D > 0 ? `<span class="px-1.5 py-0.5 text-xs font-bold rounded ${App.constants.statusBadgeClasses.D}">D: ${trackedCounts.D}</span>` : ''}
+                            ${trackedCounts.A > 0 ? `<span class="px-1.5 py-0.5 text-xs font-bold rounded ${App.constants.statusBadgeClasses.A}">A: ${trackedCounts.A}</span>` : ''}
+                        </div>`;
                     
                     let cellsHTML = `
                         <td class="sticky-col-1 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle">
                             <div class="flex items-center justify-start gap-2 text-gray-400 w-full overflow-hidden">
-                                <span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span>
+                                <span class="drag-handle cursor-grab">⠿</span>
                                 <div class="flex items-center gap-2 invisible group-hover/row:visible">
-                                    ${notesIcon}
-                                    <span class="delete-btn cursor-pointer font-bold hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson">✖</span>
-                                    <span class="add-below-btn cursor-pointer hover:text-green-500 transition-colors group-[.view-mode-active]:hidden" title="Add Lesson Below">+</span>
-                                    <span class="copy-row-btn cursor-pointer hover:text-blue-500 transition-colors group-[.view-mode-active]:hidden" title="Duplicate Lesson">❐</span>
-                                </div>
+                                    ${deleteIcon}
+									${notesIcon}
+									${addRowIcon}
+									${copyRowIcon}
+							   </div>
                             </div>
                         </td>
-                        <td data-scope-cell="true" class="sticky-col-2 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle font-bold text-center ${scopeCursorClass} ${scopeClass}" data-tooltip="Click to cycle Assessment Scope">${scope}</td>
-                        <td class="sticky-col-3 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 text-left ${parentId ? 'pl-10' : ''}"><div class="truncate">${editableSpan}</div></td>`;
+                        <td data-scope-cell="true" class="sticky-col-2 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 align-middle font-bold text-center cursor-pointer ${scopeClass}" data-tooltip="Click to cycle Assessment Scope">${scope}</td>
+                        <td class="sticky-col-3 p-2 ${borderClass} bg-gray-50 dark:bg-gray-800 text-left ${parentId ? 'pl-10' : ''}">
+                            <div>
+                                <div class="truncate">${editableSpan}</div>
+                                ${mobileBadges}
+                            </div>
+                            <span class="mobile-chevron">&rsaquo;</span>
+                        </td>`;
 
                     Object.keys(columnGroups).forEach(key => {
                          if (key === 'pe') {
@@ -1096,28 +1489,31 @@
                                  cellsHTML += this.createTrackingCellHTML({ code: peObj.id, type: 'pe' }, rowData);
                              });
                              if (!planner?.assignedPes || planner.assignedPes.length === 0) {
-                                cellsHTML += `<td data-tab-group="pe" class="p-2 ${borderClass}"></td>`;
+                                cellsHTML += `<td data-tab-group="pe" class="data-col p-2 ${borderClass}"></td>`;
                              }
                          } else {
-                            cellsHTML += columnGroups[key].cols.map(col => this.createTrackingCellHTML({ code: col.code, title: col.title, type: '3d', tabGroup: key }, rowData)).join('');
+                            Object.entries(columnGroups[key].groups).forEach(([groupKey, groupData]) => {
+                                const fullGroupKey = `${key}-${groupKey}`;
+                                cellsHTML += groupData.cols.map(col => this.createTrackingCellHTML({ code: col.code, title: col.title, type: '3d', tabGroup: key, parentGroup: fullGroupKey }, rowData)).join('');
+                            });
                          }
                     });
                     row.innerHTML = cellsHTML;
                 } return row;
             },
             createTrackingCellHTML(column, rowData) {
-                const commonCellClasses = "p-2 border border-gray-200 dark:border-gray-700 align-top";
+                const commonCellClasses = "data-col p-2 border border-gray-200 dark:border-gray-700 align-top";
                 if (column.type === 'pe') {
                     const status = rowData.trackingData?.[column.code] || '';
                     const statusClass = App.constants.statusClasses[status] || '';
-                    const cursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer hover:bg-yellow-300/50 dark:hover:bg-yellow-500/50';
-                    return `<td class="${commonCellClasses} text-center font-bold ${cursorClass} ${statusClass}" data-tab-group="pe" data-pe-code="${column.code}" data-tooltip="Click to change status for ${column.code}">${status}</td>`;
+                    const cursorClass = 'cursor-pointer hover:bg-yellow-300/50 dark:hover:bg-yellow-500/50';
+                    return `<td class="${commonCellClasses} text-center font-bold ${cursorClass} ${statusClass}" data-tab-group="pe" data-code="${column.code}" data-tooltip="Click to change status for ${column.code}">${status}</td>`;
                 }
                 const parentCode = column.code; 
                 const cellTooltip = `${column.title}. Click to edit elements.`;
-                const cursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50';
+                const cursorClass = 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50';
                 const cellContent = this.generateCellContent(parentCode, rowData);
-                return `<td class="${commonCellClasses} ${cursorClass}" data-tab-group="${column.tabGroup}" data-parent-code="${parentCode}" data-tooltip="${cellTooltip}">${cellContent}</td>`;
+                return `<td class="${commonCellClasses} ${cursorClass}" data-tab-group="${column.tabGroup}" data-group-parent="${column.parentGroup}" data-code="${parentCode}" data-tooltip="${cellTooltip}">${cellContent}</td>`;
             },
             generateCellContent(parentCode, rowData) {
                 const parentInfo = App.dataMaps.parentToChildrenMap.get(parentCode);
@@ -1132,7 +1528,23 @@
                 }).join('');
                 return `<div class="flex flex-wrap gap-1 items-center min-h-[24px]">${badgeHTML}</div>`;
             },
-            tabs(columnGroups) { App.dom.tabContainer.innerHTML = ''; Object.keys(columnGroups).forEach(key => { if(columnGroups[key].cols.length > 0 || key === 'pe') { const btn = document.createElement('button'); btn.className = 'tab-button px-4 py-2 cursor-pointer border border-transparent rounded-t-lg font-medium transition-colors text-sm'; btn.dataset.tab = key; btn.textContent = columnGroups[key].name; App.dom.tabContainer.appendChild(btn); } }); },
+            tabs(columnGroups) {
+                App.dom.tabContainer.innerHTML = '';
+                const tabOrder = ['pe', 'dci', 'sep', 'ccc'];
+                tabOrder.forEach(key => {
+                    if (columnGroups[key] && (columnGroups[key].totalCols > 0 || key === 'pe')) {
+                        const tabContent = key === 'pe'
+                            ? `<button id="assign-pe-btn" class="px-2 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-xs font-medium hidden">Assign PEs</button><span>${columnGroups[key].name}</span>`
+                            : `<span>${columnGroups[key].name}</span>`;
+                        
+                        const btn = document.createElement('div');
+                        btn.className = 'tab-button px-4 py-2 cursor-pointer border border-transparent rounded-t-lg font-medium transition-colors text-sm flex items-center gap-2';
+                        btn.dataset.tab = key;
+                        btn.innerHTML = tabContent;
+                        App.dom.tabContainer.appendChild(btn);
+                    }
+                });
+            },
             setActiveTab(tabKey) {
                 const table = App.dom.plannerTableContainer.querySelector('table');
                 if (!table || !App.dom.tabContainer.querySelector(`[data-tab="${tabKey}"]`)) {
@@ -1141,37 +1553,77 @@
                 App.state.currentActiveTab = tabKey;
                 App.dom.tabContainer.querySelectorAll('.tab-button').forEach(b => {
                     const isActive = b.dataset.tab === tabKey;
-                    b.classList.toggle('bg-white', isActive); b.classList.toggle('dark:bg-gray-800/50', isActive); b.classList.toggle('border-gray-300', isActive); b.classList.toggle('dark:border-gray-700', isActive); b.classList.toggle('border-b-white', isActive); b.classList.toggle('dark:border-b-gray-800/50', isActive); b.classList.toggle('text-blue-600', isActive); b.classList.toggle('dark:text-blue-400', isActive); b.classList.toggle('bg-gray-100', !isActive); b.classList.toggle('dark:bg-transparent', !isActive); b.classList.toggle('text-gray-500', !isActive); b.classList.toggle('dark:text-gray-400', !isActive); b.classList.toggle('hover:text-gray-700', !isActive); b.classList.toggle('dark:hover:text-gray-200', !isActive);
-                });
-                if (table) {
-                    const planner = App.utils.findPlanner(App.state.currentPlannerId);
-                    let bundledParentCodes = null;
-                    if (App.state.isPeBundleMode && planner) {
-                        bundledParentCodes = new Set();
-                        const assignedPes = (planner.assignedPes || []).map(p => p.id);
-                        assignedPes.forEach(peCode => {
-                            const links = App.dataMaps.peTo3dMap.get(peCode);
-                            if (links) {
-                                links.specificCodes.forEach(specificCode => {
-                                    const element = App.dataMaps.ngss3dMap.get(specificCode);
-                                    if (element && element.parentCode) {
-                                        bundledParentCodes.add(element.parentCode);
-                                    }
-                                });
-                            }
-                        });
+                    b.classList.toggle('bg-white', isActive); b.classList.toggle('dark:bg-gray-800/50', isActive); b.classList.toggle('border-gray-300', isActive); b.classList.toggle('dark:border-gray-700', isActive); b.classList.toggle('border-b-white', isActive); b.classList.toggle('dark:border-b-gray-800/50', isActive); b.classList.toggle('text-blue-600', isActive); b.classList.toggle('dark:text-blue-400', isActive);
+                    b.classList.toggle('bg-gray-100', !isActive); b.classList.toggle('dark:bg-transparent', !isActive); b.classList.toggle('text-gray-500', !isActive); b.classList.toggle('dark:text-gray-400', !isActive); b.classList.toggle('hover:text-gray-700', !isActive); b.classList.toggle('dark:hover:text-gray-200', !isActive);
+                    
+                    if (b.dataset.tab === 'pe') {
+                        const assignBtn = b.querySelector('#assign-pe-btn');
+                        if (assignBtn) assignBtn.classList.toggle('hidden', !isActive);
                     }
-                    table.querySelectorAll('th[data-tab-group], td[data-tab-group]').forEach(cell => {
-                        const isVisibleForTab = cell.dataset.tabGroup === tabKey;
-                        let isVisibleForBundle = true; 
-                        if (bundledParentCodes !== null && cell.dataset.tabGroup !== 'pe') {
-                            const code = cell.dataset.code || cell.dataset.parentCode;
-                            isVisibleForBundle = bundledParentCodes.has(code);
+                });
+                
+                this.updateColumnVisibility();
+                
+                App.persistence.debouncedSave();
+            },
+            updateColumnVisibility() {
+                const table = App.dom.plannerTableContainer.querySelector('table');
+                if (!table) return;
+                const tabKey = App.state.currentActiveTab;
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                let bundledParentCodes = null;
+
+                if (App.state.isPeBundleMode && planner) {
+                    bundledParentCodes = new Set();
+                    (planner.assignedPes || []).forEach(peObj => {
+                        const links = App.dataMaps.peTo3dMap.get(peObj.id);
+                        if (links) {
+                            links.componentCodes.forEach(code => bundledParentCodes.add(code));
+                            links.secondaryComponentCodes.forEach(code => bundledParentCodes.add(code));
+                            links.specificCodes.forEach(specificCode => {
+                                const element = App.dataMaps.ngss3dMap.get(specificCode);
+                                if (element && element.parentCode) {
+                                    bundledParentCodes.add(element.parentCode);
+                                }
+                            });
                         }
-                        cell.style.display = (isVisibleForTab && isVisibleForBundle) ? '' : 'none';
                     });
                 }
-                App.persistence.debouncedSave();
+                
+                // Handle individual columns (headers and data cells)
+                const allDataCells = table.querySelectorAll('th[data-code], td.data-col');
+                allDataCells.forEach(cell => {
+                    const code = cell.dataset.code;
+                    const isVisibleForTab = cell.dataset.tabGroup === tabKey;
+                    const isVisibleForBundle = !App.state.isPeBundleMode || cell.dataset.tabGroup === 'pe' || (bundledParentCodes && bundledParentCodes.has(code));
+                    cell.style.display = (isVisibleForTab && isVisibleForBundle) ? '' : 'none';
+                });
+
+                // Handle group headers
+                const allGroupHeaders = table.querySelectorAll('th[data-group-parent-of]');
+                allGroupHeaders.forEach(th => {
+                    const isVisibleForTab = th.dataset.tabGroup === tabKey;
+                    if (!isVisibleForTab) {
+                        th.style.display = 'none';
+                        return;
+                    }
+                    const childCodes = th.dataset.childCodes.split(',');
+                    const visibleChildrenCount = childCodes.reduce((count, code) => {
+                        const childTh = table.querySelector(`th[data-code="${code}"]`);
+                        return (childTh && childTh.style.display !== 'none') ? count + 1 : count;
+                    }, 0);
+
+                    if (visibleChildrenCount > 0) {
+                        th.style.display = '';
+                        th.colSpan = visibleChildrenCount;
+                    } else {
+                        th.style.display = 'none';
+                    }
+                });
+
+                // Handle the main PE group header specifically
+                const peHeader = table.querySelector('th[data-tab-group="pe"][colspan]');
+                if(peHeader) peHeader.style.display = (tabKey === 'pe') ? '' : 'none';
             },
             updateTableHeaderHighlights() {
                 const planner = App.utils.findPlanner(App.state.currentPlannerId); if (!planner) return;
@@ -1395,6 +1847,10 @@
             },
             
             summary() {
+                // 0. Clean up previous charts
+                Object.values(App.state.activeCharts).forEach(chart => { if(chart) chart.destroy(); });
+                App.state.activeCharts = {};
+
                 // 1. Determine which planners to summarize
                 const checkedBoxes = document.querySelectorAll('.planner-checkbox:checked');
                 let selectedPlanners = [];
@@ -1410,6 +1866,8 @@
 
                 if (selectedPlanners.length === 0) {
                     document.getElementById('summary-content').innerHTML = '<p class="p-4 text-gray-500">Please select a planner or check boxes in the navigator to view a summary.</p>';
+                    document.querySelector('#summary-view h1').textContent = 'Planner Summary & Analytics';
+                    document.getElementById('summary-subtitle').textContent = '';
                     return;
                 }
 
@@ -1435,6 +1893,7 @@
                     if (value === 'A') label = 'Assessed';
                     if (value === '') label = 'Not Scoped';
                     if (value === 'F') label = 'Formative';
+                    if (value === 'CF') label = 'Critical Formative';
                     if (value === 'S') label = 'Summative';
                     
                     filterBadge = `
@@ -1498,7 +1957,7 @@
                 const globalStats = {
                     status: { I: 0, D: 0, A: 0 },
                     dimension: { SEP: 0, DCI: 0, CCC: 0, PE: 0 },
-                    scope: { F: 0, S: 0, None: 0 }
+                    scope: { F: 0, CF: 0, S: 0, None: 0 }
                 };
                 
                 const coverageMap = new Map(); 
@@ -1522,15 +1981,23 @@
                             if (element) {
                                 if (element.dimension.startsWith('SEP')) globalStats.dimension.SEP++;
                                 else if (element.dimension.startsWith('DCI')) globalStats.dimension.DCI++;
-                                else globalStats.dimension.CCC++;
+                                else if (element.dimension.startsWith('CCC')) globalStats.dimension.CCC++;
                             } else if (App.dataMaps.peMap.has(code)) {
                                 globalStats.dimension.PE++;
                             }
                         });
 
                         if (filter && filter.type === 'scope') {
-                            const targetScope = filter.value === 'None' ? '' : (filter.value === 'Formative' ? 'F' : 'S');
-                            if ((lesson.scope || '') !== targetScope) return;
+                            let targetScope = '';
+                            if (filter.value === 'Formative') targetScope = 'F';
+                            else if (filter.value === 'Critical Formative') targetScope = 'CF';
+                            else if (filter.value === 'Summative') targetScope = 'S';
+                            else if (filter.value === 'Not Scoped') targetScope = '';
+                            
+                            const rowScope = lesson.scope || '';
+                            const checkScope = filter.value === 'Not Scoped' ? '' : targetScope;
+                            
+                            if (rowScope !== checkScope) return;
                         }
 
                         Object.entries(lesson.trackingData || {}).forEach(([code, status]) => {
@@ -1552,7 +2019,7 @@
                     this.summary(); 
                 };
 
-                new Chart(document.getElementById('status-chart'), {
+                App.state.activeCharts.status = new Chart(document.getElementById('status-chart'), {
                     type: 'bar',
                     data: {
                         labels: ['Introduced', 'Developed', 'Assessed'],
@@ -1572,7 +2039,7 @@
                     }
                 });
 
-                new Chart(document.getElementById('dimension-chart'), {
+                App.state.activeCharts.dimension = new Chart(document.getElementById('dimension-chart'), {
                     type: 'doughnut',
                     data: {
                         labels: ['SEPs', 'DCIs', 'CCCs', 'PEs'],
@@ -1589,13 +2056,13 @@
                     }
                 });
 
-                new Chart(document.getElementById('scope-chart'), {
+                App.state.activeCharts.scope = new Chart(document.getElementById('scope-chart'), {
                     type: 'pie',
                     data: {
-                        labels: ['Formative', 'Summative', 'Not Scoped'],
+                        labels: ['Formative', 'Critical Formative', 'Summative', 'Not Scoped'],
                         datasets: [{ 
-                            data: [globalStats.scope.F, globalStats.scope.S, globalStats.scope.None], 
-                            backgroundColor: ['#6366F1', '#EC4899', '#E5E7EB'],
+                            data: [globalStats.scope.F, globalStats.scope.CF, globalStats.scope.S, globalStats.scope.None], 
+                            backgroundColor: ['#6366F1', '#F59E0B', '#EC4899', '#E5E7EB'],
                             borderWidth: 0
                         }]
                     },
@@ -1651,7 +2118,21 @@
                         // Check if any children are relevant either by band OR by coverage
                         const childrenForReport = parentInfo.children.filter(child => {
                             // Is it in one of the selected grade bands?
-                            const inSelectedBands = Array.from(relevantBands).some(band => child.allProgressions[band]?.length > 0);
+                            // --- FIX: Robust check for band relevance ---
+                            const bandMapReverse = {
+                                'primary': ['K-2', 'K', '1', '2'],
+                                'elementary': ['3-5', '3', '4', '5'],
+                                'middle': ['6-8', 'MS', 'Middle School'],
+                                'high': ['9-12', 'HS', 'High School']
+                            };
+
+                            let inSelectedBands = Array.from(relevantBands).some(band => {
+                                if (child.allProgressions[band]?.length > 0) return true;
+                                const fallbacks = bandMapReverse[band] || [];
+                                return fallbacks.some(fb => child.allProgressions[fb]?.length > 0);
+                            });
+                            // --- END FIX ---
+
                             // Is it tracked in the aggregated data?
                             const isTracked = coverageMap.has(child.code);
                             return inSelectedBands || isTracked;
@@ -1730,15 +2211,20 @@
             },
         };
 
-        // ... (App.handlers, App.utils - No changes needed except in export below) ...
         App.handlers = {
             mainTableClick(e) {
                 const target = e.target;
                 const rowEl = target.closest('[data-id]');
-                if (!rowEl || App.state.isViewMode) return;
+                if (!rowEl) return;
                 
                 const rowId = rowEl.dataset.id;
                 
+                // MOBILE: Open slide tray for lesson rows
+                if (window.innerWidth <= 768 && rowEl.classList.contains('lesson-row')) {
+                    App.mobile.showDetailTray(rowId);
+                    return;
+                }
+
                 const notesBtn = target.closest('.notes-btn');
                 if (notesBtn) { App.utils.openLessonDetailsModal(rowId); return; }
                 
@@ -1751,26 +2237,27 @@
                 const copyBtn = target.closest('.copy-row-btn');
                 if (copyBtn) { App.utils.copyRow(rowId); return; }
 
-                const peCell = target.closest('[data-pe-code]');
-                if (peCell) { App.utils.cyclePeStatus(rowId, peCell.dataset.peCode); return; }
+                const peCell = target.closest('[data-code]');
+                if (peCell && peCell.dataset.tabGroup === 'pe') { App.utils.cyclePeStatus(rowId, peCell.dataset.code); return; }
 
                 const scopeCell = target.closest('[data-scope-cell]');
                 if(scopeCell) { App.utils.cycleScopeStatus(rowId); return; }
 
-                const trackingCell = target.closest('[data-parent-code]'); 
-                if (trackingCell) { App.popover.show(trackingCell, trackingCell.dataset.parentCode, rowId); return; }
+                const trackingCell = target.closest('[data-code]'); 
+                if (trackingCell && trackingCell.dataset.tabGroup !== 'pe') { App.popover.show(trackingCell, trackingCell.dataset.code, rowId); return; }
 
                 const headerCell = target.closest('th[data-code]'); 
                 if (headerCell) { App.utils.openElementDetailModal(headerCell.dataset.code); return; }
                 
                 const lessonSetRow = target.closest('.lesson-set-row');
                 if (lessonSetRow && !target.matches('.editable')) { 
-                    App.history.saveState(App.utils.findPlanner(App.state.currentPlannerId));
+                    App.history.saveState();
                     const planner = App.utils.findPlanner(App.state.currentPlannerId); 
                     const rowData = App.utils.findRowData(planner, rowId); 
                     if (rowData) { 
                         rowData.isCollapsed = !rowData.isCollapsed; 
                         App.render.rowsFromState(planner.rows); 
+                        App.render.updateColumnVisibility();
                         App.render.setActiveTab(App.state.currentActiveTab); 
                         App.persistence.debouncedSave(); 
                     } 
@@ -1781,7 +2268,7 @@
                 this.titleEditTimeout = setTimeout(() => {
                     const rowId = e.target.closest('[data-id]').dataset.id;
                     const planner = App.utils.findPlanner(App.state.currentPlannerId);
-                    App.history.saveState(planner);
+                    App.history.saveState();
                     const rowData = App.utils.findRowData(planner, rowId);
                     if (rowData) {
                         rowData.title = e.target.textContent;
@@ -1792,7 +2279,7 @@
             tooltipShow(e) { const target = e.target.closest('[data-tooltip]'); if (!target || !target.dataset.tooltip) return; App.dom.tooltip.innerHTML = target.dataset.tooltip; App.dom.tooltip.style.opacity = '1'; const targetRect = target.getBoundingClientRect(); App.dom.tooltip.style.left = `${e.clientX + 10}px`; App.dom.tooltip.style.top = `${e.clientY + 10}px`; },
             tooltipHide() { App.dom.tooltip.style.opacity = '0'; },
             dragStart(e) {
-                if (!e.target.matches('tr') || App.state.isViewMode) return;
+                if (!e.target.matches('tr')) return;
                 const draggedRow = e.target;
                 App.state.draggedGroup = [draggedRow];
 
@@ -1822,8 +2309,7 @@
                 }
             },
             drop(e) {
-                const planner = App.utils.findPlanner(App.state.currentPlannerId);
-                App.history.saveState(planner);
+                App.history.saveState();
                 e.preventDefault();
                 const dropTarget = e.target.closest('tbody tr');
                 if (dropTarget && App.state.draggedGroup && !App.state.draggedGroup.includes(dropTarget)) {
@@ -1838,6 +2324,26 @@
                 App.state.draggedGroup = null;
                 App.persistence.updateStateFromTableOrder();
                 App.persistence.debouncedSave();
+            },
+            handleScrollbarTooltip(e) {
+                const container = App.dom.plannerTableContainer;
+                if (App.state.scrollbarTooltipShown || container.scrollWidth <= container.clientWidth) {
+                    return;
+                }
+                const rect = container.getBoundingClientRect();
+                const scrollbarHeight = container.offsetHeight - container.clientHeight;
+                if (e.clientY > (rect.bottom - scrollbarHeight - 5)) { // 5px buffer
+                    clearTimeout(App.state.scrollbarTooltipTimeout);
+                    App.dom.scrollbarTooltip.style.opacity = '1';
+                    App.state.scrollbarTooltipTimeout = setTimeout(() => {
+                        this.hideScrollbarTooltip();
+                    }, 4000);
+                    App.state.scrollbarTooltipShown = true;
+                }
+            },
+            hideScrollbarTooltip() {
+                clearTimeout(App.state.scrollbarTooltipTimeout);
+                App.dom.scrollbarTooltip.style.opacity = '0';
             }
         };
 
@@ -1872,7 +2378,7 @@
                 }
                 return null;
              },
-             showView: (id) => { document.querySelectorAll('.view').forEach(v => v.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex', 'flex-col');},
+             showView: (id) => { document.querySelectorAll('.view').forEach(v => v.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex');},
              openModal(modalId) { document.getElementById(modalId).classList.replace('hidden', 'flex'); App.dom.body.classList.add('modal-open'); },
              closeAllModals: () => { document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.replace('flex', 'hidden') ); App.dom.body.classList.remove('modal-open'); App.popover.hide(); },
              normalizeText: (t) => t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim(),
@@ -1923,47 +2429,62 @@
                 return result;
             },
              gatherColumns(gradeBand) {
-                const groups = { 
-                    pe: { name: "PEs", key: 'pe', cols: [] }, 
-                    dci: { name: "DCIs", key: 'dci', cols: [] }, 
-                    sep: { name: "SEPs & Nature of Science", key: 'sep', cols: [] }, 
-                    ccc: { name: "CCCs, NOS, & ETAS", key: 'ccc', cols: [] } 
+                const dims = { 
+                    pe: { name: "PEs", key: 'pe', totalCols: 0, groups: {} }, 
+                    dci: { name: "DCIs", key: 'dci', totalCols: 0, groups: { PS: { name: "Physical Science", cols: [] }, LS: { name: "Life Science", cols: [] }, ESS: { name: "Earth & Space Science", cols: [] }, ETS: { name: "Engineering", cols: [] } } }, 
+                    sep: { name: "SEPs & Nature of Science", key: 'sep', totalCols: 0, groups: { SEP: { name: "SEPs", cols: [] }, CNS: { name: "Nature of Science", cols: [] } } }, 
+                    ccc: { name: "CCCs, NOS, & ETAS", key: 'ccc', totalCols: 0, groups: { CCC: { name: "CCCs", cols: [] }, CNS: { name: "Nature of Science", cols: [] }, ETAS: { name: "Eng & Tech Apps", cols: [] } } }
                 };
 
                 const nosForSep = new Set(['VOM', 'BEE', 'OTR', 'ENP']);
                 const nosForCcc = new Set(['WOK', 'AOC', 'HE', 'AQAW']);
+                
+                // --- FIX: Reverse Map for Fallback Checking ---
+                const bandMapReverse = {
+                    'primary': ['K-2', 'K', '1', '2'],
+                    'elementary': ['3-5', '3', '4', '5'],
+                    'middle': ['6-8', 'MS', 'Middle School'],
+                    'high': ['9-12', 'HS', 'High School']
+                };
+                // --- END FIX ---
 
                 App.dataMaps.parentToChildrenMap.forEach((parentData, parentCode) => {
                     if (parentCode === 'PE') return;
 
-                    const isRelevant = parentData.children.some(child => child.allProgressions[gradeBand]?.length > 0);
+                    // --- FIX: Robust Checking Logic ---
+                    const isRelevant = parentData.children.some(child => {
+                        // Check if direct key exists
+                        if (child.allProgressions[gradeBand]?.length > 0) return true;
+                        
+                        // Check fallback keys
+                        const fallbacks = bandMapReverse[gradeBand] || [];
+                        return fallbacks.some(fb => child.allProgressions[fb]?.length > 0);
+                    });
+                    // --- END FIX ---
+
                     if (isRelevant) {
                         const columnInfo = { code: parentCode, title: parentData.name };
                         const dimension = parentData.dimension;
 
-                        if (dimension === 'SEP') {
-                            groups.sep.cols.push(columnInfo);
-                        } else if (dimension.startsWith('DCI')) {
-                            groups.dci.cols.push(columnInfo);
-                        } else if (dimension === 'CCC') {
-                            groups.ccc.cols.push(columnInfo);
-                        } else if (dimension === 'CNS') {
-                            if (nosForSep.has(parentCode)) {
-                                groups.sep.cols.push(columnInfo);
-                            }
-                            if (nosForCcc.has(parentCode)) {
-                                groups.ccc.cols.push(columnInfo);
-                            }
+                        if (dimension.startsWith('DCI-PS')) { dims.dci.groups.PS.cols.push(columnInfo); dims.dci.totalCols++; }
+                        else if (dimension.startsWith('DCI-LS')) { dims.dci.groups.LS.cols.push(columnInfo); dims.dci.totalCols++; }
+                        else if (dimension.startsWith('DCI-ESS')) { dims.dci.groups.ESS.cols.push(columnInfo); dims.dci.totalCols++; }
+                        else if (dimension.startsWith('DCI-ETS')) { dims.dci.groups.ETS.cols.push(columnInfo); dims.dci.totalCols++; }
+                        else if (dimension === 'SEP') { dims.sep.groups.SEP.cols.push(columnInfo); dims.sep.totalCols++; }
+                        else if (dimension === 'CCC') { dims.ccc.groups.CCC.cols.push(columnInfo); dims.ccc.totalCols++; }
+                        else if (dimension === 'CNS') {
+                            if (nosForSep.has(parentCode)) { dims.sep.groups.CNS.cols.push(columnInfo); dims.sep.totalCols++; }
+                            if (nosForCcc.has(parentCode)) { dims.ccc.groups.CNS.cols.push(columnInfo); dims.ccc.totalCols++; }
                         } else if (dimension === 'C-ETAS') {
-                            groups.ccc.cols.push(columnInfo);
+                            dims.ccc.groups.ETAS.cols.push(columnInfo); dims.ccc.totalCols++;
                         }
                     }
                 });
-                return groups;
+                return dims;
             },
             cyclePeStatus(rowId, peCode) {
+                App.history.saveState();
                 const planner = this.findPlanner(App.state.currentPlannerId);
-                App.history.saveState(planner);
                 const rowData = this.findRowData(planner, rowId);
                 if (!rowData) return;
                 const currentStatus = rowData.trackingData[peCode];
@@ -1976,27 +2497,21 @@
                 App.persistence.debouncedSave();
             },
             cycleScopeStatus(rowId) {
+                App.history.saveState();
                 const planner = this.findPlanner(App.state.currentPlannerId);
-                App.history.saveState(planner);
                 const rowData = this.findRowData(planner, rowId);
                 if (!rowData) return;
                 const currentScope = rowData.scope;
-                const cycle = { '': 'F', 'F': 'S', 'S': '' };
+                const cycle = { '': 'F', 'F': 'CF', 'CF': 'S', 'S': '' };
                 rowData.scope = cycle[currentScope || ''];
                 App.render.renderPlannerContent();
                 App.render.setActiveTab(App.state.currentActiveTab);
                 App.persistence.debouncedSave();
             },
-            toggleViewMode() {
-                App.state.isViewMode = !App.state.isViewMode;
-                App.dom.body.classList.toggle('view-mode-active', App.state.isViewMode);
-                document.getElementById('view-mode-toggle').textContent = App.state.isViewMode ? 'Exit View Mode' : 'Enter View Mode';
-                if (App.state.currentPlannerId) App.render.plannerView(App.state.currentPlannerId);
-            },
             addRow(type, text) {
                 const planner = this.findPlanner(App.state.currentPlannerId);
                 if (!planner) return;
-                App.history.saveState(planner);
+                App.history.saveState();
                 const newRowData = { id: `row-${Date.now()}`, type, title: text };
                 if (type === 'lesson-set') {
                     newRowData.children = [];
@@ -2020,7 +2535,7 @@
             addRowAdjacent(referenceRowId, position = 'below') {
                 const planner = this.findPlanner(App.state.currentPlannerId);
                 if (!planner) return;
-                App.history.saveState(planner);
+                App.history.saveState();
                 const location = this.findRowAndParent(planner, referenceRowId);
                 if (!location) return;
                 const newLesson = {
@@ -2040,7 +2555,7 @@
             copyRow(sourceRowId) {
                 const planner = this.findPlanner(App.state.currentPlannerId);
                 if (!planner) return;
-                App.history.saveState(planner);
+                App.history.saveState();
                 const location = this.findRowAndParent(planner, sourceRowId);
                 if (!location) return;
                 const sourceRowData = location.row;
@@ -2054,7 +2569,7 @@
             },
             deleteRow(rowId) {
                 const planner = this.findPlanner(App.state.currentPlannerId); if (!planner) return;
-                App.history.saveState(planner);
+                App.history.saveState();
                 let foundAndRemoved = false;
                 planner.rows = planner.rows.filter(row => {
                     if (row.id === rowId) {
@@ -2098,8 +2613,8 @@
             },
             savePlanner() { 
                 const id = document.getElementById('planner-id-input').value;
-                const planner = id ? this.findPlanner(id) : null;
-                if(planner) App.history.saveState(planner);
+                const isEditing = !!id;
+                if(isEditing) App.history.saveState();
 
                 const data = {
                     title: document.getElementById('planner-title-input').value,
@@ -2113,7 +2628,7 @@
 
                 if (!data.title) { alert('Planner Title is required.'); return; }
 
-                if (id) {
+                if (isEditing) {
                     Object.assign(App.utils.findPlanner(id), data);
                 } else {
                     data.id = `planner-${Date.now()}`;
@@ -2139,8 +2654,11 @@
                 }
                 App.persistence.saveProgramData();
                 App.render.navigator();
-                if (!id || id === App.state.currentPlannerId) {
-                    App.render.plannerView(id || data.id);
+                App.render.welcomeView();
+                if (!isEditing) {
+                    App.render.plannerView(data.id);
+                } else if (id === App.state.currentPlannerId) {
+                    App.render.plannerView(id);
                 }
                 App.utils.closeAllModals();
             },
@@ -2153,7 +2671,8 @@
 
                 App.state.allNgssData.forEach(g => {
                     if(r.includes(g.gradeId)){
-                        g.topics.forEach(t => {
+                        (g.topics || []).forEach(t => {
+                            if (!t.performanceExpectations) return; // FIX: Defensive check
                             t.performanceExpectations.forEach(pe => {
                                 const assignedPeObj = p.assignedPes?.find(p_obj => p_obj.id === pe.id);
                                 const isChecked = !!assignedPeObj;
@@ -2199,7 +2718,7 @@
             },
             savePeAssignments() { 
                 const p = App.utils.findPlanner(App.state.currentPlannerId); if (!p) return;
-                App.history.saveState(p);
+                App.history.saveState();
                 p.assignedPes = Array.from(document.querySelectorAll('#pe-modal-list input[type="checkbox"][value]:checked')).map(i => {
                     const container = i.closest('.pe-modal-item');
                     const isSecondary = container.querySelector('.secondary-pe-toggle').checked;
@@ -2333,7 +2852,7 @@
                 const modal = document.getElementById('lesson-details-modal-backdrop');
                 const rowId = modal.dataset.currentRowId;
                 const planner = this.findPlanner(App.state.currentPlannerId);
-                App.history.saveState(planner);
+                App.history.saveState();
 
                 const rowData = this.findRowData(planner, rowId);
                 if (!rowData) return;
@@ -2345,39 +2864,97 @@
                 this.closeAllModals();
             },
 
-            performSearch(query) {
-                this.render.renderPlannerContent(); 
+            clonePlannerWithNewIds(planner) {
+                const newPlanner = JSON.parse(JSON.stringify(planner));
+                newPlanner.id = `planner-${Date.now()}`;
+                const processRows = (rows) => {
+                    if (!rows) return;
+                    rows.forEach(row => {
+                        row.id = `row-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                        if (row.children) {
+                            processRows(row.children);
+                        }
+                    });
+                };
+                processRows(newPlanner.rows);
+                return newPlanner;
             },
+
+            loadPlannerFromFile(plannerId) {
+                const fileData = App.state.availableExamples.find(f => f.content.id === plannerId);
+                if (!fileData) return;
+
+                const newPlanner = this.clonePlannerWithNewIds(fileData.content);
+                App.state.programData.planners.push(newPlanner);
+                App.persistence.saveProgramData();
+                App.render.navigator();
+                App.render.welcomeView(); // Re-render to remove the loaded planner from the list
+                App.render.plannerView(newPlanner.id);
+                const navItem = App.dom.navigatorList.querySelector(`[data-planner-id="${newPlanner.id}"]`);
+                if(navItem) navItem.querySelector('.planner-checkbox').checked = true;
+            }
         };
 
         App.export = {
             showExportOptions() {
-                const planner = App.utils.findPlanner(App.state.currentPlannerId);
-                if (!planner) { alert('Please select a planner to export.'); return; }
+                const optionsContainer = document.getElementById('export-master-options-list');
+                optionsContainer.innerHTML = `
+                    <label class="block p-4 border rounded-lg has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 has-[:checked]:border-blue-500 cursor-pointer">
+                        <input type="checkbox" name="export-option" value="xlsx-dim" class="mr-2 accent-purple-600" checked>
+                        <strong>XLSX (by Dimension)</strong>
+                        <small class="block text-gray-500 dark:text-gray-400">Creates a sheet for each dimension (PEs, DCIs, etc.).</small>
+                    </label>
+                     <label class="block p-4 border rounded-lg has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 has-[:checked]:border-blue-500 cursor-pointer">
+                        <input type="checkbox" name="export-option" value="xlsx-combined" class="mr-2 accent-purple-600">
+                        <strong>XLSX (Combined View)</strong>
+                        <small class="block text-gray-500 dark:text-gray-400">Creates a single sheet with combined 3D elements.</small>
+                    </label>
+                    <label class="block p-4 border rounded-lg has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 has-[:checked]:border-blue-500 cursor-pointer">
+                        <input type="checkbox" name="export-option" value="progression" class="mr-2 accent-purple-600">
+                        <strong>Progression View (XLSX)</strong>
+                        <small class="block text-gray-500 dark:text-gray-400">Exports the Progression by Element view.</small>
+                    </label>
+                    <label class="block p-4 border rounded-lg has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 has-[:checked]:border-blue-500 cursor-pointer">
+                        <input type="checkbox" name="export-option" value="storyline" class="mr-2 accent-purple-600">
+                        <strong>Storyline View (XLSX)</strong>
+                        <small class="block text-gray-500 dark:text-gray-400">Exports the Progression by Lesson view.</small>
+                    </label>
+                `;
                 
-                const modalContent = document.getElementById('export-options-list');
-                if (modalContent && !modalContent.querySelector('[data-format="clipboard"]')) {
-                    const btnContainer = modalContent.querySelector('.space-y-3');
-                    const copyBtn = document.createElement('button');
-                    copyBtn.className = "export-option-btn w-full text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all";
-                    copyBtn.dataset.format = "clipboard";
-                    copyBtn.innerHTML = `
-                        <strong class="text-blue-600 dark:text-blue-400">Copy to Clipboard (TSV)</strong>
-                        <small class="text-gray-500 dark:text-gray-400 block">Copy combined data to paste into Excel or Google Sheets.</small>
-                    `;
-                    btnContainer.appendChild(copyBtn);
-                }
-                
-                App.utils.openModal('export-modal-backdrop');
+                App.utils.openModal('export-master-modal-backdrop');
             },
             
-            handleExportClick(format, planner) {
-                switch (format) {
-                    case 'json': this.asJson(planner); break;
-                    case 'html': this.asHtml(planner); break;
-                    case 'xlsx': this.asXlsx(planner); break;
-                    case 'clipboard': this.asClipboard(planner); break;
+            handleMasterExport() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                if (!planner) return;
+
+                const selectedOptions = Array.from(document.querySelectorAll('#export-master-options-list input:checked')).map(cb => cb.value);
+                if (selectedOptions.length === 0) {
+                    alert('Please select at least one item to export.');
+                    return;
                 }
+
+                const workbook = XLSX.utils.book_new();
+                
+                if (selectedOptions.includes('xlsx-dim')) {
+                    this.addDimensionSheetsToWorkbook(workbook, planner);
+                }
+                if (selectedOptions.includes('xlsx-combined')) {
+                    const worksheet = this.createCombinedSheet(planner);
+                    XLSX.utils.book_append_sheet(workbook, worksheet, 'Combined View');
+                }
+                if (selectedOptions.includes('progression')) {
+                    this.addProgressionSheetToWorkbook(workbook, 'element');
+                }
+                if (selectedOptions.includes('storyline')) {
+                    this.addProgressionSheetToWorkbook(workbook, 'lesson');
+                }
+
+                if(workbook.SheetNames.length > 0) {
+                    XLSX.writeFile(workbook, `${planner.title}_Export.xlsx`);
+                }
+                
+                App.utils.closeAllModals();
             },
 
             downloadFile(filename, content, mimeType) {
@@ -2390,12 +2967,16 @@
                 document.body.removeChild(a);
             },
 
-            asJson(planner) {
+            asJson() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                if (!planner) { alert('No active planner to export.'); return; }
                 const jsonString = JSON.stringify(planner, null, 2);
                 this.downloadFile(`${planner.title}.json`, jsonString, 'application/json');
             },
 
-            asHtml(planner) {
+            asHtml() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                if (!planner) { alert('No active planner to export.'); return; }
                 const tableContainer = document.getElementById('planner-table-container').cloneNode(true);
                 tableContainer.querySelectorAll('[contenteditable]').forEach(el => el.setAttribute('contenteditable', 'false'));
                 tableContainer.querySelectorAll('.drag-handle, .delete-btn, .add-below-btn, .copy-row-btn, .notes-btn').forEach(el => el.remove());
@@ -2407,16 +2988,18 @@
                         body { overflow: auto; height: auto; display: block; font-family: sans-serif; }
                         table { table-layout: fixed; border-collapse: collapse; min-width: 100%; border-spacing: 0; }
                         th, td { border: 1px solid #e5e7eb; }
-                        th[data-tab-group], td[data-tab-group] { display: none; }
+                        col.collapsed { width: 0 !important; min-width: 0 !important; }
+                        th[data-tab-group], td[data-tab-group], col[data-tab-group] { display: none; }
                         
                         thead th { height: 160px; vertical-align: bottom; padding: 4px; }
                         .vertical-header-text { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; text-align: left; max-height: 140px; width: 100%; display: flex; align-items: center; justify-content: flex-start; }
 
-                        .sticky-col-1 { position: sticky; left: 0; z-index: 5; width: 120px; min-width: 120px; background-color: #f3f4f6; overflow: hidden; }
-                        .sticky-col-2 { position: sticky; left: 120px; z-index: 4; width: 80px; min-width: 80px; background-color: #f3f4f6; overflow: hidden; }
-                        .sticky-col-3 { position: sticky; left: 200px; z-index: 3; width: 400px; min-width: 400px; background-color: #f3f4f6; box-shadow: 4px 0 5px -2px rgba(0,0,0,0.1); overflow: hidden; }
+                        .sticky-col-1 { position: sticky; left: 0; z-index: 5; background-color: #f3f4f6; }
+                        .sticky-col-2 { position: sticky; left: 65px; z-index: 4; background-color: #f3f4f6; }
+                        .sticky-col-3 { position: sticky; left: 105px; z-index: 3; background-color: #f3f4f6; box-shadow: 4px 0 5px -2px rgba(0,0,0,0.1); }
                         
                         thead th.sticky-col-1, thead th.sticky-col-2, thead th.sticky-col-3 { height: auto; vertical-align: middle; z-index: 10; padding: 10px; }
+                        .group-toggle-header { display: table-cell !important; }
                     <\/style>
                     </head><body class="bg-gray-50 p-8"><main>
                     <div class="mb-6">
@@ -2430,7 +3013,8 @@
                             const firstTab = document.querySelector('.tab-button');
                             if (firstTab) { activateTab(firstTab); }
                             document.getElementById('tab-container').addEventListener('click', e => {
-                                if (e.target.matches('.tab-button')) { activateTab(e.target); }
+                                const tabButton = e.target.closest('.tab-button');
+                                if (tabButton) { activateTab(tabButton); }
                             });
                             function activateTab(tabButton) {
                                 document.querySelectorAll('.tab-button').forEach(btn => {
@@ -2440,8 +3024,8 @@
                                 tabButton.classList.remove('bg-gray-100', 'text-gray-500');
                                 tabButton.classList.add('bg-white', 'border-gray-300', 'border-b-white', 'text-blue-600');
                                 const tabKey = tabButton.dataset.tab;
-                                document.querySelectorAll('th[data-tab-group], td[data-tab-group]').forEach(cell => {
-                                    cell.style.display = cell.dataset.tabGroup === tabKey ? 'table-cell' : 'none';
+                                document.querySelectorAll('th[data-tab-group], td[data-tab-group], col[data-tab-group]').forEach(cell => {
+                                    cell.style.display = cell.dataset.tabGroup === tabKey ? '' : 'none';
                                 });
                             }
                         });
@@ -2504,7 +3088,11 @@
                         rowInfo[sheetData.length - 1] = { type: 'dataRow' };
 
                         const assessedRow = new Array(headers.length).fill([]);
-                        assessedRow[0] = 'Formative Assessment';
+                        let scopeLabel = 'Formative Assessment';
+                        if (plannerRow.scope === 'S') scopeLabel = 'Summative Assessment';
+                        else if (plannerRow.scope === 'CF') scopeLabel = 'Critical Formative Assessment';
+                        
+                        assessedRow[0] = scopeLabel;
                         assessedRow[1] = assessed.primaryPEs.map(e => e.code);
                         assessedRow[2] = assessed.secondaryPEs.map(e => e.code);
                         assessedRow[3] = assessed.dcis.map(e => e.code);
@@ -2522,45 +3110,6 @@
                 return { sheetData, merges, rowInfo };
             },
 
-           asClipboard(planner) {
-				const { sheetData } = this._generateCombinedSheetData(planner);
-
-				const formatCellForTsv = (cellValue) => {
-					if (cellValue === null || cellValue === undefined) return '';
-					let lines = [];
-					if (Array.isArray(cellValue)) {
-						lines = cellValue.map(item => String(item ?? ''));
-					} else {
-						let rawString = String(cellValue);
-						if (rawString.startsWith('"') && rawString.endsWith('"')) {
-							rawString = rawString.substring(1, rawString.length - 1).replace(/""/g, '"');
-						}
-						lines = rawString.split('\n');
-					}
-
-					const finalContent = lines.map(line => line.trim()).filter(line => line.length > 0).join('\n');
-					const needsQuoting = finalContent.includes('\n') || finalContent.includes('\t') || finalContent.includes('"');
-
-					if (needsQuoting) {
-						const escapedContent = finalContent.replace(/"/g, '""');
-                        return `"${escapedContent}"`;
-					}
-					return finalContent;
-				};
-
-				const tsvString = sheetData.slice(1) 
-					.map(row => row.map(formatCellForTsv).join('\t'))
-					.join('\n');
-				
-				navigator.clipboard.writeText(tsvString).then(() => {
-					alert('Planner data copied to clipboard!');
-					App.utils.closeAllModals();
-				}).catch(err => {
-					console.error('Failed to copy to clipboard:', err);
-					alert('Could not copy to clipboard. See console for details.');
-				});
-			},
-
             createCombinedSheet(planner) {
                 let { sheetData, merges, rowInfo } = this._generateCombinedSheetData(planner);
 
@@ -2573,9 +3122,9 @@
 
                 const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
                 const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4B5563" } }, border: thinBorder, alignment: { horizontal: "center", vertical: "center", wrapText: true } };
-                const unitStyle = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "FF4338CA" } }, color: { rgb: "FFFFFFFF" }, border: thinBorder };
-                const lessonTitleStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FF60A5FA" } }, border: thinBorder };
-                const subTitleStyle = { font: { bold: false }, border: thinBorder, alignment: { indent: 1, vertical: "top" } };
+                const unitStyle = { font: { bold: true, sz: 14, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4338CA" } }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const lessonTitleStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFDBEAFE" } }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const subTitleStyle = { font: { italic: true }, border: thinBorder, alignment: { indent: 1, vertical: "top" } };
                 const dataCellStyle = { border: thinBorder, alignment: { vertical: "top", wrapText: true } };
 
                 const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
@@ -2595,8 +3144,10 @@
                     
                     const styleInfo = rowInfo[r];
                     if (styleInfo) {
-                        if (styleInfo.type === 'unit' || styleInfo.type === 'lessonTitle') {
-                            cell.s = styleInfo.style;
+                        if (styleInfo.type === 'unit') {
+                            cell.s = unitStyle;
+                        } else if (styleInfo.type === 'lessonTitle') {
+                            cell.s = lessonTitleStyle;
                         } else if (styleInfo.type === 'dataRow') {
                             cell.s = (c === 0) ? subTitleStyle : dataCellStyle;
                         }
@@ -2606,16 +3157,7 @@
                 return worksheet;
             },
 
-            asXlsx(planner) {
-                const workbook = XLSX.utils.book_new();
-                
-                try {
-                    const combinedWorksheet = this.createCombinedSheet(planner);
-                    XLSX.utils.book_append_sheet(workbook, combinedWorksheet, 'Combined View');
-                } catch (e) {
-                    console.error("Failed to create Combined View sheet:", e);
-                }
-
+            addDimensionSheetsToWorkbook(workbook, planner) {
                 const columnGroups = App.utils.gatherColumns(planner.gradeBand);
                 const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
                 const headerStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { horizontal: "center", wrapText: true, vertical: "center", textRotation: 90 } };
@@ -2629,13 +3171,12 @@
                     A: { fill: { fgColor: { rgb: "FFB4C6E7" } } },
                 };
 
-                Object.keys(columnGroups).forEach(groupKey => {
-                    const group = columnGroups[groupKey];
+                Object.keys(columnGroups).forEach(key => {
                     let columns = [];
-                    if (groupKey === 'pe') {
+                    if (key === 'pe') {
                         columns = (planner.assignedPes || []).map(peObj => ({ code: peObj.id, title: peObj.id, isSecondary: peObj.isSecondary }));
                     } else {
-                        columns = group.cols.map(c => ({ code: c.code, title: c.title, isSecondary: false }));
+                        columns = Object.values(columnGroups[key].groups).flatMap(g => g.cols.map(c => ({ code: c.code, title: c.title, isSecondary: false })));
                     }
 
                     if (columns.length === 0) return;
@@ -2653,7 +3194,7 @@
                             const lessonDataRow = [lesson.title];
                             columns.forEach(col => {
                                 let cellValue = '';
-                                if (groupKey === 'pe') {
+                                if (key === 'pe') {
                                     cellValue = lesson.trackingData?.[col.code] || '';
                                 } else {
                                     const parentInfo = App.dataMaps.parentToChildrenMap.get(col.code);
@@ -2667,15 +3208,12 @@
                                 lessonDataRow.push(cellValue);
                             });
                             sheetData.push(lessonDataRow);
-                            if (isChild) {
-                                indentedLessonRowIndexes.push(sheetData.length - 1);
-                            }
+                            if (isChild) indentedLessonRowIndexes.push(sheetData.length - 1);
                             rowIndexToLesson.set(sheetData.length - 1, lesson);
                         };
 
                         if (row.type === 'lesson-set') {
-                            const lessonSetRow = [row.title, ...Array(columns.length).fill('')];
-                            sheetData.push(lessonSetRow);
+                            sheetData.push([row.title, ...Array(columns.length).fill('')]);
                             lessonSetRowIndexes.push(sheetData.length - 1);
                             (row.children || []).forEach(child => processLessonRow(child, true));
                         } else if (row.type === 'lesson') {
@@ -2685,7 +3223,7 @@
 
                     if (sheetData.length > 1) {
                         const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-                        worksheet['!cols'] = [{ wch: 45 }, ...columns.map(() => ({ wch: 5 }))];
+                        worksheet['!cols'] = [{ wch: 45 }, ...columns.map(() => ({ wch: 15 }))];
                         const range = XLSX.utils.decode_range(worksheet['!ref']);
                         
                         for (let R = range.s.r; R <= range.e.r; ++R) {
@@ -2702,21 +3240,16 @@
                                     const lesson = rowIndexToLesson.get(R);
                                     if (lesson && C > 0) {
                                         let dominantStatus = '';
-                                        if (groupKey === 'pe') {
+                                        if (key === 'pe') {
                                             dominantStatus = worksheet[cellAddress].v;
                                         } else {
-                                            const parentInfo = App.dataMaps.parentToChildrenMap.get(columns[C - 1].code);
-                                            if (parentInfo) {
-                                                const statuses = parentInfo.children
-                                                    .map(child => lesson.trackingData?.[child.code])
-                                                    .filter(Boolean);
-                                                if (statuses.includes('A')) dominantStatus = 'A';
-                                                else if (statuses.includes('D')) dominantStatus = 'D';
-                                                else if (statuses.includes('I')) dominantStatus = 'I';
-                                            }
+                                            const statuses = (worksheet[cellAddress].v || '').split('\n').map(s => s.match(/\((.)\)/)?.[1]).filter(Boolean);
+                                            if (statuses.includes('A')) dominantStatus = 'A';
+                                            else if (statuses.includes('D')) dominantStatus = 'D';
+                                            else if (statuses.includes('I')) dominantStatus = 'I';
                                         }
                                         if (statusStyles[dominantStatus]) {
-                                            style = { ...style, ...statusStyles[dominantStatus], alignment: { horizontal: "center" } };
+                                            style = { ...style, ...statusStyles[dominantStatus], alignment: { ...style.alignment, horizontal: "center" } };
                                         }
                                     }
                                     worksheet[cellAddress].s = style;
@@ -2724,247 +3257,356 @@
                             }
                         }
                         worksheet['!merges'] = lessonSetRowIndexes.map(r => ({ s: { r, c: 0 }, e: { r, c: columns.length } }));
-                        XLSX.utils.book_append_sheet(workbook, worksheet, group.name);
+                        XLSX.utils.book_append_sheet(workbook, worksheet, columnGroups[key].name);
                     }
-                });
-
-                if (workbook.SheetNames.length > 0) {
-                    XLSX.writeFile(workbook, `${planner.title}.xlsx`);
-                } else {
-                    alert("No data available to export.");
-                }
-            }
-        };
-		 App.tour = {
-            instance: null,
-            init() {
-                this.instance = new Shepherd.Tour({
-                    useModalOverlay: true,
-                    defaultStepOptions: {
-                        classes: 'shadow-md bg-gray-100 dark:bg-gray-700',
-                        scrollTo: true
-                    }
-                });
-
-                this.instance.addStep({
-                    id: 'step1', text: 'Welcome! This is the Navigator. All your planners are listed here. Let\'s create a new one.',
-                    attachTo: { element: '#new-planner-btn', on: 'bottom' }, buttons: [{ action() { this.next(); }, text: 'Next' }]
-                });
-                this.instance.addStep({
-                    id: 'step2', text: 'After creating a planner, assign the Performance Expectations (PEs) you\'ll be targeting.',
-                    attachTo: { element: '#assign-pe-btn', on: 'bottom' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
-                });
-                this.instance.addStep({
-                    id: 'step3', text: 'Your instructional sequence appears here. You can edit titles, add lessons, and drag-and-drop to reorder.',
-                    attachTo: { element: '#planner-table-container', on: 'top' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
-                });
-                 this.instance.addStep({
-                    id: 'step4', text: 'Use these tabs to switch between tracking PEs and the three dimensions (DCIs, SEPs, CCCs).',
-                    attachTo: { element: '#tab-container', on: 'bottom' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
-                });
-                 this.instance.addStep({
-                    id: 'step5', text: 'Click inside a cell to open a popover and track an element\'s status (Introduced, Developed, or Assessed) for that lesson.',
-                    attachTo: { element: '#planner-table-container tbody tr:first-child td:last-child', on: 'left' }, isRequired: ['#planner-table-container tbody tr'], buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
-                });
-                this.instance.addStep({
-                    id: 'step6', text: 'You can check planner analytics in the Summary view, or compare multiple planners using the Progression view.',
-                    attachTo: { element: '#view-summary-btn', on: 'bottom' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.complete(); }, text: 'Finish' }]
-                });
-
-                this.instance.on('complete', () => {
-                    localStorage.setItem('ngssPlannerTourCompleted', 'true');
                 });
             },
-            start() {
-                if (App.state.currentPlannerId === null && App.state.programData.planners.length > 0) {
-                    App.render.plannerView(App.state.programData.planners[0].id);
-                } else if (App.state.programData.planners.length === 0) {
-                    // Create a default planner for the tour if none exist
-                    const newPlanner = {
-                        id: `planner-${Date.now()}`, title: 'Sample 4th Grade Unit', course: '4th Grade Science', gradeBand: 'elementary', standardSet: 'NGSS',
-                        phenomenon: 'A wrecking ball can knock down a wall.', question: 'How does energy change and move?', description: 'A sample unit.',
-                        assignedPes: [{id: "4-PS3-1", isSecondary: false}, {id:"4-PS3-2", isSecondary: false}, {id:"4-PS3-4", isSecondary: false}],
-                        rows: [
-                            { id: `row-${Date.now()}-1`, type: 'lesson-set', title: 'Lesson Set 1', isCollapsed: false, children: [
-                                { id: `row-${Date.now()}-2`, type: 'lesson', title: 'Lesson 1', trackingData: {'4-PS3-1':'I'}, scope:'F', details:{notes:'', links:[]} }
-                            ]}
-                        ]
-                    };
-                    App.state.programData.planners.push(newPlanner);
-                    App.persistence.saveProgramData();
-                    App.render.navigator();
-                    App.render.plannerView(newPlanner.id);
+
+            exportProgressionView() {
+                const workbook = XLSX.utils.book_new();
+                this.addProgressionSheetToWorkbook(workbook, App.state.progressionViewType);
+                if (workbook.SheetNames.length > 0) {
+                    XLSX.writeFile(workbook, 'NGSS_Progression_Export.xlsx');
+                } else {
+                    alert('No progression data to export. Please select planners from the navigator.');
                 }
-                setTimeout(() => this.instance.start(), 200);
+            },
+
+            addProgressionSheetToWorkbook(workbook, viewType) {
+                const selectedPlannerIds = Array.from(App.dom.navigatorList.querySelectorAll('.planner-checkbox:checked')).map(cb => cb.closest('.planner-item').dataset.plannerId);
+                if (selectedPlannerIds.length === 0) return;
+                const selectedPlanners = selectedPlannerIds.map(id => App.utils.findPlanner(id));
+
+                if (viewType === 'element') {
+                    this._addProgressionByElementSheet(workbook, selectedPlanners);
+                } else {
+                    this._addProgressionByLessonSheet(workbook, selectedPlanners);
+                }
+            },
+
+            _addProgressionByElementSheet(workbook, selectedPlanners) {
+                const sheetData = [];
+                const merges = [];
+                const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+                const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4B5563" } }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const groupHeaderStyle = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const elementCodeStyle = { font: { bold: true }, border: thinBorder, alignment: { vertical: "top", wrapText: true } };
+                const defaultStyle = { border: thinBorder, alignment: { vertical: "top", wrapText: true } };
+
+                const allTrackedElements = new Map();
+                const allUnique3DElements = new Map();
+
+                selectedPlanners.forEach(planner => {
+                    (planner.rows || []).forEach(row => {
+                        const processLesson = (lesson, lessonSetTitle = null) => {
+                            if (!lesson.trackingData) return;
+                            Object.entries(lesson.trackingData).forEach(([code, status]) => {
+                                const elementData = App.dataMaps.ngss3dMap.get(code) || App.dataMaps.peMap.get(code);
+                                if (elementData) {
+                                    if (!allTrackedElements.has(code)) {
+                                        allTrackedElements.set(code, []);
+                                        allUnique3DElements.set(code, elementData);
+                                    }
+                                    allTrackedElements.get(code).push({ plannerId: planner.id, lessonTitle: lesson.title, lessonSetTitle: lessonSetTitle, status: status });
+                                }
+                            });
+                        };
+                        if (row.type === 'lesson') processLesson(row);
+                        else if (row.type === 'lesson-set' && row.children) row.children.forEach(lesson => processLesson(lesson, row.title));
+                    });
+                });
+                
+                const header = ['Element', ...selectedPlanners.map(p => p.title)];
+                sheetData.push(header);
+
+                const groupedElements = { PE: [], DCI: [], SEP: [], CCC: [] };
+                const groupNames = { PE: "Performance Expectations", DCI: "Disciplinary Core Ideas", SEP: "Science and Engineering Practices", CCC: "Crosscutting Concepts & Connections" };
+                allUnique3DElements.forEach((elementData, code) => {
+                    const dim = elementData.dimension || '';
+                    if (App.dataMaps.peMap.has(code)) groupedElements.PE.push([code, elementData]);
+                    else if (dim.startsWith('DCI')) groupedElements.DCI.push([code, elementData]);
+                    else if (dim.startsWith('SEP')) groupedElements.SEP.push([code, elementData]);
+                    else groupedElements.CCC.push([code, elementData]);
+                });
+                for (const key in groupedElements) { groupedElements[key].sort((a, b) => a[0].localeCompare(b[0])); }
+
+                Object.entries(groupedElements).forEach(([groupKey, elements]) => {
+                    if (elements.length > 0) {
+                        const groupHeaderRow = [groupNames[groupKey]];
+                        merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: header.length - 1 } });
+                        sheetData.push(groupHeaderRow);
+
+                        elements.forEach(([code, elementData]) => {
+                            const row = [
+                                `${code}\n${elementData.text || elementData.description || ''}`
+                            ];
+                            selectedPlanners.forEach(planner => {
+                                const entries = (allTrackedElements.get(code) || []).filter(e => e.plannerId === planner.id);
+                                const cellContent = entries.map(e => `${e.status}: ${e.lessonSetTitle ? `${e.lessonSetTitle} → ` : ''}${e.lessonTitle}`).join('\n');
+                                row.push(cellContent);
+                            });
+                            sheetData.push(row);
+                        });
+                    }
+                });
+
+                const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                worksheet['!merges'] = merges;
+                worksheet['!cols'] = [{ wch: 60 }, ...selectedPlanners.map(() => ({ wch: 40 }))];
+                
+                Object.keys(worksheet).forEach(cellAddress => {
+                    if (cellAddress.startsWith('!')) return;
+                    const cell = worksheet[cellAddress];
+                    const { r, c } = XLSX.utils.decode_cell(cellAddress);
+                    if (r === 0) cell.s = headerStyle;
+                    else if (merges.some(m => m.s.r === r)) cell.s = groupHeaderStyle;
+                    else if (c === 0) cell.s = elementCodeStyle;
+                    else cell.s = defaultStyle;
+                });
+
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Progression by Element');
+            },
+
+            _addProgressionByLessonSheet(workbook, selectedPlanners) {
+                const sheetData = [];
+                const merges = [];
+                const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+                const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4B5563" } }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const plannerStyle = { font: { bold: true, sz: 12 }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const defaultStyle = { border: thinBorder, alignment: { vertical: "top", wrapText: true } };
+
+                const header = ['Planner', 'Lesson Set', 'Lesson', 'PEs', 'DCIs', 'SEPs', 'CCCs'];
+                sheetData.push(header);
+
+                selectedPlanners.forEach(planner => {
+                    const plannerStartRow = sheetData.length;
+                    (planner.rows || []).forEach(row => {
+                        const processLesson = (lesson, lessonSetTitle = '') => {
+                            const groupedCodes = { PE: [], DCI: [], SEP: [], CCC: [] };
+                            Object.keys(lesson.trackingData || {}).forEach(code => {
+                                if (App.dataMaps.peMap.has(code)) groupedCodes.PE.push(code);
+                                else {
+                                    const elData = App.dataMaps.ngss3dMap.get(code);
+                                    if (elData) {
+                                        if (elData.dimension.startsWith('DCI')) groupedCodes.DCI.push(code);
+                                        else if (elData.dimension.startsWith('SEP')) groupedCodes.SEP.push(code);
+                                        else groupedCodes.CCC.push(code);
+                                    }
+                                }
+                            });
+                            sheetData.push([
+                                planner.title, lessonSetTitle, lesson.title,
+                                groupedCodes.PE.join('\n'), groupedCodes.DCI.join('\n'),
+                                groupedCodes.SEP.join('\n'), groupedCodes.CCC.join('\n')
+                            ]);
+                        };
+                        if (row.type === 'lesson-set') {
+                            (row.children || []).forEach(lesson => processLesson(lesson, row.title));
+                        } else if (row.type === 'lesson') {
+                            processLesson(row);
+                        }
+                    });
+                    const plannerEndRow = sheetData.length - 1;
+                    if (plannerStartRow <= plannerEndRow) {
+                        merges.push({ s: { r: plannerStartRow, c: 0 }, e: { r: plannerEndRow, c: 0 } });
+                    }
+                });
+
+                const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                worksheet['!merges'] = merges;
+                worksheet['!cols'] = [{ wch: 30 }, { wch: 30 }, { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
+
+                Object.keys(worksheet).forEach(cellAddress => {
+                    if (cellAddress.startsWith('!')) return;
+                    const cell = worksheet[cellAddress];
+                    const { r, c } = XLSX.utils.decode_cell(cellAddress);
+                    if (r === 0) cell.s = headerStyle;
+                    else if (c === 0) cell.s = plannerStyle;
+                    else cell.s = defaultStyle;
+                });
+
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Progression by Lesson');
+				},
+
+            exportSummaryView() {
+                const summaryContainer = document.getElementById('summary-content');
+                if (!summaryContainer.hasChildNodes()) {
+                    alert("No summary to export. Please select a planner first.");
+                    return;
+                }
+
+                const title = document.querySelector('#summary-view h1').textContent;
+                const subtitle = document.getElementById('summary-subtitle').textContent;
+
+                const statusChartImg = App.state.activeCharts.status ? App.state.activeCharts.status.toBase64Image() : '';
+                const dimensionChartImg = App.state.activeCharts.dimension ? App.state.activeCharts.dimension.toBase64Image() : '';
+                const scopeChartImg = App.state.activeCharts.scope ? App.state.activeCharts.scope.toBase64Image() : '';
+
+                const reportContent = document.getElementById('element-coverage-report').outerHTML;
+                const filterContent = document.getElementById('filter-container').innerHTML;
+
+                const htmlContent = `
+                    <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Summary - ${title}</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <style> @media print { body { -webkit-print-color-adjust: exact; } button, input { display: none !important; } } </style>
+                    </head><body class="bg-gray-100 p-8 font-sans">
+                    <div class="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow">
+                        <div class="mb-6 border-b pb-4">
+                            <h1 class="text-3xl font-bold text-gray-800">${title}</h1>
+                            <p class="text-gray-600">${subtitle}</p>
+                        </div>
+                        <div class="my-4">${filterContent}</div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            <div class="p-4 border rounded-lg"><h3 class="font-bold mb-2 text-gray-700">3D Element Status Distribution</h3><img src="${statusChartImg}" alt="Status Chart" class="w-full"></div>
+                            <div class="p-4 border rounded-lg"><h3 class="font-bold mb-2 text-gray-700">Dimension Usage Balance</h3><img src="${dimensionChartImg}" alt="Dimension Chart" class="w-full"></div>
+                            <div class="p-4 border rounded-lg"><h3 class="font-bold mb-2 text-gray-700">Assessment Scope</h3><img src="${scopeChartImg}" alt="Scope Chart" class="w-full"></div>
+                        </div>
+                        ${reportContent}
+                    </div>
+                    </body></html>
+                `;
+                this.downloadFile(`${title.replace(/\s/g, '_')}_Summary.html`, htmlContent, 'text/html');
             }
         };
-		App.import = {
-            handleImport() {
-                // 1. Create the input
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.json,application/json';
-                input.style.display = 'none'; 
-                
-                // 2. Append to body (Required for some browsers)
-                document.body.appendChild(input);
 
-                input.onchange = e => {
-                    const file = e.target.files[0];
+        App.import = {
+            handleImport() {
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.json,application/json';
+                fileInput.style.display = 'none';
+
+                fileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
                     if (!file) {
-                        document.body.removeChild(input);
+                        document.body.removeChild(fileInput);
                         return;
                     }
 
                     const reader = new FileReader();
-                    reader.onload = event => {
+                    reader.onload = (e) => {
                         try {
-                            const importedPlanner = JSON.parse(event.target.result);
-                            
-                            // Basic Validation
-                            if (!importedPlanner.title) {
-                                throw new Error('Invalid planner file: Missing title.');
+                            const data = JSON.parse(e.target.result);
+                            if (!data.id || !data.title || !data.rows) {
+                                throw new Error('Invalid planner file format.');
                             }
-                            
-                            // Ensure rows exist
-                            if (!importedPlanner.rows) {
-                                importedPlanner.rows = [];
-                            }
-
-                            App.state.pendingImportData = importedPlanner;
-                            this.showImportOptions();
+                            App.state.pendingImportData = data;
+                            this.showImportOptions(data);
                         } catch (error) {
-                            console.error("Import Error:", error);
-                            alert(`Error importing file: ${error.message}`);
+                            alert(`Error reading file: ${error.message}`);
+                            console.error(error);
                         } finally {
-                            // Clean up input after reading
-                            if (document.body.contains(input)) {
-                                document.body.removeChild(input);
-                            }
+                            document.body.removeChild(fileInput);
                         }
                     };
-                    
-                    // --- FIX IS HERE ---
-                    reader.readAsText(file); // Correct method name
-                };
+                    reader.readAsText(file);
+                });
 
-                // 3. Force click
-                input.click();
+                document.body.appendChild(fileInput);
+                fileInput.click();
             },
 
-            showImportOptions() {
-                const modal = document.getElementById('import-options-modal-backdrop');
-                if (!modal) {
-                    console.error("Import modal element not found!");
-                    return;
-                }
-
-                // Update Modal Text
-                document.getElementById('import-planner-name').textContent = App.state.pendingImportData.title;
-
-                const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
+            showImportOptions(plannerData) {
+                document.getElementById('import-planner-name').textContent = plannerData.title;
+                
+                const currentPlannerOpen = !!App.state.currentPlannerId;
+                
                 const mergeLabel = document.getElementById('import-merge-label');
-                const replaceLabel = document.getElementById('import-replace-label');
                 const mergeInput = mergeLabel.querySelector('input');
+                mergeLabel.classList.toggle('disabled:opacity-50', !currentPlannerOpen);
+                mergeLabel.classList.toggle('disabled:cursor-not-allowed', !currentPlannerOpen);
+                mergeInput.disabled = !currentPlannerOpen;
+
+                const replaceLabel = document.getElementById('import-replace-label');
                 const replaceInput = replaceLabel.querySelector('input');
-                const createInput = document.querySelector('input[name="import-option"][value="create"]');
+                replaceLabel.classList.toggle('disabled:opacity-50', !currentPlannerOpen);
+                replaceLabel.classList.toggle('disabled:cursor-not-allowed', !currentPlannerOpen);
+                replaceInput.disabled = !currentPlannerOpen;
 
-                // Reset selection to Create
-                createInput.checked = true;
-
-                // Enable/Disable options based on whether a planner is currently open
-                if (currentPlanner) {
-                    mergeLabel.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
-                    replaceLabel.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
-                    mergeInput.disabled = false;
-                    replaceInput.disabled = false;
-                } else {
-                    mergeLabel.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
-                    replaceLabel.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
-                    mergeInput.disabled = true;
-                    replaceInput.disabled = true;
-                }
+                document.querySelector('input[name="import-option"][value="create"]').checked = true;
 
                 App.utils.openModal('import-options-modal-backdrop');
             },
 
             processImport() {
-                const importedPlanner = App.state.pendingImportData;
-                if (!importedPlanner) return;
+                const importData = App.state.pendingImportData;
+                if (!importData) return;
 
-                const option = document.querySelector('input[name="import-option"]:checked').value;
-                const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
+                const selectedOption = document.querySelector('input[name="import-option"]:checked').value;
 
-                try {
-                    switch (option) {
-                        case 'create':
-                            // Always generate a new ID to prevent conflicts
-                            importedPlanner.id = `planner-${Date.now()}`;
-                            App.state.programData.planners.push(importedPlanner);
-                            alert(`Planner "${importedPlanner.title}" imported successfully!`);
-                            break;
-
-                        case 'merge':
-                            if (!currentPlanner) { alert("No planner open to merge with."); return; }
-                            App.history.saveState(currentPlanner);
-                            
-                            // Merge PEs
-                            const currentPes = new Map((currentPlanner.assignedPes || []).map(p => [p.id, p]));
-                            (importedPlanner.assignedPes || []).forEach(p => {
-                                if (!currentPes.has(p.id)) {
-                                    currentPes.set(p.id, p);
-                                }
-                            });
-                            currentPlanner.assignedPes = Array.from(currentPes.values());
-                            
-                            // Merge Rows - Generate new IDs for imported rows to prevent collision
-                            const newRows = (importedPlanner.rows || []).map(row => {
-                                row.id = `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                                if (row.children) {
-                                    row.children.forEach(child => {
-                                        child.id = `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                                    });
-                                }
-                                return row;
-                            });
-                            
-                            currentPlanner.rows.push(...newRows);
-                            alert(`Merged "${importedPlanner.title}" into "${currentPlanner.title}".`);
-                            break;
-
-                        case 'replace':
-                            if (!currentPlanner) { alert("No planner open to replace."); return; }
-                            const index = App.state.programData.planners.findIndex(p => p.id === App.state.currentPlannerId);
-                            if (index > -1) {
-                                // Keep the ID of the current planner so the view doesn't break
-                                importedPlanner.id = currentPlanner.id; 
-                                App.state.programData.planners[index] = importedPlanner;
-                                App.history.clear(); 
-                            }
-                            alert(`Replaced "${currentPlanner.title}" with "${importedPlanner.title}".`);
-                            break;
-                    }
-
-                    App.persistence.saveProgramData();
-                    App.render.navigator();
+                switch (selectedOption) {
+                    case 'create':
+                        const idExists = App.state.programData.planners.some(p => p.id === importData.id);
+                        const plannerToAdd = idExists ? App.utils.clonePlannerWithNewIds(importData) : importData;
+                        App.state.programData.planners.push(plannerToAdd);
+                        App.render.plannerView(plannerToAdd.id);
+                        break;
                     
-                    // If we created a new one, switch to it. If we merged/replaced, reload current.
-                    if (option === 'create') {
-                        App.render.plannerView(importedPlanner.id);
-                    } else {
-                        App.render.plannerView(App.state.currentPlannerId);
-                    }
-                    
-                    App.utils.closeAllModals();
-                    App.state.pendingImportData = null;
+                    case 'merge':
+                        const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
+                        if (currentPlanner) {
+                            App.history.saveState();
+                            const allPes = [...(currentPlanner.assignedPes || []), ...(importData.assignedPes || [])];
+                            const uniquePeMap = new Map();
+                            allPes.forEach(pe => uniquePeMap.set(pe.id, pe));
+                            currentPlanner.assignedPes = Array.from(uniquePeMap.values());
+                            currentPlanner.rows.push(...(importData.rows || []));
+                            App.render.plannerView(currentPlanner.id);
+                        }
+                        break;
 
-                } catch (err) {
-                    console.error("Process Import Error", err);
-                    alert("An error occurred while processing the import.");
+                    case 'replace':
+                        const plannerIndex = App.state.programData.planners.findIndex(p => p.id === App.state.currentPlannerId);
+                        if (plannerIndex > -1) {
+                            const otherPlannersConflict = App.state.programData.planners.some(p => p.id === importData.id && p.id !== App.state.currentPlannerId);
+                            const plannerToReplaceWith = otherPlannersConflict ? App.utils.clonePlannerWithNewIds(importData) : importData;
+                            App.state.programData.planners[plannerIndex] = plannerToReplaceWith;
+                            App.state.currentPlannerId = plannerToReplaceWith.id;
+                            App.render.plannerView(App.state.currentPlannerId);
+                        }
+                        break;
                 }
+
+                App.persistence.saveProgramData();
+                App.render.navigator();
+                App.render.welcomeView();
+                
+                App.state.pendingImportData = null;
+                App.utils.closeAllModals();
             }
         };
-        
+		 
+        async function loadAvailableExamples() {
+            try {
+                const manifestResponse = await fetch('data/manifest.json');
+                if (!manifestResponse.ok) throw new Error('manifest.json not found');
+                const filenames = await manifestResponse.json();
+
+                const filePromises = filenames.map(async (name) => {
+                    const res = await fetch(`data/${name}`);
+                    if (!res.ok) throw new Error(`Failed to fetch ${name}: ${res.statusText}`);
+                    const content = await res.json();
+                    return { filename: name, content };
+                });
+                
+                const results = await Promise.allSettled(filePromises);
+                
+                results.forEach(result => {
+                    if (result.status === 'rejected') {
+                        console.error("Failed to load an example file:", result.reason);
+                    }
+                });
+
+                App.state.availableExamples = results
+                    .filter(result => result.status === 'fulfilled')
+                    .map(result => result.value);
+                    
+            } catch (error) {
+                console.warn("Could not load external examples/templates:", error);
+                App.state.availableExamples = [];
+            }
+        }
+
         async function loadDataAndInit() {
             try {
                 await App.db.init();
@@ -2982,21 +3624,31 @@
                     App.state.allNgssData = await App.db.get('raw_ngss_data');
                     if (!App.state.allNgssData) throw new Error("Raw data missing from cache.");
                 } else {
-                    console.log("Data not found in cache. Fetching from server and processing...");
-                    const dataPath = 'https://philm013.github.io/JSON/';
-                    const [ngss3d, k5, m68, h912] = await Promise.all([
-                        fetch(`${dataPath}ngss3DElements.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss3DElements.json`); return res.json(); }),
-                        fetch(`${dataPath}ngssK5.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngssK5.json`); return res.json(); }),
-                        fetch(`${dataPath}ngss68.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss68.json`); return res.json(); }),
-                        fetch(`${dataPath}ngss912.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss912.json`); return res.json(); })
-                    ]);
-                    
-                    App.state.allNgss3dElements = ngss3d;
-                    const msData = { gradeId: 'MS', gradeLabel: 'Middle School', topics: m68 };
-                    const hsData = { gradeId: 'HS', gradeLabel: 'High School', topics: h912 };
-                    App.state.allNgssData = [...k5, msData, hsData];
-                    
-                    App.buildDataMaps();
+				    console.log("Data not found in cache. Fetching from server and processing...");
+				    const dataPath = 'https://philm013.github.io/JSON/';
+				    const [ngss3d, k5, m68, h912] = await Promise.all([
+				        fetch(`${dataPath}ngss3DElements.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss3DElements.json`); return res.json(); }),
+				        fetch(`${dataPath}ngssK5.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngssK5.json`); return res.json(); }),
+				        fetch(`${dataPath}ngss68.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss68.json`); return res.json(); }),
+				        fetch(`${dataPath}ngss912.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss912.json`); return res.json(); })
+				    ]);
+				    
+				    App.state.allNgss3dElements = ngss3d;
+				
+				    // --- FIX: Normalize NGSS Data Array ---
+				    // Helper to ensure data is in a consistent array format [ {gradeId: ...}, {gradeId: ...} ]
+				    const normalize = (data) => {
+				        if (Array.isArray(data)) return data; 
+				        if (data && data.topics) return [data]; // Handle case where file is just a single object
+				        return [];
+				    };
+				
+				    // Flatten all grade levels into one master array.
+				    // This assumes k5, m68, and h912 are arrays of grade objects (as per your attached json).
+				    App.state.allNgssData = [...normalize(k5), ...normalize(m68), ...normalize(h912)];
+				    // --- END FIX ---
+				    
+				    App.buildDataMaps();
                     
                     const serializableMaps = {
                         peMap: [...App.dataMaps.peMap],
@@ -3012,6 +3664,7 @@
                     console.log("Data processed and cached.");
                 }
 
+                await loadAvailableExamples();
                 App.init();
 
             } catch (error) {
