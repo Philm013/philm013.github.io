@@ -1,0 +1,3663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InquiryOS - NGSS Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#7c3aed',
+                        teacher: '#dc2626'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; font-family: system-ui, sans-serif; }
+        .view { display: none; height: 100%; }
+        .view.active { display: flex; flex-direction: column; }
+        .nav-btn.active { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; }
+        .teacher-nav.active { background: linear-gradient(135deg, #dc2626, #f59e0b); color: white; }
+        
+        .model-canvas { 
+            background: #f8fafc;
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        .model-node {
+            position: absolute;
+            background: white;
+            border: 2px solid #3b82f6;
+            border-radius: 12px;
+            padding: 12px 16px;
+            min-width: 120px;
+            cursor: move;
+            user-select: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .model-node.selected {
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.3);
+        }
+        .model-node:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .node-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #3b82f6;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: crosshair;
+            z-index: 20;
+            transition: transform 0.15s, background 0.15s;
+        }
+        .node-handle:hover {
+            transform: scale(1.3);
+            background: #7c3aed;
+        }
+        .node-handle.top { top: -7px; left: 50%; margin-left: -7px; }
+        .node-handle.bottom { bottom: -7px; left: 50%; margin-left: -7px; }
+        .node-handle.left { left: -7px; top: 50%; margin-top: -7px; }
+        .node-handle.right { right: -7px; top: 50%; margin-top: -7px; }
+        
+        .connection-line {
+            pointer-events: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+        }
+        
+        .drop-zone.drag-over { background: #fef3c7 !important; border-color: #f59e0b !important; }
+        .toast { animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        .data-cell:focus { outline: 2px solid #3b82f6; outline-offset: -2px; }
+        
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        .evidence-card {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .evidence-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .evidence-card.selected {
+            border-color: #7c3aed;
+            background: #f5f3ff;
+        }
+        
+        .card-item {
+            transition: all 0.2s ease;
+            cursor: grab;
+        }
+        .card-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .card-item:active { cursor: grabbing; }
+        .card-item.dragging { opacity: 0.5; transform: rotate(2deg); }
+        
+        .category-column {
+            min-height: 100px;
+            transition: background-color 0.2s;
+        }
+        .category-column.drag-over {
+            background: #fef3c7 !important;
+            border-color: #f59e0b !important;
+        }
+        
+        .health-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .health-good { background: #22c55e; }
+        .health-warning { background: #f59e0b; }
+        .health-bad { background: #ef4444; }
+        
+        .session-card {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .session-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .modal-overlay {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+        
+        .row-drag-handle {
+            cursor: grab;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .row-drag-handle:hover { opacity: 1; }
+        .row-drag-handle:active { cursor: grabbing; }
+        
+        .data-row.dragging {
+            opacity: 0.5;
+            background: #fef3c7;
+        }
+        
+        .node-label-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            width: 100%;
+            min-width: 60px;
+        }
+        .node-label-input:focus {
+            background: #f0f9ff;
+            border-radius: 4px;
+        }
+        
+        .ngss-tag {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .ngss-sep { background: #dbeafe; color: #1e40af; }
+        .ngss-dci { background: #dcfce7; color: #166534; }
+        .ngss-ccc { background: #fef3c7; color: #92400e; }
+        
+        .icon-set-btn.active {
+            background: #2563eb;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+<!-- ==================== LOGIN VIEW ==================== -->
+<div id="loginView" class="view active items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-purple-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+        <div class="bg-gradient-to-r from-primary to-secondary p-8 text-center text-white">
+            <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <span class="iconify text-4xl" data-icon="mdi:flask-outline"></span>
+            </div>
+            <h1 class="text-3xl font-bold">InquiryOS</h1>
+            <p class="text-blue-100 mt-1">NGSS Science & Engineering Practices</p>
+        </div>
+        <div class="p-8">
+            <div class="space-y-4 mb-6">
+                <input type="text" id="loginName" placeholder="Your Name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none">
+                <input type="text" id="loginClass" placeholder="Class Code (optional)" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="startAsStudent()" class="py-4 bg-gradient-to-r from-primary to-blue-500 text-white rounded-xl font-medium hover:opacity-90 flex flex-col items-center gap-2">
+                    <span class="iconify text-2xl" data-icon="mdi:account-school"></span>
+                    <span>Join as Student</span>
+                </button>
+                <button onclick="startAsTeacher()" class="py-4 bg-gradient-to-r from-teacher to-orange-500 text-white rounded-xl font-medium hover:opacity-90 flex flex-col items-center gap-2">
+                    <span class="iconify text-2xl" data-icon="mdi:human-male-board"></span>
+                    <span>Join as Teacher</span>
+                </button>
+            </div>
+            
+            <div id="sessionLibrary" class="mt-6 border-t pt-6">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase mb-3">Recent Sessions</h3>
+                <div id="sessionList" class="space-y-2 max-h-48 overflow-y-auto">
+                    <p class="text-gray-400 text-sm italic">No saved sessions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MAIN APP VIEW ==================== -->
+<div id="appView" class="view">
+    <header id="appHeader" class="bg-white shadow-sm border-b flex-shrink-0">
+        <div class="px-4 py-2 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div id="headerIcon" class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                    <span class="iconify text-white text-xl" data-icon="mdi:flask-outline"></span>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-gray-900">InquiryOS</h1>
+                    <p class="text-xs text-gray-500" id="headerSubtitle">Student Mode</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                <button onclick="switchMode('student')" id="studentModeBtn" class="mode-btn px-4 py-2 rounded-lg text-sm font-medium bg-white shadow text-primary">
+                    <span class="iconify mr-1" data-icon="mdi:account-school"></span> Student
+                </button>
+                <button onclick="switchMode('teacher')" id="teacherModeBtn" class="mode-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-white/50">
+                    <span class="iconify mr-1" data-icon="mdi:human-male-board"></span> Teacher
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div id="healthStatus" class="flex items-center gap-3 px-3 py-1 bg-gray-100 rounded-full">
+                    <div class="flex items-center gap-1">
+                        <span class="health-indicator health-good" id="syncIndicator"></span>
+                        <span class="text-xs text-gray-600">Sync</span>
+                    </div>
+                    <span class="text-xs text-gray-500" id="lastSyncTime">Just now</span>
+                </div>
+                
+                <div class="flex items-center gap-2 px-3 py-1 bg-purple-100 rounded-full">
+                    <span class="text-xs text-purple-700">Class:</span>
+                    <code class="text-sm font-mono font-bold text-purple-700" id="displayClassCode">------</code>
+                    <button onclick="copyCode()" class="text-purple-600 hover:text-purple-800">
+                        <span class="iconify" data-icon="mdi:content-copy"></span>
+                    </button>
+                </div>
+                
+                <div class="flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full">
+                    <span class="iconify text-green-600" data-icon="mdi:account-group"></span>
+                    <span class="text-sm font-medium text-green-700" id="connectedCount">1</span>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <div id="userAvatar" class="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white text-sm font-medium">?</div>
+                    <span class="text-sm font-medium text-gray-700" id="userName">User</span>
+                </div>
+                
+                <button onclick="openSessionMenu()" class="p-2 hover:bg-gray-100 rounded-lg" title="Session menu">
+                    <span class="iconify text-xl text-gray-600" data-icon="mdi:menu"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+    
+    <div class="flex flex-1 overflow-hidden">
+        <nav id="sidebar" class="w-64 bg-white border-r flex-shrink-0 flex flex-col overflow-hidden">
+            <div class="flex-1 overflow-y-auto p-4">
+                <div id="navContent"></div>
+            </div>
+            
+            <div id="evidenceBank" class="border-t p-4 bg-gradient-to-br from-amber-50 to-orange-50">
+                <h4 class="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-2">
+                    <span class="iconify" data-icon="mdi:folder-star"></span>
+                    Evidence Bank
+                </h4>
+                <div id="evidenceList" class="space-y-2 max-h-32 overflow-y-auto text-xs">
+                    <p class="text-amber-600 italic">No evidence collected yet</p>
+                </div>
+            </div>
+        </nav>
+        
+        <main id="mainContent" class="flex-1 overflow-y-auto bg-gray-50 p-6"></main>
+    </div>
+</div>
+
+<!-- Session Menu Modal -->
+<div id="sessionMenuModal" class="fixed inset-0 z-50 hidden">
+    <div class="modal-overlay absolute inset-0" onclick="closeSessionMenu()"></div>
+    <div class="absolute right-4 top-16 bg-white rounded-xl shadow-2xl w-80 overflow-hidden">
+        <div class="p-4 border-b bg-gray-50">
+            <h3 class="font-semibold text-gray-900">Session Menu</h3>
+        </div>
+        <div class="p-2">
+            <button onclick="saveCurrentSession()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-lg text-left">
+                <span class="iconify text-xl text-green-600" data-icon="mdi:content-save"></span>
+                <div>
+                    <p class="font-medium">Save Session</p>
+                    <p class="text-xs text-gray-500">Save current state</p>
+                </div>
+            </button>
+            <button onclick="exportSession()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-lg text-left">
+                <span class="iconify text-xl text-blue-600" data-icon="mdi:download"></span>
+                <div>
+                    <p class="font-medium">Export Session</p>
+                    <p class="text-xs text-gray-500">Download as JSON</p>
+                </div>
+            </button>
+            <button onclick="importSession()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-lg text-left">
+                <span class="iconify text-xl text-purple-600" data-icon="mdi:upload"></span>
+                <div>
+                    <p class="font-medium">Import Session</p>
+                    <p class="text-xs text-gray-500">Load from JSON</p>
+                </div>
+            </button>
+            <hr class="my-2">
+            <button onclick="leaveSession()" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 rounded-lg text-left text-red-600">
+                <span class="iconify text-xl" data-icon="mdi:logout"></span>
+                <div>
+                    <p class="font-medium">Leave Session</p>
+                    <p class="text-xs text-red-400">Return to login</p>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Card Modal -->
+<div id="editCardModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="modal-overlay absolute inset-0" onclick="closeEditModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+        <div class="p-6 border-b">
+            <h3 class="text-lg font-semibold text-gray-900" id="editModalTitle">Edit Item</h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="text-sm font-medium text-gray-700 block mb-1">Content</label>
+                <textarea id="editCardText" rows="3" class="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none"></textarea>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-gray-700 block mb-1">Category</label>
+                <select id="editCardCategory" class="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none">
+                    <option value="">Uncategorized</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-gray-700 block mb-1">Teacher Response</label>
+                <textarea id="editCardResponse" rows="2" class="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none" placeholder="Add a response..."></textarea>
+            </div>
+            <div class="flex items-center gap-4">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="editCardStarred" class="w-4 h-4 text-primary">
+                    <span class="text-sm text-gray-700">Star this item</span>
+                </label>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="editCardHidden" class="w-4 h-4 text-primary">
+                    <span class="text-sm text-gray-700">Hide from students</span>
+                </label>
+            </div>
+        </div>
+        <div class="p-6 border-t bg-gray-50 flex justify-between">
+            <button onclick="deleteEditingCard()" class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg">
+                <span class="iconify mr-1" data-icon="mdi:delete"></span> Delete
+            </button>
+            <div class="flex gap-2">
+                <button onclick="closeEditModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                <button onclick="saveEditingCard()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Evidence Viewer Modal -->
+<div id="evidenceViewerModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="modal-overlay absolute inset-0" onclick="closeEvidenceViewer()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-6 border-b flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900" id="evidenceViewerTitle">Evidence</h3>
+            <button onclick="closeEvidenceViewer()" class="p-2 hover:bg-gray-100 rounded-lg">
+                <span class="iconify text-xl" data-icon="mdi:close"></span>
+            </button>
+        </div>
+        <div id="evidenceViewerContent" class="p-6 flex-1 overflow-y-auto"></div>
+    </div>
+</div>
+
+<!-- Icon Picker Modal -->
+<div id="iconPickerModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="modal-overlay absolute inset-0" onclick="closeIconPicker()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Select Icon</h3>
+        </div>
+        <div id="iconPickerContent" class="p-4 max-h-64 overflow-y-auto">
+            <div class="p-4 border-b">
+                <input type="text" id="iconSearchInput" placeholder="Search icons..." 
+                    class="w-full px-3 py-2 border rounded-lg"
+                    oninput="searchIcons()">
+            </div>
+            <div class="grid grid-cols-8 gap-2" id="iconGrid"></div>
+        </div>
+        <div class="p-4 border-t bg-gray-50">
+            <button onclick="closeIconPicker()" class="w-full py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
+
+<input type="file" id="importFileInput" accept=".json" class="hidden" onchange="handleImportFile(event)">
+
+<script>
+// ==================== INDEXEDDB STORAGE LAYER ====================
+const DB_NAME = 'InquiryOS_DB';
+const DB_VERSION = 2;
+const STORE_SESSIONS = 'sessions';
+const STORE_LIBRARY = 'library';
+const STORE_USERS = 'users';
+
+let db = null;
+let dbReady = false;
+
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = (event) => {
+            console.error('IndexedDB error:', event.target.error);
+            reject(event.target.error);
+        };
+        
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            dbReady = true;
+            console.log('IndexedDB initialized successfully');
+            resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            
+            if (!database.objectStoreNames.contains(STORE_SESSIONS)) {
+                const sessionsStore = database.createObjectStore(STORE_SESSIONS, { keyPath: 'code' });
+                sessionsStore.createIndex('timestamp', 'timestamp', { unique: false });
+            }
+            
+            if (!database.objectStoreNames.contains(STORE_LIBRARY)) {
+                database.createObjectStore(STORE_LIBRARY, { keyPath: 'code' });
+            }
+            
+            if (!database.objectStoreNames.contains(STORE_USERS)) {
+                const usersStore = database.createObjectStore(STORE_USERS, { keyPath: 'visitorId' });
+                usersStore.createIndex('classCode', 'classCode', { unique: false });
+            }
+            
+            console.log('IndexedDB schema created/updated');
+        };
+    });
+}
+
+function dbPut(storeName, data) {
+    return new Promise((resolve, reject) => {
+        if (!db || !dbReady) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.put(data);
+            
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+function dbGet(storeName, key) {
+    return new Promise((resolve, reject) => {
+        if (!db || !dbReady) {
+            resolve(null);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.get(key);
+            
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+function dbGetAll(storeName) {
+    return new Promise((resolve, reject) => {
+        if (!db || !dbReady) {
+            resolve([]);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.getAll();
+            
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+function dbDelete(storeName, key) {
+    return new Promise((resolve, reject) => {
+        if (!db || !dbReady) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.delete(key);
+            
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+function dbGetByIndex(storeName, indexName, value) {
+    return new Promise((resolve, reject) => {
+        if (!db || !dbReady) {
+            resolve([]);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const index = store.index(indexName);
+            const request = index.getAll(value);
+            
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        } catch (e) {
+            resolve([]);
+        }
+    });
+}
+
+// ==================== NGSS DATA ====================
+let ngssData = {
+    elements3D: null,
+    loaded: false
+};
+
+// ==================== APP STATE ====================
+const App = {
+    mode: 'student',
+    user: { name: '', visitorId: '' },
+    classCode: '',
+    currentModule: 'questions',
+    teacherModule: 'overview',
+    iconSearchResults: [],
+    iconSearchQuery: '',
+    currentIconSet: 'mdi',
+    availableIconSets: [],
+    
+    work: {
+        phenomenon: { title: '', description: '', tags: [], ngssStandards: [] },
+        notices: [],
+        wonders: [],
+        mainQuestion: '',
+        subQuestions: [],
+        modelNodes: [],
+        modelConnections: [],
+        variables: [],
+        procedureSteps: [],
+        dataTable: {
+            columns: [
+                { id: 'c1', name: 'Trial', type: 'text', variableId: '' },
+                { id: 'c2', name: 'Variable 1', type: 'number', unit: '', variableId: '' },
+                { id: 'c3', name: 'Variable 2', type: 'number', unit: '', variableId: '' }
+            ],
+            rows: [{}, {}, {}]
+        },
+        mathExpressions: [],
+        evidence: [],
+        claim: '',
+        reasoning: '',
+        evidenceText: '',
+        selectedEvidence: [],
+        debatePosts: [],
+        poster: {},
+        categories: [
+            { id: 'cat_patterns', name: 'Patterns', color: '#3b82f6' },
+            { id: 'cat_causes', name: 'Cause & Effect', color: '#22c55e' },
+            { id: 'cat_systems', name: 'Systems', color: '#a855f7' },
+            { id: 'cat_energy', name: 'Energy', color: '#f59e0b' }
+        ]
+    },
+    
+    teacherSettings: {
+        moduleAccess: {
+            questions: true, models: true, investigation: true, analysis: true,
+            math: true, explanations: true, argument: true, communication: true
+        },
+        phenomenon: { title: 'Ecosystems & Energy Flow', description: 'A lake has experienced a sudden algae bloom, turning the water green.', tags: ['Ecosystems', 'Energy'], ngssStandards: [] },
+        showTeacherResponses: true,
+        anonymousMode: false,
+        allowStudentReplies: true,
+        lessonIcons: []
+    },
+    
+    syncState: {
+        lastSync: Date.now(),
+        syncInterval: null
+    },
+    
+    modelState: {
+        selectedNode: null,
+        draggingNode: null,
+        connecting: null,
+        connectingHandle: null,
+        offset: { x: 0, y: 0 },
+        selectedIcon: null
+    },
+    
+    editingCard: null,
+    draggedCard: null,
+    draggedRowIndex: null,
+    iconPickerCallback: null
+};
+
+let chart = null;
+
+// ==================== INITIALIZATION ====================
+async function init() {
+    try {
+        await initDB();
+        await loadSessionLibrary();
+        loadNGSSData();
+        await loadIconSets();
+    } catch (e) {
+        console.error('Initialization error:', e);
+        toast('Storage initialization failed', 'error');
+    }
+}
+
+async function loadIconSets() {
+    try {
+        const response = await fetch('https://api.iconify.design/collections');
+        const data = await response.json();
+        App.availableIconSets = Object.entries(data).map(([prefix, info]) => ({
+            prefix,
+            name: info.name,
+            total: info.total,
+            category: info.category || 'General',
+            samples: info.samples || []
+        })).filter(s => s.total > 50).slice(0, 50);
+    } catch (e) {
+        console.error('Failed to load icon sets:', e);
+        App.availableIconSets = [
+            { prefix: 'mdi', name: 'Material Design Icons', total: 7000 },
+            { prefix: 'fa6-solid', name: 'Font Awesome 6 Solid', total: 1400 },
+            { prefix: 'lucide', name: 'Lucide', total: 1000 },
+            { prefix: 'tabler', name: 'Tabler Icons', total: 3000 }
+        ];
+    }
+}
+
+async function loadIconsFromIconify(query = '', prefix = null) {
+    const iconPrefix = prefix || App.currentIconSet;
+    
+    try {
+        if (query) {
+            const url = `https://api.iconify.design/search?query=${encodeURIComponent(query)}&limit=100&prefix=${iconPrefix}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            App.iconSearchResults = data.icons || [];
+        } else {
+            const url = `https://api.iconify.design/collection?prefix=${iconPrefix}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            let icons = [];
+            if (data.uncategorized) {
+                icons = data.uncategorized.map(name => `${iconPrefix}:${name}`);
+            }
+            if (data.categories) {
+                Object.values(data.categories).forEach(categoryIcons => {
+                    categoryIcons.forEach(name => {
+                        const fullName = `${iconPrefix}:${name}`;
+                        if (!icons.includes(fullName)) {
+                            icons.push(fullName);
+                        }
+                    });
+                });
+            }
+            App.iconSearchResults = icons.slice(0, 200);
+        }
+    } catch (e) {
+        console.error('Iconify API error:', e);
+        App.iconSearchResults = ['mdi:atom', 'mdi:leaf', 'mdi:water', 'mdi:fire', 'mdi:arrow-right', 'mdi:circle', 'mdi:square', 'mdi:flask'];
+    }
+}
+
+function loadNGSSData() {
+    ngssData.elements3D = {
+        dimensions: [
+            { code: 'SEP', name: 'Science and Engineering Practices', elements: [
+                { id: 'SEP1', name: 'Asking Questions and Defining Problems' },
+                { id: 'SEP2', name: 'Developing and Using Models' },
+                { id: 'SEP3', name: 'Planning and Carrying Out Investigations' },
+                { id: 'SEP4', name: 'Analyzing and Interpreting Data' },
+                { id: 'SEP5', name: 'Using Mathematics and Computational Thinking' },
+                { id: 'SEP6', name: 'Constructing Explanations and Designing Solutions' },
+                { id: 'SEP7', name: 'Engaging in Argument from Evidence' },
+                { id: 'SEP8', name: 'Obtaining, Evaluating, and Communicating Information' }
+            ]},
+            { code: 'CCC', name: 'Crosscutting Concepts', elements: [
+                { id: 'CCC1', name: 'Patterns' },
+                { id: 'CCC2', name: 'Cause and Effect' },
+                { id: 'CCC3', name: 'Scale, Proportion, and Quantity' },
+                { id: 'CCC4', name: 'Systems and System Models' },
+                { id: 'CCC5', name: 'Energy and Matter' },
+                { id: 'CCC6', name: 'Structure and Function' },
+                { id: 'CCC7', name: 'Stability and Change' }
+            ]}
+        ]
+    };
+    ngssData.loaded = true;
+}
+
+async function startAsStudent() {
+    const name = document.getElementById('loginName').value.trim() || 'Student ' + Math.floor(Math.random() * 100);
+    const classCode = document.getElementById('loginClass').value.trim().toUpperCase() || generateCode();
+    
+    App.user.name = name;
+    App.user.visitorId = 'student_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+    App.classCode = classCode;
+    App.mode = 'student';
+    
+    await initializeApp();
+}
+
+async function startAsTeacher() {
+    const name = document.getElementById('loginName').value.trim() || 'Teacher';
+    const classCode = document.getElementById('loginClass').value.trim().toUpperCase() || generateCode();
+    
+    App.user.name = name;
+    App.user.visitorId = 'teacher_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+    App.classCode = classCode;
+    App.mode = 'teacher';
+    
+    await initializeApp();
+}
+
+function generateCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+}
+
+async function initializeApp() {
+    document.getElementById('loginView').classList.remove('active');
+    document.getElementById('appView').classList.add('active');
+    
+    document.getElementById('userName').textContent = App.user.name;
+    document.getElementById('userAvatar').textContent = App.user.name.charAt(0).toUpperCase();
+    document.getElementById('displayClassCode').textContent = App.classCode;
+    
+    await loadFromStorage();
+    await registerUser();
+    startSync();
+    updateModeUI();
+    
+    toast(`Welcome, ${App.user.name}!`, 'success');
+}
+
+function switchMode(mode) {
+    App.mode = mode;
+    updateModeUI();
+    saveToStorage();
+}
+
+function updateModeUI() {
+    const isTeacher = App.mode === 'teacher';
+    
+    document.getElementById('headerSubtitle').textContent = isTeacher ? 'Teacher Mode' : 'Student Mode';
+    document.getElementById('headerIcon').className = `w-10 h-10 rounded-xl flex items-center justify-center ${isTeacher ? 'bg-gradient-to-br from-teacher to-orange-500' : 'bg-gradient-to-br from-primary to-secondary'}`;
+    document.getElementById('appHeader').className = `${isTeacher ? 'bg-red-50' : 'bg-white'} shadow-sm border-b flex-shrink-0`;
+    
+    document.getElementById('studentModeBtn').className = `mode-btn px-4 py-2 rounded-lg text-sm font-medium ${!isTeacher ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-white/50'}`;
+    document.getElementById('teacherModeBtn').className = `mode-btn px-4 py-2 rounded-lg text-sm font-medium ${isTeacher ? 'bg-white shadow text-teacher' : 'text-gray-600 hover:bg-white/50'}`;
+    
+    document.getElementById('evidenceBank').style.display = isTeacher ? 'none' : 'block';
+    
+    renderNavigation();
+    if (isTeacher) {
+        renderTeacherContent();
+    } else {
+        renderStudentContent();
+    }
+}
+
+// ==================== STORAGE & SYNC ====================
+async function saveToStorage() {
+    if (!dbReady) {
+        console.warn('Database not ready, skipping save');
+        return false;
+    }
+    
+    try {
+        const sessionData = {
+            code: App.classCode,
+            work: JSON.parse(JSON.stringify(App.work)),
+            teacherSettings: JSON.parse(JSON.stringify(App.teacherSettings)),
+            timestamp: Date.now()
+        };
+        
+        await dbPut(STORE_SESSIONS, sessionData);
+        
+        App.syncState.lastSync = Date.now();
+        updateHealthIndicator('sync', 'good');
+        document.getElementById('lastSyncTime').textContent = 'Just now';
+        return true;
+    } catch (e) {
+        console.error('Save error:', e);
+        updateHealthIndicator('sync', 'bad');
+        return false;
+    }
+}
+
+async function loadFromStorage() {
+    if (!dbReady) return;
+    
+    try {
+        const saved = await dbGet(STORE_SESSIONS, App.classCode);
+        if (saved) {
+            if (saved.work) {
+                App.work = { ...App.work, ...saved.work };
+            }
+            if (saved.teacherSettings) {
+                App.teacherSettings = { ...App.teacherSettings, ...saved.teacherSettings };
+            }
+            App.syncState.lastSync = saved.timestamp || Date.now();
+        }
+    } catch (e) {
+        console.error('Load error:', e);
+    }
+}
+
+function startSync() {
+    App.syncState.syncInterval = setInterval(async () => {
+        await syncWithStorage();
+    }, 2000);
+}
+
+async function syncWithStorage() {
+    if (!dbReady) return;
+    
+    try {
+        const saved = await dbGet(STORE_SESSIONS, App.classCode);
+        if (saved && saved.timestamp > App.syncState.lastSync) {
+            if (saved.work) App.work = { ...App.work, ...saved.work };
+            if (saved.teacherSettings) App.teacherSettings = { ...App.teacherSettings, ...saved.teacherSettings };
+            App.syncState.lastSync = saved.timestamp;
+            
+            renderNavigation();
+            if (App.mode === 'student') {
+                renderStudentContent();
+            } else {
+                renderTeacherContent();
+            }
+            renderEvidenceBank();
+            
+            updateHealthIndicator('sync', 'good');
+            document.getElementById('lastSyncTime').textContent = 'Just now';
+        }
+    } catch (e) {
+        console.error('Sync error:', e);
+    }
+    await updateConnectedUsers();
+}
+
+async function saveAndBroadcast(path, value) {
+    setNestedValue(App.work, path, value);
+    await saveToStorage();
+}
+
+function setNestedValue(obj, path, value) {
+    const keys = path.split('.');
+    let current = obj;
+    for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) current[keys[i]] = {};
+        current = current[keys[i]];
+    }
+    current[keys[keys.length - 1]] = value;
+}
+
+async function registerUser() {
+    if (!dbReady) return;
+    
+    try {
+        const userData = {
+            visitorId: App.user.visitorId,
+            classCode: App.classCode,
+            name: App.user.name,
+            mode: App.mode,
+            lastSeen: Date.now()
+        };
+        
+        await dbPut(STORE_USERS, userData);
+        await updateConnectedUsers();
+        
+        setInterval(async () => {
+            if (dbReady) {
+                userData.lastSeen = Date.now();
+                await dbPut(STORE_USERS, userData).catch(() => {});
+            }
+        }, 5000);
+    } catch (e) {
+        console.error('Register user error:', e);
+    }
+}
+
+async function updateConnectedUsers() {
+    try {
+        const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
+        const now = Date.now();
+        const active = allUsers.filter(u => now - u.lastSeen < 15000);
+        document.getElementById('connectedCount').textContent = active.length || '1';
+    } catch (e) {
+        document.getElementById('connectedCount').textContent = '1';
+    }
+}
+
+function updateHealthIndicator(type, status) {
+    const indicator = document.getElementById(type + 'Indicator');
+    if (indicator) {
+        indicator.className = `health-indicator health-${status}`;
+    }
+}
+
+// ==================== SESSION LIBRARY ====================
+async function loadSessionLibrary() {
+    try {
+        const library = await dbGetAll(STORE_LIBRARY);
+        const container = document.getElementById('sessionList');
+        
+        if (!library || library.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-sm italic">No saved sessions</p>';
+            return;
+        }
+        
+        library.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+        
+        container.innerHTML = library.map(s => `
+            <div class="session-card p-3 bg-gray-50 rounded-lg border hover:border-primary" onclick="joinSavedSession('${s.code}')">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-900">${s.name || 'Untitled'}</p>
+                        <p class="text-xs text-gray-500">Code: ${s.code}</p>
+                    </div>
+                    <button onclick="event.stopPropagation(); deleteFromLibrary('${s.code}')" class="text-red-400 hover:text-red-600 p-1">
+                        <span class="iconify" data-icon="mdi:close"></span>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error('Load library error:', e);
+        document.getElementById('sessionList').innerHTML = '<p class="text-gray-400 text-sm italic">No saved sessions</p>';
+    }
+}
+
+async function saveToLibrary() {
+    if (!dbReady) return;
+    
+    try {
+        const entry = {
+            code: App.classCode,
+            name: App.teacherSettings.phenomenon.title || 'Untitled Session',
+            lastModified: Date.now(),
+            noticeCount: App.work.notices?.length || 0,
+            wonderCount: App.work.wonders?.length || 0
+        };
+        
+        await dbPut(STORE_LIBRARY, entry);
+    } catch (e) {
+        console.error('Save to library error:', e);
+    }
+}
+
+async function deleteFromLibrary(code) {
+    if (!confirm('Remove this session?')) return;
+    
+    try {
+        await dbDelete(STORE_LIBRARY, code);
+        await dbDelete(STORE_SESSIONS, code);
+        await loadSessionLibrary();
+        toast('Session removed', 'info');
+    } catch (e) {
+        console.error('Delete from library error:', e);
+        toast('Failed to remove session', 'error');
+    }
+}
+
+function joinSavedSession(code) {
+    document.getElementById('loginClass').value = code;
+}
+
+async function saveCurrentSession() {
+    await saveToLibrary();
+    await saveToStorage();
+    closeSessionMenu();
+    toast('Session saved!', 'success');
+    await loadSessionLibrary();
+}
+
+function exportSession() {
+    const data = JSON.stringify({ work: App.work, teacherSettings: App.teacherSettings }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inquiryos_${App.classCode}_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    closeSessionMenu();
+    toast('Session exported!', 'success');
+}
+
+function importSession() {
+    document.getElementById('importFileInput').click();
+    closeSessionMenu();
+}
+
+async function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data.work) App.work = { ...App.work, ...data.work };
+            if (data.teacherSettings) App.teacherSettings = { ...App.teacherSettings, ...data.teacherSettings };
+            await saveToStorage();
+            updateModeUI();
+            toast('Session imported!', 'success');
+        } catch (err) {
+            toast('Invalid file format', 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function leaveSession() {
+    if (confirm('Leave this session?')) {
+        clearInterval(App.syncState.syncInterval);
+        
+        document.getElementById('appView').classList.remove('active');
+        document.getElementById('loginView').classList.add('active');
+        loadSessionLibrary();
+    }
+    closeSessionMenu();
+}
+
+function openSessionMenu() {
+    document.getElementById('sessionMenuModal').classList.remove('hidden');
+}
+
+function closeSessionMenu() {
+    document.getElementById('sessionMenuModal').classList.add('hidden');
+}
+
+// ==================== NAVIGATION ====================
+function renderNavigation() {
+    const nav = document.getElementById('navContent');
+    
+    if (App.mode === 'teacher') {
+        nav.innerHTML = `
+            <h3 class="text-xs font-semibold text-gray-400 uppercase mb-3">Teacher Dashboard</h3>
+            <ul class="space-y-1">
+                ${[
+                    { id: 'overview', icon: 'mdi:view-dashboard', label: 'Overview' },
+                    { id: 'students', icon: 'mdi:account-group', label: 'Students' },
+                    { id: 'access', icon: 'mdi:lock-open-variant', label: 'Access Control' },
+                    { id: 'noticeboard', icon: 'mdi:bulletin-board', label: 'Notice & Wonder Board' },
+                    { id: 'livemodels', icon: 'mdi:cube-outline', label: 'View: Models' },
+                    { id: 'livedata', icon: 'mdi:table', label: 'View: Data Tables' },
+                    { id: 'moderation', icon: 'mdi:shield-check', label: 'Moderation' },
+                    { id: 'categories', icon: 'mdi:folder-multiple', label: 'Categories' },
+                    { id: 'icons', icon: 'mdi:emoticon', label: 'Icon Library' },
+                    { id: 'ngss', icon: 'mdi:school', label: 'NGSS Standards' },
+                    { id: 'settings', icon: 'mdi:cog', label: 'Settings' }
+                ].map(m => `
+                    <li>
+                        <button onclick="showTeacherModule('${m.id}')" class="teacher-nav w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${App.teacherModule === m.id ? 'active' : 'text-gray-700 hover:bg-gray-100'}">
+                            <span class="iconify" data-icon="${m.icon}"></span>
+                            ${m.label}
+                        </button>
+                    </li>
+                `).join('')}
+            </ul>
+            
+            <div class="mt-6 p-4 bg-gray-50 rounded-xl">
+                <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3">Quick Stats</h4>
+                <div class="grid grid-cols-2 gap-2 text-center">
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                        <p class="text-lg font-bold text-blue-700">${App.work.notices.length}</p>
+                        <p class="text-xs text-blue-600">Notices</p>
+                    </div>
+                    <div class="p-2 bg-yellow-100 rounded-lg">
+                        <p class="text-lg font-bold text-yellow-700">${App.work.wonders.length}</p>
+                        <p class="text-xs text-yellow-600">Wonders</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        const modules = [
+            { id: 'questions', icon: 'mdi:help-circle', label: '1. Questions', sep: 'SEP1' },
+            { id: 'models', icon: 'mdi:cube-outline', label: '2. Models', sep: 'SEP2' },
+            { id: 'investigation', icon: 'mdi:microscope', label: '3. Investigation', sep: 'SEP3' },
+            { id: 'analysis', icon: 'mdi:chart-line', label: '4. Analysis', sep: 'SEP4' },
+            { id: 'math', icon: 'mdi:calculator', label: '5. Math', sep: 'SEP5' },
+            { id: 'explanations', icon: 'mdi:lightbulb-on', label: '6. Explanations', sep: 'SEP6' },
+            { id: 'argument', icon: 'mdi:forum', label: '7. Argument', sep: 'SEP7' },
+            { id: 'communication', icon: 'mdi:share-variant', label: '8. Communication', sep: 'SEP8' }
+        ];
+        
+        nav.innerHTML = `
+            <h3 class="text-xs font-semibold text-gray-400 uppercase mb-3">Science Practices</h3>
+            <ul class="space-y-1">
+                ${modules.map(m => {
+                    const locked = !App.teacherSettings.moduleAccess[m.id];
+                    return `
+                        <li>
+                            <button onclick="${locked ? '' : `showStudentModule('${m.id}')`}" 
+                                class="nav-btn w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${App.currentModule === m.id ? 'active' : 'text-gray-700 hover:bg-gray-100'} ${locked ? 'opacity-50 cursor-not-allowed' : ''}">
+                                <span class="iconify" data-icon="${m.icon}"></span>
+                                <span class="flex-1 text-left">${m.label}</span>
+                                ${locked ? '<span class="iconify text-gray-400" data-icon="mdi:lock"></span>' : ''}
+                            </button>
+                        </li>
+                    `;
+                }).join('')}
+            </ul>
+            
+            <div class="mt-6 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
+                <h4 class="text-sm font-semibold text-gray-700 mb-2">Progress</h4>
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-primary to-secondary transition-all" style="width:${calculateProgress()}%"></div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">${calculateProgress()}% Complete</p>
+            </div>
+        `;
+        
+        renderEvidenceBank();
+    }
+}
+
+function calculateProgress() {
+    let p = 0;
+    if (App.work.notices.length) p += 10;
+    if (App.work.wonders.length) p += 10;
+    if (App.work.mainQuestion) p += 10;
+    if (App.work.modelNodes.length) p += 15;
+    if (App.work.variables.length) p += 10;
+    if (App.work.dataTable.rows.some(r => Object.values(r).some(v => v))) p += 15;
+    if (App.work.evidence.length) p += 10;
+    if (App.work.claim) p += 10;
+    if (App.work.reasoning) p += 10;
+    return Math.min(100, p);
+}
+
+function renderEvidenceBank() {
+    const list = document.getElementById('evidenceList');
+    if (!list) return;
+    
+    if (App.work.evidence.length === 0) {
+        list.innerHTML = '<p class="text-amber-600 italic">No evidence collected yet</p>';
+    } else {
+        list.innerHTML = App.work.evidence.map(e => `
+            <div class="p-2 bg-white rounded border border-amber-200 hover:border-amber-400 cursor-pointer" onclick="viewEvidence('${e.id}')">
+                <div class="flex items-center gap-2">
+                    <span class="iconify text-amber-600" data-icon="${e.icon || 'mdi:file-document'}"></span>
+                    <span class="font-medium truncate">${e.title}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// ==================== STUDENT MODULES ====================
+function showStudentModule(moduleId) {
+    if (!App.teacherSettings.moduleAccess[moduleId]) {
+        toast('This module is locked by your teacher', 'warning');
+        return;
+    }
+    App.currentModule = moduleId;
+    renderNavigation();
+    renderStudentContent();
+}
+
+function renderStudentContent() {
+    const content = document.getElementById('mainContent');
+    const renderers = {
+        questions: renderQuestionsModule,
+        models: renderModelsModule,
+        investigation: renderInvestigationModule,
+        analysis: renderAnalysisModule,
+        math: renderMathModule,
+        explanations: renderExplanationsModule,
+        argument: renderArgumentModule,
+        communication: renderCommunicationModule
+    };
+    
+    content.innerHTML = renderers[App.currentModule]?.() || '<p>Module not found</p>';
+    
+    setTimeout(() => {
+        if (App.currentModule === 'models') initModelCanvas();
+        if (App.currentModule === 'analysis') initChart();
+    }, 50);
+}
+
+// ==================== QUESTIONS MODULE ====================
+function renderQuestionsModule() {
+    const p = App.teacherSettings.phenomenon;
+    return `
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                        <span class="iconify text-white text-xl" data-icon="mdi:help-circle"></span>
+                    </span>
+                    Asking Questions
+                    <span class="ngss-tag ngss-sep">SEP1</span>
+                </h2>
+            </div>
+            
+            <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 mb-6">
+                <div class="flex gap-4">
+                    <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <span class="iconify text-amber-600 text-2xl" data-icon="mdi:eye"></span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900">${p.title || 'Phenomenon'}</h3>
+                        <p class="text-gray-700 mt-1">${p.description || 'Your teacher will set up the phenomenon.'}</p>
+                        ${p.tags?.length ? `<div class="flex gap-2 mt-3 flex-wrap">${p.tags.map(t => `<span class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm">${t}</span>`).join('')}</div>` : ''}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="iconify text-blue-500" data-icon="mdi:eye"></span>
+                        I Notice...
+                    </h3>
+                    <div class="space-y-2 mb-4 max-h-64 overflow-y-auto" id="noticesList">
+                        ${renderNoticesList()}
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="noticeInput" placeholder="I notice that..." 
+                            class="flex-1 px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            onkeypress="if(event.key==='Enter')addNotice()">
+                        <button onclick="addNotice()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                            <span class="iconify" data-icon="mdi:plus"></span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="iconify text-yellow-500" data-icon="mdi:lightbulb"></span>
+                        I Wonder...
+                    </h3>
+                    <div class="space-y-2 mb-4 max-h-64 overflow-y-auto" id="wondersList">
+                        ${renderWondersList()}
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="wonderInput" placeholder="I wonder why/how/what..." 
+                            class="flex-1 px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 focus:outline-none"
+                            onkeypress="if(event.key==='Enter')addWonder()">
+                        <button onclick="addWonder()" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">
+                            <span class="iconify" data-icon="mdi:plus"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span class="iconify text-purple-500" data-icon="mdi:compass"></span>
+                    Driving Questions
+                </h3>
+                <div class="mb-4">
+                    <label class="text-sm text-gray-600 block mb-2">Main Investigation Question</label>
+                    <input type="text" id="mainQuestionInput" value="${App.work.mainQuestion}" 
+                        onchange="saveMainQuestion(this.value)"
+                        placeholder="What is your main question?"
+                        class="w-full px-4 py-3 border-2 border-purple-200 bg-purple-50 rounded-lg text-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    ${App.work.subQuestions.map((q, i) => `
+                        <div class="p-3 bg-gray-50 rounded-lg border group">
+                            <div class="flex justify-between items-start">
+                                <input type="text" value="${q.text}" 
+                                    onchange="updateSubQuestion('${q.id}', this.value)"
+                                    placeholder="Sub-question ${i + 1}"
+                                    class="flex-1 bg-transparent border-none text-sm focus:outline-none">
+                                <button onclick="deleteSubQuestion('${q.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600">
+                                    <span class="iconify" data-icon="mdi:close"></span>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <button onclick="addSubQuestion()" class="mt-4 text-sm text-purple-600 hover:underline flex items-center gap-1">
+                    <span class="iconify" data-icon="mdi:plus"></span> Add Sub-Question
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function renderNoticesList() {
+    if (!App.work.notices.length) return '<p class="text-gray-400 text-sm italic">What do you observe?</p>';
+    
+    return App.work.notices.filter(n => !n.hidden).map(n => `
+        <div class="group p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500 ${n.starred ? 'ring-2 ring-yellow-400' : ''}">
+            <div class="flex justify-between items-start">
+                <p class="text-sm text-gray-700">${n.text}</p>
+                <div class="flex items-center gap-1">
+                    ${n.starred ? '<span class="iconify text-yellow-500" data-icon="mdi:star"></span>' : ''}
+                    <button onclick="deleteNotice('${n.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 ml-2">
+                        <span class="iconify" data-icon="mdi:close"></span>
+                    </button>
+                </div>
+            </div>
+            ${n.categoryId ? `<span class="inline-block mt-2 px-2 py-0.5 text-xs rounded-full" style="background:${App.work.categories.find(c=>c.id===n.categoryId)?.color}20;color:${App.work.categories.find(c=>c.id===n.categoryId)?.color}">${App.work.categories.find(c=>c.id===n.categoryId)?.name || ''}</span>` : ''}
+            ${n.response && App.teacherSettings.showTeacherResponses ? `
+                <div class="mt-2 p-2 bg-white rounded border border-blue-200">
+                    <p class="text-xs font-medium text-blue-700 mb-1"><span class="iconify inline" data-icon="mdi:message-reply"></span> Teacher</p>
+                    <p class="text-sm text-gray-700">${n.response}</p>
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+function renderWondersList() {
+    if (!App.work.wonders.length) return '<p class="text-gray-400 text-sm italic">What questions do you have?</p>';
+    
+    return App.work.wonders.filter(w => !w.hidden).map(w => `
+        <div class="group p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-500 ${w.starred ? 'ring-2 ring-yellow-400' : ''}">
+            <div class="flex justify-between items-start">
+                <p class="text-sm text-gray-700">${w.text}</p>
+                <div class="flex items-center gap-1">
+                    ${w.starred ? '<span class="iconify text-yellow-500" data-icon="mdi:star"></span>' : ''}
+                    <button onclick="deleteWonder('${w.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 ml-2">
+                        <span class="iconify" data-icon="mdi:close"></span>
+                    </button>
+                </div>
+            </div>
+            ${w.categoryId ? `<span class="inline-block mt-2 px-2 py-0.5 text-xs rounded-full" style="background:${App.work.categories.find(c=>c.id===w.categoryId)?.color}20;color:${App.work.categories.find(c=>c.id===w.categoryId)?.color}">${App.work.categories.find(c=>c.id===w.categoryId)?.name || ''}</span>` : ''}
+            <button onclick="promoteToQuestion('${w.id}')" class="text-xs text-purple-600 hover:underline mt-1 block">
+                → Make driving question
+            </button>
+            ${w.response && App.teacherSettings.showTeacherResponses ? `
+                <div class="mt-2 p-2 bg-white rounded border border-yellow-200">
+                    <p class="text-xs font-medium text-yellow-700 mb-1"><span class="iconify inline" data-icon="mdi:message-reply"></span> Teacher</p>
+                    <p class="text-sm text-gray-700">${w.response}</p>
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+async function addNotice() {
+    const input = document.getElementById('noticeInput');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    const notice = { 
+        id: 'n_' + Date.now() + '_' + Math.random().toString(36).substr(2,5), 
+        text, 
+        author: App.user.name, 
+        authorId: App.user.visitorId,
+        time: Date.now(),
+        categoryId: '',
+        starred: false,
+        hidden: false,
+        response: '',
+        replies: []
+    };
+    App.work.notices.push(notice);
+    input.value = '';
+    
+    await saveAndBroadcast('notices', App.work.notices);
+    renderStudentContent();
+    renderNavigation();
+    toast('Notice added!', 'success');
+}
+
+async function deleteNotice(id) {
+    App.work.notices = App.work.notices.filter(n => n.id !== id);
+    await saveAndBroadcast('notices', App.work.notices);
+    renderStudentContent();
+    renderNavigation();
+}
+
+async function addWonder() {
+    const input = document.getElementById('wonderInput');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    const wonder = { 
+        id: 'w_' + Date.now() + '_' + Math.random().toString(36).substr(2,5), 
+        text, 
+        author: App.user.name, 
+        authorId: App.user.visitorId,
+        time: Date.now(),
+        categoryId: '',
+        starred: false,
+        hidden: false,
+        response: '',
+        replies: []
+    };
+    App.work.wonders.push(wonder);
+    input.value = '';
+    
+    await saveAndBroadcast('wonders', App.work.wonders);
+    renderStudentContent();
+    renderNavigation();
+    toast('Wonder added!', 'success');
+}
+
+async function deleteWonder(id) {
+    App.work.wonders = App.work.wonders.filter(w => w.id !== id);
+    await saveAndBroadcast('wonders', App.work.wonders);
+    renderStudentContent();
+    renderNavigation();
+}
+
+async function promoteToQuestion(id) {
+    const wonder = App.work.wonders.find(w => w.id === id);
+    if (!wonder) return;
+    
+    if (!App.work.mainQuestion) {
+        App.work.mainQuestion = wonder.text;
+        await saveAndBroadcast('mainQuestion', App.work.mainQuestion);
+    } else {
+        App.work.subQuestions.push({ id: 'sq_' + Date.now(), text: wonder.text });
+        await saveAndBroadcast('subQuestions', App.work.subQuestions);
+    }
+    renderStudentContent();
+    toast('Added to driving questions!', 'success');
+}
+
+async function saveMainQuestion(text) {
+    App.work.mainQuestion = text;
+    await saveAndBroadcast('mainQuestion', text);
+}
+
+async function addSubQuestion() {
+    App.work.subQuestions.push({ id: 'sq_' + Date.now(), text: '' });
+    await saveAndBroadcast('subQuestions', App.work.subQuestions);
+    renderStudentContent();
+}
+
+async function updateSubQuestion(id, text) {
+    const q = App.work.subQuestions.find(q => q.id === id);
+    if (q) q.text = text;
+    await saveAndBroadcast('subQuestions', App.work.subQuestions);
+}
+
+async function deleteSubQuestion(id) {
+    App.work.subQuestions = App.work.subQuestions.filter(q => q.id !== id);
+    await saveAndBroadcast('subQuestions', App.work.subQuestions);
+    renderStudentContent();
+}
+
+// ==================== MODELS MODULE ====================
+function renderModelsModule() {
+    const availableIcons = App.teacherSettings.lessonIcons?.length > 0 
+        ? App.teacherSettings.lessonIcons 
+        : ['mdi:atom', 'mdi:leaf', 'mdi:water', 'mdi:fire', 'mdi:arrow-right', 'mdi:circle', 'mdi:square', 'mdi:flask'];
+    
+    return `
+        <div class="h-full flex flex-col">
+            <div class="mb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                        <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                            <span class="iconify text-white text-xl" data-icon="mdi:cube-outline"></span>
+                        </span>
+                        Developing Models
+                        <span class="ngss-tag ngss-sep">SEP2</span>
+                    </h2>
+                    <p class="text-gray-600 mt-1">Create node-based concept maps</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="clearAllNodes()" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm">
+                        <span class="iconify mr-1" data-icon="mdi:delete"></span> Clear
+                    </button>
+                    <button onclick="saveModelAsEvidence()" class="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg hover:opacity-90 text-sm">
+                        <span class="iconify mr-1" data-icon="mdi:bookmark"></span> Save as Evidence
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-3 mb-4">
+                <p class="text-xs text-gray-500 mb-2">Click an icon then click canvas, or drag handles to connect nodes:</p>
+                <div class="flex flex-wrap gap-2 items-center">
+                    ${availableIcons.map(icon => `
+                        <button onclick="selectIconForNode('${icon}')" 
+                            class="icon-palette-btn p-2 rounded-lg hover:bg-blue-100 border-2 ${App.modelState.selectedIcon === icon ? 'border-primary bg-blue-50' : 'border-transparent'}"
+                            title="${icon}">
+                            <span class="iconify text-xl" data-icon="${icon}"></span>
+                        </button>
+                    `).join('')}
+                    <input type="color" id="nodeColorPicker" value="#3b82f6" class="w-10 h-10 rounded cursor-pointer" title="Node color">
+                </div>
+            </div>
+            
+            <div class="flex-1 bg-white rounded-xl shadow-sm border overflow-hidden relative">
+                <div id="modelCanvas" class="model-canvas w-full h-full" 
+                    onclick="canvasClick(event)"
+                    ondblclick="canvasDblClick(event)">
+                    <svg id="connectionsSvg" class="connection-line">
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    ${App.work.modelNodes.length === 0 ? `
+                        <div class="absolute inset-0 flex items-center justify-center text-gray-400 pointer-events-none">
+                            <div class="text-center">
+                                <span class="iconify text-5xl" data-icon="mdi:cube-outline"></span>
+                                <p class="mt-2">Select an icon above, then click here to add nodes</p>
+                                <p class="text-sm">Double-click canvas to add default node</p>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+                <svg id="tempConnectionSvg" class="connection-line pointer-events-none" style="z-index:100;"></svg>
+            </div>
+            
+            <div class="mt-2 text-sm text-gray-500">
+                <span class="iconify inline" data-icon="mdi:information"></span>
+                Tips: Click node label to edit • Drag handles to connect • Click handle without dragging to create new node
+            </div>
+        </div>
+    `;
+}
+
+function selectIconForNode(icon) {
+    App.modelState.selectedIcon = icon;
+    document.querySelectorAll('.icon-palette-btn').forEach(btn => {
+        const isSelected = btn.querySelector('.iconify')?.getAttribute('data-icon') === icon;
+        btn.classList.toggle('border-primary', isSelected);
+        btn.classList.toggle('bg-blue-50', isSelected);
+        btn.classList.toggle('border-transparent', !isSelected);
+    });
+}
+
+function initModelCanvas() {
+    renderModelNodes();
+}
+
+function canvasClick(event) {
+    const canvas = document.getElementById('modelCanvas');
+    if (!canvas) return;
+    
+    if (event.target === canvas || event.target.tagName === 'svg' || event.target.classList.contains('model-canvas')) {
+        if (App.modelState.selectedIcon) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left - 60;
+            const y = event.clientY - rect.top - 25;
+            
+            createNode(Math.max(0, x), Math.max(0, y), App.modelState.selectedIcon);
+            App.modelState.selectedIcon = null;
+            document.querySelectorAll('.icon-palette-btn').forEach(btn => {
+                btn.classList.remove('border-primary', 'bg-blue-50');
+                btn.classList.add('border-transparent');
+            });
+        } else {
+            App.modelState.selectedNode = null;
+            renderModelNodes();
+        }
+    }
+}
+
+function canvasDblClick(event) {
+    const canvas = document.getElementById('modelCanvas');
+    if (!canvas) return;
+    
+    if (event.target === canvas || event.target.tagName === 'svg' || event.target.classList.contains('model-canvas')) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left - 60;
+        const y = event.clientY - rect.top - 25;
+        
+        createNode(Math.max(0, x), Math.max(0, y), 'mdi:circle');
+    }
+}
+
+async function createNode(x, y, icon) {
+    const color = document.getElementById('nodeColorPicker')?.value || '#3b82f6';
+    const node = {
+        id: 'node_' + Date.now(),
+        icon: icon,
+        label: 'Concept',
+        x: x,
+        y: y,
+        color: color
+    };
+    
+    App.work.modelNodes.push(node);
+    await saveAndBroadcast('modelNodes', App.work.modelNodes);
+    renderModelNodes();
+    toast('Node added!', 'success');
+}
+
+function renderModelNodes() {
+    const canvas = document.getElementById('modelCanvas');
+    if (!canvas) return;
+    
+    canvas.querySelectorAll('.model-node').forEach(n => n.remove());
+    
+    App.work.modelNodes.forEach(node => {
+        const el = document.createElement('div');
+        el.className = `model-node ${App.modelState.selectedNode === node.id ? 'selected' : ''}`;
+        el.style.left = node.x + 'px';
+        el.style.top = node.y + 'px';
+        el.style.borderColor = node.color;
+        el.dataset.id = node.id;
+        
+        el.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="iconify text-2xl cursor-pointer" data-icon="${node.icon}" style="color:${node.color}" onclick="event.stopPropagation(); openIconPickerForNode('${node.id}')"></span>
+                <input type="text" value="${node.label}" 
+                    class="node-label-input"
+                    onclick="event.stopPropagation()"
+                    onchange="updateNodeLabel('${node.id}', this.value)"
+                    onfocus="this.select()">
+            </div>
+            <div class="node-handle top" onmousedown="startConnection(event, '${node.id}', 'top')"></div>
+            <div class="node-handle bottom" onmousedown="startConnection(event, '${node.id}', 'bottom')"></div>
+            <div class="node-handle left" onmousedown="startConnection(event, '${node.id}', 'left')"></div>
+            <div class="node-handle right" onmousedown="startConnection(event, '${node.id}', 'right')"></div>
+        `;
+        
+        el.onmousedown = (e) => {
+            if (e.target.classList.contains('node-handle') || e.target.tagName === 'INPUT') return;
+            startNodeDrag(e, node.id);
+        };
+        el.onclick = (e) => {
+            if (e.target.classList.contains('node-handle') || e.target.tagName === 'INPUT') return;
+            e.stopPropagation();
+            selectNode(node.id);
+        };
+        
+        canvas.appendChild(el);
+    });
+    
+    renderConnections();
+}
+
+async function updateNodeLabel(nodeId, label) {
+    const node = App.work.modelNodes.find(n => n.id === nodeId);
+    if (node) {
+        node.label = label;
+        await saveAndBroadcast('modelNodes', App.work.modelNodes);
+    }
+}
+
+function openIconPickerForNode(nodeId) {
+    App.iconPickerCallback = async (icon) => {
+        const node = App.work.modelNodes.find(n => n.id === nodeId);
+        if (node) {
+            node.icon = icon;
+            await saveAndBroadcast('modelNodes', App.work.modelNodes);
+            renderModelNodes();
+        }
+    };
+    openIconPicker();
+}
+
+async function openIconPicker() {
+    if (App.iconSearchResults.length === 0) {
+        await loadIconsFromIconify();
+    }
+    renderIconGrid();
+    document.getElementById('iconPickerModal').classList.remove('hidden');
+    document.getElementById('iconPickerModal').classList.add('flex');
+}
+
+function renderIconGrid() {
+    const grid = document.getElementById('iconGrid');
+    const icons = App.iconSearchQuery ? App.iconSearchResults : 
+        (App.teacherSettings.lessonIcons?.length > 0 ? App.teacherSettings.lessonIcons : App.iconSearchResults);
+    
+    grid.innerHTML = icons.slice(0, 64).map(icon => `
+        <button onclick="selectIcon('${icon}')" class="p-2 rounded hover:bg-blue-100">
+            <span class="iconify text-xl" data-icon="${icon}"></span>
+        </button>
+    `).join('');
+}
+
+async function searchIcons() {
+    const query = document.getElementById('iconSearchInput').value.trim();
+    App.iconSearchQuery = query;
+    await loadIconsFromIconify(query);
+    renderIconGrid();
+}
+
+function closeIconPicker() {
+    document.getElementById('iconPickerModal').classList.add('hidden');
+    document.getElementById('iconPickerModal').classList.remove('flex');
+    App.iconPickerCallback = null;
+}
+
+function selectIcon(icon) {
+    if (App.iconPickerCallback) {
+        App.iconPickerCallback(icon);
+    }
+    closeIconPicker();
+}
+
+let connectionStartTime = 0;
+
+function startConnection(event, nodeId, handle) {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    connectionStartTime = Date.now();
+    App.modelState.connecting = nodeId;
+    App.modelState.connectingHandle = handle;
+    
+    document.onmousemove = (e) => canvasMouseMove(e);
+    document.onmouseup = (e) => endConnection(e);
+}
+
+function canvasMouseMove(event) {
+    if (App.modelState.connecting) {
+        const canvas = document.getElementById('modelCanvas');
+        const rect = canvas.getBoundingClientRect();
+        const svg = document.getElementById('tempConnectionSvg');
+        
+        const fromNode = App.work.modelNodes.find(n => n.id === App.modelState.connecting);
+        if (fromNode) {
+            const startPos = getHandlePosition(fromNode, App.modelState.connectingHandle);
+            const endX = event.clientX - rect.left;
+            const endY = event.clientY - rect.top;
+            
+            svg.innerHTML = `
+                <line x1="${startPos.x}" y1="${startPos.y}" x2="${endX}" y2="${endY}" 
+                    stroke="#7c3aed" stroke-width="2" stroke-dasharray="5,5"/>
+            `;
+        }
+    }
+}
+
+async function endConnection(event) {
+    document.onmousemove = null;
+    document.onmouseup = null;
+    
+    document.getElementById('tempConnectionSvg').innerHTML = '';
+    
+    const wasDrag = Date.now() - connectionStartTime > 200;
+    
+    if (wasDrag) {
+        const target = document.elementFromPoint(event.clientX, event.clientY);
+        if (target?.classList.contains('node-handle')) {
+            const toNodeEl = target.closest('.model-node');
+            const toNodeId = toNodeEl?.dataset.id;
+            const toHandle = ['top', 'bottom', 'left', 'right'].find(h => target.classList.contains(h));
+            
+            if (toNodeId && toNodeId !== App.modelState.connecting) {
+                App.work.modelConnections.push({
+                    id: 'conn_' + Date.now(),
+                    from: App.modelState.connecting,
+                    fromHandle: App.modelState.connectingHandle,
+                    to: toNodeId,
+                    toHandle: toHandle
+                });
+                await saveAndBroadcast('modelConnections', App.work.modelConnections);
+                renderConnections();
+                toast('Connected!', 'success');
+            }
+        } else {
+            const canvas = document.getElementById('modelCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left - 60;
+            const y = event.clientY - rect.top - 25;
+            
+            const fromNode = App.work.modelNodes.find(n => n.id === App.modelState.connecting);
+            if (fromNode && x > 0 && y > 0) {
+                const newNode = {
+                    id: 'node_' + Date.now(),
+                    icon: fromNode.icon,
+                    label: 'New Concept',
+                    x: Math.max(0, x),
+                    y: Math.max(0, y),
+                    color: fromNode.color
+                };
+                
+                App.work.modelNodes.push(newNode);
+                
+                const oppositeHandle = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+                App.work.modelConnections.push({
+                    id: 'conn_' + Date.now(),
+                    from: App.modelState.connecting,
+                    fromHandle: App.modelState.connectingHandle,
+                    to: newNode.id,
+                    toHandle: oppositeHandle[App.modelState.connectingHandle]
+                });
+                
+                await saveAndBroadcast('modelNodes', App.work.modelNodes);
+                await saveAndBroadcast('modelConnections', App.work.modelConnections);
+                renderModelNodes();
+                toast('Node created and connected!', 'success');
+            }
+        }
+    } else {
+        const node = App.work.modelNodes.find(n => n.id === App.modelState.connecting);
+        if (node) {
+            const pos = getHandlePosition(node, App.modelState.connectingHandle);
+            let newX = pos.x - 60;
+            let newY = pos.y - 25;
+            
+            const offset = 100;
+            switch (App.modelState.connectingHandle) {
+                case 'top': newY -= offset; break;
+                case 'bottom': newY += offset; break;
+                case 'left': newX -= offset; break;
+                case 'right': newX += offset; break;
+            }
+            
+            const newNode = {
+                id: 'node_' + Date.now(),
+                icon: node.icon,
+                label: 'New Concept',
+                x: Math.max(0, newX),
+                y: Math.max(0, newY),
+                color: node.color
+            };
+            
+            App.work.modelNodes.push(newNode);
+            
+            const oppositeHandle = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+            App.work.modelConnections.push({
+                id: 'conn_' + Date.now(),
+                from: App.modelState.connecting,
+                fromHandle: App.modelState.connectingHandle,
+                to: newNode.id,
+                toHandle: oppositeHandle[App.modelState.connectingHandle]
+            });
+            
+            await saveAndBroadcast('modelNodes', App.work.modelNodes);
+            await saveAndBroadcast('modelConnections', App.work.modelConnections);
+            renderModelNodes();
+            toast('Node created and connected!', 'success');
+        }
+    }
+    
+    App.modelState.connecting = null;
+    App.modelState.connectingHandle = null;
+}
+
+function renderConnections() {
+    const svg = document.getElementById('connectionsSvg');
+    if (!svg) return;
+    
+    svg.querySelectorAll('line, path').forEach(l => l.remove());
+    
+    App.work.modelConnections.forEach(conn => {
+        const fromNode = App.work.modelNodes.find(n => n.id === conn.from);
+        const toNode = App.work.modelNodes.find(n => n.id === conn.to);
+        
+        if (fromNode && toNode) {
+            const start = getHandlePosition(fromNode, conn.fromHandle);
+            const end = getHandlePosition(toNode, conn.toHandle);
+            
+            const midX = (start.x + end.x) / 2;
+            const midY = (start.y + end.y) / 2;
+            
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const d = `M ${start.x} ${start.y} Q ${midX} ${start.y}, ${midX} ${midY} T ${end.x} ${end.y}`;
+            path.setAttribute('d', d);
+            path.setAttribute('stroke', '#64748b');
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('marker-end', 'url(#arrowhead)');
+            svg.appendChild(path);
+        }
+    });
+}
+
+function getHandlePosition(node, handle) {
+    const nodeWidth = 120;
+    const nodeHeight = 50;
+    
+    switch (handle) {
+        case 'top': return { x: node.x + nodeWidth / 2, y: node.y };
+        case 'bottom': return { x: node.x + nodeWidth / 2, y: node.y + nodeHeight };
+        case 'left': return { x: node.x, y: node.y + nodeHeight / 2 };
+        case 'right': return { x: node.x + nodeWidth, y: node.y + nodeHeight / 2 };
+        default: return { x: node.x + nodeWidth / 2, y: node.y + nodeHeight / 2 };
+    }
+}
+
+function startNodeDrag(event, nodeId) {
+    event.stopPropagation();
+    
+    const node = App.work.modelNodes.find(n => n.id === nodeId);
+    if (!node) return;
+    
+    const canvas = document.getElementById('modelCanvas');
+    const rect = canvas.getBoundingClientRect();
+    
+    App.modelState.draggingNode = nodeId;
+    App.modelState.offset = {
+        x: event.clientX - rect.left - node.x,
+        y: event.clientY - rect.top - node.y
+    };
+    
+    selectNode(nodeId);
+    
+    document.onmousemove = (e) => dragNode(e);
+    document.onmouseup = () => endNodeDrag();
+}
+
+function dragNode(event) {
+    if (!App.modelState.draggingNode) return;
+    
+    const canvas = document.getElementById('modelCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const node = App.work.modelNodes.find(n => n.id === App.modelState.draggingNode);
+    
+    if (node) {
+        node.x = Math.max(0, Math.min(rect.width - 120, event.clientX - rect.left - App.modelState.offset.x));
+        node.y = Math.max(0, Math.min(rect.height - 50, event.clientY - rect.top - App.modelState.offset.y));
+        
+        const el = document.querySelector(`.model-node[data-id="${node.id}"]`);
+        if (el) {
+            el.style.left = node.x + 'px';
+            el.style.top = node.y + 'px';
+        }
+        renderConnections();
+    }
+}
+
+async function endNodeDrag() {
+    if (App.modelState.draggingNode) {
+        await saveAndBroadcast('modelNodes', App.work.modelNodes);
+    }
+    App.modelState.draggingNode = null;
+    document.onmousemove = null;
+    document.onmouseup = null;
+}
+
+function selectNode(nodeId) {
+    App.modelState.selectedNode = nodeId;
+    document.querySelectorAll('.model-node').forEach(n => {
+        n.classList.toggle('selected', n.dataset.id === nodeId);
+    });
+}
+
+async function clearAllNodes() {
+    if (App.work.modelNodes.length === 0) return;
+    if (confirm('Clear all nodes and connections?')) {
+        App.work.modelNodes = [];
+        App.work.modelConnections = [];
+        await saveAndBroadcast('modelNodes', []);
+        await saveAndBroadcast('modelConnections', []);
+        renderStudentContent();
+    }
+}
+
+async function saveModelAsEvidence() {
+    if (App.work.modelNodes.length === 0) {
+        toast('Add some nodes first!', 'warning');
+        return;
+    }
+    
+    const evidence = {
+        id: 'ev_' + Date.now(),
+        type: 'model',
+        title: 'Concept Model',
+        description: `${App.work.modelNodes.length} nodes, ${App.work.modelConnections.length} connections`,
+        icon: 'mdi:cube-outline',
+        data: {
+            nodes: JSON.parse(JSON.stringify(App.work.modelNodes)),
+            connections: JSON.parse(JSON.stringify(App.work.modelConnections))
+        },
+        author: App.user.name,
+        time: Date.now()
+    };
+    
+    App.work.evidence.push(evidence);
+    await saveAndBroadcast('evidence', App.work.evidence);
+    renderEvidenceBank();
+    toast('Model saved as evidence!', 'success');
+}
+
+// ==================== INVESTIGATION MODULE ====================
+function renderInvestigationModule() {
+    const dt = App.work.dataTable;
+    
+    return `
+        <div class="max-w-5xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                        <span class="iconify text-white text-xl" data-icon="mdi:microscope"></span>
+                    </span>
+                    Planning & Carrying Out Investigations
+                    <span class="ngss-tag ngss-sep">SEP3</span>
+                </h2>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+                <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    Experimental Variables
+                    <span class="ngss-tag ngss-ccc">CCC2</span>
+                </h3>
+                <div class="grid md:grid-cols-3 gap-4 mb-4">
+                    ${['independent', 'dependent', 'controlled'].map(type => {
+                        const colors = { independent: 'blue', dependent: 'green', controlled: 'gray' };
+                        const labels = { independent: 'Independent (Change)', dependent: 'Dependent (Measure)', controlled: 'Controlled (Keep Same)' };
+                        return `
+                            <div class="p-4 bg-${colors[type]}-50 rounded-lg border-2 border-${colors[type]}-200 drop-zone min-h-24"
+                                data-type="${type}" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropVar(event)">
+                                <h4 class="font-medium text-${colors[type]}-700 text-sm mb-2">${labels[type]}</h4>
+                                <div class="space-y-2">
+                                    ${App.work.variables.filter(v => v.type === type).map(v => `
+                                        <div class="p-2 bg-white rounded border text-sm flex justify-between items-center group">
+                                            <span>${v.name}</span>
+                                            <button onclick="removeVariable('${v.id}')" class="opacity-0 group-hover:opacity-100 text-red-400">
+                                                <span class="iconify" data-icon="mdi:close"></span>
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <h4 class="font-medium text-yellow-700 text-sm mb-2">Variable Bank</h4>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        ${App.work.variables.filter(v => !v.type).map(v => `
+                            <div draggable="true" ondragstart="dragVarStart(event, '${v.id}')"
+                                class="px-3 py-1 bg-white rounded-full border border-yellow-300 text-sm cursor-grab hover:shadow">
+                                ${v.name}
+                            </div>
+                        `).join('') || '<span class="text-yellow-600 text-sm italic">Add variables below</span>'}
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="newVarInput" placeholder="Add variable..." 
+                            class="flex-1 px-3 py-2 border rounded-lg text-sm" onkeypress="if(event.key==='Enter')addVariable()">
+                        <button onclick="addVariable()" class="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm">Add</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-gray-900">Data Collection Table</h3>
+                    <div class="flex gap-2">
+                        <button onclick="addDataColumn()" class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200">
+                            <span class="iconify mr-1" data-icon="mdi:table-column-plus-after"></span> Add Column
+                        </button>
+                        <button onclick="addDataRow()" class="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200">
+                            <span class="iconify mr-1" data-icon="mdi:table-row-plus-after"></span> Add Row
+                        </button>
+                        <button onclick="saveDataAsEvidence()" class="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200">
+                            <span class="iconify mr-1" data-icon="mdi:bookmark"></span> Save as Evidence
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border p-2 w-10 bg-gray-100"></th>
+                                ${dt.columns.map((col, i) => `
+                                    <th class="border p-0 min-w-32">
+                                        <div class="p-2">
+                                            <input type="text" value="${col.name}" 
+                                                onchange="updateColumnName('${col.id}', this.value)"
+                                                class="w-full font-semibold text-sm bg-transparent border-none focus:outline-none mb-1">
+                                            <div class="flex items-center gap-2">
+                                                <select onchange="updateColumnType('${col.id}', this.value)" 
+                                                    class="text-xs bg-white border rounded px-1 py-0.5">
+                                                    <option value="text" ${col.type === 'text' ? 'selected' : ''}>Text</option>
+                                                    <option value="number" ${col.type === 'number' ? 'selected' : ''}>Number</option>
+                                                </select>
+                                                ${col.type === 'number' ? `
+                                                    <input type="text" value="${col.unit || ''}" placeholder="unit"
+                                                        onchange="updateColumnUnit('${col.id}', this.value)"
+                                                        class="text-xs w-16 border rounded px-1 py-0.5">
+                                                ` : ''}
+                                                ${i > 0 ? `
+                                                    <button onclick="deleteColumn('${col.id}')" class="text-red-400 hover:text-red-600">
+                                                        <span class="iconify text-sm" data-icon="mdi:close"></span>
+                                                    </button>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </th>
+                                `).join('')}
+                                <th class="border p-2 w-10 bg-gray-100"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody">
+                            ${dt.rows.map((row, ri) => `
+                                <tr class="data-row hover:bg-gray-50">
+                                    <td class="border p-2 text-center text-gray-400">${ri + 1}</td>
+                                    ${dt.columns.map(col => `
+                                        <td class="border p-0">
+                                            <input type="${col.type === 'number' ? 'number' : 'text'}"
+                                                value="${row[col.id] || ''}"
+                                                onchange="updateCell(${ri}, '${col.id}', this.value)"
+                                                class="data-cell w-full p-2 border-none focus:bg-blue-50"
+                                                step="${col.type === 'number' ? '0.01' : ''}">
+                                        </td>
+                                    `).join('')}
+                                    <td class="border p-2 text-center">
+                                        <button onclick="deleteDataRow(${ri})" class="text-red-400 hover:text-red-600">
+                                            <span class="iconify" data-icon="mdi:close"></span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+let draggedVarId = null;
+
+async function addVariable() {
+    const input = document.getElementById('newVarInput');
+    const name = input.value.trim();
+    if (!name) return;
+    
+    App.work.variables.push({ id: 'var_' + Date.now(), name, type: null });
+    input.value = '';
+    await saveAndBroadcast('variables', App.work.variables);
+    renderStudentContent();
+}
+
+function dragVarStart(event, id) {
+    draggedVarId = id;
+    event.target.style.opacity = '0.5';
+}
+
+function dragOver(event) {
+    event.preventDefault();
+    event.currentTarget.classList.add('drag-over');
+}
+
+function dragLeave(event) {
+    event.currentTarget.classList.remove('drag-over');
+}
+
+async function dropVar(event) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+    
+    if (draggedVarId) {
+        const type = event.currentTarget.dataset.type;
+        const v = App.work.variables.find(x => x.id === draggedVarId);
+        if (v) {
+            v.type = type;
+            await saveAndBroadcast('variables', App.work.variables);
+            renderStudentContent();
+        }
+    }
+    draggedVarId = null;
+}
+
+async function removeVariable(id) {
+    const v = App.work.variables.find(x => x.id === id);
+    if (v) v.type = null;
+    await saveAndBroadcast('variables', App.work.variables);
+    renderStudentContent();
+}
+
+async function updateColumnName(colId, name) {
+    const col = App.work.dataTable.columns.find(c => c.id === colId);
+    if (col) col.name = name;
+    await saveAndBroadcast('dataTable', App.work.dataTable);
+}
+
+async function addDataColumn() {
+    const name = prompt('Column name:', 'New Column');
+    if (!name) return;
+    
+    const colId = 'col_' + Date.now();
+    App.work.dataTable.columns.push({ id: colId, name, type: 'number', unit: '', variableId: '' });
+    await saveAndBroadcast('dataTable', App.work.dataTable);
+    renderStudentContent();
+}
+
+async function updateColumnType(colId, type) {
+    const col = App.work.dataTable.columns.find(c => c.id === colId);
+    if (col) col.type = type;
+    await saveAndBroadcast('dataTable', App.work.dataTable);
+    renderStudentContent();
+}
+
+async function updateColumnUnit(colId, unit) {
+    const col = App.work.dataTable.columns.find(c => c.id === colId);
+    if (col) col.unit = unit;
+    await saveAndBroadcast('dataTable', App.work.dataTable);
+}
+
+async function deleteColumn(colId) {
+    App.work.dataTable.columns = App.work.dataTable.columns.filter(c => c.id !== colId);
+    App.work.dataTable.rows.forEach(row => delete row[colId]);
+    await saveAndBroadcast('dataTable', App.work.dataTable);
+    renderStudentContent();
+}
+
+async function addDataRow() {
+    const row = {};
+    App.work.dataTable.columns.forEach(col => row[col.id] = '');
+    App.work.dataTable.rows.push(row);
+    await saveAndBroadcast('dataTable', App.work.dataTable);
+    renderStudentContent();
+}
+
+async function updateCell(rowIndex, colId, value) {
+    App.work.dataTable.rows[rowIndex][colId] = value;
+    await saveAndBroadcast('dataTable', App.work.dataTable);
+}
+
+async function deleteDataRow(index) {
+    App.work.dataTable.rows.splice(index, 1);
+    await saveAndBroadcast('dataTable', App.work.dataTable);
+    renderStudentContent();
+}
+
+async function saveDataAsEvidence() {
+    if (!App.work.dataTable.rows.some(r => Object.values(r).some(v => v))) {
+        toast('Add some data first!', 'warning');
+        return;
+    }
+    
+    const evidence = {
+        id: 'ev_' + Date.now(),
+        type: 'data',
+        title: 'Data Table',
+        description: `${App.work.dataTable.rows.length} rows, ${App.work.dataTable.columns.length} columns`,
+        icon: 'mdi:table',
+        data: JSON.parse(JSON.stringify(App.work.dataTable)),
+        author: App.user.name,
+        time: Date.now()
+    };
+    
+    App.work.evidence.push(evidence);
+    await saveAndBroadcast('evidence', App.work.evidence);
+    renderEvidenceBank();
+    toast('Data saved as evidence!', 'success');
+}
+
+// ==================== ANALYSIS MODULE ====================
+function renderAnalysisModule() {
+    const dt = App.work.dataTable;
+    const numericCols = dt.columns.filter(c => c.type === 'number');
+    const hasData = dt.rows.some(r => Object.values(r).some(v => v));
+    
+    return `
+        <div class="max-w-5xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                        <span class="iconify text-white text-xl" data-icon="mdi:chart-line"></span>
+                    </span>
+                    Analyzing & Interpreting Data
+                    <span class="ngss-tag ngss-sep">SEP4</span>
+                </h2>
+            </div>
+            
+            ${!hasData ? `
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
+                    <span class="iconify text-amber-500 text-4xl" data-icon="mdi:alert"></span>
+                    <p class="mt-2 text-amber-700">Collect data in the Investigation module first.</p>
+                    <button onclick="showStudentModule('investigation')" class="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg">
+                        Go to Investigation
+                    </button>
+                </div>
+            ` : `
+                <div class="grid md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm border p-4">
+                        <h3 class="font-semibold text-gray-900 mb-4">Chart Settings</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-gray-600 block mb-1">X-Axis</label>
+                                <select id="xAxisSelect" class="w-full px-3 py-2 border rounded-lg" onchange="updateChart()">
+                                    ${dt.columns.map(c => `<option value="${c.id}">${c.name}${c.unit ? ' (' + c.unit + ')' : ''}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-600 block mb-1">Y-Axis</label>
+                                <select id="yAxisSelect" class="w-full px-3 py-2 border rounded-lg" onchange="updateChart()">
+                                    ${dt.columns.map((c, i) => `<option value="${c.id}" ${i === 1 ? 'selected' : ''}>${c.name}${c.unit ? ' (' + c.unit + ')' : ''}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-600 block mb-2">Chart Type</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button onclick="setChartType('scatter')" class="chart-type-btn px-3 py-2 rounded text-sm bg-primary text-white" data-type="scatter">Scatter</button>
+                                    <button onclick="setChartType('line')" class="chart-type-btn px-3 py-2 rounded text-sm bg-gray-200" data-type="line">Line</button>
+                                    <button onclick="setChartType('bar')" class="chart-type-btn px-3 py-2 rounded text-sm bg-gray-200" data-type="bar">Bar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="md:col-span-2 bg-white rounded-xl shadow-sm border p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-semibold text-gray-900">Graph</h3>
+                            <button onclick="saveChartAsEvidence()" class="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200">
+                                <span class="iconify mr-1" data-icon="mdi:bookmark"></span> Save as Evidence
+                            </button>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="analysisChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        Statistics
+                        <span class="ngss-tag ngss-ccc">CCC3</span>
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        ${numericCols.map(col => {
+                            const values = dt.rows.map(r => parseFloat(r[col.id])).filter(v => !isNaN(v));
+                            if (values.length === 0) return '';
+                            const mean = values.reduce((a, b) => a + b, 0) / values.length;
+                            const max = Math.max(...values);
+                            const min = Math.min(...values);
+                            return `
+                                <div class="p-4 bg-gray-50 rounded-lg">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">${col.name}</h4>
+                                    <div class="space-y-1 text-sm">
+                                        <p>Mean: <span class="font-bold">${mean.toFixed(2)}</span></p>
+                                        <p>Min: <span class="font-bold">${min.toFixed(2)}</span></p>
+                                        <p>Max: <span class="font-bold">${max.toFixed(2)}</span></p>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `}
+        </div>
+    `;
+}
+
+let chartType = 'scatter';
+
+function initChart() {
+    updateChart();
+}
+
+function updateChart() {
+    const canvas = document.getElementById('analysisChart');
+    if (!canvas) return;
+    
+    const dt = App.work.dataTable;
+    const hasData = dt.rows.some(r => Object.values(r).some(v => v));
+    if (!hasData) return;
+    
+    const xColId = document.getElementById('xAxisSelect')?.value || dt.columns[0]?.id;
+    const yColId = document.getElementById('yAxisSelect')?.value || dt.columns[1]?.id;
+    const xCol = dt.columns.find(c => c.id === xColId);
+    const yCol = dt.columns.find(c => c.id === yColId);
+    
+    const data = dt.rows.map(row => ({
+        x: parseFloat(row[xColId]) || 0,
+        y: parseFloat(row[yColId]) || 0
+    })).filter(d => !isNaN(d.x) && !isNaN(d.y));
+    
+    if (chart) chart.destroy();
+    
+    chart = new Chart(canvas, {
+        type: chartType === 'bar' ? 'bar' : 'scatter',
+        data: {
+            datasets: [{
+                label: `${yCol?.name || 'Y'} vs ${xCol?.name || 'X'}`,
+                data: data,
+                backgroundColor: 'rgba(37, 99, 235, 0.6)',
+                borderColor: 'rgba(37, 99, 235, 1)',
+                pointRadius: 8,
+                showLine: chartType === 'line'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { title: { display: true, text: xCol?.name + (xCol?.unit ? ` (${xCol.unit})` : '') } },
+                y: { title: { display: true, text: yCol?.name + (yCol?.unit ? ` (${yCol.unit})` : '') }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+function setChartType(type) {
+    chartType = type;
+    document.querySelectorAll('.chart-type-btn').forEach(btn => {
+        btn.classList.toggle('bg-primary', btn.dataset.type === type);
+        btn.classList.toggle('text-white', btn.dataset.type === type);
+        btn.classList.toggle('bg-gray-200', btn.dataset.type !== type);
+    });
+    updateChart();
+}
+
+async function saveChartAsEvidence() {
+    const evidence = {
+        id: 'ev_' + Date.now(),
+        type: 'chart',
+        title: 'Data Graph',
+        description: `${chartType} chart`,
+        icon: 'mdi:chart-line',
+        data: { chartType, dataTable: JSON.parse(JSON.stringify(App.work.dataTable)) },
+        author: App.user.name,
+        time: Date.now()
+    };
+    
+    App.work.evidence.push(evidence);
+    await saveAndBroadcast('evidence', App.work.evidence);
+    renderEvidenceBank();
+    toast('Chart saved as evidence!', 'success');
+}
+
+// ==================== MATH MODULE ====================
+function renderMathModule() {
+    return `
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                        <span class="iconify text-white text-xl" data-icon="mdi:calculator"></span>
+                    </span>
+                    Using Mathematics
+                    <span class="ngss-tag ngss-sep">SEP5</span>
+                </h2>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-900 mb-4">Calculator</h3>
+                    <input type="text" id="calcDisplay" class="w-full px-4 py-3 border-2 rounded-lg font-mono text-xl mb-4 text-right" placeholder="0" readonly>
+                    <div class="grid grid-cols-4 gap-2">
+                        ${['C', '(', ')', '÷', '7', '8', '9', '×', '4', '5', '6', '-', '1', '2', '3', '+', '0', '.', '±', '='].map(btn => `
+                            <button onclick="calcPress('${btn}')" 
+                                class="p-3 rounded-lg text-lg font-medium ${btn === '=' ? 'bg-primary text-white' : btn === 'C' ? 'bg-red-100 text-red-700' : ['÷', '×', '-', '+'].includes(btn) ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 hover:bg-gray-200'}">
+                                ${btn}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-900 mb-4">Math Expressions</h3>
+                    
+                    <div class="space-y-3 mb-4 max-h-48 overflow-y-auto">
+                        ${App.work.mathExpressions.length ? App.work.mathExpressions.map(expr => `
+                            <div class="p-3 bg-gray-50 rounded-lg flex justify-between items-center group">
+                                <div>
+                                    <code class="font-mono">${expr.expression}</code>
+                                    <span class="text-green-600 ml-2">= ${expr.result}</span>
+                                    ${expr.note ? `<p class="text-xs text-gray-500 mt-1">${expr.note}</p>` : ''}
+                                </div>
+                                <button onclick="deleteMathExpr('${expr.id}')" class="opacity-0 group-hover:opacity-100 text-red-400">
+                                    <span class="iconify" data-icon="mdi:close"></span>
+                                </button>
+                            </div>
+                        `).join('') : '<p class="text-gray-400 text-sm italic">No saved expressions</p>'}
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <input type="text" id="mathExprInput" placeholder="Enter expression (e.g., 2*3.14*5)" 
+                            class="w-full px-3 py-2 border rounded-lg font-mono">
+                        <input type="text" id="mathNoteInput" placeholder="Add a note (optional)" 
+                            class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <button onclick="saveMathExpr()" class="w-full py-2 bg-purple-500 text-white rounded-lg">
+                            Calculate & Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+let calcValue = '';
+
+function calcPress(btn) {
+    const display = document.getElementById('calcDisplay');
+    
+    if (btn === 'C') {
+        calcValue = '';
+    } else if (btn === '=') {
+        try {
+            let expr = calcValue.replace(/×/g, '*').replace(/÷/g, '/');
+            calcValue = String(eval(expr));
+        } catch {
+            calcValue = 'Error';
+        }
+    } else if (btn === '±') {
+        if (calcValue.startsWith('-')) calcValue = calcValue.slice(1);
+        else if (calcValue) calcValue = '-' + calcValue;
+    } else {
+        calcValue += btn;
+    }
+    
+    display.value = calcValue || '0';
+}
+
+async function saveMathExpr() {
+    const expr = document.getElementById('mathExprInput').value.trim();
+    const note = document.getElementById('mathNoteInput').value.trim();
+    
+    if (!expr) return;
+    
+    try {
+        const result = eval(expr.replace(/×/g, '*').replace(/÷/g, '/'));
+        App.work.mathExpressions.push({
+            id: 'math_' + Date.now(),
+            expression: expr,
+            result: Number.isFinite(result) ? result.toFixed(4) : 'Error',
+            note
+        });
+        
+        document.getElementById('mathExprInput').value = '';
+        document.getElementById('mathNoteInput').value = '';
+        
+        await saveAndBroadcast('mathExpressions', App.work.mathExpressions);
+        renderStudentContent();
+        toast('Expression saved!', 'success');
+    } catch {
+        toast('Invalid expression', 'error');
+    }
+}
+
+async function deleteMathExpr(id) {
+    App.work.mathExpressions = App.work.mathExpressions.filter(e => e.id !== id);
+    await saveAndBroadcast('mathExpressions', App.work.mathExpressions);
+    renderStudentContent();
+}
+
+// ==================== EXPLANATIONS MODULE ====================
+function renderExplanationsModule() {
+    return `
+        <div class="max-w-5xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                        <span class="iconify text-white text-xl" data-icon="mdi:lightbulb-on"></span>
+                    </span>
+                    Constructing Explanations (CER)
+                    <span class="ngss-tag ngss-sep">SEP6</span>
+                </h2>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl shadow-sm border p-4">
+                    <h3 class="font-semibold text-gray-900 mb-4">Select Evidence</h3>
+                    <div class="space-y-2 max-h-96 overflow-y-auto">
+                        ${App.work.evidence.length ? App.work.evidence.map(e => `
+                            <div onclick="toggleEvidenceSelection('${e.id}')" 
+                                class="evidence-card p-3 rounded-lg border-2 ${App.work.selectedEvidence.includes(e.id) ? 'selected border-purple-500' : 'border-gray-200'}">
+                                <div class="flex items-center gap-2">
+                                    <span class="iconify text-lg" data-icon="${e.icon}"></span>
+                                    <span class="font-medium text-sm">${e.title}</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">${e.description}</p>
+                            </div>
+                        `).join('') : `
+                            <div class="text-center py-8 text-gray-400">
+                                <span class="iconify text-3xl" data-icon="mdi:folder-open"></span>
+                                <p class="mt-2 text-sm">No evidence yet</p>
+                            </div>
+                        `}
+                    </div>
+                </div>
+                
+                <div class="md:col-span-2 space-y-6">
+                    <div class="bg-white rounded-xl shadow-sm border p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center font-bold text-lg">C</span>
+                            <h3 class="font-semibold text-gray-900">Claim</h3>
+                        </div>
+                        <textarea id="claimInput" rows="3" 
+                            class="w-full px-4 py-3 border-2 border-red-200 rounded-lg focus:border-red-500 focus:outline-none"
+                            placeholder="My claim is..."
+                            onchange="saveClaim(this.value)">${App.work.claim}</textarea>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-lg">E</span>
+                            <h3 class="font-semibold text-gray-900">Evidence</h3>
+                        </div>
+                        <textarea id="evidenceTextInput" rows="4" 
+                            class="w-full px-4 py-3 border-2 border-blue-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                            placeholder="According to my data..."
+                            onchange="saveEvidenceText(this.value)">${App.work.evidenceText || ''}</textarea>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold text-lg">R</span>
+                            <h3 class="font-semibold text-gray-900">Reasoning</h3>
+                        </div>
+                        <textarea id="reasoningInput" rows="5" 
+                            class="w-full px-4 py-3 border-2 border-green-200 rounded-lg focus:border-green-500 focus:outline-none"
+                            placeholder="This evidence supports my claim because..."
+                            onchange="saveReasoning(this.value)">${App.work.reasoning}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function toggleEvidenceSelection(id) {
+    const index = App.work.selectedEvidence.indexOf(id);
+    if (index > -1) {
+        App.work.selectedEvidence.splice(index, 1);
+    } else {
+        App.work.selectedEvidence.push(id);
+    }
+    await saveAndBroadcast('selectedEvidence', App.work.selectedEvidence);
+    renderStudentContent();
+}
+
+async function saveClaim(text) {
+    App.work.claim = text;
+    await saveAndBroadcast('claim', text);
+}
+
+async function saveEvidenceText(text) {
+    App.work.evidenceText = text;
+    await saveAndBroadcast('evidenceText', text);
+}
+
+async function saveReasoning(text) {
+    App.work.reasoning = text;
+    await saveAndBroadcast('reasoning', text);
+}
+
+// ==================== ARGUMENT MODULE ====================
+function renderArgumentModule() {
+    const colors = { claim: 'blue', support: 'green', challenge: 'red', question: 'amber' };
+    return `
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                        <span class="iconify text-white text-xl" data-icon="mdi:forum"></span>
+                    </span>
+                    Engaging in Argument
+                    <span class="ngss-tag ngss-sep">SEP7</span>
+                </h2>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h3 class="font-semibold text-gray-900 mb-4">Class Discussion</h3>
+                
+                <div class="space-y-3 max-h-96 overflow-y-auto mb-6">
+                    ${App.work.debatePosts.length ? App.work.debatePosts.map(p => `
+                        <div class="p-4 bg-${colors[p.type]}-50 rounded-lg border-l-4 border-${colors[p.type]}-500">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="px-2 py-0.5 bg-${colors[p.type]}-200 text-${colors[p.type]}-700 rounded text-xs font-medium uppercase">${p.type}</span>
+                                <span class="text-sm font-medium text-gray-700">${p.author}</span>
+                                <span class="text-xs text-gray-400">${new Date(p.time).toLocaleTimeString()}</span>
+                            </div>
+                            <p class="text-gray-700">${p.text}</p>
+                        </div>
+                    `).join('') : '<p class="text-gray-400 text-center py-8">Start the discussion!</p>'}
+                </div>
+                
+                <div class="border-t pt-4">
+                    <div class="flex gap-2 mb-3">
+                        ${Object.keys(colors).map(type => `
+                            <button onclick="setPostType('${type}')" class="post-type-btn px-3 py-1 rounded-full text-sm border-2 ${type === 'claim' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600'}" data-type="${type}">
+                                ${type.charAt(0).toUpperCase() + type.slice(1)}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="postInput" placeholder="Share your argument..." 
+                            class="flex-1 px-4 py-2 border rounded-lg"
+                            onkeypress="if(event.key==='Enter')addPost()">
+                        <button onclick="addPost()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600">
+                            Post
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+let currentPostType = 'claim';
+
+function setPostType(type) {
+    currentPostType = type;
+    document.querySelectorAll('.post-type-btn').forEach(btn => {
+        const isActive = btn.dataset.type === type;
+        const colorMap = { claim: 'blue', support: 'green', challenge: 'red', question: 'amber' };
+        const color = colorMap[type];
+        btn.className = `post-type-btn px-3 py-1 rounded-full text-sm border-2 ${isActive ? `border-${color}-500 bg-${color}-50 text-${color}-700` : 'border-gray-200 text-gray-600'}`;
+    });
+}
+
+async function addPost() {
+    const input = document.getElementById('postInput');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    const post = {
+        id: 'post_' + Date.now(),
+        type: currentPostType,
+        text,
+        author: App.user.name,
+        authorId: App.user.visitorId,
+        time: Date.now(),
+        replies: []
+    };
+    
+    App.work.debatePosts.push(post);
+    input.value = '';
+    
+    await saveAndBroadcast('debatePosts', App.work.debatePosts);
+    renderStudentContent();
+    toast('Posted!', 'success');
+}
+
+// ==================== COMMUNICATION MODULE ====================
+function renderCommunicationModule() {
+    return `
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                        <span class="iconify text-white text-xl" data-icon="mdi:share-variant"></span>
+                    </span>
+                    Communicating Information
+                    <span class="ngss-tag ngss-sep">SEP8</span>
+                </h2>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h3 class="font-semibold text-gray-900 mb-4">Scientific Poster</h3>
+                
+                <div class="grid md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 block mb-1">Title</label>
+                        <input type="text" id="posterTitle" class="w-full px-3 py-2 border rounded-lg" 
+                            placeholder="Your research title" value="${App.work.poster.title || ''}" oninput="updatePoster()">
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 block mb-1">Authors</label>
+                        <input type="text" id="posterAuthors" class="w-full px-3 py-2 border rounded-lg" 
+                            value="${App.work.poster.authors || App.user.name}" oninput="updatePoster()">
+                    </div>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 block mb-1">Introduction</label>
+                        <textarea id="posterIntro" rows="3" class="w-full px-3 py-2 border rounded-lg" 
+                            placeholder="Background and question" oninput="updatePoster()">${App.work.poster.intro || ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 block mb-1">Methods</label>
+                        <textarea id="posterMethods" rows="3" class="w-full px-3 py-2 border rounded-lg" 
+                            placeholder="How you investigated" oninput="updatePoster()">${App.work.poster.methods || ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 block mb-1">Results</label>
+                        <textarea id="posterResults" rows="3" class="w-full px-3 py-2 border rounded-lg" 
+                            placeholder="What you found" oninput="updatePoster()">${App.work.poster.results || ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 block mb-1">Conclusion</label>
+                        <textarea id="posterConclusion" rows="3" class="w-full px-3 py-2 border rounded-lg" 
+                            placeholder="What it means" oninput="updatePoster()">${App.work.poster.conclusion || ''}</textarea>
+                    </div>
+                </div>
+                
+                <button onclick="autoFillPoster()" class="mb-6 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200">
+                    <span class="iconify mr-1" data-icon="mdi:auto-fix"></span> Auto-fill from my work
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function updatePoster() {
+    App.work.poster = {
+        title: document.getElementById('posterTitle')?.value || '',
+        authors: document.getElementById('posterAuthors')?.value || '',
+        intro: document.getElementById('posterIntro')?.value || '',
+        methods: document.getElementById('posterMethods')?.value || '',
+        results: document.getElementById('posterResults')?.value || '',
+        conclusion: document.getElementById('posterConclusion')?.value || ''
+    };
+    await saveAndBroadcast('poster', App.work.poster);
+}
+
+function autoFillPoster() {
+    document.getElementById('posterTitle').value = App.work.mainQuestion || App.teacherSettings.phenomenon.title;
+    document.getElementById('posterIntro').value = App.teacherSettings.phenomenon.description;
+    document.getElementById('posterMethods').value = '';
+    document.getElementById('posterResults').value = App.work.evidenceText || '';
+    document.getElementById('posterConclusion').value = App.work.claim || '';
+    
+    updatePoster();
+    toast('Poster auto-filled!', 'success');
+}
+
+// ==================== TEACHER MODULES ====================
+function showTeacherModule(moduleId) {
+    App.teacherModule = moduleId;
+    renderNavigation();
+    renderTeacherContent();
+}
+
+function renderTeacherContent() {
+    const content = document.getElementById('mainContent');
+    const renderers = {
+        overview: renderTeacherOverview,
+        students: renderTeacherStudents,
+        access: renderTeacherAccess,
+        noticeboard: renderTeacherNoticeBoard,
+        livemodels: renderLiveModels,
+        livedata: renderLiveData,
+        moderation: renderModeration,
+        categories: renderCategoryManager,
+        icons: renderIconManager,
+        ngss: renderNGSSBrowser,
+        settings: renderSessionSettings
+    };
+    
+    const renderer = renderers[App.teacherModule];
+    if (renderer) {
+        const result = renderer();
+        if (typeof result === 'string') {
+            content.innerHTML = result;
+        }
+    } else {
+        content.innerHTML = '<p>Module not found</p>';
+    }
+}
+
+function renderTeacherOverview() {
+    return `
+        <div class="max-w-5xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Teacher Dashboard</h2>
+            </div>
+            
+            <div class="grid md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <span class="iconify text-blue-600 text-2xl" data-icon="mdi:eye"></span>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold">${App.work.notices.length}</p>
+                            <p class="text-sm text-gray-600">Notices</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                            <span class="iconify text-yellow-600 text-2xl" data-icon="mdi:lightbulb"></span>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold">${App.work.wonders.length}</p>
+                            <p class="text-sm text-gray-600">Wonders</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                            <span class="iconify text-green-600 text-2xl" data-icon="mdi:cube-outline"></span>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold">${App.work.modelNodes.length}</p>
+                            <p class="text-sm text-gray-600">Model Nodes</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                            <span class="iconify text-purple-600 text-2xl" data-icon="mdi:forum"></span>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold">${App.work.debatePosts.length}</p>
+                            <p class="text-sm text-gray-600">Posts</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+                <h3 class="font-semibold text-gray-900 mb-4">Class Phenomenon</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 block mb-1">Title</label>
+                        <input type="text" id="phenomTitle" value="${App.teacherSettings.phenomenon.title}" 
+                            onchange="updatePhenomenon()"
+                            class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 block mb-1">Description</label>
+                        <textarea id="phenomDesc" rows="3" onchange="updatePhenomenon()"
+                            class="w-full px-4 py-2 border rounded-lg">${App.teacherSettings.phenomenon.description}</textarea>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 block mb-1">Tags (comma separated)</label>
+                        <input type="text" id="phenomTags" value="${App.teacherSettings.phenomenon.tags?.join(', ') || ''}" 
+                            onchange="updatePhenomenon()"
+                            class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function updatePhenomenon() {
+    App.teacherSettings.phenomenon = {
+        title: document.getElementById('phenomTitle')?.value || '',
+        description: document.getElementById('phenomDesc')?.value || '',
+        tags: (document.getElementById('phenomTags')?.value || '').split(',').map(t => t.trim()).filter(t => t)
+    };
+    
+    await saveToStorage();
+    toast('Phenomenon updated!', 'success');
+}
+
+function renderTeacherStudents() {
+    return `
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Connected Users</h2>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-8 text-center text-gray-400">
+                <p>Users are tracked in real-time via IndexedDB</p>
+                <p class="text-sm mt-2">Check the connected count in the header</p>
+            </div>
+        </div>
+    `;
+}
+
+function renderTeacherAccess() {
+    const modules = [
+        { id: 'questions', label: '1. Questions', icon: 'mdi:help-circle' },
+        { id: 'models', label: '2. Models', icon: 'mdi:cube-outline' },
+        { id: 'investigation', label: '3. Investigation', icon: 'mdi:microscope' },
+        { id: 'analysis', label: '4. Analysis', icon: 'mdi:chart-line' },
+        { id: 'math', label: '5. Math', icon: 'mdi:calculator' },
+        { id: 'explanations', label: '6. Explanations', icon: 'mdi:lightbulb-on' },
+        { id: 'argument', label: '7. Argument', icon: 'mdi:forum' },
+        { id: 'communication', label: '8. Communication', icon: 'mdi:share-variant' }
+    ];
+    
+    return `
+        <div class="max-w-3xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Module Access Control</h2>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="space-y-3">
+                    ${modules.map(m => `
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="iconify text-xl ${App.teacherSettings.moduleAccess[m.id] ? 'text-primary' : 'text-gray-400'}" data-icon="${m.icon}"></span>
+                                <span class="font-medium">${m.label}</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" ${App.teacherSettings.moduleAccess[m.id] ? 'checked' : ''} 
+                                    onchange="toggleAccess('${m.id}')" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="mt-6 flex gap-4">
+                    <button onclick="setAllAccess(true)" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">
+                        Unlock All
+                    </button>
+                    <button onclick="setAllAccess(false)" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
+                        Lock All
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function toggleAccess(moduleId) {
+    App.teacherSettings.moduleAccess[moduleId] = !App.teacherSettings.moduleAccess[moduleId];
+    await saveToStorage();
+    renderTeacherContent();
+}
+
+async function setAllAccess(unlocked) {
+    Object.keys(App.teacherSettings.moduleAccess).forEach(k => {
+        App.teacherSettings.moduleAccess[k] = unlocked;
+    });
+    if (!unlocked) App.teacherSettings.moduleAccess.questions = true;
+    await saveToStorage();
+    renderTeacherContent();
+}
+
+function renderTeacherNoticeBoard() {
+    return `
+        <div class="max-w-5xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Notice & Wonder Board</h2>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-blue-700 mb-4">Notices (${App.work.notices.length})</h3>
+                    <div class="space-y-2 max-h-96 overflow-y-auto">
+                        ${App.work.notices.map(n => `
+                            <div class="p-3 bg-blue-50 rounded-lg">
+                                <p class="text-sm">${n.text}</p>
+                                <p class="text-xs text-gray-500 mt-1">${n.author}</p>
+                            </div>
+                        `).join('') || '<p class="text-gray-400 italic">No notices yet</p>'}
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-yellow-700 mb-4">Wonders (${App.work.wonders.length})</h3>
+                    <div class="space-y-2 max-h-96 overflow-y-auto">
+                        ${App.work.wonders.map(w => `
+                            <div class="p-3 bg-yellow-50 rounded-lg">
+                                <p class="text-sm">${w.text}</p>
+                                <p class="text-xs text-gray-500 mt-1">${w.author}</p>
+                            </div>
+                        `).join('') || '<p class="text-gray-400 italic">No wonders yet</p>'}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderLiveModels() {
+    return `
+        <div class="max-w-5xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">View Student Models</h2>
+                <p class="text-gray-600">Current model: ${App.work.modelNodes.length} nodes, ${App.work.modelConnections.length} connections</p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                ${App.work.modelNodes.length ? `
+                    <div class="flex flex-wrap gap-4">
+                        ${App.work.modelNodes.map(n => `
+                            <div class="p-4 bg-gray-50 rounded-lg border flex items-center gap-2">
+                                <span class="iconify text-2xl" data-icon="${n.icon}" style="color:${n.color}"></span>
+                                <span>${n.label}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<p class="text-gray-400 text-center py-8">No model nodes yet</p>'}
+            </div>
+        </div>
+    `;
+}
+
+function renderLiveData() {
+    const dt = App.work.dataTable;
+    
+    return `
+        <div class="max-w-5xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">View Student Data</h2>
+                <p class="text-gray-600">${dt.rows.length} rows, ${dt.columns.length} columns</p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6 overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            ${dt.columns.map(col => `
+                                <th class="border p-3 text-left">
+                                    ${col.name}
+                                    ${col.unit ? `<span class="text-xs text-gray-500">(${col.unit})</span>` : ''}
+                                </th>
+                            `).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${dt.rows.map(row => `
+                            <tr class="hover:bg-gray-50">
+                                ${dt.columns.map(col => `
+                                    <td class="border p-3">${row[col.id] || '-'}</td>
+                                `).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function renderModeration() {
+    return `
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Discussion Moderation</h2>
+                <p class="text-gray-600">${App.work.debatePosts.length} posts total</p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="space-y-3 max-h-96 overflow-y-auto">
+                    ${App.work.debatePosts.length ? App.work.debatePosts.map(p => `
+                        <div class="p-4 bg-gray-50 rounded-lg flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">${p.type}</span>
+                                    <span class="font-medium text-sm">${p.author}</span>
+                                </div>
+                                <p class="text-gray-700">${p.text}</p>
+                            </div>
+                            <button onclick="deletePost('${p.id}')" class="text-red-400 hover:text-red-600">
+                                <span class="iconify" data-icon="mdi:delete"></span>
+                            </button>
+                        </div>
+                    `).join('') : '<p class="text-gray-400 text-center py-4">No posts yet</p>'}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function deletePost(id) {
+    if (!confirm('Delete this post?')) return;
+    App.work.debatePosts = App.work.debatePosts.filter(p => p.id !== id);
+    await saveAndBroadcast('debatePosts', App.work.debatePosts);
+    renderTeacherContent();
+    toast('Post deleted', 'info');
+}
+
+function renderCategoryManager() {
+    return `
+        <div class="max-w-2xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Manage Categories</h2>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="space-y-3 mb-6">
+                    ${App.work.categories.map(cat => `
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg group">
+                            <input type="color" value="${cat.color}" onchange="updateCategoryColor('${cat.id}', this.value)"
+                                class="w-8 h-8 rounded cursor-pointer border-0">
+                            <input type="text" value="${cat.name}" onchange="updateCategoryName('${cat.id}', this.value)"
+                                class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                            <button onclick="deleteCategory('${cat.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 p-2">
+                                <span class="iconify" data-icon="mdi:delete"></span>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="flex gap-2">
+                    <input type="text" id="newCategoryName" placeholder="New category name..." 
+                        class="flex-1 px-4 py-2 border rounded-lg" onkeypress="if(event.key==='Enter')addCategory()">
+                    <input type="color" id="newCategoryColor" value="#3b82f6" class="w-10 h-10 rounded cursor-pointer">
+                    <button onclick="addCategory()" class="px-4 py-2 bg-primary text-white rounded-lg">Add</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function addCategory() {
+    const name = document.getElementById('newCategoryName').value.trim();
+    const color = document.getElementById('newCategoryColor').value;
+    
+    if (!name) return;
+    
+    App.work.categories.push({ id: 'cat_' + Date.now(), name, color });
+    document.getElementById('newCategoryName').value = '';
+    await saveAndBroadcast('categories', App.work.categories);
+    renderTeacherContent();
+    toast('Category added!', 'success');
+}
+
+async function updateCategoryName(id, name) {
+    const cat = App.work.categories.find(c => c.id === id);
+    if (cat) cat.name = name;
+    await saveAndBroadcast('categories', App.work.categories);
+}
+
+async function updateCategoryColor(id, color) {
+    const cat = App.work.categories.find(c => c.id === id);
+    if (cat) cat.color = color;
+    await saveAndBroadcast('categories', App.work.categories);
+    renderTeacherContent();
+}
+
+async function deleteCategory(id) {
+    if (!confirm('Delete this category?')) return;
+    App.work.categories = App.work.categories.filter(c => c.id !== id);
+    await saveAndBroadcast('categories', App.work.categories);
+    renderTeacherContent();
+}
+
+function renderIconManager() {
+    const content = document.getElementById('mainContent');
+    
+    const popularSets = [
+        { prefix: 'mdi', name: 'Material Design' },
+        { prefix: 'fa6-solid', name: 'Font Awesome 6' },
+        { prefix: 'lucide', name: 'Lucide' },
+        { prefix: 'tabler', name: 'Tabler' },
+        { prefix: 'ph', name: 'Phosphor' },
+        { prefix: 'carbon', name: 'Carbon' },
+        { prefix: 'fluent', name: 'Fluent UI' },
+        { prefix: 'heroicons', name: 'Heroicons' }
+    ];
+    
+    content.innerHTML = `
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Icon Library</h2>
+                <p class="text-gray-600">Curate icons available to students for modeling</p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+                <h3 class="font-semibold text-gray-900 mb-4">Lesson-Specific Icons (${App.teacherSettings.lessonIcons?.length || 0})</h3>
+                <p class="text-sm text-gray-500 mb-4">Select icons to make available for this lesson. If none selected, default icons will be used.</p>
+                
+                <div class="flex flex-wrap gap-2 mb-4 p-4 bg-blue-50 rounded-lg min-h-16">
+                    ${App.teacherSettings.lessonIcons?.length ? App.teacherSettings.lessonIcons.map(icon => `
+                        <button onclick="removeLessonIcon('${icon}')" class="p-2 bg-white rounded-lg border-2 border-blue-500 hover:bg-red-50" title="Click to remove: ${icon}">
+                            <span class="iconify text-xl" data-icon="${icon}"></span>
+                        </button>
+                    `).join('') : '<p class="text-blue-600 text-sm italic">No lesson icons selected - using defaults</p>'}
+                </div>
+                
+                <button onclick="clearLessonIcons()" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
+                    Clear All Lesson Icons
+                </button>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h3 class="font-semibold text-gray-900 mb-4">Browse Icons</h3>
+                
+                <div class="mb-4">
+                    <label class="text-sm font-medium text-gray-700 block mb-2">Icon Set</label>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        ${popularSets.map(s => `
+                            <button onclick="changeIconSet('${s.prefix}')" 
+                                class="icon-set-btn px-3 py-1 rounded-full text-sm border ${App.currentIconSet === s.prefix ? 'active' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
+                                ${s.name}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="flex gap-2">
+                        <input type="text" id="iconManagerSearch" placeholder="Search icons..." 
+                            class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                            onkeypress="if(event.key==='Enter')searchIconsForManager()">
+                        <button onclick="searchIconsForManager()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600">
+                            <span class="iconify mr-1" data-icon="mdi:magnify"></span> Search
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="iconManagerGrid" class="grid grid-cols-10 gap-2 max-h-96 overflow-y-auto p-2 bg-gray-50 rounded-lg">
+                    <p class="col-span-10 text-center text-gray-400 py-8">Click "Search" or select an icon set to load icons</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Auto-load icons for current set
+    loadIconsForManager();
+}
+
+async function changeIconSet(prefix) {
+    App.currentIconSet = prefix;
+    document.querySelectorAll('.icon-set-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim() === App.availableIconSets.find(s => s.prefix === prefix)?.name || btn.onclick.toString().includes(prefix));
+    });
+    await loadIconsForManager();
+}
+
+async function loadIconsForManager() {
+    const grid = document.getElementById('iconManagerGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = '<p class="col-span-10 text-center text-gray-400 py-8">Loading icons...</p>';
+    
+    await loadIconsFromIconify('', App.currentIconSet);
+    
+    if (App.iconSearchResults.length === 0) {
+        grid.innerHTML = '<p class="col-span-10 text-center text-gray-400 py-8">No icons found</p>';
+        return;
+    }
+    
+    grid.innerHTML = App.iconSearchResults.slice(0, 200).map(icon => {
+        const isSelected = App.teacherSettings.lessonIcons?.includes(icon);
+        return `
+            <button onclick="addLessonIcon('${icon}')" 
+                class="p-3 rounded-lg hover:bg-blue-100 transition-colors ${isSelected ? 'bg-blue-100 ring-2 ring-blue-500' : 'bg-white hover:bg-gray-100'}"
+                title="${icon}">
+                <span class="iconify text-2xl" data-icon="${icon}"></span>
+            </button>
+        `;
+    }).join('');
+}
+
+async function searchIconsForManager() {
+    const query = document.getElementById('iconManagerSearch')?.value.trim() || '';
+    const grid = document.getElementById('iconManagerGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = '<p class="col-span-10 text-center text-gray-400 py-8">Searching...</p>';
+    
+    await loadIconsFromIconify(query, App.currentIconSet);
+    
+    if (App.iconSearchResults.length === 0) {
+        grid.innerHTML = '<p class="col-span-10 text-center text-gray-400 py-8">No icons found for "' + query + '"</p>';
+        return;
+    }
+    
+    grid.innerHTML = App.iconSearchResults.slice(0, 200).map(icon => {
+        const isSelected = App.teacherSettings.lessonIcons?.includes(icon);
+        return `
+            <button onclick="addLessonIcon('${icon}')" 
+                class="p-3 rounded-lg hover:bg-blue-100 transition-colors ${isSelected ? 'bg-blue-100 ring-2 ring-blue-500' : 'bg-white hover:bg-gray-100'}"
+                title="${icon}">
+                <span class="iconify text-2xl" data-icon="${icon}"></span>
+            </button>
+        `;
+    }).join('');
+}
+
+async function addLessonIcon(icon) {
+    if (!App.teacherSettings.lessonIcons) App.teacherSettings.lessonIcons = [];
+    if (!App.teacherSettings.lessonIcons.includes(icon)) {
+        App.teacherSettings.lessonIcons.push(icon);
+        await saveToStorage();
+        renderIconManager();
+        toast('Icon added to lesson', 'success');
+    } else {
+        toast('Icon already added', 'info');
+    }
+}
+
+async function removeLessonIcon(icon) {
+    App.teacherSettings.lessonIcons = (App.teacherSettings.lessonIcons || []).filter(i => i !== icon);
+    await saveToStorage();
+    renderIconManager();
+    toast('Icon removed', 'info');
+}
+
+async function clearLessonIcons() {
+    if (!confirm('Remove all lesson icons?')) return;
+    App.teacherSettings.lessonIcons = [];
+    await saveToStorage();
+    renderIconManager();
+    toast('Lesson icons cleared', 'info');
+}
+
+function renderNGSSBrowser() {
+    return `
+        <div class="max-w-4xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">NGSS Standards</h2>
+                <p class="text-gray-600">Browse and reference NGSS standards</p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="flex gap-2 mb-6">
+                    <button onclick="showNGSSSection('sep')" class="ngss-section-btn px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700" data-section="sep">
+                        Science & Engineering Practices
+                    </button>
+                    <button onclick="showNGSSSection('ccc')" class="ngss-section-btn px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-section="ccc">
+                        Crosscutting Concepts
+                    </button>
+                </div>
+                
+                <div id="ngssContent">
+                    ${renderNGSSSection('sep')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function showNGSSSection(section) {
+    document.querySelectorAll('.ngss-section-btn').forEach(btn => {
+        btn.classList.toggle('bg-blue-100', btn.dataset.section === section);
+        btn.classList.toggle('text-blue-700', btn.dataset.section === section);
+        btn.classList.toggle('bg-gray-100', btn.dataset.section !== section);
+        btn.classList.toggle('text-gray-700', btn.dataset.section !== section);
+    });
+    
+    document.getElementById('ngssContent').innerHTML = renderNGSSSection(section);
+}
+
+function renderNGSSSection(section) {
+    if (!ngssData.loaded) return '<p class="text-gray-400">Loading NGSS data...</p>';
+    
+    const dimension = ngssData.elements3D?.dimensions?.find(d => d.code === section.toUpperCase());
+    if (!dimension) return '<p class="text-gray-400">Data not available</p>';
+    
+    return `
+        <div class="space-y-4">
+            ${dimension.elements?.map((el, i) => `
+                <div class="p-4 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="ngss-tag ${section === 'sep' ? 'ngss-sep' : 'ngss-ccc'}">${el.id}</span>
+                        <h4 class="font-medium text-gray-900">${el.name}</h4>
+                    </div>
+                    <p class="text-sm text-gray-600">
+                        This practice aligns with module ${i + 1} in the student interface.
+                    </p>
+                </div>
+            `).join('') || '<p class="text-gray-400">No elements found</p>'}
+        </div>
+    `;
+}
+
+function renderSessionSettings() {
+    return `
+        <div class="max-w-2xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Session Settings</h2>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border p-6 space-y-6">
+                <div class="space-y-4">
+                    <h4 class="font-medium text-gray-900">Display Options</h4>
+                    
+                    <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
+                        <div>
+                            <p class="font-medium text-gray-700">Show Teacher Responses</p>
+                            <p class="text-xs text-gray-500">Students can see your responses</p>
+                        </div>
+                        <input type="checkbox" ${App.teacherSettings.showTeacherResponses ? 'checked' : ''} 
+                            onchange="toggleTeacherSetting('showTeacherResponses')"
+                            class="w-5 h-5 text-primary rounded">
+                    </label>
+                    
+                    <label class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer">
+                        <div>
+                            <p class="font-medium text-gray-700">Allow Student Replies</p>
+                            <p class="text-xs text-gray-500">Students can reply to each other</p>
+                        </div>
+                        <input type="checkbox" ${App.teacherSettings.allowStudentReplies ? 'checked' : ''} 
+                            onchange="toggleTeacherSetting('allowStudentReplies')"
+                            class="w-5 h-5 text-primary rounded">
+                    </label>
+                </div>
+                
+                <div class="border-t pt-6">
+                    <h4 class="font-medium text-gray-900 mb-4">Storage Info</h4>
+                    <div class="p-4 bg-green-50 rounded-lg">
+                        <p class="text-sm text-green-700">
+                            <span class="iconify inline mr-1" data-icon="mdi:database"></span>
+                            Using IndexedDB for storage (50MB+ capacity)
+                        </p>
+                        <p class="text-xs text-green-600 mt-1">Database ready: ${dbReady ? 'Yes' : 'No'}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function toggleTeacherSetting(key) {
+    App.teacherSettings[key] = !App.teacherSettings[key];
+    await saveToStorage();
+    renderTeacherContent();
+}
+
+// ==================== EVIDENCE VIEWER ====================
+function viewEvidence(id) {
+    const e = App.work.evidence.find(x => x.id === id);
+    if (!e) return;
+    
+    document.getElementById('evidenceViewerTitle').textContent = e.title;
+    
+    let content = '';
+    
+    if (e.type === 'model') {
+        content = `
+            <div class="mb-4">
+                <p class="text-gray-600">${e.description}</p>
+                <p class="text-sm text-gray-500">By ${e.author} • ${new Date(e.time).toLocaleString()}</p>
+            </div>
+            <div class="bg-gray-100 rounded-lg p-4">
+                <h4 class="font-medium mb-2">Nodes:</h4>
+                <div class="flex flex-wrap gap-2">
+                    ${e.data.nodes.map(n => `
+                        <div class="px-3 py-2 bg-white rounded-lg border flex items-center gap-2">
+                            <span class="iconify" data-icon="${n.icon}" style="color:${n.color}"></span>
+                            <span>${n.label}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } else if (e.type === 'data') {
+        const dt = e.data;
+        content = `
+            <div class="mb-4">
+                <p class="text-gray-600">${e.description}</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            ${dt.columns.map(c => `<th class="border p-2">${c.name}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${dt.rows.map(r => `
+                            <tr>
+                                ${dt.columns.map(c => `<td class="border p-2">${r[c.id] || ''}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        content = `<p class="text-gray-600">${e.description}</p>`;
+    }
+    
+    document.getElementById('evidenceViewerContent').innerHTML = content;
+    document.getElementById('evidenceViewerModal').classList.remove('hidden');
+    document.getElementById('evidenceViewerModal').classList.add('flex');
+}
+
+function closeEvidenceViewer() {
+    document.getElementById('evidenceViewerModal').classList.add('hidden');
+    document.getElementById('evidenceViewerModal').classList.remove('flex');
+}
+
+function closeEditModal() {
+    document.getElementById('editCardModal').classList.add('hidden');
+    document.getElementById('editCardModal').classList.remove('flex');
+    App.editingCard = null;
+}
+
+async function saveEditingCard() {
+    closeEditModal();
+}
+
+async function deleteEditingCard() {
+    closeEditModal();
+}
+
+// ==================== UTILITIES ====================
+function toast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500', warning: 'bg-amber-500' };
+    const icons = { success: 'mdi:check-circle', error: 'mdi:close-circle', info: 'mdi:information', warning: 'mdi:alert' };
+    
+    const el = document.createElement('div');
+    el.className = `toast ${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3`;
+    el.innerHTML = `<span class="iconify" data-icon="${icons[type]}"></span><span class="text-sm">${message}</span>`;
+    container.appendChild(el);
+    
+    setTimeout(() => el.remove(), 3000);
+}
+
+function copyCode() {
+    navigator.clipboard.writeText(App.classCode);
+    toast('Class code copied!', 'success');
+}
+
+// Initialize
+init();
+</script>
+</body>
+</html>
