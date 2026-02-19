@@ -36,13 +36,16 @@
             overflow: hidden;
             cursor: crosshair;
         }
+        .model-canvas.pen-mode { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z'/%3E%3C/svg%3E") 0 24, crosshair; }
+        .model-canvas.shape-mode { cursor: crosshair; }
+        
         .model-node {
             position: absolute;
             background: white;
             border: 2px solid #3b82f6;
             border-radius: 12px;
             padding: 12px 16px;
-            min-width: 120px;
+            min-width: 80px;
             cursor: move;
             user-select: none;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -55,6 +58,64 @@
         .model-node:hover {
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
+        .model-node.grouped {
+            border-style: dashed;
+        }
+        
+        .model-shape {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+            z-index: 8;
+        }
+        .model-shape.selected {
+            outline: 2px dashed #7c3aed;
+            outline-offset: 4px;
+        }
+        
+        .note-shape {
+            position: absolute;
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 4px;
+            padding: 8px;
+            min-width: 100px;
+            min-height: 60px;
+            cursor: move;
+            user-select: none;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+            z-index: 9;
+        }
+        .note-shape.selected {
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.3);
+        }
+        
+        .pen-path {
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            pointer-events: stroke;
+        }
+        .pen-path.selected {
+            filter: drop-shadow(0 0 4px rgba(124, 58, 237, 0.5));
+        }
+        
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border: 2px solid #7c3aed;
+            border-radius: 2px;
+            cursor: nwse-resize;
+            z-index: 30;
+        }
+        .resize-handle.nw { top: -5px; left: -5px; cursor: nwse-resize; }
+        .resize-handle.ne { top: -5px; right: -5px; cursor: nesw-resize; }
+        .resize-handle.sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
+        .resize-handle.se { bottom: -5px; right: -5px; cursor: nwse-resize; }
+        
         .node-handle {
             position: absolute;
             width: 14px;
@@ -83,6 +144,52 @@
             width: 100%;
             height: 100%;
             z-index: 5;
+        }
+        
+        .comment-bubble {
+            position: absolute;
+            background: white;
+            border: 2px solid #dc2626;
+            border-radius: 12px;
+            padding: 8px 12px;
+            max-width: 200px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 50;
+            font-size: 12px;
+        }
+        .comment-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 20px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: #dc2626 transparent transparent;
+        }
+        .comment-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -7px;
+            left: 22px;
+            border-width: 8px 8px 0;
+            border-style: solid;
+            border-color: white transparent transparent;
+        }
+        
+        .sticker {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 45;
+            transition: transform 0.2s;
+        }
+        .sticker:hover {
+            transform: scale(1.2);
         }
         
         .drop-zone.drag-over { background: #fef3c7 !important; border-color: #f59e0b !important; }
@@ -191,6 +298,56 @@
         .icon-set-btn.active {
             background: #2563eb;
             color: white;
+        }
+        
+        .tool-btn {
+            transition: all 0.2s;
+        }
+        .tool-btn.active {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .selection-box {
+            position: absolute;
+            border: 2px dashed #7c3aed;
+            background: rgba(124, 58, 237, 0.1);
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .group-outline {
+            position: absolute;
+            border: 2px dashed #22c55e;
+            background: rgba(34, 197, 94, 0.05);
+            pointer-events: none;
+            z-index: 4;
+            border-radius: 8px;
+        }
+        
+        .readonly-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: transparent;
+            z-index: 40;
+            cursor: default;
+        }
+        
+        .viewer-toolbar {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 8px;
+            display: flex;
+            gap: 8px;
+            z-index: 60;
         }
     </style>
 </head>
@@ -417,16 +574,33 @@
         <div class="p-4 border-b">
             <h3 class="font-semibold text-gray-900">Select Icon</h3>
         </div>
+        <div class="p-4 border-b">
+            <input type="text" id="iconSearchInput" placeholder="Search icons..." 
+                class="w-full px-3 py-2 border rounded-lg"
+                oninput="searchIcons()">
+        </div>
         <div id="iconPickerContent" class="p-4 max-h-64 overflow-y-auto">
-            <div class="p-4 border-b">
-                <input type="text" id="iconSearchInput" placeholder="Search icons..." 
-                    class="w-full px-3 py-2 border rounded-lg"
-                    oninput="searchIcons()">
-            </div>
             <div class="grid grid-cols-8 gap-2" id="iconGrid"></div>
         </div>
         <div class="p-4 border-t bg-gray-50">
             <button onclick="closeIconPicker()" class="w-full py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Comment Modal -->
+<div id="commentModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="modal-overlay absolute inset-0" onclick="closeCommentModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold text-gray-900">Add Comment</h3>
+        </div>
+        <div class="p-4">
+            <textarea id="commentText" rows="3" class="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none" placeholder="Enter your feedback..."></textarea>
+        </div>
+        <div class="p-4 border-t bg-gray-50 flex justify-end gap-2">
+            <button onclick="closeCommentModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+            <button onclick="saveComment()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600">Add Comment</button>
         </div>
     </div>
 </div>
@@ -439,7 +613,7 @@
 <script>
 // ==================== INDEXEDDB STORAGE LAYER ====================
 const DB_NAME = 'InquiryOS_DB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_SESSIONS = 'sessions';
 const STORE_LIBRARY = 'library';
 const STORE_USERS = 'users';
@@ -475,10 +649,11 @@ function initDB() {
                 database.createObjectStore(STORE_LIBRARY, { keyPath: 'code' });
             }
             
-            if (!database.objectStoreNames.contains(STORE_USERS)) {
-                const usersStore = database.createObjectStore(STORE_USERS, { keyPath: 'visitorId' });
-                usersStore.createIndex('classCode', 'classCode', { unique: false });
+            if (database.objectStoreNames.contains(STORE_USERS)) {
+                database.deleteObjectStore(STORE_USERS);
             }
+            const usersStore = database.createObjectStore(STORE_USERS, { keyPath: 'visitorId' });
+            usersStore.createIndex('classCode', 'classCode', { unique: false });
             
             console.log('IndexedDB schema created/updated');
         };
@@ -612,6 +787,12 @@ const App = {
         subQuestions: [],
         modelNodes: [],
         modelConnections: [],
+        modelShapes: [],
+        modelNotes: [],
+        modelPaths: [],
+        modelGroups: [],
+        modelComments: [],
+        modelStickers: [],
         variables: [],
         procedureSteps: [],
         dataTable: {
@@ -657,11 +838,31 @@ const App = {
     
     modelState: {
         selectedNode: null,
+        selectedItems: [],
         draggingNode: null,
         connecting: null,
         connectingHandle: null,
         offset: { x: 0, y: 0 },
-        selectedIcon: null
+        selectedIcon: null,
+        currentTool: 'select',
+        penColor: '#000000',
+        penWidth: 3,
+        shapeType: 'rectangle',
+        isDrawing: false,
+        currentPath: [],
+        selectionStart: null,
+        selectionBox: null,
+        resizing: null,
+        resizeStart: null,
+        shapeStart: null
+    },
+    
+    viewerState: {
+        currentStudentId: null,
+        viewType: null,
+        addingComment: false,
+        commentPosition: null,
+        selectedSticker: null
     },
     
     editingCard: null,
@@ -879,6 +1080,12 @@ async function loadFromStorage() {
         if (saved) {
             if (saved.work) {
                 App.work = { ...App.work, ...saved.work };
+                if (!App.work.modelShapes) App.work.modelShapes = [];
+                if (!App.work.modelNotes) App.work.modelNotes = [];
+                if (!App.work.modelPaths) App.work.modelPaths = [];
+                if (!App.work.modelGroups) App.work.modelGroups = [];
+                if (!App.work.modelComments) App.work.modelComments = [];
+                if (!App.work.modelStickers) App.work.modelStickers = [];
             }
             if (saved.teacherSettings) {
                 App.teacherSettings = { ...App.teacherSettings, ...saved.teacherSettings };
@@ -939,7 +1146,10 @@ function setNestedValue(obj, path, value) {
 }
 
 async function registerUser() {
-    if (!dbReady) return;
+    if (!dbReady || !App.user.visitorId) {
+        console.warn('Cannot register user - DB not ready or no visitorId');
+        return;
+    }
     
     try {
         const userData = {
@@ -954,7 +1164,7 @@ async function registerUser() {
         await updateConnectedUsers();
         
         setInterval(async () => {
-            if (dbReady) {
+            if (dbReady && App.user.visitorId) {
                 userData.lastSeen = Date.now();
                 await dbPut(STORE_USERS, userData).catch(() => {});
             }
@@ -1658,6 +1868,8 @@ async function createNode(x, y, icon) {
         label: 'Concept',
         x: x,
         y: y,
+        width: 120,
+        height: 50,
         color: color
     };
     
@@ -1678,6 +1890,8 @@ function renderModelNodes() {
         el.className = `model-node ${App.modelState.selectedNode === node.id ? 'selected' : ''}`;
         el.style.left = node.x + 'px';
         el.style.top = node.y + 'px';
+        el.style.width = (node.width || 120) + 'px';
+        el.style.minHeight = (node.height || 50) + 'px';
         el.style.borderColor = node.color;
         el.dataset.id = node.id;
         
@@ -1783,12 +1997,7 @@ function startConnection(event, nodeId, handle) {
     App.modelState.connecting = nodeId;
     App.modelState.connectingHandle = handle;
     
-    document.onmousemove = (e) => canvasMouseMove(e);
-    document.onmouseup = (e) => endConnection(e);
-}
-
-function canvasMouseMove(event) {
-    if (App.modelState.connecting) {
+    document.onmousemove = (e) => {
         const canvas = document.getElementById('modelCanvas');
         const rect = canvas.getBoundingClientRect();
         const svg = document.getElementById('tempConnectionSvg');
@@ -1796,15 +2005,16 @@ function canvasMouseMove(event) {
         const fromNode = App.work.modelNodes.find(n => n.id === App.modelState.connecting);
         if (fromNode) {
             const startPos = getHandlePosition(fromNode, App.modelState.connectingHandle);
-            const endX = event.clientX - rect.left;
-            const endY = event.clientY - rect.top;
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
             
             svg.innerHTML = `
                 <line x1="${startPos.x}" y1="${startPos.y}" x2="${endX}" y2="${endY}" 
                     stroke="#7c3aed" stroke-width="2" stroke-dasharray="5,5"/>
             `;
         }
-    }
+    };
+    document.onmouseup = (e) => endConnection(e);
 }
 
 async function endConnection(event) {
@@ -1848,6 +2058,8 @@ async function endConnection(event) {
                     label: 'New Concept',
                     x: Math.max(0, x),
                     y: Math.max(0, y),
+                    width: 120,
+                    height: 50,
                     color: fromNode.color
                 };
                 
@@ -1889,6 +2101,8 @@ async function endConnection(event) {
                 label: 'New Concept',
                 x: Math.max(0, newX),
                 y: Math.max(0, newY),
+                width: 120,
+                height: 50,
                 color: node.color
             };
             
@@ -1918,7 +2132,9 @@ function renderConnections() {
     const svg = document.getElementById('connectionsSvg');
     if (!svg) return;
     
-    svg.querySelectorAll('line, path').forEach(l => l.remove());
+    svg.querySelectorAll('line, path').forEach(l => {
+        if (!l.closest('defs')) l.remove();
+    });
     
     App.work.modelConnections.forEach(conn => {
         const fromNode = App.work.modelNodes.find(n => n.id === conn.from);
@@ -1944,8 +2160,8 @@ function renderConnections() {
 }
 
 function getHandlePosition(node, handle) {
-    const nodeWidth = 120;
-    const nodeHeight = 50;
+    const nodeWidth = node.width || 120;
+    const nodeHeight = node.height || 50;
     
     switch (handle) {
         case 'top': return { x: node.x + nodeWidth / 2, y: node.y };
@@ -1985,8 +2201,8 @@ function dragNode(event) {
     const node = App.work.modelNodes.find(n => n.id === App.modelState.draggingNode);
     
     if (node) {
-        node.x = Math.max(0, Math.min(rect.width - 120, event.clientX - rect.left - App.modelState.offset.x));
-        node.y = Math.max(0, Math.min(rect.height - 50, event.clientY - rect.top - App.modelState.offset.y));
+        node.x = Math.max(0, Math.min(rect.width - (node.width || 120), event.clientX - rect.left - App.modelState.offset.x));
+        node.y = Math.max(0, Math.min(rect.height - (node.height || 50), event.clientY - rect.top - App.modelState.offset.y));
         
         const el = document.querySelector(`.model-node[data-id="${node.id}"]`);
         if (el) {
@@ -3121,37 +3337,192 @@ function renderTeacherNoticeBoard() {
 }
 
 function renderLiveModels() {
+    const stickers = ['⭐', '✅', '❓', '💡', '🎯', '👏', '🔬', '📊'];
+    
     return `
-        <div class="max-w-5xl mx-auto">
-            <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-900">View Student Models</h2>
-                <p class="text-gray-600">Current model: ${App.work.modelNodes.length} nodes, ${App.work.modelConnections.length} connections</p>
+        <div class="max-w-6xl mx-auto">
+            <div class="mb-6 flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">View Student Models</h2>
+                    <p class="text-gray-600">Read-only view with feedback tools</p>
+                </div>
+                <button onclick="presentToClass('model')" class="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg hover:opacity-90">
+                    <span class="iconify mr-2" data-icon="mdi:presentation"></span>
+                    Present to Class
+                </button>
             </div>
             
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                ${App.work.modelNodes.length ? `
-                    <div class="flex flex-wrap gap-4">
-                        ${App.work.modelNodes.map(n => `
-                            <div class="p-4 bg-gray-50 rounded-lg border flex items-center gap-2">
-                                <span class="iconify text-2xl" data-icon="${n.icon}" style="color:${n.color}"></span>
-                                <span>${n.label}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : '<p class="text-gray-400 text-center py-8">No model nodes yet</p>'}
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden relative" style="height: 500px;">
+                <div id="viewerCanvas" class="model-canvas w-full h-full" style="cursor: default;">
+                    <div class="readonly-overlay" onclick="handleViewerClick(event)"></div>
+                    <svg id="viewerConnectionsSvg" class="connection-line">
+                        <defs>
+                            <marker id="viewerArrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                    ${renderViewerNodes()}
+                    ${renderViewerComments()}
+                    ${renderViewerStickers()}
+                </div>
+                
+                <div class="viewer-toolbar">
+                    <button onclick="setViewerTool('comment')" class="tool-btn p-2 rounded-lg hover:bg-gray-100 ${App.viewerState.addingComment ? 'active' : ''}" title="Add Comment">
+                        <span class="iconify text-xl" data-icon="mdi:comment-plus"></span>
+                    </button>
+                    <div class="border-l mx-2"></div>
+                    ${stickers.map(s => `
+                        <button onclick="setViewerSticker('${s}')" class="p-2 rounded-lg hover:bg-gray-100 ${App.viewerState.selectedSticker === s ? 'bg-blue-100' : ''}" title="Add ${s}">
+                            <span class="text-xl">${s}</span>
+                        </button>
+                    `).join('')}
+                    <div class="border-l mx-2"></div>
+                    <button onclick="clearViewerFeedback()" class="p-2 rounded-lg hover:bg-red-100 text-red-600" title="Clear Feedback">
+                        <span class="iconify text-xl" data-icon="mdi:delete-sweep"></span>
+                    </button>
+                </div>
             </div>
         </div>
     `;
 }
 
+function renderViewerNodes() {
+    return App.work.modelNodes.map(node => `
+        <div class="model-node" style="left:${node.x}px; top:${node.y}px; width:${node.width || 120}px; min-height:${node.height || 50}px; border-color:${node.color}; pointer-events:none;">
+            <div class="flex items-center gap-2">
+                <span class="iconify text-2xl" data-icon="${node.icon}" style="color:${node.color}"></span>
+                <span class="text-sm font-medium">${node.label}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderViewerComments() {
+    return (App.work.modelComments || []).map(c => `
+        <div class="comment-bubble" style="left:${c.x}px; top:${c.y}px;">
+            <p class="text-gray-700">${c.text}</p>
+            <button onclick="deleteComment('${c.id}')" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600">×</button>
+        </div>
+    `).join('');
+}
+
+function renderViewerStickers() {
+    return (App.work.modelStickers || []).map(s => `
+        <div class="sticker" style="left:${s.x}px; top:${s.y}px;" onclick="deleteSticker('${s.id}')">
+            ${s.emoji}
+        </div>
+    `).join('');
+}
+
+function setViewerTool(tool) {
+    if (tool === 'comment') {
+        App.viewerState.addingComment = !App.viewerState.addingComment;
+        App.viewerState.selectedSticker = null;
+    }
+    renderTeacherContent();
+}
+
+function setViewerSticker(emoji) {
+    App.viewerState.selectedSticker = App.viewerState.selectedSticker === emoji ? null : emoji;
+    App.viewerState.addingComment = false;
+    renderTeacherContent();
+}
+
+async function handleViewerClick(event) {
+    const canvas = document.getElementById('viewerCanvas');
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    if (App.viewerState.addingComment) {
+        App.viewerState.commentPosition = { x, y };
+        document.getElementById('commentModal').classList.remove('hidden');
+        document.getElementById('commentModal').classList.add('flex');
+    } else if (App.viewerState.selectedSticker) {
+        if (!App.work.modelStickers) App.work.modelStickers = [];
+        App.work.modelStickers.push({
+            id: 'sticker_' + Date.now(),
+            emoji: App.viewerState.selectedSticker,
+            x: x - 20,
+            y: y - 20
+        });
+        await saveAndBroadcast('modelStickers', App.work.modelStickers);
+        renderTeacherContent();
+    }
+}
+
+async function saveComment() {
+    const text = document.getElementById('commentText').value.trim();
+    if (!text || !App.viewerState.commentPosition) return;
+    
+    if (!App.work.modelComments) App.work.modelComments = [];
+    App.work.modelComments.push({
+        id: 'comment_' + Date.now(),
+        text,
+        x: App.viewerState.commentPosition.x,
+        y: App.viewerState.commentPosition.y - 60,
+        author: App.user.name,
+        time: Date.now()
+    });
+    
+    await saveAndBroadcast('modelComments', App.work.modelComments);
+    closeCommentModal();
+    App.viewerState.addingComment = false;
+    renderTeacherContent();
+    toast('Comment added!', 'success');
+}
+
+function closeCommentModal() {
+    document.getElementById('commentModal').classList.add('hidden');
+    document.getElementById('commentModal').classList.remove('flex');
+    document.getElementById('commentText').value = '';
+    App.viewerState.commentPosition = null;
+}
+
+async function deleteComment(id) {
+    App.work.modelComments = (App.work.modelComments || []).filter(c => c.id !== id);
+    await saveAndBroadcast('modelComments', App.work.modelComments);
+    renderTeacherContent();
+}
+
+async function deleteSticker(id) {
+    App.work.modelStickers = (App.work.modelStickers || []).filter(s => s.id !== id);
+    await saveAndBroadcast('modelStickers', App.work.modelStickers);
+    renderTeacherContent();
+}
+
+async function clearViewerFeedback() {
+    if (!confirm('Clear all comments and stickers?')) return;
+    App.work.modelComments = [];
+    App.work.modelStickers = [];
+    await saveAndBroadcast('modelComments', []);
+    await saveAndBroadcast('modelStickers', []);
+    renderTeacherContent();
+    toast('Feedback cleared', 'info');
+}
+
+function presentToClass(type) {
+    toast('Presentation mode - share your screen with the class!', 'info');
+}
+
 function renderLiveData() {
     const dt = App.work.dataTable;
+    const stickers = ['⭐', '✅', '❓', '💡', '🎯', '👏'];
     
     return `
-        <div class="max-w-5xl mx-auto">
-            <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-900">View Student Data</h2>
-                <p class="text-gray-600">${dt.rows.length} rows, ${dt.columns.length} columns</p>
+        <div class="max-w-6xl mx-auto">
+            <div class="mb-6 flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">View Student Data</h2>
+                    <p class="text-gray-600">${dt.rows.length} rows, ${dt.columns.length} columns</p>
+                </div>
+                <button onclick="presentToClass('data')" class="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg hover:opacity-90">
+                    <span class="iconify mr-2" data-icon="mdi:presentation"></span>
+                    Present to Class
+                </button>
             </div>
             
             <div class="bg-white rounded-xl shadow-sm border p-6 overflow-x-auto">
@@ -3164,14 +3535,22 @@ function renderLiveData() {
                                     ${col.unit ? `<span class="text-xs text-gray-500">(${col.unit})</span>` : ''}
                                 </th>
                             `).join('')}
+                            <th class="border p-3 w-24 text-center">Feedback</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${dt.rows.map(row => `
+                        ${dt.rows.map((row, ri) => `
                             <tr class="hover:bg-gray-50">
                                 ${dt.columns.map(col => `
                                     <td class="border p-3">${row[col.id] || '-'}</td>
                                 `).join('')}
+                                <td class="border p-2 text-center">
+                                    <div class="flex justify-center gap-1">
+                                        ${stickers.slice(0, 3).map(s => `
+                                            <button onclick="addDataRowSticker(${ri}, '${s}')" class="hover:scale-125 transition-transform">${s}</button>
+                                        `).join('')}
+                                    </div>
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -3179,6 +3558,10 @@ function renderLiveData() {
             </div>
         </div>
     `;
+}
+
+function addDataRowSticker(rowIndex, emoji) {
+    toast(`${emoji} added to row ${rowIndex + 1}`, 'success');
 }
 
 function renderModeration() {
@@ -3356,7 +3739,6 @@ function renderIconManager() {
         </div>
     `;
     
-    // Auto-load icons for current set
     loadIconsForManager();
 }
 
