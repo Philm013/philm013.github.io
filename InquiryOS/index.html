@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -649,6 +650,29 @@
     </div>
 </div>
 
+<!-- QR Code Modal -->
+<div id="qrCodeModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="modal-overlay absolute inset-0" onclick="closeQRCode()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden flex flex-col">
+        <div class="p-6 border-b flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Class QR Code</h3>
+            <button onclick="closeQRCode()" class="p-2 hover:bg-gray-100 rounded-lg">
+                <span class="iconify text-xl" data-icon="mdi:close"></span>
+            </button>
+        </div>
+        <div class="p-8 flex flex-col items-center justify-center">
+            <div class="bg-white p-4 rounded-xl shadow-inner mb-4">
+                <canvas id="qrcodeCanvas"></canvas>
+            </div>
+            <p class="text-center font-mono font-bold text-2xl text-primary tracking-widest" id="qrClassCode">------</p>
+            <p class="text-center text-sm text-gray-500 mt-2">Students can scan this to join directly</p>
+        </div>
+        <div class="p-4 bg-gray-50 border-t flex justify-center">
+            <button onclick="closeQRCode()" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Icon Picker Modal -->
 <div id="iconPickerModal" class="fixed inset-0 z-50 hidden items-center justify-center">
     <div class="modal-overlay absolute inset-0" onclick="closeIconPicker()"></div>
@@ -1163,6 +1187,17 @@ async function init() {
         await loadSessionLibrary();
         loadNGSSData();
         await loadIconSets();
+        
+        // Handle join link via URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const classCode = urlParams.get('class');
+        if (classCode) {
+            const loginClassInput = document.getElementById('loginClass');
+            if (loginClassInput) {
+                loginClassInput.value = classCode.toUpperCase();
+                toast('Class code from link applied!', 'info');
+            }
+        }
     } catch (e) {
         console.error('Initialization error:', e);
         toast('Storage initialization failed', 'error');
@@ -4030,25 +4065,50 @@ function renderTeacherOverview() {
                 </div>
             </div>
             
-            <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
-                <h3 class="font-semibold text-gray-900 mb-4">Class Phenomenon</h3>
-                <div class="space-y-4">
-                    <div>
-                        <label class="text-sm font-medium text-gray-700 block mb-1">Title</label>
-                        <input type="text" id="phenomTitle" value="${App.teacherSettings.phenomenon.title}" 
-                            onchange="updatePhenomenon()"
-                            class="w-full px-4 py-2 border rounded-lg">
+            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="iconify text-primary" data-icon="mdi:account-plus"></span>
+                        Join Session
+                    </h3>
+                    <div class="flex flex-col gap-4">
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                            <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-2">Join Link</p>
+                            <div class="flex gap-2">
+                                <input type="text" readonly id="joinLinkInput" 
+                                    value="${window.location.origin}${window.location.pathname}?class=${App.classCode}"
+                                    class="flex-1 bg-white border rounded px-3 py-2 text-sm text-gray-600 font-mono">
+                                <button onclick="copyJoinLink()" class="p-2 bg-primary text-white rounded-lg hover:bg-blue-600" title="Copy Link">
+                                    <span class="iconify" data-icon="mdi:content-copy"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <button onclick="showJoinQR()" class="flex-1 py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:opacity-90">
+                                <span class="iconify text-xl" data-icon="mdi:qrcode"></span>
+                                Show QR Code
+                            </button>
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-700 block mb-1">Description</label>
-                        <textarea id="phenomDesc" rows="3" onchange="updatePhenomenon()"
-                            class="w-full px-4 py-2 border rounded-lg">${App.teacherSettings.phenomenon.description}</textarea>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-700 block mb-1">Tags (comma separated)</label>
-                        <input type="text" id="phenomTags" value="${App.teacherSettings.phenomenon.tags?.join(', ') || ''}" 
-                            onchange="updatePhenomenon()"
-                            class="w-full px-4 py-2 border rounded-lg">
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="iconify text-primary" data-icon="mdi:flask-outline"></span>
+                        Class Phenomenon
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm font-medium text-gray-700 block mb-1">Title</label>
+                            <input type="text" id="phenomTitle" value="${App.teacherSettings.phenomenon.title}" 
+                                onchange="updatePhenomenon()"
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-700 block mb-1">Description</label>
+                            <textarea id="phenomDesc" rows="3" onchange="updatePhenomenon()"
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none">${App.teacherSettings.phenomenon.description}</textarea>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5120,6 +5180,44 @@ function toast(message, type = 'info') {
 function copyCode() {
     navigator.clipboard.writeText(App.classCode);
     toast('Class code copied!', 'success');
+}
+
+function copyJoinLink() {
+    const link = `${window.location.origin}${window.location.pathname}?class=${App.classCode}`;
+    navigator.clipboard.writeText(link);
+    toast('Join link copied!', 'success');
+}
+
+function showJoinQR() {
+    const modal = document.getElementById('qrCodeModal');
+    const canvas = document.getElementById('qrcodeCanvas');
+    const codeDisplay = document.getElementById('qrClassCode');
+    
+    codeDisplay.textContent = App.classCode;
+    
+    const joinLink = `${window.location.origin}${window.location.pathname}?class=${App.classCode}`;
+    
+    QRCode.toCanvas(canvas, joinLink, { 
+        width: 256,
+        margin: 2,
+        color: {
+            dark: "#2563eb",
+            light: "#ffffff"
+        }
+    }, function (error) {
+        if (error) {
+            console.error(error);
+            toast('Failed to generate QR code', 'error');
+        }
+    });
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeQRCode() {
+    document.getElementById('qrCodeModal').classList.add('hidden');
+    document.getElementById('qrCodeModal').classList.remove('flex');
 }
 
 // Initialize
