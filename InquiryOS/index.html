@@ -1794,6 +1794,8 @@ function renderModelsModule() {
         ? App.teacherSettings.lessonIcons 
         : ['mdi:atom', 'mdi:leaf', 'mdi:water', 'mdi:fire', 'mdi:arrow-right', 'mdi:circle', 'mdi:square', 'mdi:flask'];
     
+    const emojis = ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱'];
+
     return `
         <div class="h-full flex flex-col">
             <div class="mb-4 flex items-center justify-between">
@@ -1805,62 +1807,369 @@ function renderModelsModule() {
                         Developing Models
                         <span class="ngss-tag ngss-sep">SEP2</span>
                     </h2>
-                    <p class="text-gray-600 mt-1">Create node-based concept maps</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="clearAllNodes()" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm">
+                    <button onclick="clearAllModelElements()" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm">
                         <span class="iconify mr-1" data-icon="mdi:delete"></span> Clear
                     </button>
                     <button onclick="saveModelAsEvidence()" class="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg hover:opacity-90 text-sm">
-                        <span class="iconify mr-1" data-icon="mdi:bookmark"></span> Save as Evidence
+                        <span class="iconify mr-1" data-icon="mdi:bookmark"></span> Save
                     </button>
                 </div>
             </div>
             
-            <div class="bg-white rounded-xl shadow-sm border p-3 mb-4">
-                <p class="text-xs text-gray-500 mb-2">Click an icon then click canvas, or drag handles to connect nodes:</p>
-                <div class="flex flex-wrap gap-2 items-center">
-                    ${availableIcons.map(icon => `
-                        <button onclick="selectIconForNode('${icon}')" 
-                            class="icon-palette-btn p-2 rounded-lg hover:bg-blue-100 border-2 ${App.modelState.selectedIcon === icon ? 'border-primary bg-blue-50' : 'border-transparent'}"
-                            title="${icon}">
-                            <span class="iconify text-xl" data-icon="${icon}"></span>
-                        </button>
-                    `).join('')}
-                    <input type="color" id="nodeColorPicker" value="#3b82f6" class="w-10 h-10 rounded cursor-pointer" title="Node color">
+            <div class="flex flex-1 gap-4 overflow-hidden">
+                <!-- Toolbar -->
+                <div class="w-16 bg-white border rounded-xl shadow-sm p-2 flex flex-col gap-2">
+                    <button onclick="setModelTool('select')" class="tool-btn p-3 rounded-lg hover:bg-gray-100 ${App.modelState.currentTool === 'select' ? 'active' : ''}" title="Select (V)">
+                        <span class="iconify text-xl" data-icon="mdi:cursor-default"></span>
+                    </button>
+                    <button onclick="setModelTool('node')" class="tool-btn p-3 rounded-lg hover:bg-gray-100 ${App.modelState.currentTool === 'node' ? 'active' : ''}" title="Concept Node (N)">
+                        <span class="iconify text-xl" data-icon="mdi:plus-circle"></span>
+                    </button>
+                    <button onclick="setModelTool('pen')" class="tool-btn p-3 rounded-lg hover:bg-gray-100 ${App.modelState.currentTool === 'pen' ? 'active' : ''}" title="Pen (P)">
+                        <span class="iconify text-xl" data-icon="mdi:pencil"></span>
+                    </button>
+                    <button onclick="setModelTool('shape')" class="tool-btn p-3 rounded-lg hover:bg-gray-100 ${App.modelState.currentTool === 'shape' ? 'active' : ''}" title="Shapes (S)">
+                        <span class="iconify text-xl" data-icon="mdi:shape"></span>
+                    </button>
+                    <button onclick="setModelTool('note')" class="tool-btn p-3 rounded-lg hover:bg-gray-100 ${App.modelState.currentTool === 'note' ? 'active' : ''}" title="Sticky Note (T)">
+                        <span class="iconify text-xl" data-icon="mdi:note-text"></span>
+                    </button>
+                    <button onclick="setModelTool('stamp')" class="tool-btn p-3 rounded-lg hover:bg-gray-100 ${App.modelState.currentTool === 'stamp' ? 'active' : ''}" title="Stamps (I)">
+                        <span class="iconify text-xl" data-icon="mdi:sticker-emoji"></span>
+                    </button>
+                    <hr class="my-1">
+                    <input type="color" id="modelColorPicker" value="${App.modelState.penColor || '#3b82f6'}" 
+                        onchange="App.modelState.penColor = this.value"
+                        class="w-full h-8 rounded cursor-pointer border-none p-0">
                 </div>
-            </div>
-            
-            <div class="flex-1 bg-white rounded-xl shadow-sm border overflow-hidden relative">
-                <div id="modelCanvas" class="model-canvas w-full h-full" 
-                    onclick="canvasClick(event)"
-                    ondblclick="canvasDblClick(event)">
-                    <svg id="connectionsSvg" class="connection-line">
-                        <defs>
-                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                                <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
-                            </marker>
-                        </defs>
-                    </svg>
-                    ${App.work.modelNodes.length === 0 ? `
-                        <div class="absolute inset-0 flex items-center justify-center text-gray-400 pointer-events-none">
-                            <div class="text-center">
-                                <span class="iconify text-5xl" data-icon="mdi:cube-outline"></span>
-                                <p class="mt-2">Select an icon above, then click here to add nodes</p>
-                                <p class="text-sm">Double-click canvas to add default node</p>
-                            </div>
+
+                <div class="flex-1 flex flex-col gap-4">
+                    <!-- Contextual Options -->
+                    <div id="modelContextBar" class="bg-white border rounded-xl shadow-sm p-2 flex items-center gap-4 overflow-x-auto min-h-[56px]">
+                        ${renderModelContextBar(availableIcons, emojis)}
+                    </div>
+
+                    <!-- Canvas Area -->
+                    <div class="flex-1 bg-white rounded-xl shadow-sm border overflow-hidden relative">
+                        <div id="modelCanvas" class="model-canvas w-full h-full ${App.modelState.currentTool === 'pen' ? 'pen-mode' : ''}" 
+                            onmousedown="modelCanvasMouseDown(event)"
+                            onmousemove="modelCanvasMouseMove(event)"
+                            onmouseup="modelCanvasMouseUp(event)"
+                            ondblclick="canvasDblClick(event)">
+                            
+                            <svg id="drawingSvg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 6;"></svg>
+                            <svg id="connectionsSvg" class="connection-line">
+                                <defs>
+                                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                        <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                                    </marker>
+                                </defs>
+                            </svg>
+                            
+                            <!-- Drawing Layers -->
+                            <div id="shapesLayer" class="absolute inset-0 pointer-events-none" style="z-index: 5;"></div>
+                            <div id="notesLayer" class="absolute inset-0 pointer-events-none" style="z-index: 10;"></div>
+                            <div id="stampsLayer" class="absolute inset-0 pointer-events-none" style="z-index: 15;"></div>
                         </div>
-                    ` : ''}
+                        <svg id="tempConnectionSvg" class="connection-line pointer-events-none" style="z-index:100;"></svg>
+                    </div>
                 </div>
-                <svg id="tempConnectionSvg" class="connection-line pointer-events-none" style="z-index:100;"></svg>
-            </div>
-            
-            <div class="mt-2 text-sm text-gray-500">
-                <span class="iconify inline" data-icon="mdi:information"></span>
-                Tips: Click node label to edit • Drag handles to connect • Click handle without dragging to create new node
             </div>
         </div>
     `;
+}
+
+function renderModelContextBar(availableIcons, emojis) {
+    const tool = App.modelState.currentTool;
+    if (tool === 'node') {
+        return `
+            <span class="text-xs font-bold text-gray-400 uppercase ml-2">Node Icons:</span>
+            <div class="flex gap-1">
+                ${availableIcons.map(icon => `
+                    <button onclick="selectIconForNode('${icon}')" 
+                        class="icon-palette-btn p-1.5 rounded-lg hover:bg-blue-100 border-2 ${App.modelState.selectedIcon === icon ? 'border-primary bg-blue-50' : 'border-transparent'}">
+                        <span class="iconify text-lg" data-icon="${icon}"></span>
+                    </button>
+                `).join('')}
+                <button onclick="openIconPicker()" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                    <span class="iconify" data-icon="mdi:plus"></span>
+                </button>
+            </div>
+        `;
+    } else if (tool === 'shape') {
+        return `
+            <span class="text-xs font-bold text-gray-400 uppercase ml-2">Shapes:</span>
+            <div class="flex gap-2">
+                ${['rectangle', 'circle', 'triangle', 'arrow'].map(s => `
+                    <button onclick="App.modelState.shapeType = '${s}'; renderStudentContent()" 
+                        class="p-2 rounded-lg ${App.modelState.shapeType === s ? 'bg-primary text-white' : 'hover:bg-gray-100'}">
+                        <span class="iconify" data-icon="mdi:shape-${s === 'rectangle' ? 'rectangle' : s === 'circle' ? 'circle' : s === 'triangle' ? 'triangle' : 'arrow-right'}"></span>
+                    </button>
+                `).join('')}
+            </div>
+        `;
+    } else if (tool === 'stamp') {
+        return `
+            <span class="text-xs font-bold text-gray-400 uppercase ml-2">Emojis:</span>
+            <div class="flex gap-1 overflow-x-auto">
+                ${emojis.map(e => `
+                    <button onclick="App.modelState.selectedSticker = '${e}'; renderStudentContent()" 
+                        class="p-1.5 text-xl rounded-lg ${App.modelState.selectedSticker === e ? 'bg-blue-100' : 'hover:bg-gray-100'}">${e}</button>
+                `).join('')}
+            </div>
+        `;
+    } else if (tool === 'pen') {
+        return `
+            <span class="text-xs font-bold text-gray-400 uppercase ml-2">Pen Size:</span>
+            <input type="range" min="1" max="20" value="${App.modelState.penWidth || 3}" 
+                oninput="App.modelState.penWidth = parseInt(this.value)" class="w-32">
+        `;
+    }
+    return `<p class="text-sm text-gray-400 ml-2 italic">Select a tool to see options</p>`;
+}
+
+function setModelTool(tool) {
+    App.modelState.currentTool = tool;
+    renderStudentContent();
+}
+
+function modelCanvasMouseDown(event) {
+    const canvas = document.getElementById('modelCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    App.modelState.isDrawing = true;
+    App.modelState.shapeStart = { x, y };
+    
+    if (App.modelState.currentTool === 'pen') {
+        App.modelState.currentPath = [{ x, y }];
+    } else if (App.modelState.currentTool === 'select') {
+        // Selection logic could go here
+    }
+}
+
+function modelCanvasMouseMove(event) {
+    if (!App.modelState.isDrawing) return;
+    
+    const canvas = document.getElementById('modelCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    if (App.modelState.currentTool === 'pen') {
+        App.modelState.currentPath.push({ x, y });
+        renderModelPaths();
+    } else if (App.modelState.currentTool === 'shape' || App.modelState.currentTool === 'select') {
+        // Render preview of shape or selection box
+        renderCanvasPreview(x, y);
+    }
+}
+
+async function modelCanvasMouseUp(event) {
+    if (!App.modelState.isDrawing) return;
+    
+    const canvas = document.getElementById('modelCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    const start = App.modelState.shapeStart;
+    
+    if (App.modelState.currentTool === 'pen') {
+        if (App.modelState.currentPath.length > 2) {
+            App.work.modelPaths.push({
+                id: 'path_' + Date.now(),
+                points: App.modelState.currentPath,
+                color: App.modelState.penColor || '#000000',
+                width: App.modelState.penWidth || 3
+            });
+            await saveAndBroadcast('modelPaths', App.work.modelPaths);
+        }
+    } else if (App.modelState.currentTool === 'shape') {
+        App.work.modelShapes.push({
+            id: 'shape_' + Date.now(),
+            type: App.modelState.shapeType,
+            x: Math.min(start.x, x),
+            y: Math.min(start.y, y),
+            width: Math.abs(x - start.x),
+            height: Math.abs(y - start.y),
+            color: App.modelState.penColor || '#3b82f6'
+        });
+        await saveAndBroadcast('modelShapes', App.work.modelShapes);
+    } else if (App.modelState.currentTool === 'note') {
+        App.work.modelNotes.push({
+            id: 'note_' + Date.now(),
+            text: 'New note...',
+            x,
+            y,
+            width: 150,
+            height: 100,
+            color: '#fef3c7'
+        });
+        await saveAndBroadcast('modelNotes', App.work.modelNotes);
+    } else if (App.modelState.currentTool === 'stamp') {
+        if (App.modelState.selectedSticker) {
+            App.work.modelStickers.push({
+                id: 'stamp_' + Date.now(),
+                emoji: App.modelState.selectedSticker,
+                x: x - 20,
+                y: y - 20
+            });
+            await saveAndBroadcast('modelStickers', App.work.modelStickers);
+        }
+    } else if (App.modelState.currentTool === 'node' && App.modelState.selectedIcon) {
+        createNode(x - 60, y - 25, App.modelState.selectedIcon);
+    }
+    
+    App.modelState.isDrawing = false;
+    App.modelState.currentPath = [];
+    renderStudentContent();
+}
+
+function renderModelPaths() {
+    const svg = document.getElementById('drawingSvg');
+    if (!svg) return;
+    
+    svg.innerHTML = '';
+    
+    // Existing paths
+    App.work.modelPaths.forEach(path => {
+        const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const d = path.points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
+        p.setAttribute('d', d);
+        p.setAttribute('stroke', path.color);
+        p.setAttribute('stroke-width', path.width);
+        p.setAttribute('fill', 'none');
+        p.className = 'pen-path';
+        svg.appendChild(p);
+    });
+    
+    // Current path preview
+    if (App.modelState.currentPath.length > 0) {
+        const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const d = App.modelState.currentPath.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
+        p.setAttribute('d', d);
+        p.setAttribute('stroke', App.modelState.penColor || '#000000');
+        p.setAttribute('stroke-width', App.modelState.penWidth || 3);
+        p.setAttribute('fill', 'none');
+        svg.appendChild(p);
+    }
+}
+
+function renderCanvasPreview(x, y) {
+    const svg = document.getElementById('drawingSvg');
+    if (!svg) return;
+    
+    renderModelPaths(); // Redraw paths first
+    
+    const start = App.modelState.shapeStart;
+    if (App.modelState.currentTool === 'shape') {
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', Math.min(start.x, x));
+        rect.setAttribute('y', Math.min(start.y, y));
+        rect.setAttribute('width', Math.abs(x - start.x));
+        rect.setAttribute('height', Math.abs(y - start.y));
+        rect.setAttribute('stroke', App.modelState.penColor || '#3b82f6');
+        rect.setAttribute('stroke-width', '2');
+        rect.setAttribute('fill', 'rgba(59, 130, 246, 0.1)');
+        rect.setAttribute('stroke-dasharray', '5,5');
+        svg.appendChild(rect);
+    }
+}
+
+function initModelCanvas() {
+    renderModelElements();
+}
+
+function renderModelElements() {
+    const canvas = document.getElementById('modelCanvas');
+    if (!canvas) return;
+    
+    // Nodes are handled by renderModelNodes
+    renderModelNodes();
+    
+    // Shapes
+    const shapesLayer = document.getElementById('shapesLayer');
+    shapesLayer.innerHTML = App.work.modelShapes.map(s => `
+        <div class="model-shape absolute pointer-events-auto" 
+            style="left:${s.x}px; top:${s.y}px; width:${s.width}px; height:${s.height}px; 
+            border: 2px solid ${s.color}; background: ${s.color}20; 
+            border-radius: ${s.type === 'circle' ? '50%' : '4px'}">
+            <button onclick="deleteModelElement('modelShapes', '${s.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 hover:opacity-100">
+                <span class="iconify text-xs" data-icon="mdi:close"></span>
+            </button>
+        </div>
+    `).join('');
+    
+    // Notes
+    const notesLayer = document.getElementById('notesLayer');
+    notesLayer.innerHTML = App.work.modelNotes.map(n => `
+        <div class="note-shape absolute pointer-events-auto shadow-md p-2 bg-yellow-100 border-yellow-300 border rounded flex flex-col" 
+            style="left:${n.x}px; top:${n.y}px; width:${n.width}px; min-height:${n.height}px;">
+            <textarea class="flex-1 bg-transparent border-none resize-none text-sm focus:outline-none" 
+                onchange="updateModelNote('${n.id}', this.value)">${n.text}</textarea>
+            <button onclick="deleteModelElement('modelNotes', '${n.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 hover:opacity-100">
+                <span class="iconify text-xs" data-icon="mdi:close"></span>
+            </button>
+        </div>
+    `).join('');
+    
+    // Stamps
+    const stampsLayer = document.getElementById('stampsLayer');
+    stampsLayer.innerHTML = App.work.modelStickers.map(s => `
+        <div class="absolute pointer-events-auto text-3xl select-none" 
+            style="left:${s.x}px; top:${s.y}px; cursor: move;" 
+            onmousedown="startStampDrag(event, '${s.id}')">
+            ${s.emoji}
+            <button onclick="deleteModelElement('modelStickers', '${s.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 hover:opacity-100">
+                <span class="iconify text-[10px]" data-icon="mdi:close"></span>
+            </button>
+        </div>
+    `).join('');
+    
+    renderModelPaths();
+}
+
+async function updateModelNote(id, text) {
+    const note = App.work.modelNotes.find(n => n.id === id);
+    if (note) {
+        note.text = text;
+        await saveAndBroadcast('modelNotes', App.work.modelNotes);
+    }
+}
+
+async function deleteModelElement(arrayName, id) {
+    App.work[arrayName] = App.work[arrayName].filter(item => item.id !== id);
+    await saveAndBroadcast(arrayName, App.work[arrayName]);
+    renderStudentContent();
+}
+
+function startStampDrag(event, stampId) {
+    event.stopPropagation();
+    const stamp = App.work.modelStickers.find(s => s.id === stampId);
+    if (!stamp) return;
+    
+    const canvas = document.getElementById('modelCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const offset = {
+        x: event.clientX - rect.left - stamp.x,
+        y: event.clientY - rect.top - stamp.y
+    };
+    
+    document.onmousemove = (e) => {
+        stamp.x = e.clientX - rect.left - offset.x;
+        stamp.y = e.clientY - rect.top - offset.y;
+        renderModelElements();
+    };
+    
+    document.onmouseup = async () => {
+        document.onmousemove = null;
+        document.onmouseup = null;
+        await saveAndBroadcast('modelStickers', App.work.modelStickers);
+    };
 }
 
 function selectIconForNode(icon) {
@@ -2282,32 +2591,51 @@ function selectNode(nodeId) {
     });
 }
 
-async function clearAllNodes() {
-    if (App.work.modelNodes.length === 0) return;
-    if (confirm('Clear all nodes and connections?')) {
+async function clearAllModelElements() {
+    if (confirm('Clear the entire modeling canvas? This cannot be undone.')) {
         App.work.modelNodes = [];
         App.work.modelConnections = [];
+        App.work.modelShapes = [];
+        App.work.modelNotes = [];
+        App.work.modelPaths = [];
+        App.work.modelStickers = [];
+        
         await saveAndBroadcast('modelNodes', []);
         await saveAndBroadcast('modelConnections', []);
+        await saveAndBroadcast('modelShapes', []);
+        await saveAndBroadcast('modelNotes', []);
+        await saveAndBroadcast('modelPaths', []);
+        await saveAndBroadcast('modelStickers', []);
+        
         renderStudentContent();
+        toast('Canvas cleared', 'info');
     }
 }
 
 async function saveModelAsEvidence() {
-    if (App.work.modelNodes.length === 0) {
-        toast('Add some nodes first!', 'warning');
+    const hasContent = App.work.modelNodes.length > 0 || 
+                       App.work.modelShapes.length > 0 || 
+                       App.work.modelPaths.length > 0 || 
+                       App.work.modelNotes.length > 0;
+                       
+    if (!hasContent) {
+        toast('Add some content to your model first!', 'warning');
         return;
     }
     
     const evidence = {
         id: 'ev_' + Date.now(),
         type: 'model',
-        title: 'Concept Model',
-        description: `${App.work.modelNodes.length} nodes, ${App.work.modelConnections.length} connections`,
+        title: 'Scientific Model',
+        description: `Model with ${App.work.modelNodes.length} concepts and ${App.work.modelPaths.length} drawings`,
         icon: 'mdi:cube-outline',
         data: {
             nodes: JSON.parse(JSON.stringify(App.work.modelNodes)),
-            connections: JSON.parse(JSON.stringify(App.work.modelConnections))
+            connections: JSON.parse(JSON.stringify(App.work.modelConnections)),
+            shapes: JSON.parse(JSON.stringify(App.work.modelShapes)),
+            notes: JSON.parse(JSON.stringify(App.work.modelNotes)),
+            paths: JSON.parse(JSON.stringify(App.work.modelPaths)),
+            stickers: JSON.parse(JSON.stringify(App.work.modelStickers))
         },
         author: App.user.name,
         time: Date.now()
@@ -3284,6 +3612,57 @@ async function updatePhenomenon() {
     toast('Phenomenon updated!', 'success');
 }
 
+async function renderStudentSelectionTiles(title) {
+    const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
+    const now = Date.now();
+    const studentList = allUsers.filter(u => u.mode === 'student');
+    
+    studentList.sort((a, b) => {
+        const aOnline = now - a.lastSeen < 15000;
+        const bOnline = now - b.lastSeen < 15000;
+        if (aOnline && !bOnline) return -1;
+        if (!aOnline && bOnline) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    return `
+        <div class="max-w-6xl mx-auto">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">${title}</h2>
+                <p class="text-gray-600">Select a student to view their work</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ${studentList.map(student => {
+                    const isOnline = now - student.lastSeen < 15000;
+                    return `
+                        <div class="bg-white rounded-2xl shadow-sm border-2 border-transparent hover:border-primary/50 transition-all overflow-hidden cursor-pointer" onclick="viewStudentWork('${student.visitorId}')">
+                            <div class="p-6">
+                                <div class="flex items-start justify-between mb-4">
+                                    <div class="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center text-gray-500 font-bold text-xl">
+                                        ${student.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div class="flex items-center gap-1 px-2 py-1 ${isOnline ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'} rounded-full text-xs font-medium">
+                                        <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}"></span>
+                                        ${isOnline ? 'Online' : 'Offline'}
+                                    </div>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-900 mb-1">${student.name}</h3>
+                                <p class="text-xs text-gray-500">Click to view work</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+                ${studentList.length === 0 ? `
+                    <div class="col-span-full py-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                        <span class="iconify text-5xl text-gray-300 mx-auto" data-icon="mdi:account-group-outline"></span>
+                        <p class="mt-4 text-gray-500">No students joined yet.</p>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
 async function renderTeacherStudents() {
     const container = document.getElementById('mainContent');
     const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
@@ -3376,7 +3755,16 @@ async function renderTeacherStudents() {
 
 async function viewStudentWork(visitorId) {
     App.viewingStudentId = visitorId;
+    App.viewerState.currentStudentId = visitorId;
     toast('Loading student progress...', 'info');
+    await loadFromStorage();
+    renderNavigation();
+    renderTeacherContent();
+}
+
+async function stopViewingStudent() {
+    App.viewingStudentId = null;
+    App.viewerState.currentStudentId = null;
     await loadFromStorage();
     renderNavigation();
     renderTeacherContent();
@@ -3519,20 +3907,31 @@ async function renderTeacherNoticeBoard() {
     `;
 }
 
-function renderLiveModels() {
+async function renderLiveModels() {
+    if (!App.viewingStudentId) {
+        return renderStudentSelectionTiles('View Student Models');
+    }
+
     const stickers = ['⭐', '✅', '❓', '💡', '🎯', '👏', '🔬', '📊'];
+    const currentStudent = (await dbGetByIndex(STORE_USERS, 'classCode', App.classCode)).find(u => u.visitorId === App.viewingStudentId);
     
     return `
         <div class="max-w-6xl mx-auto">
             <div class="mb-6 flex items-center justify-between">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900">View Student Models</h2>
+                    <h2 class="text-2xl font-bold text-gray-900">Viewing Model: ${currentStudent?.name || 'Student'}</h2>
                     <p class="text-gray-600">Read-only view with feedback tools</p>
                 </div>
-                <button onclick="presentToClass('model')" class="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg hover:opacity-90">
-                    <span class="iconify mr-2" data-icon="mdi:presentation"></span>
-                    Present to Class
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="stopViewingStudent()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center gap-2">
+                        <span class="iconify" data-icon="mdi:arrow-left"></span>
+                        Back to Students
+                    </button>
+                    <button onclick="presentToClass('model')" class="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg hover:opacity-90">
+                        <span class="iconify mr-2" data-icon="mdi:presentation"></span>
+                        Present
+                    </button>
+                </div>
             </div>
             
             <div class="bg-white rounded-xl shadow-sm border overflow-hidden relative" style="height: 500px;">
@@ -3586,6 +3985,15 @@ function renderViewerComments() {
         <div class="comment-bubble" style="left:${c.x}px; top:${c.y}px;">
             <p class="text-gray-700">${c.text}</p>
             <button onclick="deleteComment('${c.id}')" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600">×</button>
+        </div>
+    `).join('');
+}
+
+function renderViewerStickers() {
+    return (App.work.modelStickers || []).map(s => `
+        <div class="sticker" style="left:${s.x}px; top:${s.y}px; pointer-events: none;">
+            <span>${s.emoji}</span>
+            <button onclick="event.stopPropagation(); deleteSticker('${s.id}')" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center hover:bg-red-600 pointer-events-auto">×</button>
         </div>
     `).join('');
 }
@@ -3718,21 +4126,32 @@ function presentToClass(type) {
     toast('Presentation mode - share your screen with the class!', 'info');
 }
 
-function renderLiveData() {
+async function renderLiveData() {
+    if (!App.viewingStudentId) {
+        return renderStudentSelectionTiles('View Student Data');
+    }
+
     const dt = App.work.dataTable;
     const stickers = ['⭐', '✅', '❓', '💡', '🎯', '👏'];
+    const currentStudent = (await dbGetByIndex(STORE_USERS, 'classCode', App.classCode)).find(u => u.visitorId === App.viewingStudentId);
     
     return `
         <div class="max-w-6xl mx-auto">
             <div class="mb-6 flex items-center justify-between">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900">View Student Data</h2>
+                    <h2 class="text-2xl font-bold text-gray-900">Viewing Data: ${currentStudent?.name || 'Student'}</h2>
                     <p class="text-gray-600">${dt.rows.length} rows, ${dt.columns.length} columns</p>
                 </div>
-                <button onclick="presentToClass('data')" class="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg hover:opacity-90">
-                    <span class="iconify mr-2" data-icon="mdi:presentation"></span>
-                    Present to Class
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="stopViewingStudent()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center gap-2">
+                        <span class="iconify" data-icon="mdi:arrow-left"></span>
+                        Back to Students
+                    </button>
+                    <button onclick="presentToClass('data')" class="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg hover:opacity-90">
+                        <span class="iconify mr-2" data-icon="mdi:presentation"></span>
+                        Present
+                    </button>
+                </div>
             </div>
             
             <div class="bg-white rounded-xl shadow-sm border p-6 overflow-x-auto">

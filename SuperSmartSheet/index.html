@@ -12,6 +12,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- SortableJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <!-- Chart.js for Reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <style>
         :root {
@@ -317,11 +319,1594 @@
         }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.view-content-container {
+    display: none;
+    flex: 1 1 auto;
+    overflow: auto; /* Allow scrolling within view */
+}
+.view-content-container.active {
+    display: block; /* Or flex, depending on content */
+}
+    </style>
+    <!-- ezErrata Styles -->
+    <style>
+/* Root Variables */
+:root {
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --bg-gray: #f9fafb;
+    --border: #e5e7eb;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --error: #dc2626;
+    --success: #059669;
+    --warning: #d97706;
+    --white: #ffffff;
+	    
+    /* Move the custom properties here */
+    --sb-track-color: #f3f2f2;
+    --sb-thumb-color: #e4e3e3;
+    --sb-size: 10px;
+	
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --transition: all 0.2s ease-in-out;
+}
+
+/* Reset and Base Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Sync Status and Details Styling */
+.sync-status {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    margin: 1rem 0;
+    font-size: 0.875rem;
+}
+
+.sync-status .icon {
+    font-size: 1.25rem;
+}
+
+.sync-status.success {
+    background-color: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #34d399;
+}
+
+.sync-status.error {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #f87171;
+}
+
+.sync-status.syncing {
+    background-color: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #60a5fa;
+}
+
+.sync-details {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-top: 1rem;
+}
+
+.sync-details h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.sync-details ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sync-details li {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.sync-details li:last-child {
+    border-bottom: none;
+}
+
+.sync-details li ul {
+    margin-top: 0.5rem;
+    margin-left: 1.5rem;
+}
+
+.sync-details li ul li {
+    padding: 0.5rem 0;
+    border: none;
+    color: var(--text-secondary);
+    position: relative;
+}
+
+.sync-details li ul li::before {
+    content: "•";
+    position: absolute;
+    left: -1rem;
+    color: var(--primary);
+}
+
+/* Spinner Animation */
+.sync-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    position: relative;
+}
+
+/* Row positioning and hover effects */
+tr {
+    position: relative;
+}
+
+tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+tbody tr:hover {
+    background-color: var(--bg-gray);
+}
+
+/* Row Actions Container */
+.row-actions {
+    position: fixed; /* Changed from absolute to fixed */
+    transform: translateY(-50%);
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    background: linear-gradient(to left, var(--bg-gray) 70%, transparent);
+    padding: 0.5rem 0 0.5rem 2rem;
+    z-index: 2;
+}
+
+/* Show actions on row hover */
+tr:hover .row-actions {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Action Buttons */
+.row-actions .btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .row-actions {
+        position: static;
+        opacity: 1;
+        visibility: visible;
+        background: none;
+        padding: 0.5rem 0;
+        justify-content: flex-end;
+        transform: none;
+    }
+    
+    tr:hover .row-actions {
+        background: none;
+    }
+}
+
+/* Update the card-header styles to work with collapsible section */
+.collapsible-section {
+    border-radius: 0.75rem;
+    background: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.collapsible-header {
+    width: 100%;
+    padding: 1.25rem;
+    background: var(--white);
+    border: none;
+    border-radius: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.collapsible-header:hover {
+    background: var(--bg-gray);
+}
+
+.collapsible-header .card-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.collapsible-header .chevron {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+}
+
+.collapsible-header[aria-expanded="false"] .chevron {
+    transform: rotate(-90deg);
+}
+
+
+/* Update card styles to work within collapsible section */
+.collapsible-section .card-header {
+    border-bottom: none;
+    background: var(--white);
+	justify-content: flex-end;
+}
+
+.collapsible-section .card-content {
+    padding: 1.25rem;
+    background: var(--white);
+    border-bottom-left-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
+}
+
+
+
+
+
+.collapsible-content {
+    border-top: 1px solid var(--border);
+	display: none;
+	padding: 10px;
+	transition: all 0.3s ease-in-out;
+}
+
+.chevron {
+    margin-left: auto;
+    transition: transform 0.2s;
+}
+
+/* Add to styles.css */
+.column-map-item {
+   background: var(--white);
+   border: 1px solid var(--border);
+   border-radius: 0.75rem;
+   padding: 1rem;
+   margin-bottom: 0.75rem;
+}
+
+.column-map-item label {
+   display: flex;
+   align-items: center;
+   font-size: 1rem;
+   cursor: pointer;
+   user-select: none;
+}
+
+.column-map-item input[type="checkbox"] {
+   width: 1.25rem;
+   height: 1.25rem;
+   margin-right: 1rem;
+   cursor: pointer;
+}
+
+.column-mapping h4 {
+   font-size: 1.1rem;
+   margin-bottom: 1rem;
+}
+
+.mapping-actions {
+   margin-top: 1.5rem;
+   padding-top: 1rem;
+   border-top: 1px solid var(--border);
+}
+
+.column-map-item:hover {
+   background: var(--bg-gray);
+}
+
+/* Add to styles.css */
+.smartsheet-config {
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin: 1rem 0;
+    background: var(--bg-gray);
+}
+
+.sync-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.sync-status.success { color: var(--success); }
+.sync-status.error { color: var(--error); }
+.sync-status.syncing { color: var(--primary); }
+
+.sync-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: var(--bg-gray);
+    -webkit-font-smoothing: antialiased;
+}
+/* Layout for sidebar and main content */
+#container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+
+
+#app {
+    max-width: 1200px;
+    margin: 0 auto;
+    flex-grow: 1;
+    overflow: auto;
+    padding: 2rem;
+}
+#app-container {
+	width: 100%;
+	overflow-x: none;
+	overflow-y: auto;
+	justify-content: center;
+	position: relative;
+	margin: 2px;
+}
+
+#app-container::-webkit-scrollbar {
+    width: var(--sb-size); /* Fixed syntax error here */
+}
+
+#app-container::-webkit-scrollbar-track {
+    background: var(--sb-track-color);
+    border-radius: 5px;
+}
+
+#app-container::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-color);
+    border-radius: 5px;
+    border: 1px solid #d8d8d8;
+}
+
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text-primary);
+}
+
+/* Card Component */
+.card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.card-content {
+    padding: 1.25rem;
+}
+
+/* Grid System */
+.form-sections {
+    display: grid;
+    gap: 1.5rem;
+	grid-template-columns: repeat(12, 1fr);
+}
+
+.form-section {
+    border-radius: 0.75rem;
+    background: var(--white);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.form-section-title {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+
+/* Form Groups and Column Spans */
+.form-group {
+    margin: 0;
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
+    width: 100%;
+    padding: 1rem;
+}
+
+/* Define absolute column spans */
+.form-group.col-span-12,
+.layout-item.field[data-size="full"] {
+    grid-column: span 12;
+}
+
+.form-group.col-span-6,
+.layout-item.field[data-size="half"] {
+    grid-column: span 6;
+}
+
+.form-group.col-span-4,
+.layout-item.field[data-size="third"] {
+    grid-column: span 4;
+}
+
+.form-group.col-span-3,
+.layout-item.field[data-size="quarter"] {
+    grid-column: span 3;
+}
+
+.table-config-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+ /* Sidebar styling */
+        #sidebar {
+			width: 500px; /* Default width */
+			min-width: 200px;
+			max-width: 50%;
+			height: 100vh;
+			background-color: #f4f4f4;
+			border-left: 2px solid #ccc; /* Instead of border-right */
+			overflow: hidden;
+			resize: horizontal; /* Allows resizing */
+			direction: rtl;
+        }
+
+        #sidebar.open {
+            right: 0;
+        }
+
+
+
+        /* Floating button styling */
+        #toggleSidebar {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 10;
+        }
+
+.table-drag-handle {
+    cursor: move;
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    user-select: none;
+    align-self: center;
+}
+
+.table-config-item > *:not(.table-drag-handle) {
+    grid-column: 2;
+}
+
+.table-config-item.sortable-ghost {
+    opacity: 0.5;
+    background: var(--primary);
+    border: 2px dashed var(--primary-hover);
+}
+
+.table-config-item.sortable-chosen {
+    background: var(--bg-gray);
+    border: 2px solid var(--primary);
+}
+
+#sortableTableViews > .add-table {
+    margin-bottom: 5px;
+}
+
+.sortable-columns .column-item {
+        display: grid;
+        grid-template-columns: auto 1fr 1fr auto;
+        gap: 0.5rem;
+        align-items: center;
+        padding: 0.5rem;
+        background: var(--white);
+        border: 1px solid var(--border);
+        margin-bottom: 0.5rem;
+        border-radius: 0.25rem;
+    }
+
+    .column-drag-handle {
+        cursor: move;
+        color: var(--text-secondary);
+        padding: 0.25rem;
+        user-select: none;
+    }
+
+    .sortable-ghost {
+        opacity: 0.5;
+        background: var(--primary);
+    }
+
+    .sortable-chosen {
+        background: var(--bg-gray);
+    }
+
+
+/* Form Controls */
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.form-label[required]::after {
+    content: "*";
+    color: var(--error);
+    margin-left: 0.25rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.865rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background: var(--white);
+    transition: var(--transition);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-control::placeholder {
+    color: var(--text-secondary);
+}
+
+textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.field-selection-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.field-selection-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.field-selection-item:last-child {
+    border-bottom: none;
+}
+
+.field-selection-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.form-control-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.form-control-checkbox input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.field-selection-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--white);
+}
+
+.field-selection-item:hover {
+    background: var(--bg-gray);
+}
+
+.field-selection-item .form-control-checkbox {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.field-selection-item .field-size-select {
+    width: 120px;
+    padding: 0.5rem;
+    margin-left: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: var(--white);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.field-selection-item .field-size-select:hover {
+    border-color: var(--primary);
+}
+
+.field-selection-item .field-size-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.field-selection-item .field-size-select option {
+    padding: 0.5rem;
+}
+
+/* Additional styles for the list container */
+.field-selection-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0; /* Removed padding to align items edge-to-edge */
+    margin-bottom: 1rem;
+    background: var(--white);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Last item shouldn't have a border */
+.field-selection-item:last-child {
+    border-bottom: none;
+}
+
+/* Improved checkbox styling */
+.field-selection-item .form-control-checkbox input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-right: 0.75rem;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    border-radius: 0.25rem;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.field-selection-item .form-control-checkbox input[type="checkbox"]:checked {
+    border-color: var(--primary);
+    background-color: var(--primary);
+}
+
+/* Selection actions styling */
+.field-selection-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding: 0 0.25rem;
+}
+.field-selection-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.field-selection-item .sync-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 0.25rem;
+    background: var(--bg-gray);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    font-size: 0.55rem;
+    color: var(--text-secondary);
+}
+
+.field-selection-item .sync-badge .icon {
+    font-size: 0.875rem;
+}
+
+/* Button Styles */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: var(--transition);
+    gap: 0.5rem;
+}
+
+.btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+}
+
+.btn-secondary {
+    background: var(--bg-gray);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--border);
+}
+
+/* Alert Component */
+.alert {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+    display: none;
+    animation: slideDown 0.3s ease-out;
+}
+
+.alert-success {
+    background-color: #ecfdf5;
+    color: #065f46;
+    border: 1px solid var(--success);
+}
+
+.alert-error {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid var(--error);
+}
+
+/* Table Styles */
+.table-container {
+    overflow-x: auto;
+    border-radius: 0.5rem;
+    background: var(--white);
+    border: 1px solid var(--border);
+}
+
+
+
+th {
+    background: var(--bg-gray);
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+}
+
+td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tbody tr:hover {
+    background: var(--bg-gray);
+}
+
+/* Configuration UI Styles */
+.config-panel {
+    margin-bottom: 2rem;
+    z-index: 2000;
+}
+
+.config-panel .card-content {
+	border-top: 1px solid var(--border);
+}
+
+.config-panel .card-header {
+	padding: 20px;
+}
+
+.config-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.config-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: none;
+}
+
+.config-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.fields-action,
+.forms-action,
+.tables-action {
+    display: none;
+}
+
+/* Show action button when corresponding tab is active */
+.config-tab[data-tab="fields"].active ~ .config-actions .fields-action,
+.config-tab[data-tab="forms"].active ~ .config-actions .forms-action,
+.config-tab[data-tab="tables"].active ~ .config-actions .tables-action {
+    display: block;
+}
+
+#toggleConfig {
+	min-width: 120px;
+}
+
+
+.config-tab {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.config-tab:hover {
+    background: var(--bg-gray);
+    color: var(--text-primary);
+}
+
+.config-tab.active {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.config-tab-content {
+    position: relative;
+}
+
+.config-tab-pane {
+    display: none;
+}
+
+.config-tab-pane.active {
+    display: block;
+}
+
+/* Layout Editor Styles */
+
+.form-layout-tools {
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border);
+}
+
+.form-layout-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-gray);
+    border-radius: 0.5rem;
+}
+
+.form-layout-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
+    width: 100%;
+    margin: 0.5rem 0;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+}
+
+
+#forms-config {
+	background: var(--bg-gray);
+    border-radius: 0.5rem;
+}
+
+.multiselect-dropdown {
+    width: 100%;
+    padding: 0.78rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--white);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+
+
+.multiselect-dropdown::after {
+    content: '▼';
+    font-size: 0.8em;
+}
+
+.multiselect-dropdown.active::after {
+    content: '▲';
+}
+.multiselect-search {
+    position: sticky;
+    top: 0;
+    padding: 0.5rem;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    z-index: 1;
+}
+
+.multiselect-search input {
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+}
+
+.multiselect-search input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.options-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+
+.multiselect-options.show {
+    display: block;
+}
+
+.multiselect-option {
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.multiselect-option:hover {
+    background: var(--bg-gray);
+}
+
+.multiselect-option input[type="checkbox"] {
+    margin: 0;
+}
+.select-wrapper, .multiselect-wrapper {
+    /* Existing properties to keep */
+    position: relative;
+    width: 100%;
+    
+
+}
+
+.select-dropdown {
+    width: 100%;
+    padding: 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--white);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+	display: flex;
+	justify-content: space-between;
+    text-overflow: ellipsis;
+}
+
+.select-dropdown::after {
+    content: '▼';
+    font-size: 0.8em;
+}
+
+.select-dropdown.active::after {
+    content: '▲';
+}
+
+.select-options, .multiselect-options {
+    /* Existing properties to keep */
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    margin-top: 0.25rem;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+
+    /* Add new property */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.select-options.show {
+    display: block;
+	overflow-y: hidden;
+}
+
+.select-search {
+    position: sticky;
+    top: 0;
+    padding: 0.5rem;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    z-index: 1;
+}
+
+.select-options-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.select-option {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.select-option:hover {
+    background: var(--bg-gray);
+}
+
+.selected-options {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.selected-option {
+    background: var(--bg-gray);
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+}
+
+/* Layout Items */
+.layout-item {
+    background: var(--white);
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.layout-item.section {
+    grid-column: 1 / -1;
+    background: var(--bg-gray);
+    border: 1px dashed var(--border);
+    margin-bottom: 0.5rem;
+}
+.settingsModal {z-index: 1005;}
+.layout-item.field {
+    margin: 0;
+    min-width: 0;
+}
+}
+
+
+.layout-item-handle {
+    cursor: move;
+    padding: 0.5rem;
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.layout-item-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+	flex-direction: column;
+}
+
+/* Field items and sections */
+
+
+.fields-section:first-of-type,
+.quick-access-fields {
+   background: var(--bg-gray);
+   border-radius: 0.75rem;
+   padding: 1rem;
+   margin: 0 0 2rem;
+}
+
+.fields-section h3 {
+   margin-bottom: 1rem;
+   padding-bottom: 0.5rem;
+   border-bottom: 1px solid #e0e0e0;
+}
+
+.fields-tools {
+   margin-bottom: 5px;
+   display: flex;
+   justify-content: flex-start;
+}
+
+.fields-list {
+   display: flex;
+   gap: 1rem;
+   flex-wrap: wrap;
+   justify-content: center;
+}
+
+/* Individual field styling */
+.field-item {
+   background: var(--bg-gray);
+   border: 1px solid var(--border);
+   border-radius: 0.75rem;
+   padding: 10px;
+   transition: var(--transition);
+   width: 32%;
+}
+
+.field-item:hover {
+   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.field-preview {
+   font-size: 0.875rem;
+   color: var(--text-primary);
+}
+
+.field-item-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   margin-bottom: 0.75rem;
+}
+
+.field-item-header h3 {
+   font-size: 1rem;
+   font-weight: 600;
+   margin: 0;
+   border-bottom: 0;
+}
+
+.field-details {
+   display: flex;
+   gap: 1rem;
+   font-size: 0.875rem;
+   color: var(--text-secondary);
+}
+
+.field-type,
+.field-required {
+   background: var(--white);
+   padding: 0.25rem 0.75rem;
+   border-radius: 0.75rem;
+   border: 1px solid var(--border);
+}
+
+.field-actions {
+   display: flex;
+   gap: 0.5rem;
+   justify-content: flex-end;
+   margin-top: 5px;
+}
+
+.quick-access-fields .field-item {
+	    background: var(--white);
+}
+
+/* Field chips */
+.field-chips {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 0.5rem;
+}
+
+.field-chip {
+   background: #e0e0e0;
+   padding: 0.25rem 0.75rem;
+   border-radius: 16px;
+   font-size: 0.875rem;
+}
+
+/* Footer elements */
+.field-footer {
+   margin-top: 0.75rem;
+   padding-top: 0.75rem;
+   border-top: 1px solid #e0e0e0;
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+}
+
+.footer-actions {
+   display: flex;
+   gap: 0.5rem;
+}
+
+.sync-badge {
+   background: #e3f2fd;
+   color: #1976d2;
+   padding: 0.25rem 0.5rem;
+   border-radius: 1rem;
+   font-size: 0.75rem;
+   display: inline-flex;
+   align-items: center;
+   gap: 0.25rem;
+}
+
+.sync-badge .icon {
+   font-size: 0.875rem;
+}
+
+/* Form Fields Editor */
+
+
+/* Field Editor Modal */
+.field-editor-form .form-group {
+    margin-bottom: 1.25rem;
+}
+
+.field-editor-form .form-control-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.field-editor-form .form-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+.edit-field, .delete-field {
+	border-radius: 0.75rem;
+    border: 1px solid var(--border);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .field-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .field-details {
+        flex-wrap: wrap;
+    }
+}
+
+.layout-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Sortable Styles */
+.sortable-ghost {
+    opacity: 0.5;
+    background: var(--primary);
+    border: 2px dashed var(--primary);
+}
+
+.sortable-chosen {
+    background: var(--bg-gray);
+    border: 2px solid var(--primary);
+}
+
+/* Table Configuration */
+.table-config-item {
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: var(--white);
+}
+
+.table-config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.table-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.table-columns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.column-tag {
+    background: var(--bg-gray);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-content {
+    /* Existing properties to keep */
+    background: var(--white);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    width: 90%;
+    max-width: 600px;
+    
+    /* Update/add these properties */
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content::-webkit-scrollbar {
+    width: var(--sb-size); /* Fixed syntax error here */
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: var(--sb-track-color);
+    border-radius: 5px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-color);
+    border-radius: 5px;
+    border: 1px solid #d8d8d8;
+}
+
+
+
+
+/* Add these new selectors */
+.select-options:not(.dropup), .multiselect-options:not(.dropup) {
+    top: 100%;
+}
+
+.select-options.dropup, .multiselect-options.dropup {
+    bottom: 100%;
+    top: auto;
+    margin-top: 0;
+    margin-bottom: 0.25rem;
+}
+
+.select-wrapper .select-options.show,
+.multiselect-wrapper .multiselect-options.show {
+    z-index: 1100;
+}
+
+.form-actions {
+	display: flex;
+    justify-content: flex-end;
+	margin-top: 10px;
+	gap: 5px;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .modal-content {
+    scrollbar-color: var(--sb-thumb-color)
+                     var(--sb-track-color);
+  }
+    #app-container {
+    scrollbar-color: var(--sb-thumb-color)
+                     var(--sb-track-color);
+  }
+}
+
+
+
+
+
+.column-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 2rem !important;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    }
+
+
+
+.tab {
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.view-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.tab:hover {
+    background: var(--bg-gray);
+    color: var(--text-primary);
+}
+
+.tab.active {
+    background: var(--primary);
+    color: var(--white);
+}
+
+/* Animations */
+@keyframes slideDown {
+    from {
+        transform: translateY(-1rem);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .form-grid {
+        gap: 0.75rem;
+    }
+	
+	.form-group,
+    .layout-item.field {
+        grid-column: span 1
+	}
+}
     </style>
 </head>
 <body>
 
-<!-- DASHBOARD VIEW -->
 <div id="dashboardView" class="view-section active">
     <div class="hero-section">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -370,6 +1955,7 @@
             <button class="btn btn-white border shadow-sm" onclick="viewRawData()" title="View Raw Data Table"><i class="bi bi-table"></i></button>
             <button class="btn btn-white border shadow-sm" onclick="showLogs()"><i class="bi bi-terminal"></i> Logs</button>
             <button class="btn btn-white border shadow-sm" onclick="toggleFullScreen()"><i class="bi bi-arrows-fullscreen"></i></button>
+            <button class="btn btn-white border shadow-sm" onclick="openViewDesigner()"><i class="bi bi-ui-checks"></i> View Designer</button> <!-- NEW BUTTON -->
             <button class="btn btn-white border shadow-sm fw-bold" onclick="openSetup(true)"><i class="bi bi-sliders"></i> Setup</button>
         </div>
     </div>
@@ -413,11 +1999,24 @@
         <input type="text" id="mobileSearchInput" class="form-control border-0 shadow-sm" placeholder="Search rows..." onkeyup="debouncedSyncSearch(this.value)">
     </div>
 
-    <div class="table-container" id="tableContainer">
-        <table id="mainTable">
-            <thead id="tHead"></thead>
-            <tbody id="tBody"></tbody>
-        </table>
+    <!-- Container for Grid View -->
+    <div id="gridViewContainer" class="view-content-container active">
+        <div class="table-container" id="tableContainer">
+            <table id="mainTable">
+                <thead id="tHead"></thead>
+                <tbody id="tBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Container for Form View -->
+    <div id="formViewContainer" class="view-content-container">
+        <!-- FormManager will render here -->
+    </div>
+
+    <!-- Container for Report View -->
+    <div id="reportViewContainer" class="view-content-container">
+        <!-- Chart.js and report elements will render here -->
     </div>
 </div>
 
@@ -503,6 +2102,24 @@
 <div class="modal fade" id="logsModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content bg-dark text-light"><div class="modal-header border-secondary"><h5 class="modal-title">System Logs</h5><button class="btn btn-sm btn-outline-light ms-auto me-2" onclick="copyLogs()">Copy</button><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 bg-black" id="logContent" style="min-height:300px;"></div></div></div></div>
 <div class="modal fade" id="rawDataModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-lg-down"><div class="modal-content"><div class="modal-header bg-light border-bottom"><h5 class="modal-title font-monospace fw-bold"><i class="bi bi-database me-2 text-primary"></i>Raw Data Inspector</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 position-relative"><div class="table-container" style="height: 100%;"><table id="rawTable" style="width:100%"><thead id="rawHead"></thead><tbody id="rawBody"></tbody></table></div></div></div></div></div>
 
+<!-- VIEW DESIGNER MODAL -->
+<div class="modal fade" id="viewDesignerModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">View Designer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="viewDesignerContent">
+                <!-- ConfigurationUI content will be rendered here -->
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- HYBRID PICKER -->
 <div id="pickerBackdrop" onclick="closeUniversalPicker()"></div>
 <div id="universalPicker">
@@ -515,7 +2132,7 @@
 </div>
 
 <!-- UTILS -->
-<div id="loader" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center;"><div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div><h6 class="fw-bold text-dark">Processing...</h6></div>
+<div id="loader" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:999; flex-direction:column; align-items:center; justify-content:center;"><div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div><h6 class="fw-bold text-dark">Processing...</h6></div>
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toastArea"></div>
 <div id="columnFilterPopover">
     <div class="p-3">
@@ -538,6 +2155,12 @@
         <button class="btn btn-sm btn-primary" onclick="applyColumnFilter()">Apply</button>
     </div>
 </div>
+
+    <!-- ezErrata Modules -->
+    <script src="dev/modules/config.js"></script>
+    <script src="dev/modules/config-manager.js"></script>
+    <script src="dev/modules/managers.js"></script>
+    <script src="dev/modules/smartsheet-service.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -600,13 +2223,17 @@ const SMARTSHEET_PALETTE = [
 let STATE = { 
     sheetId: null, serverRows: [], allRows: [], cols: [], selectedCol: null, selectedRowIds: new Set(), adds: [], dels: new Set(), edits: {}, hierarchyChanges: {}, 
     meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set(), maxDepth: 0 }, 
-    tempFilterCol: null, logs: [], lastModifiedAt: null, autoRefresh: false, autoRefreshInterval: 60, conflicts: [], views: [], currentViewId: null,
+    tempFilterCol: null, logs: [], lastModifiedAt: null, autoRefresh: false, autoRefreshInterval: 60, conflicts: [], views: [],
+    activeViewType: 'grid', // New: Tracks 'grid', 'form', or 'report'
+    activeViewConfigId: null, // New: ID of the currently active form/report view config
     rowMap: new Map(), childMap: new Map(), flatRenderList: [], isRendering: false,
 };
 let PICKER_STATE = { rid: null, cid: null, mode: 'SINGLE', values: [] };
 
 let sortableInstance = null;
 let refreshInterval = null;
+let currentFormManager = null; // New global variable
+let currentViewManager = null; // New global variable
 
 // --- UTILITY FUNCTIONS ---
 function debounce(func, delay) { let timeout; return function(...args) { const context = this; clearTimeout(timeout); timeout = setTimeout(() => func.apply(context, args), delay); }; }
@@ -635,16 +2262,26 @@ function toggleTheme() { const curr = document.body.getAttribute('data-theme'); 
 function updateThemeIcon() { const isDark = document.body.getAttribute('data-theme') === 'dark'; const icon = document.getElementById('themeIcon'); icon.className = isDark ? "bi bi-sun-fill" : "bi bi-moon-stars-fill"; }
 
 // --- VIEWS LOGIC ---
-function getDefaultView() { return { id: 'default', name: 'Main View', visibleCols: STATE.cols.map(c => c.id), colWidths: {}, filters: [] }; }
-function loadViews() { const storageKey = `smViews_${STATE.sheetId}`; const stored = localStorage.getItem(storageKey); STATE.views = stored ? JSON.parse(stored) : [getDefaultView()]; STATE.views.forEach(v => v.visibleCols = v.visibleCols.map(Number)); if (!STATE.currentViewId || !STATE.views.find(v => v.id === STATE.currentViewId)) { STATE.currentViewId = STATE.views[0].id; } renderViewsBar(); }
-function saveViewsToStorage() { if(!STATE.sheetId) return; localStorage.setItem(`smViews_${STATE.sheetId}`, JSON.stringify(STATE.views)); }
-function renderViewsBar() { const container = document.getElementById('viewsContainer'); let html = ''; STATE.views.forEach(v => { const isActive = v.id === STATE.currentViewId; html += `<div class="view-tab ${isActive ? 'active' : ''}" onclick="switchView('${v.id}')">${v.name} ${isActive ? '<i class="bi bi-caret-down-fill small ms-1" onclick="event.stopPropagation(); editViewConfig(\''+v.id+'\')"></i>' : ''}</div>`; }); html += `<div class="view-add-btn" onclick="addNewView()" title="New View"><i class="bi bi-plus-lg"></i></div>`; container.innerHTML = html; }
-function switchView(id) { if (STATE.currentViewId === id) return; STATE.currentViewId = id; renderViewsBar(); renderSetupCols(); renderTable(); }
-function addNewView() { const newView = { id: 'view_' + Date.now(), name: 'New View', visibleCols: STATE.cols.map(c => c.id), colWidths: {}, filters: [] }; STATE.views.push(newView); saveViewsToStorage(); switchView(newView.id); }
-function editViewConfig(id) { const v = STATE.views.find(x => x.id === id); if (!v) return; document.getElementById('viewNameInput').value = v.name; const btnSave = document.querySelector('#viewConfigModal .btn-primary'); btnSave.onclick = () => saveViewConfigInternal(id); new bootstrap.Modal('#viewConfigModal').show(); }
-function saveViewConfigInternal(id) { const v = STATE.views.find(x => x.id === id); if(!v) return; v.name = document.getElementById('viewNameInput').value.trim() || "Untitled"; saveViewsToStorage(); bootstrap.Modal.getInstance('#viewConfigModal').hide(); renderViewsBar(); renderTable(); }
-function deleteCurrentView() { if(STATE.views.length <= 1) return alert("Cannot delete the only view."); if(!confirm("Delete this view?")) return; STATE.views = STATE.views.filter(v => v.id !== STATE.currentViewId); STATE.currentViewId = STATE.views[0].id; saveViewsToStorage(); bootstrap.Modal.getInstance('#viewConfigModal').hide(); renderViewsBar(); renderTable(); }
-function updateViewColState(colId, width) { const v = STATE.views.find(x => x.id === STATE.currentViewId); if(v && width) { if(!v.colWidths) v.colWidths = {}; v.colWidths[colId] = width; saveViewsToStorage(); } }
+function editViewConfig(id, type) { 
+    // This will now launch the main View Designer modal in 'edit' mode for a specific view
+    openViewDesigner(id, type); 
+}
+// This is currently designed for grid column resizing.
+// Its usage in the context of the new view types needs to be re-evaluated.
+// For now, it will not persist state as STATE.views is no longer used for colWidths.
+function updateViewColState(colId, width) { 
+    // This function remains to support grid column resizing.
+    // However, the `currentView` logic needs to be updated to use the active grid view config.
+    // For now, it will apply to the currently active 'grid' view's column widths.
+    // A proper implementation might involve storing grid column widths per sheet/user.
+    // As `STATE.views` is deprecated, this needs re-evaluation.
+    // For now, let's just make it update the current grid's column widths if available.
+    if (STATE.activeViewType === 'grid' && width) {
+        // Need to find a way to persist custom grid column widths if desired.
+        // For simplicity, we'll skip persisting this particular state for now
+        // or tie it to the sheet-level settings directly if there's no specific grid view config.
+    }
+}
 
 // --- CORE FUNCTIONS ---
 function renderLibrary() { const lib = JSON.parse(localStorage.getItem('smLib') || '[]'); const grid = document.getElementById('libraryGrid'); grid.innerHTML = ''; document.getElementById('emptyLib').style.display = lib.length ? 'none' : 'block'; lib.forEach(s => { const d = document.createElement('div'); d.className = 'col-12 col-md-6'; d.innerHTML = `<div class="sheet-card" onclick="loadSheet('${s.id}')"><div class="d-flex align-items-center"><div class="bg-light rounded-circle p-2 me-3 text-primary"><i class="bi bi-table"></i></div><div class="overflow-hidden me-auto"><div class="fw-bold text-truncate">${s.name}</div><div class="small text-muted font-monospace">${s.id}</div></div><button class="btn btn-sm text-danger z-2" onclick="removeSheet(event, '${s.id}')"><i class="bi bi-x-lg"></i></button></div></div>`; grid.appendChild(d); }); }
@@ -872,6 +2509,154 @@ function flattenTree() {
     STATE.meta.maxDepth = maxGlobalDepth; 
 }
 
+// --- FORM VIEW RENDERING ---
+function renderFormView(viewConfig, initialSelectedRowId) {
+    const formViewContainer = document.getElementById('formViewContainer');
+    formViewContainer.innerHTML = ''; // Clear previous content
+
+    // Re-instantiate ConfigManager and StorageManager to ensure they are fresh
+    // and correctly scoped for the current sheet.
+    const storageManager = new StorageManager(STATE.sheetId);
+    const config = new ConfigManager(STATE.sheetId);
+
+    // Populate ConfigManager with form field configurations
+    const savedFormConfig = storageManager.getFormConfig();
+    if (savedFormConfig.size > 0) {
+        config.setFormConfig(savedFormConfig);
+    } else {
+        config.setFormConfig(DEFAULT_FORM_CONFIG);
+        storageManager.saveFormConfig(DEFAULT_FORM_CONFIG);
+    }
+
+    // Populate ConfigManager with the specific form layout for this view
+    // A form view's config should contain its layout (viewConfig.formLayout)
+    if (viewConfig && viewConfig.formLayout && viewConfig.formLayout.length > 0) {
+        config.setFormLayout(viewConfig.formLayout);
+    } else {
+        // Fallback to default form layout if not defined in viewConfig
+        config.setFormLayout(DEFAULT_FORM_LAYOUT);
+        storageManager.saveFormLayout(DEFAULT_FORM_LAYOUT);
+    }
+
+    // Set config.entries to current sheet rows for form manager
+    // Need to convert STATE.allRows to ezErrata's entry format
+    // This is a simplified conversion, may need more logic for complex cell types
+    config.entries = STATE.allRows.map(row => {
+        const entry = { id: row.id };
+        row.cells.forEach(cell => {
+            const col = STATE.cols.find(c => c.id === cell.columnId);
+            if (col) {
+                // Prioritize local edits if present
+                entry[col.title.toLowerCase().replace(/\s+/g, '_')] = 
+                    (STATE.edits[row.id] && STATE.edits[row.id][col.id] !== undefined) ? 
+                    STATE.edits[row.id][col.id] :
+                    (cell.displayValue ?? cell.value);
+            }
+        });
+        return entry;
+    });
+
+    currentFormManager = new FormManager(config, formViewContainer);
+    currentFormManager.renderForm();
+
+    // If a row was selected initially, or is currently active, fill the form with its data
+    let rowToDisplayId = initialSelectedRowId || (STATE.selectedRowIds.size > 0 ? [...STATE.selectedRowIds][0] : null);
+    
+    // Fallback to the first row if no specific row is selected/provided
+    if (!rowToDisplayId && STATE.allRows.length > 0) {
+        rowToDisplayId = STATE.allRows[0].id;
+    }
+
+    if (rowToDisplayId) {
+        currentFormManager.editEntry(rowToDisplayId); // FormManager's editEntry will populate the form
+    }
+}
+
+
+// --- REPORT VIEW RENDERING ---
+function renderReportView(viewConfig) {
+    const reportViewContainer = document.getElementById('reportViewContainer');
+    reportViewContainer.innerHTML = ''; // Clear previous content
+
+    // Example: Create a canvas for a chart
+    const canvas = document.createElement('canvas');
+    canvas.id = `chart-${viewConfig.id}`;
+    reportViewContainer.appendChild(canvas);
+
+    // Create a new ConfigManager to access fields for grouping/value selection
+    const configManagerForReport = new ConfigManager(STATE.sheetId);
+    const storageManagerForReport = new StorageManager(STATE.sheetId);
+    configManagerForReport.setFormConfig(storageManagerForReport.getFormConfig() || DEFAULT_FORM_CONFIG);
+
+
+    // Data processing for the report
+    const processedData = {};
+    const labels = [];
+    const dataValues = [];
+
+    if (viewConfig.reportConfig && viewConfig.reportConfig.groupBy) {
+        const groupByFieldKey = viewConfig.reportConfig.groupBy;
+        const valueFieldKey = viewConfig.reportConfig.valueColumn; // Optional for aggregation
+
+        STATE.allRows.forEach(row => {
+            const groupValue = (row.cells.find(c => c.columnId === STATE.cols.find(col => col.title.toLowerCase().replace(/\s+/g, '_') === groupByFieldKey)?.id)?.displayValue || 'N/A');
+            const numericValue = valueFieldKey ? 
+                parseFloat(row.cells.find(c => c.columnId === STATE.cols.find(col => col.title.toLowerCase().replace(/\s+/g, '_') === valueFieldKey)?.id)?.value) || 0 : 
+                1; // Count each item if no value column
+
+            if (processedData[groupValue]) {
+                processedData[groupValue] += numericValue;
+            } else {
+                processedData[groupValue] = numericValue;
+            }
+        });
+
+        for (const group in processedData) {
+            labels.push(group);
+            dataValues.push(processedData[group]);
+        }
+    } else {
+        // Fallback: simple row count if no group by is specified
+        labels.push('Total Rows');
+        dataValues.push(STATE.allRows.length);
+    }
+    
+    // Default colors for charts
+    const backgroundColors = [
+        'rgba(255, 99, 132, 0.8)', 'rgba(54, 162, 235, 0.8)', 'rgba(255, 206, 86, 0.8)',
+        'rgba(75, 192, 192, 0.8)', 'rgba(153, 102, 255, 0.8)', 'rgba(255, 159, 64, 0.8)'
+    ];
+    const borderColors = [
+        'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)',
+        'rgba(75, 192, 192, 1)', 'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)'
+    ];
+
+
+    new Chart(canvas, {
+        type: viewConfig.reportConfig.chartType, // e.g., 'bar', 'pie'
+        data: {
+            labels: labels,
+            datasets: [{
+                label: viewConfig.name,
+                data: dataValues,
+                backgroundColor: backgroundColors.slice(0, labels.length),
+                borderColor: borderColors.slice(0, labels.length),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: viewConfig.reportConfig.chartType !== 'pie' ? {
+                y: {
+                    beginAtZero: true
+                }
+            } : {}
+        }
+    });
+}
+
+
 // --- TABLE RENDERING ---
 function renderTable() { if (STATE.isRendering) return; STATE.isRendering = true; indexAllData(); renderHeader(); flattenTree(); renderVisibleRows(); initSortable(); STATE.isRendering = false; }
 function renderHeader() {
@@ -1004,16 +2789,235 @@ function initSortable() {
     }); 
 }
 function updateSyncUI() { const modifiedCount = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]).size; document.getElementById('cntMod').innerText = modifiedCount; document.getElementById('cntAdd').innerText = STATE.adds.length; document.getElementById('cntDel').innerText = STATE.dels.size; const has = (modifiedCount + STATE.adds.length + STATE.dels.size) > 0; document.getElementById('btnSync').disabled = !has; document.getElementById('btnDiscard').disabled = !has; document.getElementById('btnSync').className = has ? "btn btn-sm btn-primary rounded-pill px-3 fw-bold" : "btn btn-sm btn-secondary rounded-pill px-3"; }
-function discard() { if(!confirm('Discard all unsaved changes?')) return; STATE.allRows = JSON.parse(JSON.stringify(STATE.serverRows)); STATE.adds = []; STATE.dels.clear(); STATE.edits = {}; STATE.hierarchyChanges = {}; renderTable(); updateSyncUI(); showToast('Changes discarded', 'success'); }
-async function sync() { if(!confirm('Sync to Smartsheet?')) return; showLoader(true); try { if(STATE.dels.size > 0) { await api(`/sheets/${STATE.sheetId}/rows?ids=${Array.from(STATE.dels).join(',')}&ignoreRowsNotFound=true`, 'DELETE'); } if (STATE.adds.length > 0) { const newRowsPayload = STATE.adds.map(r => { const editsForNewRow = STATE.edits[r.id] || {}; const finalCells = (r.cells || []).map(c => ({ ...c })); Object.keys(editsForNewRow).forEach(cid => { const existingCellIndex = finalCells.findIndex(cell => cell.columnId == cid); if (existingCellIndex > -1) finalCells[existingCellIndex].value = editsForNewRow[cid]; else finalCells.push({ columnId: parseInt(cid), value: editsForNewRow[cid] }); }); const cleanCells = finalCells.map(c => { const colDef = STATE.cols.find(col => col.id === c.columnId); const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(c.value).includes(','))); if(isMulti) { const arr = String(c.value).split(/,\s*/).filter(s => s !== ''); return { columnId: c.columnId, objectValue: { objectType: "MULTI_PICKLIST", values: arr } }; } return { columnId: c.columnId, value: c.value }; }); const o={cells:cleanCells}; if(r.parentId) o.parentId=r.parentId; else o.toTop=true; if(r.siblingId) o.siblingId = r.siblingId; return o; }); await api(`/sheets/${STATE.sheetId}/rows`, 'POST', newRowsPayload); } const updateIds = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]); if(updateIds.size > 0) { const updates = Array.from(updateIds) .filter(rid => !String(rid).startsWith("NEW")) .map(rid => { const payload = { id: parseInt(rid) }; if(STATE.edits[rid]) { payload.cells = Object.keys(STATE.edits[rid]).map(cid => { const colDef = STATE.cols.find(c => c.id === parseInt(cid)); let rawVal = STATE.edits[rid][cid]; const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(rawVal).includes(','))); if(isMulti) { const arr = String(rawVal).split(/,\s*/).filter(s => s !== ''); return { columnId: parseInt(cid), objectValue: { objectType: "MULTI_PICKLIST", values: arr } }; } return { columnId: parseInt(cid), value: rawVal }; }); } if(STATE.hierarchyChanges[rid]) { const change = STATE.hierarchyChanges[rid]; if(change.toTop) payload.toTop = true; else if(change.siblingId) payload.siblingId = change.siblingId; if(change.parentId !== undefined) payload.parentId = change.parentId; } return payload; }); if (updates.length > 0) { await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', updates); } } const freshData = await api(`/sheets/${STATE.sheetId}?includeAll=true`); STATE.allRows = freshData.rows; STATE.serverRows = JSON.parse(JSON.stringify(freshData.rows)); STATE.adds = []; STATE.dels.clear(); STATE.edits = {}; STATE.hierarchyChanges = {}; renderTable(); updateSyncUI(); showToast('Sync Successful!', 'success'); } catch(e) { showToast('Sync Failed: ' + e, 'danger'); } finally { showLoader(false); } }
+function discard() { 
+    if(!confirm('Discard all unsaved changes?')) return; 
+    STATE.allRows = JSON.parse(JSON.stringify(STATE.serverRows)); 
+    STATE.adds = []; STATE.dels.clear(); STATE.edits = {}; STATE.hierarchyChanges = {}; 
+    
+    // Re-render the active view to reflect discarded changes
+    if (STATE.activeViewType === 'form' && STATE.activeViewConfigId) {
+        // Need to pass the currently edited entry ID to re-select it in the form view
+        switchView(STATE.activeViewConfigId, 'form', currentFormManager?.currentEntryId); 
+    } else if (STATE.activeViewType === 'report' && STATE.activeViewConfigId) {
+        switchView(STATE.activeViewConfigId, 'report');
+    } else {
+        renderTable(); // Re-render grid
+    }
+    
+    updateSyncUI(); 
+    showToast('Changes discarded', 'success'); 
+}
+async function sync() { 
+    if(!confirm('Sync to Smartsheet?')) return; 
+    showLoader(true); 
+    try { 
+        // ... (existing sync logic) ...
+        if(STATE.dels.size > 0) { 
+            await api(`/sheets/${STATE.sheetId}/rows?ids=${Array.from(STATE.dels).join(',')}&ignoreRowsNotFound=true`, 'DELETE'); 
+        } 
+        if (STATE.adds.length > 0) { 
+            const newRowsPayload = STATE.adds.map(r => { 
+                const editsForNewRow = STATE.edits[r.id] || {}; 
+                const finalCells = (r.cells || []).map(c => ({ ...c })); 
+                Object.keys(editsForNewRow).forEach(cid => { 
+                    const existingCellIndex = finalCells.findIndex(cell => cell.columnId == cid); 
+                    if (existingCellIndex > -1) finalCells[existingCellIndex].value = editsForNewRow[cid]; 
+                    else finalCells.push({ columnId: parseInt(cid), value: editsForNewRow[cid] }); 
+                }); 
+                const cleanCells = finalCells.map(c => { 
+                    const colDef = STATE.cols.find(col => col.id === c.columnId); 
+                    const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(c.value).includes(','))); 
+                    if(isMulti) { 
+                        const arr = String(c.value).split(/,\s*/).filter(s => s !== ''); 
+                        return { columnId: parseInt(c.columnId), objectValue: { objectType: "MULTI_PICKLIST", values: arr } }; 
+                    } 
+                    return { columnId: parseInt(c.columnId), value: c.value }; 
+                }); 
+                const o={cells:cleanCells}; 
+                if(r.parentId) o.parentId=r.parentId; 
+                else o.toTop=true; 
+                if(r.siblingId) o.siblingId = r.siblingId; 
+                return o; 
+            }); 
+            await api(`/sheets/${STATE.sheetId}/rows`, 'POST', newRowsPayload); 
+        } 
+        const updateIds = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]); 
+        if(updateIds.size > 0) { 
+            const updates = Array.from(updateIds) 
+                .filter(rid => !String(rid).startsWith("NEW")) 
+                .map(rid => {
+                    const payload = { id: parseInt(rid) }; 
+                    if(STATE.edits[rid]) { 
+                        payload.cells = Object.keys(STATE.edits[rid]).map(cid => { 
+                            const colDef = STATE.cols.find(c => c.id === parseInt(cid)); 
+                            let rawVal = STATE.edits[rid][cid]; 
+                            const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(rawVal).includes(','))); 
+                            if(isMulti) { 
+                                const arr = String(rawVal).split(/,\s*/).filter(s => s !== ''); 
+                                return { columnId: parseInt(cid), objectValue: { objectType: "MULTI_PICKLIST", values: arr } }; 
+                            } 
+                            return { columnId: parseInt(cid), value: rawVal }; 
+                        }); 
+                    } 
+                    if(STATE.hierarchyChanges[rid]) { 
+                        payload.toTop = STATE.hierarchyChanges[rid].toTop; 
+                        payload.parentId = STATE.hierarchyChanges[rid].parentId; 
+                        payload.siblingId = STATE.hierarchyChanges[rid].siblingId; 
+                    } 
+                    return payload; 
+                }); 
+            await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', updates); 
+        } 
+        
+        // After successful sync, re-fetch data to get latest server state
+        await fetchData(); 
+        
+        // Then re-render the active view to reflect changes
+        if (STATE.activeViewType === 'form' && STATE.activeViewConfigId) {
+            // Need to pass the currently edited entry ID to re-select it in the form view
+            switchView(STATE.activeViewConfigId, 'form', currentFormManager?.currentEntryId); 
+        } else if (STATE.activeViewType === 'report' && STATE.activeViewConfigId) {
+            switchView(STATE.activeViewConfigId, 'report');
+        } else {
+            // If grid is active, it's already re-rendered by fetchData -> renderTable
+        }
+
+        STATE.adds = []; STATE.dels.clear(); STATE.edits = {}; STATE.hierarchyChanges = {}; 
+        renderTable(); updateSyncUI(); 
+        showToast('Sync Successful!', 'success'); 
+    } catch(e) { 
+        if(e!=='PROXY_LOCK') showToast(e, 'danger'); 
+    } finally { 
+        showLoader(false); 
+    } 
+}
 function indentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const itemIndex = STATE.flatRenderList.findIndex(item => item.id === rid); if (itemIndex <= 0) return; const prevItem = STATE.flatRenderList[itemIndex - 1]; const rowToUpdate = STATE.rowMap.get(rid); if (rowToUpdate) rowToUpdate.parentId = prevItem.id; STATE.hierarchyChanges[rid] = { type: 'INDENT', parentId: prevItem.id }; renderTable(); updateSyncUI(); }
 function outdentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const row = STATE.rowMap.get(rid); if(!row || !row.parentId) return; const parent = STATE.rowMap.get(row.parentId); const newPid = parent ? parent.parentId : undefined; row.parentId = newPid; STATE.hierarchyChanges[rid] = { type: 'OUTDENT', parentId: newPid, siblingId: parent.id }; renderTable(); updateSyncUI(); }
-function delRow(id) { if(String(id).startsWith('NEW')) { STATE.adds = STATE.adds.filter(r => r.id !== id); } else STATE.dels.add(parseInt(id)); renderTable(); updateSyncUI(); }
-function restoreRow(id) { STATE.dels.delete(parseInt(id)); renderTable(); updateSyncUI(); }
+function delRow(id) { 
+    if(String(id).startsWith('NEW')) { 
+        STATE.adds = STATE.adds.filter(r => r.id !== id); 
+    } else {
+        STATE.dels.add(parseInt(id)); 
+    }
+    // Re-render based on active view type
+    if (STATE.activeViewType === 'form' && STATE.activeViewConfigId) {
+        // If the deleted row was the one in the form, clear the form or load another row
+        switchView(STATE.activeViewConfigId, 'form', null); 
+    } else if (STATE.activeViewType === 'report' && STATE.activeViewConfigId) {
+        switchView(STATE.activeViewConfigId, 'report');
+    } else {
+        renderTable(); updateSyncUI(); 
+    }
+}
+function restoreRow(id) { 
+    STATE.dels.delete(parseInt(id)); 
+    // Re-render based on active view type
+    if (STATE.activeViewType === 'form' && STATE.activeViewConfigId) {
+        switchView(STATE.activeViewConfigId, 'form', id); // Re-render form, showing the restored row
+    } else if (STATE.activeViewType === 'report' && STATE.activeViewConfigId) {
+        switchView(STATE.activeViewConfigId, 'report');
+    } else {
+        renderTable(); updateSyncUI(); 
+    }
+}
 function hasChanges() { return Object.keys(STATE.edits).length > 0 || STATE.adds.length > 0 || STATE.dels.size > 0 || Object.keys(STATE.hierarchyChanges).length > 0; }
-function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); const row = document.querySelector(`tr[data-id="${rid}"]`); if(row && !row.classList.contains('row-modified') && !String(rid).startsWith('NEW')) { row.classList.add('row-modified'); } }
-function addNewRowAbove(id) { const rid = String(id).startsWith('NEW') ? id : parseInt(id); const idx = STATE.allRows.findIndex(r => r.id === rid); if (idx === -1) return; const target = STATE.allRows[idx]; const newRow = { id: 'NEW_' + Date.now(), cells: [], parentId: target.parentId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", siblingId: undefined, toTop: false }; STATE.allRows.splice(idx, 0, newRow); STATE.adds.push(newRow); renderTable(); updateSyncUI(); setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${newRow.id}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100); }
-function addNewRowBelow(id) { const rid = String(id).startsWith('NEW') ? id : parseInt(id); const idx = STATE.allRows.findIndex(r => r.id === rid); if (idx === -1) return; const target = STATE.allRows[idx]; const descendants = getAllDescendants(rid); let insertIdx = idx + 1; if(descendants.length > 0) { const lastId = descendants[descendants.length - 1]; insertIdx = STATE.allRows.findIndex(r => r.id === lastId) + 1; } const newRow = { id: 'NEW_' + Date.now(), cells: [], parentId: target.parentId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", siblingId: undefined, toTop: false }; STATE.allRows.splice(insertIdx, 0, newRow); STATE.adds.push(newRow); renderTable(); updateSyncUI(); setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${newRow.id}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100); }
+function edit(rid, cid, val) { 
+    if(!STATE.edits[rid]) STATE.edits[rid] = {}; 
+    STATE.edits[rid][cid] = val; 
+    updateSyncUI(); 
+    
+    // Visually update the grid if it's visible
+    const row = document.querySelector(`tr[data-id="${rid}"]`); 
+    if(row && !row.classList.contains('row-modified') && !String(rid).startsWith('NEW')) { 
+        row.classList.add('row-modified'); 
+    }
+
+    // If a Form or Report view is active, re-render it to reflect the change
+    if (STATE.activeViewType === 'form' && currentFormManager) {
+        // FormManager's editEntry expects a full entry, not just a single cell
+        // We need to fetch the current state of the row and pass it
+        const configManager = new ConfigManager(STATE.sheetId);
+        const storageManager = new StorageManager(STATE.sheetId);
+        configManager.setFormConfig(storageManager.getFormConfig() || DEFAULT_FORM_CONFIG);
+
+        const rowData = STATE.allRows.find(r => r.id === rid);
+        if (rowData) {
+            const entryData = { id: rowData.id };
+            rowData.cells.forEach(cell => {
+                const col = STATE.cols.find(c => c.id === cell.columnId);
+                if (col) {
+                    entryData[col.title.toLowerCase().replace(/\s+/g, '_')] = cell.displayValue || cell.value;
+                }
+            });
+            // Apply all pending local edits for this row
+            if (STATE.edits[rid]) {
+                Object.keys(STATE.edits[rid]).forEach(editedCid => {
+                    const col = STATE.cols.find(c => c.id === parseInt(editedCid));
+                    if (col) {
+                        entryData[col.title.toLowerCase().replace(/\s+/g, '_')] = STATE.edits[rid][editedCid];
+                    }
+                });
+            }
+            currentFormManager.fillFormWithData(entryData); // Use fillFormWithData for comprehensive update
+        }
+    } else if (STATE.activeViewType === 'report' && STATE.activeViewConfigId) {
+        // Re-render the report view if it's currently active
+        const configManager = new ConfigManager(STATE.sheetId);
+        const viewConfig = configManager.getView(STATE.activeViewConfigId);
+        if (viewConfig) {
+            renderReportView(viewConfig);
+        }
+    }
+}
+function addNewRowAbove(id) { 
+    const rid = String(id).startsWith('NEW') ? id : parseInt(id); 
+    const idx = STATE.allRows.findIndex(r => r.id === rid); 
+    if (idx === -1) return; 
+    const target = STATE.allRows[idx]; 
+    const newRow = { id: 'NEW_' + Date.now(), cells: [], parentId: target.parentId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", siblingId: undefined, toTop: false }; 
+    STATE.allRows.splice(idx, 0, newRow); 
+    STATE.adds.push(newRow); 
+    
+    // Re-render based on active view type
+    if (STATE.activeViewType === 'form' && STATE.activeViewConfigId) {
+        switchView(STATE.activeViewConfigId, 'form', newRow.id); // Switch to new row in form view
+    } else if (STATE.activeViewType === 'report' && STATE.activeViewConfigId) {
+        switchView(STATE.activeViewConfigId, 'report');
+    } else {
+        renderTable(); 
+        updateSyncUI(); 
+        setTimeout(() => { 
+            const newRowEl = document.querySelector(`tr[data-id="${newRow.id}"]`); 
+            if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } 
+        }, 100); 
+    }
+}
+function addNewRowBelow(id) { 
+    const rid = String(id).startsWith('NEW') ? id : parseInt(id); 
+    const idx = STATE.allRows.findIndex(r => r.id === rid); 
+    if (idx === -1) return; 
+    const target = STATE.allRows[idx]; 
+    const descendants = getAllDescendants(rid); 
+    let insertIdx = idx + 1; 
+    if(descendants.length > 0) { const lastId = descendants[descendants.length - 1]; insertIdx = STATE.allRows.findIndex(r => r.id === lastId) + 1; } 
+    const newRow = { id: 'NEW_' + Date.now(), cells: [], parentId: target.parentId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", siblingId: undefined, toTop: false }; 
+    STATE.allRows.splice(insertIdx, 0, newRow); 
+    STATE.adds.push(newRow); 
+    
+    // Re-render based on active view type
+    if (STATE.activeViewType === 'form' && STATE.activeViewConfigId) {
+        switchView(STATE.activeViewConfigId, 'form', newRow.id); // Switch to new row in form view
+    } else if (STATE.activeViewType === 'report' && STATE.activeViewConfigId) {
+        switchView(STATE.activeViewConfigId, 'report');
+    } else {
+        renderTable(); 
+        updateSyncUI(); 
+        setTimeout(() => { 
+            const newRowEl = document.querySelector(`tr[data-id="${newRow.id}"]`); 
+            if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } 
+        }, 100); 
+    }
+}
 
 /* --- HYBRID PICKER LOGIC --- */
 function getCellHtml(rid, col, val, fmt) { 
@@ -1159,6 +3163,82 @@ function showLoader(s) { document.getElementById('loader').style.display=s?'flex
 function showToast(msg, type='primary') { const t = document.createElement('div'); t.className = `toast align-items-center text-white bg-${type} border-0 show mb-2 shadow`; t.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`; document.getElementById('toastArea').appendChild(t); setTimeout(() => t.remove(), 4000); }
 function openSettings() { document.getElementById('apiToken').value = localStorage.getItem('smToken') || ''; new bootstrap.Modal('#settingsModal').show(); }
 function saveSettings() { localStorage.setItem('smToken', document.getElementById('apiToken').value); bootstrap.Modal.getInstance('#settingsModal').hide(); }
+
+let configManagerInstance = null;
+let configurationUIInstance = null;
+
+function openViewDesigner() {
+    if (!STATE.sheetId) {
+        showToast('Please load a sheet first.', 'warning');
+        return;
+    }
+
+    // Always create new instances to ensure they are fresh for the current sheet and properly scoped.
+    const storageManager = new StorageManager(STATE.sheetId);
+    const config = new ConfigManager(STATE.sheetId);
+
+    // Initialize ConfigManager with saved data if available
+    // For ezErrata's original design, this happens in initializeApp.
+    // Here, we manually load and set it up for the current sheet.
+    
+    // Load saved form fields
+    const savedFormConfig = storageManager.getFormConfig();
+    if (savedFormConfig.size > 0) {
+        config.setFormConfig(savedFormConfig);
+    } else {
+        // If no custom fields are defined for this sheet, use ezErrata's defaults
+        config.setFormConfig(DEFAULT_FORM_CONFIG);
+        storageManager.saveFormConfig(DEFAULT_FORM_CONFIG); // Save defaults for this sheet
+    }
+
+    // Load saved view configs
+    const savedViewConfigs = storageManager.getAllTableConfigs(); // StorageManager method name not changed
+    if (savedViewConfigs.length > 0) {
+        savedViewConfigs.forEach(viewConfig => { // Renamed tableConfig to viewConfig
+            config.addView(viewConfig); // Changed addTable to addView
+        });
+    } else {
+        // If no custom views are defined, create default views from DEFAULT_TABLES
+        DEFAULT_TABLES.forEach(viewConfig => {
+            if (!config.getView(viewConfig.id)) { // Changed getTable to getView
+                config.addView(viewConfig); // Changed addTable to addView
+                storageManager.saveTableConfig(viewConfig); // StorageManager method name not changed
+            }
+        });
+    }
+
+    // Load saved form layout
+    const savedFormLayout = storageManager.getFormLayout();
+    if (savedFormLayout) {
+        config.setFormLayout(savedFormLayout);
+    } else {
+        config.setFormLayout(DEFAULT_FORM_LAYOUT);
+        storageManager.saveFormLayout(DEFAULT_FORM_LAYOUT);
+    }
+
+    // Load saved table order
+    const savedTableOrder = storageManager.getTableOrder(); // StorageManager method name not changed
+    if (savedTableOrder) {
+        config.setTableOrder(savedTableOrder);
+    }
+    
+    configurationUIInstance = new ConfigurationUI(config, storageManager);
+    
+    const viewDesignerContent = document.getElementById('viewDesignerContent');
+    viewDesignerContent.innerHTML = ''; // Clear previous content
+    const configPanel = configurationUIInstance.createConfigPanel();
+    viewDesignerContent.appendChild(configPanel);
+
+    // Show the modal
+    new bootstrap.Modal('#viewDesignerModal').show();
+    
+    // Manually trigger click on the 'Views' tab to show it by default
+    const viewsTab = viewDesignerContent.querySelector('.config-tab[data-tab="views"]');
+    if (viewsTab) {
+        viewsTab.click();
+    }
+}
+
 function toggleMobileSearch() { document.getElementById('mobileSearchBar').classList.toggle('show'); document.getElementById('mobileSearchInput').focus(); }
 function syncSearch(val) { document.getElementById('desktopSearch').value = val; document.getElementById('mobileSearchInput').value = val; renderTable(); }
 function viewRawData() { renderRawTable(); new bootstrap.Modal('#rawDataModal').show(); }

@@ -1,39 +1,429 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Phil's Web App Portfolio</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      line-height: 1.6;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: left;
-    }
-    th {
-      background-color: #f2f2f2;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NatureQuest</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            light: '#d1fae5', // emerald-100
+                            DEFAULT: '#059669', // emerald-600
+                            dark: '#064e3b', // emerald-900
+                            accent: '#f59e0b', // amber-500
+                        },
+                        surface: '#ffffff',
+                        canvas: '#f3f4f6',
+                        text: { primary: '#111827', secondary: '#6b7280' },
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    spacing: {
+                        'safe-t': 'env(safe-area-inset-top)',
+                        'safe-b': 'env(safe-area-inset-bottom)',
+                        'nav': 'calc(64px + env(safe-area-inset-bottom))'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Libraries -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+
+    <style>
+        /* Core Layout Fixes */
+        html, body { height: 100dvh; width: 100vw; overflow: hidden; overscroll-behavior: none; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .leaflet-control-attribution, .leaflet-control-zoom { display: none; }
+        .glass-hud { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.5); }
+        .slide-panel { transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform; }
+        .pop-in { animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .avatar-pop { animation: avatar-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes avatar-pop { 50% { transform: scale(1.15); } }
+        
+        /* IMPORTANT: Fix for the collapsing cards */
+        .card-img-fix { min-height: 8rem; width: 100%; flex-shrink: 0; background-color: #e5e7eb; }
+    </style>
+
+    <script>
+        // Mock Capacitor for Web Dev
+        if (typeof Capacitor === 'undefined' || !Capacitor.isNativePlatform()) {
+            window.Capacitor = {
+                isNativePlatform: () => false,
+                Plugins: {
+                    Haptics: { impact: () => console.log('📳 Haptic') },
+                    Geolocation: {
+                        async requestPermissions() { return { location: 'granted' }; },
+                        watchPosition(options, callback) {
+                            return navigator.geolocation.watchPosition(p => callback(p, null), e => callback(null, e), options);
+                        }
+                    },
+                    Camera: { async getPhoto() { console.warn("Camera not available in web mode."); return null; } }
+                }
+            };
+        }
+    </script>
 </head>
-<body>
-  <div id="content"></div>
-  <script>
-    fetch('README.md')
-      .then(response => response.text())
-      .then(text => {
-        document.getElementById('content').innerHTML =
-          marked.parse(text);
-      });
-  </script>
+<body class="bg-canvas text-text-primary font-sans select-none antialiased">
+
+    <!-- === LAYER 1: MAP === -->
+    <div id="map" class="absolute inset-0 z-0 bg-gray-200"></div>
+
+    <!-- === LAYER 2: HUD === -->
+    <div id="hud" class="absolute inset-0 z-10 pointer-events-none p-4 pt-safe-t flex flex-col justify-between">
+        <div class="pointer-events-auto flex justify-between items-start w-full">
+            <div class="flex gap-2">
+                <button onclick="app.hud.toggleFullscreen()" class="w-12 h-12 rounded-full glass-hud shadow-md flex items-center justify-center text-gray-700 active:scale-95 transition-transform">
+                    <span class="material-symbols-rounded text-2xl">fullscreen</span>
+                </button>
+                <div id="compass" class="w-12 h-12 rounded-full glass-hud shadow-md flex items-center justify-center relative overflow-hidden">
+                    <div id="compass-needle" class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[16px] border-b-red-500 transition-transform duration-300"></div>
+                </div>
+            </div>
+             <button onclick="app.ui.openPanel('panel-social')" class="glass-hud px-4 h-12 rounded-full shadow-md flex items-center gap-2 active:scale-95 transition-transform">
+                <span class="material-symbols-rounded text-brand">group</span>
+                <span class="text-sm font-bold text-gray-800" id="player-count">1</span>
+            </button>
+        </div>
+        <div id="recenter-btn-container" class="absolute bottom-[calc(var(--spacing-nav)+16px)] right-4 pointer-events-auto transition-opacity duration-300">
+            <button onclick="app.map.recenter()" class="w-14 h-14 bg-white rounded-2xl shadow-xl flex items-center justify-center text-brand active:scale-95 transition-transform border border-gray-100">
+                <span class="material-symbols-rounded text-3xl">my_location</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- === LAYER 3: PANELS === -->
+    <div id="panels-container" class="absolute inset-0 z-20 pointer-events-none">
+        
+        <!-- PROFILE -->
+        <div id="panel-profile" class="absolute inset-0 bg-canvas transform translate-x-full slide-panel flex flex-col pointer-events-auto pt-safe-t">
+            <header class="bg-surface px-4 flex justify-between items-center shadow-sm shrink-0 h-16">
+                <h2 class="text-xl font-bold">My Profile</h2>
+                <div class="flex gap-2">
+                    <button onclick="app.ui.toggleProfileEdit()" id="btn-edit-profile" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200"><span class="material-symbols-rounded">edit</span></button>
+                    <button onclick="app.ui.openPanel('map')" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200"><span class="material-symbols-rounded">close</span></button>
+                </div>
+            </header>
+            <div class="flex-1 overflow-y-auto p-6 pb-32">
+                <div class="flex flex-col items-center mb-8">
+                    <div id="profile-avatar-container" class="w-32 h-32 bg-white rounded-full border-4 border-brand-light shadow-lg flex items-center justify-center text-7xl mb-4 transition-transform active:scale-95 cursor-pointer" onclick="app.ui.animateAvatar()"><span id="profile-avatar-emoji"></span></div>
+                    <div id="username-container" class="w-full flex justify-center h-10 items-center"><h3 id="profile-username" class="text-2xl font-black text-center truncate px-4"></h3></div>
+                    <div class="mt-3 bg-brand-light text-brand-dark px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">Level <span id="profile-level"></span></div>
+                </div>
+                <div id="avatar-selection-container" class="hidden bg-surface rounded-2xl p-4 shadow-sm border border-gray-100 mb-6"><div class="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider">Choose Avatar</div><div id="avatar-options" class="grid grid-cols-6 gap-2"></div></div>
+                <div class="bg-surface p-4 rounded-2xl shadow-sm border border-gray-100 mb-6"><div class="flex justify-between text-xs font-bold text-text-secondary mb-2"><span>Experience</span><span id="profile-xp-text"></span></div><div class="h-4 bg-gray-100 rounded-full overflow-hidden"><div id="profile-xp-fill" class="h-full bg-brand rounded-full transition-all duration-500 relative"><div class="absolute inset-0 bg-white/20"></div></div></div></div>
+                <div class="grid grid-cols-3 gap-3 text-center">
+                    <div class="bg-surface p-3 rounded-xl shadow-sm border border-gray-100"><div class="text-2xl font-black text-brand" id="stat-total-xp"></div><div class="text-[10px] font-bold text-text-secondary uppercase">Total XP</div></div>
+                    <div class="bg-surface p-3 rounded-xl shadow-sm border border-gray-100"><div class="text-2xl font-black text-gray-800" id="stat-species"></div><div class="text-[10px] font-bold text-text-secondary uppercase">Species</div></div>
+                    <div class="bg-surface p-3 rounded-xl shadow-sm border border-gray-100"><div class="text-2xl font-black text-brand-accent" id="stat-seeds"></div><div class="text-[10px] font-bold text-text-secondary uppercase">Seeds</div></div>
+                    <div class="bg-surface p-3 rounded-xl shadow-sm border border-gray-100"><div class="text-xl font-black text-gray-800" id="stat-sightings"></div><div class="text-[10px] font-bold text-text-secondary uppercase">Sightings</div></div>
+                    <div class="bg-surface p-3 rounded-xl shadow-sm border border-gray-100"><div class="text-xl font-black text-gray-800" id="stat-photos">0</div><div class="text-[10px] font-bold text-text-secondary uppercase">Photos</div></div>
+                    <div class="bg-surface p-3 rounded-xl shadow-sm border border-gray-100"><div class="text-xl font-black text-gray-800" id="stat-badges">0</div><div class="text-[10px] font-bold text-text-secondary uppercase">Badges</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FIELD GUIDE -->
+        <div id="panel-fieldGuide" class="absolute inset-0 bg-canvas transform translate-x-full slide-panel flex flex-col pointer-events-auto pt-safe-t">
+            <header class="bg-surface px-4 shadow-sm z-10 shrink-0 h-16 flex items-center gap-4">
+                <h2 class="text-xl font-bold whitespace-nowrap">Field Guide</h2>
+                <div class="relative flex-1"><span class="material-symbols-rounded absolute left-3 top-2.5 text-gray-400 text-lg">search</span><input type="text" id="fieldguide-search" placeholder="Search..." class="w-full bg-gray-100 pl-9 pr-4 py-2 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-brand outline-none transition-all"></div>
+            </header>
+            <div class="bg-surface border-b border-gray-100 px-4 py-3 shrink-0"><div class="flex justify-between text-xs font-bold mb-1"><span class="text-brand">Local Collection</span><span id="fieldguide-progress-text" class="text-gray-500"></span></div><div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div id="fieldguide-progress-fill" class="h-full bg-brand rounded-full transition-all"></div></div></div>
+            <div class="bg-surface/90 backdrop-blur-sm border-b border-gray-100 shrink-0 z-10 shadow-sm"><div id="fieldguide-tabs" class="flex gap-2 overflow-x-auto p-3 hide-scrollbar"></div></div>
+            <div id="fieldguide-body" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-4 pb-32 content-start"></div>
+        </div>
+
+        <!-- INVENTORY -->
+        <div id="panel-inventory" class="absolute inset-0 bg-canvas transform translate-x-full slide-panel flex flex-col pointer-events-auto pt-safe-t">
+            <header class="bg-surface px-4 shadow-sm z-10 shrink-0 h-16 flex justify-between items-center"><h2 class="text-xl font-bold">My Bag</h2><div id="inventory-count-badge" class="bg-brand-light text-brand px-3 py-1 rounded-lg text-xs font-bold">0 Items</div></header>
+            <div class="p-3 bg-surface border-b border-gray-100 shrink-0"><input type="text" id="inventory-search" placeholder="Filter your finds..." class="w-full bg-gray-100 border border-gray-200 pl-4 pr-4 py-2.5 rounded-xl text-sm focus:ring-2 focus:ring-brand outline-none"></div>
+            <div class="bg-surface/90 backdrop-blur-sm shrink-0 shadow-sm"><div id="inventory-tabs" class="flex gap-2 overflow-x-auto p-3 hide-scrollbar"></div></div>
+            <div id="inventory-body" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 gap-3 pb-32 content-start"></div>
+        </div>
+
+        <!-- REWARDS -->
+        <div id="panel-rewards" class="absolute inset-0 bg-canvas transform translate-x-full slide-panel flex flex-col pointer-events-auto pt-safe-t">
+             <header class="bg-surface px-4 flex justify-between items-center shadow-sm z-10 shrink-0 h-16"><h2 class="text-xl font-bold">Rewards</h2><button onclick="app.ui.openPanel('map')" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600"><span class="material-symbols-rounded">close</span></button></header>
+             <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-32">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg flex items-center gap-2"><span class="text-orange-500">🔥</span> Daily Streak</h3><div id="streak-days-text" class="bg-orange-50 px-3 py-1 rounded-lg text-sm font-bold text-orange-600">0 Days</div></div><div id="streak-days-container" class="grid grid-cols-7 gap-2 text-center"></div></div>
+                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><h3 class="font-bold text-lg">Daily Quest</h3><p class="text-gray-500 text-sm my-2 leading-relaxed" id="quest-description">Loading quest...</p><div class="h-3 bg-gray-100 rounded-full overflow-hidden my-4"><div id="quest-progress-fill" class="h-full bg-brand rounded-full transition-all"></div></div><div class="flex justify-between items-center"><div id="quest-rewards" class="font-bold text-sm text-brand-dark flex gap-4"></div><div id="quest-status" class="bg-gray-100 px-3 py-1 rounded-lg text-xs font-bold text-gray-500 uppercase tracking-wider"></div></div></div>
+             </div>
+        </div>
+        
+        <!-- SOCIAL -->
+        <div id="panel-social" class="absolute inset-0 bg-canvas transform translate-x-full slide-panel flex flex-col pointer-events-auto pt-safe-t">
+            <header class="bg-surface px-4 flex justify-between items-center shadow-sm z-10 shrink-0 h-16"><h2 class="text-xl font-bold">Party</h2><button onclick="app.ui.openPanel('map')" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600"><span class="material-symbols-rounded">close</span></button></header>
+            <div class="flex-1 overflow-y-auto p-4 space-y-6 pb-32">
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Connection</h3>
+                    <div id="host-controls" class="space-y-6">
+                        <div><label class="text-sm font-semibold text-gray-700">Your Party Code</label><div class="flex gap-2 mt-2"><div id="my-peer-id" class="flex-1 bg-gray-50 p-4 rounded-xl font-mono text-center text-2xl font-black tracking-widest text-gray-800 select-all border border-gray-200">....</div><button onclick="app.multiplayer.copyId()" class="bg-gray-100 text-gray-600 px-6 rounded-xl font-bold active:scale-95">Copy</button></div></div>
+                        <div class="relative py-2"><div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div><div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-400 font-medium">OR</span></div></div>
+                        <div><label class="text-sm font-semibold text-gray-700">Join Friend</label><div class="flex gap-2 mt-2"><input type="text" id="target-peer-id" placeholder="CODE" class="flex-1 bg-white border-2 border-gray-200 focus:border-brand focus:ring-0 p-3 rounded-xl outline-none font-mono text-lg font-bold uppercase text-center placeholder-gray-300"><button onclick="app.multiplayer.joinParty()" class="bg-brand text-white px-6 rounded-xl font-bold shadow-lg shadow-brand/20 active:scale-95">JOIN</button></div></div>
+                    </div>
+                    <div id="connected-controls" class="hidden text-center py-4"><div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse"><span class="material-symbols-rounded text-3xl">link</span></div><h3 class="font-bold text-xl mb-1">Connected!</h3><p class="text-sm text-gray-500 mb-6">You are sharing your location with the party.</p><button onclick="app.multiplayer.disconnect()" class="w-full bg-red-50 text-red-600 py-4 rounded-xl font-bold border border-red-100 active:scale-95">Leave Party</button></div>
+                </div>
+                <div><h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Nearby Friends</h3><div id="friends-list" class="space-y-3"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- === LAYER 4: BOTTOM NAV === -->
+    <nav class="fixed bottom-0 w-full bg-surface border-t border-gray-200 z-30 flex justify-around items-start h-nav pb-safe-b pt-2 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+        <button onclick="app.ui.openPanel('panel-profile')" class="nav-btn group flex flex-col items-center gap-1 p-1 w-16 active:scale-95 transition-transform"><span class="material-symbols-rounded text-2xl text-text-secondary group-[.active]:text-brand transition-colors">person</span><span class="text-[10px] font-bold text-text-secondary group-[.active]:text-brand">Profile</span></button>
+        <button onclick="app.ui.openPanel('panel-fieldGuide')" class="nav-btn group flex flex-col items-center gap-1 p-1 w-16 active:scale-95 transition-transform"><span class="material-symbols-rounded text-2xl text-text-secondary group-[.active]:text-brand transition-colors">menu_book</span><span class="text-[10px] font-bold text-text-secondary group-[.active]:text-brand">Guide</span></button>
+        <button onclick="app.ui.openLogSighting()" class="-mt-8 group active:scale-90 transition-transform"><div class="w-16 h-16 bg-brand rounded-full shadow-xl shadow-brand/40 flex items-center justify-center border-[5px] border-surface"><span class="material-symbols-rounded text-white text-3xl">add_a_photo</span></div></button>
+        <button onclick="app.ui.openPanel('map')" id="nav-btn-map" class="nav-btn active group flex flex-col items-center gap-1 p-1 w-16 active:scale-95 transition-transform"><span class="material-symbols-rounded text-2xl text-text-secondary group-[.active]:text-brand transition-colors">map</span><span class="text-[10px] font-bold text-text-secondary group-[.active]:text-brand">Map</span></button>
+        <button onclick="app.ui.openPanel('panel-inventory')" class="nav-btn group flex flex-col items-center gap-1 p-1 w-16 active:scale-95 transition-transform"><span class="material-symbols-rounded text-2xl text-text-secondary group-[.active]:text-brand transition-colors">inventory_2</span><span class="text-[10px] font-bold text-text-secondary group-[.active]:text-brand">Bag</span></button>
+    </nav>
+
+    <!-- === LAYER 5: MODALS === -->
+    
+    <!-- Log Sighting Modal -->
+    <div id="logSightingModal" class="fixed inset-0 z-50 flex items-end justify-center pointer-events-none opacity-0 transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="app.ui.closeLogSighting()"></div>
+        <div id="logSightingContent" class="bg-surface w-full max-w-lg rounded-t-3xl shadow-2xl transform translate-y-full transition-transform duration-300 pointer-events-auto flex flex-col max-h-[90dvh] pb-safe-b">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center shrink-0"><h2 class="text-lg font-bold">Log a Sighting</h2><button onclick="app.ui.closeLogSighting()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><span class="material-symbols-rounded text-gray-600 text-lg">close</span></button></div>
+            <div id="log-sighting-body" class="p-4 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- Species Selector Modal -->
+    <div id="species-select-modal" class="fixed inset-0 z-[60] flex items-end justify-center pointer-events-none opacity-0 transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="app.ui.closeSpeciesSelector()"></div>
+        <div id="species-select-content" class="bg-canvas w-full max-w-lg rounded-t-3xl shadow-2xl transform translate-y-full transition-transform duration-300 pointer-events-auto flex flex-col max-h-[95dvh] pb-safe-b">
+             <div class="p-4 bg-surface border-b border-gray-100 flex justify-between items-center shrink-0 rounded-t-3xl"><h2 class="text-lg font-bold">Select Species</h2><button onclick="app.ui.closeSpeciesSelector()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center"><span class="material-symbols-rounded text-gray-600 text-lg">close</span></button></div>
+             <div class="p-3 bg-surface shrink-0"><input type="text" id="species-selector-search" class="w-full bg-gray-100 pl-4 pr-4 py-3 rounded-xl text-sm focus:ring-2 focus:ring-brand outline-none" placeholder="Search species..."></div>
+             <div class="bg-surface/90 backdrop-blur-sm shrink-0 z-10 shadow-sm"><div id="species-selector-tabs" class="flex gap-2 overflow-x-auto p-3 hide-scrollbar"></div></div>
+             <div id="species-selector-body" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 content-start"></div>
+        </div>
+    </div>
+
+    <!-- Species Detail Panel (IMPROVED) -->
+    <div id="panel-species-detail" class="fixed inset-0 z-[70] bg-surface transform translate-x-full slide-panel flex flex-col pointer-events-auto">
+        <div class="absolute top-0 left-0 right-0 h-16 flex items-end p-4 z-20 bg-gradient-to-b from-black/50 to-transparent pointer-events-none"></div>
+        <button onclick="app.ui.closeSpeciesDetail()" class="absolute top-4 left-4 z-30 w-10 h-10 bg-white/90 backdrop-blur rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform"><span class="material-symbols-rounded text-gray-800">arrow_back</span></button>
+        <div id="species-detail-content" class="flex-1 overflow-y-auto pb-safe-b bg-canvas"></div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="sightingLogged" class="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="successCard" class="bg-surface w-full max-w-sm rounded-3xl p-8 text-center transform scale-90 transition-transform duration-300 shadow-2xl">
+            <div class="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce"><span class="material-symbols-rounded text-6xl">check_circle</span></div>
+            <h2 class="text-3xl font-black mb-2 text-gray-800">Sighting Logged!</h2>
+            <p class="text-brand font-bold text-xl mb-8" id="logged-species-name"></p>
+            <div class="flex justify-center gap-4 mb-8">
+                <div class="bg-gray-50 p-4 rounded-2xl min-w-[100px] border border-gray-100"><div class="text-2xl font-black text-brand">+<span id="logged-xp"></span></div><div class="text-xs uppercase font-bold text-gray-400 tracking-wider">XP</div></div>
+                <div class="bg-gray-50 p-4 rounded-2xl min-w-[100px] border border-gray-100"><div class="text-2xl font-black text-brand-accent">+<span id="logged-seeds"></span></div><div class="text-xs uppercase font-bold text-gray-400 tracking-wider">Seeds</div></div>
+            </div>
+            <button onclick="app.ui.closeSightingLoggedModal()" class="w-full bg-brand text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-brand/30 active:scale-95 transition-transform">Continue</button>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-nav left-0 right-0 z-[100] flex flex-col items-center pointer-events-none gap-2 p-4 mb-4"></div>
+
+    <script>
+        const app = {
+            state: {}, db: null, localSpecies: [],
+            haptics: { vibrate() { if (Capacitor.isNativePlatform()) Capacitor.Plugins.Haptics.impact({ style: 'MEDIUM' }); } },
+            hud: {
+                init() { this.initCompass(); },
+                async initCompass() {
+                    if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        try { if (await DeviceOrientationEvent.requestPermission() === 'granted') window.addEventListener('deviceorientation', this.handleOrientation); } catch (e) {}
+                    } else if ('ondeviceorientation' in window) window.addEventListener('deviceorientation', this.handleOrientation);
+                },
+                handleOrientation(e) { const alpha = e.webkitCompassHeading || e.alpha; if (alpha) document.getElementById('compass-needle').style.transform = `rotate(${alpha}deg)`; },
+                toggleFullscreen() { app.haptics.vibrate(); if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); }
+            },
+            multiplayer: {
+                peer: null, myId: null, connections: [], hostConnection: null, friendsData: {},
+                init() { this.myId = Math.random().toString(36).substring(2, 6).toUpperCase(); this.peer = new Peer(`NQ24-${this.myId}`); this.peer.on('open', () => document.getElementById('my-peer-id').innerText = this.myId); this.peer.on('connection', conn => this.handleConn(conn)); },
+                copyId() { navigator.clipboard.writeText(this.myId).then(() => app.ui.showToast("Code Copied!")); },
+                joinParty() {
+                    const code = document.getElementById('target-peer-id').value.trim().toUpperCase();
+                    if (code.length !== 4) return app.ui.showToast("Invalid Code");
+                    const conn = this.peer.connect(`NQ24-${code}`);
+                    conn.on('open', () => { this.hostConnection = conn; app.ui.showToast("Connected!"); this.updateUI(); this.broadcastPos(); });
+                    conn.on('data', d => this.handleData(d));
+                    conn.on('close', () => { this.hostConnection = null; this.updateUI(); app.map.clearPlayers(); app.ui.showToast("Disconnected"); });
+                },
+                disconnect() { if(this.hostConnection) this.hostConnection.close(); this.connections.forEach(c => c.close()); this.hostConnection = null; this.connections = []; app.map.clearPlayers(); this.updateUI(); },
+                handleConn(conn) { this.connections.push(conn); conn.on('data', d => { if(!this.hostConnection) this.broadcast(d, conn.peer); this.handleData(d); }); conn.on('close', () => { this.connections = this.connections.filter(c=>c.peer!==conn.peer); app.map.removePlayer(conn.peer); this.updateList(); this.updateUI(); }); this.updateUI(); },
+                handleData(d) { if(d.type === 'POS') { app.map.updatePlayer(d.payload); this.friendsData[d.payload.id] = d.payload; this.updateList(); } },
+                broadcast(d, exclude) { this.connections.forEach(c => { if(c.peer !== exclude && c.open) c.send(d); }); },
+                broadcastPos() { if(!this.peer?.id || !app.map.pos.lat) return; const p = { id: this.peer.id, shortId: this.myId, lat: app.map.pos.lat, lng: app.map.pos.lng, avatar: app.state.avatar, username: app.state.username }; const d = { type: 'POS', payload: p }; if(this.hostConnection) this.hostConnection.send(d); else this.broadcast(d); app.map.updatePlayer(p); },
+                updateUI() { const active = this.hostConnection || this.connections.length > 0; document.getElementById('host-controls').classList.toggle('hidden', active); document.getElementById('connected-controls').classList.toggle('hidden', !active); document.getElementById('player-count').innerText = Object.keys(this.friendsData).length + 1; },
+                updateList() { const el = document.getElementById('friends-list'); if(Object.keys(this.friendsData).length === 0) return el.innerHTML = '<div class="text-center text-gray-400 py-8 italic">No friends nearby.</div>'; el.innerHTML = Object.values(this.friendsData).map(f => `<div class="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-100 shadow-sm"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-brand-light rounded-full flex items-center justify-center text-xl">${f.avatar}</div><div><div class="font-bold text-sm">${f.username}</div></div></div></div>`).join(''); }
+            },
+            ui: {
+                editingProfile: false, selectorTarget: null, avatars: ['🌳', '🦋', '🦉', '🦊', '🐻', '🐝', '🐞', '🐢', '🐍', '🐸', '🐿️', '🦔'],
+                openPanel(id) {
+                    app.haptics.vibrate();
+                    document.querySelectorAll('.slide-panel').forEach(p => p.classList.add('translate-x-full'));
+                    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                    document.getElementById('recenter-btn-container').classList.add('opacity-0', 'pointer-events-none');
+                    if (id === 'map') { document.getElementById('nav-btn-map')?.classList.add('active'); document.getElementById('recenter-btn-container').classList.remove('opacity-0', 'pointer-events-none'); }
+                    else { document.getElementById(id)?.classList.remove('translate-x-full'); document.querySelector(`.nav-btn[onclick*="${id}"]`)?.classList.add('active'); if(id === 'panel-fieldGuide') this.renderFieldGuide(); if(id === 'panel-inventory') this.renderInventory(); if(id === 'panel-rewards') this.renderRewards(); }
+                },
+                toggleProfileEdit(save = false) { this.editingProfile = save ? false : !this.editingProfile; const ctr = document.getElementById('username-container'); if(this.editingProfile) { ctr.innerHTML = `<input id="username-input" class="text-2xl font-black text-center w-full border-b-2 border-brand bg-transparent outline-none" value="${app.state.username}">`; document.getElementById('avatar-selection-container').classList.remove('hidden'); this.renderAvatars(); } else { const val = document.getElementById('username-input')?.value; if(val) app.state.username = val; ctr.innerHTML = `<h3 id="profile-username" class="text-2xl font-black text-center truncate px-4">${app.state.username}</h3>`; document.getElementById('avatar-selection-container').classList.add('hidden'); app.saveState(); } },
+                renderAvatars() { document.getElementById('avatar-options').innerHTML = this.avatars.map(a => `<button class="text-2xl p-2 rounded-xl transition-all ${app.state.avatar===a ? 'bg-brand scale-110 shadow-md' : 'bg-gray-50'}" onclick="app.ui.setAvatar('${a}')">${a}</button>`).join(''); },
+                setAvatar(a) { app.state.avatar = a; document.getElementById('profile-avatar-emoji').innerText = a; this.renderAvatars(); app.saveState(); },
+                animateAvatar() { const el = document.getElementById('profile-avatar-container'); el.classList.add('avatar-pop'); setTimeout(() => el.classList.remove('avatar-pop'), 400); },
+                renderTabs(id, data, fn) {
+                    const cats = ['All', ...new Set(data.map(s => s.category).filter(Boolean))].sort(); const ctr = document.getElementById(id);
+                    ctr.innerHTML = cats.map(c => `<button class="tab-btn px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border transition-colors ${c==='All'?'bg-brand text-white border-brand':'bg-white text-gray-500 border-gray-200'}" data-c="${c}">${c}</button>`).join('');
+                    ctr.querySelectorAll('button').forEach(b => b.onclick = (e) => { ctr.querySelectorAll('button').forEach(x => x.className = x.className.replace('bg-brand text-white border-brand', 'bg-white text-gray-500 border-gray-200')); e.target.className = e.target.className.replace('bg-white text-gray-500 border-gray-200', 'bg-brand text-white border-brand'); fn(); });
+                },
+                renderGrid(id, data, searchId, tabsId, isSelector = false) {
+                    const grid = document.getElementById(id), term = document.getElementById(searchId).value.toLowerCase(), activeCat = document.querySelector(`#${tabsId} button.bg-brand`)?.dataset.c || 'All';
+                    const filtered = data.filter(s => (activeCat === 'All' || s.category === activeCat) && s.name.toLowerCase().includes(term));
+                    if(filtered.length === 0) return grid.innerHTML = '<div class="col-span-full text-center text-gray-400 mt-8">No results found.</div>';
+                    grid.innerHTML = filtered.map(s => {
+                        const owned = app.state.speciesData[s.id], locked = !owned;
+                        const cardImg = `<div class="card-img-fix bg-gray-200 bg-cover bg-center relative" style="background-image: url('${s.img}');">${s.rarity!=='Common'?`<span class="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded">${s.rarity}</span>`:''}</div>`;
+                        if(isSelector) return `<div class="bg-surface rounded-2xl shadow-sm border border-gray-100 overflow-hidden active:scale-95 transition-transform h-full flex flex-col" onclick="app.ui.pickSpecies(${s.id})">${cardImg}<div class="p-3 flex-1 flex flex-col justify-between"><h4 class="font-bold text-sm truncate leading-tight">${s.name}</h4><div class="text-[10px] text-gray-400 mt-1">${s.category}</div></div></div>`;
+                        if(id === 'inventory-body') return `<div class="bg-surface p-3 rounded-2xl shadow-sm border border-gray-100 flex gap-3 items-center active:scale-95 transition-transform" onclick="app.ui.openDetail(${s.id})"><div class="w-16 h-16 rounded-xl bg-cover bg-center shrink-0" style="background-image: url('${s.img}');"></div><div class="flex-1"><h4 class="font-bold">${s.name}</h4><div class="text-xs text-gray-500">${s.category}</div></div><div class="text-right"><span class="bg-brand-light text-brand text-xs font-bold px-2 py-1 rounded-lg">x${owned.count}</span></div></div>`;
+                        return `<div class="bg-surface rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative ${locked?'grayscale opacity-70':''} active:scale-95 transition-transform h-full flex flex-col" onclick="app.ui.openDetail(${s.id})">${cardImg}<div class="p-3 flex-1 flex flex-col justify-between"><h4 class="font-bold text-sm truncate leading-tight">${locked?'???':s.name}</h4><div class="text-[10px] text-gray-400 mt-1">${locked?'Undiscovered':`Seen ${owned.count}x`}</div></div></div>`;
+                    }).join('');
+                },
+                async renderFieldGuide(refresh = false) {
+                    if(!refresh && !app.localSpecies.length) { document.getElementById('fieldguide-body').innerHTML = '<div class="col-span-full text-center mt-10"><div class="animate-spin inline-block w-8 h-8 border-4 border-brand border-t-transparent rounded-full"></div><div class="mt-2 text-gray-400">Locating species...</div></div>'; await app.data.fetchSpecies(); }
+                    const count = Object.keys(app.state.speciesData).length;
+                    document.getElementById('fieldguide-progress-fill').style.width = `${(count / (app.localSpecies.length||1))*100}%`;
+                    document.getElementById('fieldguide-progress-text').innerText = `${count} / ${app.localSpecies.length}`;
+                    this.renderTabs('fieldguide-tabs', app.localSpecies, () => this.renderGrid('fieldguide-body', app.localSpecies, 'fieldguide-search', 'fieldguide-tabs'));
+                    this.renderGrid('fieldguide-body', app.localSpecies, 'fieldguide-search', 'fieldguide-tabs');
+                },
+                async renderInventory() { const owned = app.localSpecies.filter(s => app.state.speciesData[s.id]); document.getElementById('inventory-count-badge').innerText = `${owned.length} Found`; this.renderTabs('inventory-tabs', owned, () => this.renderGrid('inventory-body', owned, 'inventory-search', 'inventory-tabs')); this.renderGrid('inventory-body', owned, 'inventory-search', 'inventory-tabs'); },
+                async openDetail(id) {
+                    const p = document.getElementById('panel-species-detail'); p.classList.remove('translate-x-full');
+                    const c = document.getElementById('species-detail-content'); c.innerHTML = '<div class="flex justify-center mt-20"><div class="animate-spin w-8 h-8 border-4 border-brand border-t-transparent rounded-full"></div></div>';
+                    try {
+                        const s = (await (await fetch(`https://api.inaturalist.org/v1/taxa/${id}`)).json()).results[0];
+                        c.innerHTML = `
+                            <div class="bg-surface pb-10">
+                                <div class="h-80 bg-gray-200 bg-cover bg-center relative" style="background-image: url('${s.default_photo.medium_url}');">
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                                    <div class="absolute bottom-0 left-0 p-6 text-white w-full">
+                                        <div class="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">${s.iconic_taxon_name}</div>
+                                        <h2 class="text-3xl font-black leading-none mb-2">${s.name}</h2>
+                                        <p class="text-white/80 italic text-lg">${s.preferred_common_name || ''}</p>
+                                    </div>
+                                </div>
+                                <div class="p-6 -mt-6 bg-surface rounded-t-3xl relative z-10 space-y-8">
+                                    <div class="flex justify-around border-b border-gray-100 pb-6">
+                                        <div class="text-center"><div class="text-xs text-gray-400 font-bold uppercase">Rank</div><div class="font-bold text-gray-800">${s.rank}</div></div>
+                                        <div class="text-center"><div class="text-xs text-gray-400 font-bold uppercase">Obs</div><div class="font-bold text-gray-800">${s.observations_count.toLocaleString()}</div></div>
+                                        <div class="text-center"><div class="text-xs text-gray-400 font-bold uppercase">ID</div><div class="font-bold text-brand">#${s.id}</div></div>
+                                    </div>
+                                    <section>
+                                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2"><span class="material-symbols-rounded text-base">info</span> About</h3>
+                                        <p class="text-gray-700 leading-relaxed text-sm bg-gray-50 p-4 rounded-xl border border-gray-100">${s.wikipedia_summary || 'No description available from iNaturalist.'}</p>
+                                    </section>
+                                    <section>
+                                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2"><span class="material-symbols-rounded text-base">map</span> Live Map</h3>
+                                        <div class="relative">
+                                            <div id="species-map" class="h-64 w-full rounded-2xl bg-gray-100 overflow-hidden shadow-inner border border-gray-200 z-0"></div>
+                                            <div class="absolute bottom-2 right-2 bg-white/90 backdrop-blur text-[10px] px-2 py-1 rounded-md shadow text-gray-500 font-bold">● Species (Green) &nbsp; ● You (Blue)</div>
+                                        </div>
+                                    </section>
+                                    <section>
+                                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2"><span class="material-symbols-rounded text-base">calendar_month</span> Seasonality</h3>
+                                        <div id="seasonality-chart-container" class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                            <div id="peak-season-text" class="text-xs font-bold text-brand mb-4 text-center uppercase tracking-wide">Loading data...</div>
+                                            <div id="seasonality-chart" class="flex justify-between items-end h-32 w-full gap-1"></div>
+                                            <div class="flex justify-between text-[10px] font-bold text-gray-400 mt-2 px-1"><span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span></div>
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
+                        `;
+                        // Map
+                        setTimeout(async () => {
+                            const startLat = app.map.pos.lat || s.default_photo.latitude || 0;
+                            const startLng = app.map.pos.lng || s.default_photo.longitude || 0;
+                            const map = L.map('species-map', { zoomControl: false, attributionControl: false }).setView([startLat, startLng], 11);
+                            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png').addTo(map);
+                            if(app.map.pos.lat) L.circleMarker([app.map.pos.lat, app.map.pos.lng], { radius: 6, color: '#3b82f6', fillOpacity: 0.9, weight: 2, fillColor: '#60a5fa' }).addTo(map).bindPopup("You");
+                            const obs = await (await fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${s.id}&lat=${startLat}&lng=${startLng}&radius=50&per_page=100`)).json();
+                            if(obs.results.length === 0) {
+                                map.setZoom(4); // Zoom out if no local obs
+                                const globalObs = await (await fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${s.id}&per_page=50`)).json();
+                                globalObs.results.forEach(o => { if(o.geojson) L.circleMarker([o.geojson.coordinates[1], o.geojson.coordinates[0]], { radius: 3, color: '#059669', fillOpacity: 0.6, weight: 0 }).addTo(map); });
+                            } else {
+                                obs.results.forEach(o => { if(o.geojson) L.circleMarker([o.geojson.coordinates[1], o.geojson.coordinates[0]], { radius: 4, color: '#059669', fillOpacity: 0.8, weight: 0 }).addTo(map); });
+                            }
+                        }, 100);
+                        // Chart
+                        const hist = await (await fetch(`https://api.inaturalist.org/v1/observations/histogram?taxon_id=${s.id}&date_field=observed&interval=month_of_year`)).json();
+                        const months = hist.results.month_of_year;
+                        const max = Math.max(...Object.values(months));
+                        let peakMonth = 0; let peakVal = 0;
+                        const chart = document.getElementById('seasonality-chart');
+                        chart.innerHTML = Array(12).fill(0).map((_, i) => {
+                            const val = months[i+1] || 0;
+                            if(val > peakVal) { peakVal = val; peakMonth = i; }
+                            const h = max > 0 ? (val/max)*100 : 0;
+                            return `<div class="w-full bg-gray-200 rounded-t-sm relative group h-full flex items-end overflow-hidden"><div class="w-full bg-gradient-to-t from-brand to-brand-light transition-all duration-1000" style="height: ${h}%"></div></div>`;
+                        }).join('');
+                        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                        document.getElementById('peak-season-text').innerText = `Most active in ${monthNames[peakMonth]}`;
+                    } catch(e) { console.error(e); c.innerHTML = '<div class="p-8 text-center text-red-500">Failed to load details. Check connection.</div>'; }
+                },
+                closeSpeciesDetail() { document.getElementById('panel-species-detail').classList.add('translate-x-full'); },
+                async openLogSighting() { if(!app.localSpecies.length) await app.data.fetchSpecies(); const m = document.getElementById('logSightingModal'); m.classList.remove('pointer-events-none', 'opacity-0'); m.querySelector('div[id]').classList.remove('translate-y-full'); this.renderLogForm(); },
+                closeLogSighting() { const m = document.getElementById('logSightingModal'); m.classList.add('pointer-events-none', 'opacity-0'); m.querySelector('div[id]').classList.add('translate-y-full'); },
+                renderLogForm() { const body = document.getElementById('log-sighting-body'); body.innerHTML = `<form id="log-form" class="space-y-4"><div id="log-entries" class="space-y-3"></div><button type="button" onclick="app.game.addEntry()" class="w-full border-2 border-dashed border-gray-300 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 active:scale-95 transition-transform">+ Add Species</button><button type="submit" class="w-full bg-brand text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-brand/20 active:scale-95 transition-transform">Save Log</button></form>`; app.game.addEntry(); document.getElementById('log-form').onsubmit = (e) => { e.preventDefault(); app.game.submitLog(); }; },
+                openSpeciesSelector(target) { this.selectorTarget = target; const m = document.getElementById('species-select-modal'); m.classList.remove('pointer-events-none', 'opacity-0'); m.querySelector('div[id]').classList.remove('translate-y-full'); this.renderTabs('species-selector-tabs', app.localSpecies, () => this.renderGrid('species-selector-body', app.localSpecies, 'species-selector-search', 'species-selector-tabs', true)); this.renderGrid('species-selector-body', app.localSpecies, 'species-selector-search', 'species-selector-tabs', true); },
+                closeSpeciesSelector() { const m = document.getElementById('species-select-modal'); m.classList.add('pointer-events-none', 'opacity-0'); m.querySelector('div[id]').classList.add('translate-y-full'); },
+                pickSpecies(id) { const s = app.data.getSpecies(id); if(s && this.selectorTarget) { this.selectorTarget.dataset.id = id; this.selectorTarget.className = "flex-1 bg-white border border-gray-200 p-2 rounded-xl flex items-center gap-3"; this.selectorTarget.innerHTML = `<img src="${s.img}" class="w-10 h-10 rounded-lg bg-gray-100 object-cover"><span class="font-bold text-sm">${s.name}</span>`; this.closeSpeciesSelector(); } },
+                showLogged(name, xp, seeds) { document.getElementById('logged-species-name').innerText = name; document.getElementById('logged-xp').innerText = xp; document.getElementById('logged-seeds').innerText = seeds; const m = document.getElementById('sightingLogged'); m.classList.remove('opacity-0', 'pointer-events-none'); document.getElementById('successCard').classList.remove('scale-90'); confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); },
+                closeSightingLoggedModal() { const m = document.getElementById('sightingLogged'); m.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('successCard').classList.add('scale-90'); },
+                showToast(msg) { const t = document.createElement('div'); t.className = 'bg-gray-800/95 text-white px-4 py-2.5 rounded-full text-sm font-semibold shadow-lg pop-in backdrop-blur'; t.innerText = msg; document.getElementById('toast-container').appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(10px)'; setTimeout(() => t.remove(), 300); }, 2500); },
+                renderProfile() { const s = app.state; document.getElementById('profile-username').innerText = s.username; document.getElementById('profile-avatar-emoji').innerText = s.avatar; const lvl = app.data.calcLevel(s.xp); document.getElementById('profile-level').innerText = lvl.level; document.getElementById('profile-xp-fill').style.width = `${lvl.pct}%`; document.getElementById('profile-xp-text').innerText = `${lvl.curr}/${lvl.req} XP`; document.getElementById('stat-total-xp').innerText = s.xp; document.getElementById('stat-seeds').innerText = s.seeds; document.getElementById('stat-species').innerText = Object.keys(s.speciesData).length; document.getElementById('stat-sightings').innerText = Object.values(s.speciesData).reduce((a,b)=>a+b.count,0); },
+                renderRewards() { const s = app.state; document.getElementById('streak-days-text').innerText = `${s.streak} Days`; const days = ['S','M','T','W','T','F','S']; const today = new Date().getDay(); document.getElementById('streak-days-container').innerHTML = days.map((d,i) => `<div class="flex flex-col items-center gap-1"><div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${i < (s.streak%7) ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-300'}">✓</div><span class="text-[10px] font-bold ${i===(today+6)%7 ? 'text-orange-500' : 'text-gray-400'}">${d}</span></div>`).join(''); const q = s.quests.daily; document.getElementById('quest-description').innerText = q.description; const prog = Math.min(q.progress/q.target, 1); document.getElementById('quest-progress-fill').style.width = `${prog*100}%`; document.getElementById('quest-status').innerText = prog>=1 ? 'COMPLETE' : 'ACTIVE'; document.getElementById('quest-rewards').innerHTML = `<span class="text-brand">⚡ ${q.rewards.xp}</span> <span class="text-brand-accent">🌰 ${q.rewards.seeds}</span>`; }
+            },
+            game: {
+                addEntry() { const div = document.createElement('div'); div.className = "flex gap-2 items-center"; const btn = document.createElement('button'); btn.type = 'button'; btn.className = "flex-1 bg-white border border-gray-200 text-gray-400 font-semibold p-3 rounded-xl text-sm text-center active:bg-gray-50"; btn.innerText = "Tap to select species"; btn.onclick = () => app.ui.openSpeciesSelector(btn); div.appendChild(btn); div.innerHTML += `<input type="number" value="1" min="1" class="w-16 text-center font-bold text-lg bg-white border border-gray-200 rounded-xl p-2.5"><button type="button" onclick="this.parentElement.remove()" class="w-12 h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center active:scale-95"><span class="material-symbols-rounded">delete</span></button>`; document.getElementById('log-entries').appendChild(div); },
+                submitLog() { const entries = []; let xp=0, seeds=0; document.querySelectorAll('#log-entries > div').forEach(div => { const id = div.querySelector('button:first-child').dataset.id; const qty = parseInt(div.querySelector('input').value)||1; if(id) { const s = app.data.getSpecies(id); entries.push(s.name); xp += s.xp * qty; seeds += s.seeds * qty; if(!app.state.speciesData[id]) app.state.speciesData[id] = { count: 0 }; app.state.speciesData[id].count += qty; } }); if(!entries.length) return app.ui.showToast("Select a species!"); app.state.xp += xp; app.state.seeds += seeds; app.state.quests.daily.progress += entries.length; app.saveState(); app.ui.renderProfile(); app.ui.closeLogSighting(); app.ui.showLogged(entries.length > 1 ? `${entries.length} Species` : entries[0], xp, seeds); }
+            },
+            data: {
+                async fetchSpecies() { const lat = app.map.pos.lat || 40.71, lng = app.map.pos.lng || -74.00; try { const res = await fetch(`https://api.inaturalist.org/v1/observations/species_counts?lat=${lat}&lng=${lng}&radius=50&month=${new Date().getMonth()+1}&iconic_taxa=Plantae,Aves,Mammalia,Insecta,Amphibia,Reptilia&verifiable=true`); const json = await res.json(); app.localSpecies = json.results.slice(0, 100).map(i => { const c = i.count; return { id: i.taxon.id, name: i.taxon.preferred_common_name || i.taxon.name, img: i.taxon.default_photo?.medium_url, category: i.taxon.iconic_taxon_name, xp: Math.round(1000/(c+10)), seeds: Math.round(100/(c+10)), rarity: c>50?'Common':c>10?'Uncommon':'Rare' }; }).filter(s=>s.img).sort((a,b)=>a.name.localeCompare(b.name)); app.ui.renderFieldGuide(true); } catch(e) { console.error(e); } },
+                getSpecies(id) { return app.localSpecies.find(s => s.id == id); },
+                calcLevel(xp) { let lvl=1, req=100; while(xp>=req) { xp-=req; lvl++; req=Math.floor(req*1.5); } return { level: lvl, curr: xp, req, pct: (xp/req)*100 }; },
+                defaultState: () => ({ username: `Explorer${Math.floor(Math.random()*999)}`, xp: 0, seeds: 0, streak: 1, lastLogin: new Date().toDateString(), avatar: '🦋', speciesData: {}, quests: { daily: { description: "Log 3 species", progress: 0, target: 3, rewards: { xp: 150, seeds: 50 } } } })
+            },
+            map: {
+                map: null, pos: {}, markers: {},
+                init() { this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([40.71, -74.00], 13); L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png').addTo(this.map); this.me = L.marker([0,0], { icon: L.divIcon({ className: 'bg-transparent', html: `<div id="map-me" class="text-4xl filter drop-shadow-md -translate-x-1/2 -translate-y-1/2 transition-transform">${app.state.avatar}</div>` }) }).addTo(this.map); Capacitor.Plugins.Geolocation.watchPosition({ enableHighAccuracy: true }, (p) => { if(!p) return; this.pos = { lat: p.coords.latitude, lng: p.coords.longitude }; this.me.setLatLng(this.pos); if(!this.centered) { this.recenter(); this.centered=true; app.data.fetchSpecies(); } app.multiplayer.broadcastPos(); }); },
+                recenter() { if(this.pos.lat) this.map.setView(this.pos, 16); else app.ui.showToast("Locating..."); },
+                updatePlayer(p) { if(p.id === app.multiplayer.peer?.id) return; const icon = L.divIcon({ className: '', html: `<div class="flex flex-col items-center"><div class="text-3xl filter drop-shadow-lg animate-bounce">${p.avatar}</div><div class="bg-white/90 backdrop-blur px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm -mt-1 whitespace-nowrap">${p.username}</div></div>`, iconSize: [40,60], iconAnchor: [20,50] }); if(this.markers[p.id]) this.markers[p.id].setLatLng([p.lat, p.lng]).setIcon(icon); else this.markers[p.id] = L.marker([p.lat, p.lng], { icon }).addTo(this.map); },
+                removePlayer(id) { if(this.markers[id]) { this.map.removeLayer(this.markers[id]); delete this.markers[id]; } },
+                clearPlayers() { Object.values(this.markers).forEach(m => this.map.removeLayer(m)); this.markers={}; }
+            },
+            async init() { const stored = localStorage.getItem('NQ_State_FINAL'); app.state = stored ? JSON.parse(stored) : app.data.defaultState(); if(app.state.lastLogin !== new Date().toDateString()) app.state.lastLogin = new Date().toDateString(); ['fieldguide-search','inventory-search','species-selector-search'].forEach(id => document.getElementById(id).addEventListener('input', (e) => { const panel = id.split('-')[0]; if(panel === 'fieldguide') app.ui.renderFieldGuide(true); else if(panel === 'inventory') app.ui.renderInventory(); else app.ui.renderSpeciesSelector(); })); this.map.init(); this.hud.init(); this.multiplayer.init(); this.ui.renderProfile(); this.ui.openPanel('map'); },
+            saveState() { localStorage.setItem('NQ_State_FINAL', JSON.stringify(this.state)); }
+        };
+        window.onload = () => app.init();
+    </script>
 </body>
 </html>
