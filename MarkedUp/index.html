@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <style>
         :root {
@@ -189,22 +190,43 @@
         
         .session-card:hover { border-color: var(--border); background: var(--bg-hover); }
         .session-card.active { border-color: var(--accent); background: var(--accent-dim); }
+        .session-card.selected { border-color: var(--success); }
         .session-card.loading { opacity: 0.6; pointer-events: none; }
         
-        .session-thumb {
-            width: 100px;
-            height: 70px;
-            border-radius: 8px;
-            object-fit: cover;
-            background: var(--bg-base);
-            flex-shrink: 0;
+        .session-select {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: 20px;
+            height: 20px;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
         }
         
-        .session-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
-        .session-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .session-meta { font-size: 11px; color: var(--text-muted); }
+        .session-card.selected .session-select {
+            background: var(--success);
+            border-color: var(--success);
+        }
         
-        .session-delete {
+        .session-card.selected .session-select::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+        }
+
+        .session-card-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-self: flex-start;
+        }
+
+        .session-btn {
             width: 28px;
             height: 28px;
             border: none;
@@ -215,11 +237,26 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            align-self: flex-start;
-            font-size: 16px;
+            font-size: 14px;
+        }
+
+        .session-btn:hover { background: var(--bg-hover); color: var(--text); }
+        .session-delete:hover { background: var(--danger); color: white; }
+        
+        .session-thumb-container {
+            position: relative;
+            width: 100px;
+            height: 70px;
+            flex-shrink: 0;
         }
         
-        .session-delete:hover { background: var(--danger); color: white; }
+        .session-thumb {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            object-fit: cover;
+            background: var(--bg-base);
+        }
         
         .icon-item, .emoji-item {
             aspect-ratio: 1;
@@ -857,6 +894,7 @@
             <div class="url-bar" id="browserBar">
                 <input type="text" class="url-input" id="urlInput" value="https://wikipedia.org" placeholder="Enter URL...">
                 <button class="btn btn-default" id="goBtn">Go</button>
+                <button class="btn btn-default" id="pdfOpenBtn" title="Open PDF">📄 PDF</button>
                 <button class="btn btn-success" id="captureBtn">📷 Capture</button>
             </div>
             
@@ -1010,6 +1048,31 @@
     </div>
 </div>
 
+<!-- PDF Loading Modal -->
+<div class="modal-overlay" id="pdfModal">
+    <div class="modal">
+        <h3>📄 Load PDF</h3>
+        <p>Load a PDF from a URL or upload a file from your device.</p>
+        
+        <div class="form-group">
+            <label>PDF URL</label>
+            <input type="url" id="pdfUrlInput" placeholder="https://example.com/document.pdf">
+        </div>
+        
+        <div style="text-align:center; margin: 15px 0; color: var(--text-dim); font-size: 12px;">— OR —</div>
+        
+        <div class="form-group">
+            <label>Upload File</label>
+            <input type="file" id="pdfFileInput" accept="application/pdf" style="padding: 8px 0;">
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn btn-default" id="pdfCancelBtn">Cancel</button>
+            <button class="btn btn-primary" id="pdfLoadBtn">Load PDF</button>
+        </div>
+    </div>
+</div>
+
 <!-- Export Modal -->
 <div class="modal-overlay" id="exportModal">
     <div class="modal">
@@ -1126,6 +1189,7 @@ const DB = {
                 title: session.title,
                 imageData: session.imageData,
                 thumbData: session.thumbData,
+                pdfData: session.pdfData || null, // Add PDF base64
                 width: session.width,
                 height: session.height,
                 shapes: session.shapes.map(s => ({ ...s })),
@@ -1772,6 +1836,7 @@ const Library = {
                     title: data.title,
                     imageData: data.imageData,
                     thumbData: data.thumbData,
+                    pdfData: data.pdfData || null,
                     width: data.width,
                     height: data.height,
                     shapes: data.shapes || [],
@@ -1873,7 +1938,7 @@ const Library = {
         document.getElementById('searchInput').placeholder = placeholders[tab];
     },
 
-    async addCapture(img, title = 'Capture') {
+    async addCapture(img, title = 'Capture', pdfData = null) {
         const thumbCanvas = document.createElement('canvas');
         thumbCanvas.width = 200;
         thumbCanvas.height = 140;
@@ -1896,6 +1961,7 @@ const Library = {
             img,
             imageData: fullCanvas.toDataURL('image/png'),
             thumbData: thumbCanvas.toDataURL('image/jpeg', 0.8),
+            pdfData: pdfData,
             width: img.width,
             height: img.height,
             shapes: [],
@@ -2005,11 +2071,26 @@ const Library = {
             const isLoading = this.loadingSessionId === s.id;
             card.className = 'session-card' + 
                 (s.id === this.activeId ? ' active' : '') +
+                (s.selected ? ' selected' : '') +
                 (isLoading ? ' loading' : '');
             
+            const thumbContainer = document.createElement('div');
+            thumbContainer.className = 'session-thumb-container';
+            
+            const selectDot = document.createElement('div');
+            selectDot.className = 'session-select';
+            selectDot.addEventListener('click', (e) => {
+                e.stopPropagation();
+                s.selected = !s.selected;
+                this.render();
+            });
+
             const thumb = document.createElement('img');
             thumb.className = 'session-thumb';
             thumb.src = s.thumbData;
+            
+            thumbContainer.appendChild(thumb);
+            thumbContainer.appendChild(selectDot);
             
             const info = document.createElement('div');
             info.className = 'session-info';
@@ -2018,29 +2099,55 @@ const Library = {
                 <div class="session-meta">${s.width} × ${s.height} • ${s.shapes.length} layers${isLoading ? ' • Loading...' : ''}</div>
             `;
             
+            const actions = document.createElement('div');
+            actions.className = 'session-card-actions';
+            
+            const renameBtn = document.createElement('button');
+            renameBtn.className = 'session-btn';
+            renameBtn.innerHTML = '✏️';
+            renameBtn.title = 'Rename';
+            renameBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.renameSession(s.id);
+            });
+            
             const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'session-delete';
+            deleteBtn.className = 'session-btn session-delete';
             deleteBtn.innerHTML = '×';
+            deleteBtn.title = 'Delete';
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                e.preventDefault();
                 this.deleteSession(s.id);
             });
             
-            card.appendChild(thumb);
-            card.appendChild(info);
-            card.appendChild(deleteBtn);
+            actions.appendChild(renameBtn);
+            actions.appendChild(deleteBtn);
             
-            // Use a closure to capture the session id
+            card.appendChild(thumbContainer);
+            card.appendChild(info);
+            card.appendChild(actions);
+            
             const sessionId = s.id;
             card.addEventListener('click', (e) => {
-                if (e.target !== deleteBtn && !isLoading) {
+                if (!isLoading) {
                     this.loadSession(sessionId);
                 }
             });
             
             grid.appendChild(card);
         });
+    },
+
+    async renameSession(id) {
+        const session = this.sessions.find(s => s.id === id);
+        if (!session) return;
+        const newTitle = prompt('Enter new title:', session.title);
+        if (newTitle && newTitle.trim()) {
+            session.title = newTitle.trim();
+            await DB.save(session);
+            this.render();
+            Toast.show('Renamed');
+        }
     },
 
     getSelected() {
@@ -2101,6 +2208,73 @@ const Browser = {
         } catch (e) {
             Toast.show('Capture cancelled', 'error');
         }
+    }
+};
+
+// =============================================
+// PDF VIEWER
+// =============================================
+const PDFViewer = {
+    pdfDoc: null,
+    pdfData: null,
+    
+    async loadFromUrl(url) {
+        try {
+            Toast.show('Loading PDF...');
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const base64 = await this.blobToBase64(blob);
+            await this.loadFromBase64(base64);
+            Modal.close('pdfModal');
+            Toast.show('PDF Loaded');
+        } catch (e) {
+            console.error('PDF Load Error:', e);
+            Toast.show('Failed to load PDF URL', 'error');
+        }
+    },
+    
+    async loadFromFile(file) {
+        try {
+            Toast.show('Uploading PDF...');
+            const base64 = await this.blobToBase64(file);
+            await this.loadFromBase64(base64);
+            Modal.close('pdfModal');
+            Toast.show('PDF Uploaded');
+        } catch (e) {
+            console.error('PDF Upload Error:', e);
+            Toast.show('Failed to upload PDF', 'error');
+        }
+    },
+    
+    async loadFromBase64(base64) {
+        this.pdfData = base64;
+        const loadingTask = pdfjsLib.getDocument({ data: atob(base64.split(',')[1]) });
+        this.pdfDoc = await loadingTask.promise;
+        
+        // Render first page as the "capture"
+        const img = await this.renderPage(1);
+        Library.addCapture(img, 'PDF Capture', base64);
+    },
+    
+    async renderPage(pageNum) {
+        const page = await this.pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2.0 }); // High quality
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        return await Utils.loadImage(canvas.toDataURL());
+    },
+    
+    blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
     }
 };
 
@@ -2294,14 +2468,22 @@ const Editor = {
             const h = Math.abs(shape.y2 - shape.y) || 10;
             return { x, y, w, h };
         } else if (shape.type === 'text') {
-            this.ctx.font = `bold ${shape.fontSize || 24}px sans-serif`;
-            const lines = (shape.text || 'Text').split('\n');
-            let maxWidth = 100;
-            lines.forEach(line => {
-                const m = this.ctx.measureText(line);
-                maxWidth = Math.max(maxWidth, m.width);
-            });
-            return { x: shape.x, y: shape.y, w: maxWidth, h: (shape.fontSize || 24) * 1.2 * lines.length };
+            const fontSize = shape.fontSize || 24;
+            this.ctx.font = `bold ${fontSize}px sans-serif`;
+            const width = shape.w || 200;
+            const words = (shape.text || 'Text').split(' ');
+            let line = '';
+            let lineCount = 1;
+            for (let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                if (this.ctx.measureText(testLine).width > width && n > 0) {
+                    line = words[n] + ' ';
+                    lineCount++;
+                } else {
+                    line = testLine;
+                }
+            }
+            return { x: shape.x, y: shape.y, w: width, h: lineCount * fontSize * 1.2 };
         } else {
             let x = shape.x, y = shape.y, w = shape.w || 48, h = shape.h || 48;
             if (w < 0) { x += w; w = -w; }
@@ -2419,6 +2601,7 @@ const Editor = {
                 type: 'text',
                 x: w.x,
                 y: w.y,
+                w: 200,
                 text: '',
                 stroke: this.style.stroke,
                 fontSize: 24,
@@ -2540,23 +2723,27 @@ const Editor = {
             const deltaX = w.x - rs.wx;
             const deltaY = w.y - rs.wy;
             
-            if (['rect', 'circle', 'stockImage'].includes(shape.type)) {
+            if (['rect', 'circle', 'stockImage', 'text'].includes(shape.type)) {
                 if (this.resizeHandle === 'se') {
                     shape.w = rs.w + deltaX;
-                    shape.h = rs.h + deltaY;
+                    if (shape.type !== 'text') shape.h = rs.h + deltaY;
                 } else if (this.resizeHandle === 'nw') {
                     shape.x = rs.x + deltaX;
-                    shape.y = rs.y + deltaY;
                     shape.w = rs.w - deltaX;
-                    shape.h = rs.h - deltaY;
+                    if (shape.type !== 'text') {
+                        shape.y = rs.y + deltaY;
+                        shape.h = rs.h - deltaY;
+                    }
                 } else if (this.resizeHandle === 'ne') {
-                    shape.y = rs.y + deltaY;
                     shape.w = rs.w + deltaX;
-                    shape.h = rs.h - deltaY;
+                    if (shape.type !== 'text') {
+                        shape.y = rs.y + deltaY;
+                        shape.h = rs.h - deltaY;
+                    }
                 } else if (this.resizeHandle === 'sw') {
                     shape.x = rs.x + deltaX;
                     shape.w = rs.w - deltaX;
-                    shape.h = rs.h + deltaY;
+                    if (shape.type !== 'text') shape.h = rs.h + deltaY;
                 }
             } else if (['icon', 'emoji'].includes(shape.type)) {
                 const newSize = Math.max(16, rs.w + (this.resizeHandle.includes('e') ? deltaX : -deltaX));
@@ -2665,8 +2852,9 @@ const Editor = {
         if (shape.type === 'emoji' || shape.type === 'icon') {
             const size = shape.size || 48;
             return Utils.pointInRect(wx, wy, shape.x - padding, shape.y - padding, size + padding * 2, size + padding * 2);
-        } else if (['rect', 'stockImage'].includes(shape.type)) {
-            return Utils.pointInRect(wx, wy, shape.x - padding, shape.y - padding, (shape.w || 48) + padding * 2, (shape.h || 48) + padding * 2);
+        } else if (['rect', 'stockImage', 'text'].includes(shape.type)) {
+            const b = this.getShapeBounds(shape);
+            return Utils.pointInRect(wx, wy, b.x - padding, b.y - padding, b.w + padding * 2, b.h + padding * 2);
         } else if (shape.type === 'circle') {
             const cx = shape.x + shape.w / 2;
             const cy = shape.y + shape.h / 2;
@@ -2687,6 +2875,29 @@ const Editor = {
             return Utils.pointInRect(wx, wy, shape.x - padding, shape.y - padding, maxWidth + padding * 2, height + padding * 2);
         }
         return false;
+    },
+
+    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = text.split(' ');
+        let line = '';
+        let testLine = '';
+        let lineCount = 0;
+
+        for (let n = 0; n < words.length; n++) {
+            testLine = line + words[n] + ' ';
+            const metrics = ctx.measureText(testLine);
+            const testWidth = metrics.width;
+            if (testWidth > maxWidth && n > 0) {
+                ctx.fillText(line, x, y);
+                line = words[n] + ' ';
+                y += lineHeight;
+                lineCount++;
+            } else {
+                line = testLine;
+            }
+        }
+        ctx.fillText(line, x, y);
+        return (lineCount + 1) * lineHeight;
     },
 
     draw() {
@@ -2721,7 +2932,7 @@ const Editor = {
         });
     },
 
-    async drawShape(shape) {
+    drawShape(shape) {
         const ctx = this.ctx;
         ctx.strokeStyle = shape.stroke || '#ef4444';
         ctx.fillStyle = shape.fill || 'transparent';
@@ -2761,29 +2972,24 @@ const Editor = {
             ctx.font = `bold ${fontSize}px sans-serif`;
             ctx.textBaseline = 'top';
             ctx.fillStyle = shape.stroke || '#ef4444';
-            const lines = (shape.text || '').split('\n');
-            const lineHeight = fontSize * 1.2;
-            lines.forEach((line, i) => {
-                ctx.fillText(line, shape.x, shape.y + i * lineHeight);
-            });
+            const width = shape.w || 200;
+            this.wrapText(ctx, shape.text || '', shape.x, shape.y, width, fontSize * 1.2);
         } else if (shape.type === 'icon') {
             const icon = shape.iconData;
             const size = shape.size || 48;
-            const color = shape.stroke || '#ef4444';
+            const color = (shape.stroke || '#ef4444').replace('#', '');
             
-            const img = await Icons.getIconImage(icon, color);
+            const img = Icons.imageCache.get(`iconify_${icon.fullName}_${color}`) || Icons.imageCache.get(`builtin_${icon.name}_${color}`);
             if (img) {
                 ctx.drawImage(img, shape.x, shape.y, size, size);
             } else {
-                ctx.fillStyle = color;
-                ctx.globalAlpha = 0.3;
-                ctx.fillRect(shape.x, shape.y, size, size);
-                ctx.globalAlpha = 1;
+                Icons.getIconImage(icon, '#' + color).then(() => this.draw());
             }
         } else if (shape.type === 'emoji') {
             const size = shape.size || 48;
             ctx.font = `${size}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
             ctx.textBaseline = 'top';
+            ctx.fillStyle = '#000'; // Emojis usually have their own color but fillStyle is needed for some fonts
             ctx.fillText(shape.emoji, shape.x, shape.y);
         } else if (shape.type === 'stockImage') {
             const img = this.loadedImages.get(shape.id);
@@ -2966,14 +3172,22 @@ const Exporter = {
                 }
                 saveAs(await zip.generateAsync({ type: 'blob' }), 'markup-export.zip');
             } else {
-                const pdf = new window.jspdf.jsPDF();
+                const { jsPDF } = window.jspdf;
+                let pdf = null;
+                
                 for (let i = 0; i < selected.length; i++) {
-                    if (i > 0) pdf.addPage();
-                    const blob = await this.render(selected[i]);
+                    const session = selected[i];
+                    const blob = await this.render(session);
                     const imgData = await this.blobToDataURL(blob);
-                    const props = pdf.getImageProperties(imgData);
-                    const ratio = Math.min(pdf.internal.pageSize.getWidth() / props.width, pdf.internal.pageSize.getHeight() / props.height);
-                    pdf.addImage(imgData, 'PNG', 0, 0, props.width * ratio, props.height * ratio);
+                    
+                    const orientation = session.width > session.height ? 'l' : 'p';
+                    if (!pdf) {
+                        pdf = new jsPDF({ orientation, unit: 'px', format: [session.width, session.height] });
+                    } else {
+                        pdf.addPage([session.width, session.height], orientation);
+                    }
+                    
+                    pdf.addImage(imgData, 'PNG', 0, 0, session.width, session.height);
                 }
                 pdf.save('markup-export.pdf');
             }
@@ -3014,13 +3228,26 @@ const Exporter = {
                 if (shape.fill && shape.fill !== 'transparent') ctx.fill();
                 ctx.stroke();
             } else if (shape.type === 'text') {
-                ctx.font = `bold ${shape.fontSize || 24}px sans-serif`;
+                const fontSize = shape.fontSize || 24;
+                ctx.font = `bold ${fontSize}px sans-serif`;
                 ctx.textBaseline = 'top';
                 ctx.fillStyle = shape.stroke || '#ef4444';
-                const lines = (shape.text || '').split('\n');
-                lines.forEach((line, i) => {
-                    ctx.fillText(line, shape.x, shape.y + i * (shape.fontSize || 24) * 1.2);
-                });
+                const width = shape.w || 200;
+                
+                const words = (shape.text || '').split(' ');
+                let line = '';
+                let ty = shape.y;
+                for (let n = 0; n < words.length; n++) {
+                    let testLine = line + words[n] + ' ';
+                    if (ctx.measureText(testLine).width > width && n > 0) {
+                        ctx.fillText(line, shape.x, ty);
+                        line = words[n] + ' ';
+                        ty += fontSize * 1.2;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                ctx.fillText(line, shape.x, ty);
             } else if (shape.type === 'emoji') {
                 ctx.font = `${shape.size || 48}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
                 ctx.textBaseline = 'top';
@@ -3133,6 +3360,11 @@ const App = {
         Browser.go();
         this.setupEventListeners();
         
+        // Auto-load most recent session if exists
+        if (Library.sessions.length > 0) {
+            setTimeout(() => Library.loadSession(Library.sessions[0].id), 500);
+        }
+        
         window.addEventListener('paste', async e => {
             const item = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'));
             if (item) {
@@ -3153,6 +3385,18 @@ const App = {
         
         document.getElementById('goBtn').addEventListener('click', () => Browser.go());
         document.getElementById('captureBtn').addEventListener('click', () => Browser.capture());
+        document.getElementById('pdfOpenBtn').addEventListener('click', () => Modal.open('pdfModal'));
+        
+        document.getElementById('pdfCancelBtn').addEventListener('click', () => Modal.close('pdfModal'));
+        document.getElementById('pdfLoadBtn').addEventListener('click', () => {
+            const url = document.getElementById('pdfUrlInput').value.trim();
+            const file = document.getElementById('pdfFileInput').files[0];
+            
+            if (file) PDFViewer.loadFromFile(file);
+            else if (url) PDFViewer.loadFromUrl(url);
+            else Toast.show('Provide a URL or select a file', 'error');
+        });
+        
         document.getElementById('urlInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') Browser.go();
         });

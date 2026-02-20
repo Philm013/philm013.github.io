@@ -78,6 +78,9 @@
             #bottomNav { display: flex !important; }
         }
         
+        .view-fullscreen #bottomNav { display: none !important; }
+        .view-fullscreen #sidebar { display: none !important; }
+        
         #bottomNav { display: none; }
         
         .mobile-nav-toggle { display: none; }
@@ -89,6 +92,7 @@
             position: relative;
             overflow: hidden;
             cursor: crosshair;
+            touch-action: none;
         }
         .model-canvas.pen-mode { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z'/%3E%3C/svg%3E") 0 24, crosshair; }
         .model-canvas.shape-mode { cursor: crosshair; }
@@ -104,6 +108,7 @@
             user-select: none;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             z-index: 10;
+            touch-action: none;
         }
         .model-node.selected {
             border-color: #7c3aed;
@@ -121,6 +126,7 @@
             cursor: move;
             user-select: none;
             z-index: 8;
+            touch-action: none;
         }
         .model-shape.selected {
             outline: 2px dashed #7c3aed;
@@ -139,7 +145,16 @@
             user-select: none;
             box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
             z-index: 9;
+            touch-action: none;
         }
+        
+        /* Ensure delete buttons are visible on touch devices */
+        @media (hover: none) {
+            .model-node button, .model-shape button, .note-shape button, .stamps-layer button {
+                opacity: 1 !important;
+            }
+        }
+        
         .note-shape.selected {
             border-color: #7c3aed;
             box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.3);
@@ -402,6 +417,148 @@
             display: flex;
             gap: 8px;
             z-index: 60;
+        }
+
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .scrollbar-hide {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        .selection-handles {
+            position: absolute;
+            border: 2px dashed #7c3aed;
+            background: rgba(124, 58, 237, 0.05);
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border: 2px solid #7c3aed;
+            border-radius: 50%;
+            pointer-events: auto;
+            z-index: 101;
+            touch-action: none;
+        }
+
+        .handle.nw { top: -6px; left: -6px; cursor: nwse-resize; }
+        .handle.ne { top: -6px; right: -6px; cursor: nesw-resize; }
+        .handle.sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+        .handle.se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+        .handle.n  { top: -6px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+        .handle.s  { bottom: -6px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+        .handle.w  { top: 50%; left: -6px; transform: translateY(-50%); cursor: ew-resize; }
+        .handle.e  { top: 50%; right: -6px; transform: translateY(-50%); cursor: ew-resize; }
+        .handle.rot { top: -25px; left: 50%; transform: translateX(-50%); cursor: grab; background: #7c3aed; }
+        
+        /* Fullscreen Modeler Styles */
+        .modeler-fullscreen {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 1000 !important;
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        
+        .modeler-fullscreen .model-canvas {
+            height: 100% !important;
+        }
+
+        /* Mobile Canvas Optimization */
+        @media (max-width: 768px) {
+            .view-models #mainContent { padding: 0 !important; }
+            .view-models #appHeader { display: none; }
+            .floating-tool-palette {
+                position: absolute;
+                left: 12px;
+                top: 70px; /* Moved down to avoid context bar */
+                z-index: 150;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .tool-drawer {
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                padding: 6px;
+                display: none;
+                flex-direction: column;
+                gap: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            /* Pinned Horizontal Toolbar */
+            .toolbar-pinned {
+                position: relative !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                flex-direction: row !important;
+                background: white !important;
+                padding: 4px !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+                box-shadow: none !important;
+                overflow-x: auto !important;
+                scrollbar-width: none !important;
+            }
+            .toolbar-pinned .tool-drawer {
+                display: flex !important;
+                flex-direction: row !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+            }
+            .toolbar-pinned .fab-toggle { display: none !important; }
+            
+            .tool-drawer.open { display: flex; }
+            .fab-toggle {
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                background: #2563eb;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+                border: none;
+                cursor: pointer;
+            }
+        }
+
+        .path-group:hover {
+            cursor: move;
+        }
+        .path-group.selected {
+            filter: drop-shadow(0 0 2px #7c3aed);
+        }
+
+        @media (hover: none) {
+            .handle {
+                width: 20px;
+                height: 20px;
+                border-width: 3px;
+            }
+            .handle.nw { top: -10px; left: -10px; }
+            .handle.ne { top: -10px; right: -10px; }
+            .handle.sw { bottom: -10px; left: -10px; }
+            .handle.se { bottom: -10px; right: -10px; }
+            .handle.n  { top: -10px; }
+            .handle.s  { bottom: -10px; }
+            .handle.w  { left: -10px; }
+            .handle.e  { right: -10px; }
+            .handle.rot { top: -35px; }
         }
     </style>
 </head>
@@ -764,10 +921,11 @@
 <script>
 // ==================== INDEXEDDB STORAGE LAYER ====================
 const DB_NAME = 'InquiryOS_DB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_SESSIONS = 'sessions';
 const STORE_LIBRARY = 'library';
 const STORE_USERS = 'users';
+const STORE_LESSONS = 'lessons';
 
 let db = null;
 let dbReady = false;
@@ -800,6 +958,10 @@ function initDB() {
                 database.createObjectStore(STORE_LIBRARY, { keyPath: 'code' });
             }
             
+            if (!database.objectStoreNames.contains(STORE_LESSONS)) {
+                database.createObjectStore(STORE_LESSONS, { keyPath: 'id' });
+            }
+
             if (database.objectStoreNames.contains(STORE_USERS)) {
                 database.deleteObjectStore(STORE_USERS);
             }
@@ -975,7 +1137,6 @@ const App = {
     
     modelState: {
         selectedNode: null,
-        selectedItems: [],
         draggingNode: null,
         connecting: null,
         connectingHandle: null,
@@ -991,7 +1152,19 @@ const App = {
         selectionBox: null,
         resizing: null,
         resizeStart: null,
-        shapeStart: null
+        shapeStart: null,
+        // New State for Selection/Transform
+        selectedItems: [], // Array of {id, type}
+        transformMode: null, // 'move', 'resize', 'rotate'
+        transformStart: null,
+        transformOrigin: null,
+        drawerOpen: false,
+        isFullscreen: false,
+        isMultiSelectMode: false,
+        isToolbarPinned: false,
+        pan: { x: 0, y: 0 },
+        zoom: 1,
+        pointers: new Map() // For multi-touch gestures
     },
     
     viewerState: {
@@ -1397,6 +1570,10 @@ function switchMode(mode) {
 
 function updateModeUI() {
     const isTeacher = App.mode === 'teacher';
+    const isFullscreen = App.modelState.isFullscreen;
+    
+    // Toggle body class for fullscreen
+    document.body.classList.toggle('view-fullscreen', isFullscreen);
     
     let subtitle = isTeacher ? 'Teacher Mode' : 'Student Mode';
     if (isTeacher && App.viewingStudentId) {
@@ -1824,6 +2001,7 @@ function renderNavigation() {
             <ul class="space-y-1">
                 ${[
                     { id: 'overview', icon: 'mdi:view-dashboard', label: 'Overview' },
+                    { id: 'lessons', icon: 'mdi:book-plus', label: 'Lesson Designer' },
                     { id: 'snapshots', icon: 'mdi:camera-outline', label: 'Student Snapshots' },
                     { id: 'students', icon: 'mdi:account-group', label: 'Students' },
                     { id: 'access', icon: 'mdi:lock-open-variant', label: 'Access Control' },
@@ -1947,6 +2125,12 @@ function showStudentModule(moduleId) {
 
 function renderStudentContent() {
     const content = document.getElementById('mainContent');
+    const appView = document.getElementById('appView');
+    
+    // Remove old view classes
+    appView.className = 'view active ' + (App.mode === 'teacher' ? 'view-teacher' : 'view-student');
+    appView.classList.add('view-' + App.currentModule);
+
     const renderers = {
         questions: renderQuestionsModule,
         models: renderModelsModule,
@@ -2228,35 +2412,88 @@ async function deleteSubQuestion(id) {
 function renderModelsModule() {
     const availableIcons = App.teacherSettings.lessonIcons?.length > 0 
         ? App.teacherSettings.lessonIcons 
-        : ['mdi:atom', 'mdi:leaf', 'mdi:water', 'mdi:fire', 'mdi:arrow-right', 'mdi:circle', 'mdi:square', 'mdi:flask'];
+        : ['mdi:atom', 'mdi:leaf', 'mdi:water', 'mdi:fire', 'mdi:weather-sunny', 'mdi:flower', 'mdi:bacteria', 'mdi:flask-outline', 'mdi:microscope', 'mdi:dna', 'mdi:earth', 'mdi:mountain', 'mdi:magnet', 'mdi:battery-high', 'mdi:cog', 'mdi:human'];
     
-    const emojis = ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱'];
+    const emojis = ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '🌲', '🌻', '🐟', '🐦', '🦋', '🐝', '☁️', '⛈️', '🔥', '🌍', '🌋', '🍎', '🥩', '🍖', '⚙️', '⚖️'];
+
+    const isFullscreen = App.modelState.isFullscreen;
 
     return `
-        <div class="h-full flex flex-col">
-            <div class="mb-4 flex items-center justify-between">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                        <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
-                            <span class="iconify text-white text-xl" data-icon="mdi:cube-outline"></span>
-                        </span>
-                        Developing Models
-                        <span class="ngss-tag ngss-sep">SEP2</span>
-                    </h2>
-                </div>
+        <div class="h-full flex flex-col ${isFullscreen ? 'modeler-fullscreen' : ''}">
+            <div class="mb-3 flex items-center justify-between ${isFullscreen ? 'p-4 bg-white border-b' : ''}">
                 <div class="flex items-center gap-2">
-                    <button onclick="clearAllModelElements()" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm">
-                        <span class="iconify mr-1" data-icon="mdi:delete"></span> Clear
+                    <h2 class="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <span class="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-primary to-secondary rounded-lg md:rounded-xl flex items-center justify-center">
+                            <span class="iconify text-white text-lg md:text-xl" data-icon="mdi:cube-outline"></span>
+                        </span>
+                        <span class="hidden sm:inline">Developing Models</span>
+                        <span class="sm:hidden text-lg">Models</span>
+                    </h2>
+                    <span class="ngss-tag ngss-sep hidden md:inline">SEP2</span>
+                </div>
+                <div class="flex items-center gap-1.5 md:gap-2">
+                    <button onclick="toggleModelFullscreen()" class="p-2 md:px-3 md:py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm flex items-center gap-1">
+                        <span class="iconify" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span>
+                        <span class="hidden md:inline">${isFullscreen ? 'Exit Full' : 'Fullscreen'}</span>
                     </button>
-                    <button onclick="saveModelAsEvidence()" class="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg hover:opacity-90 text-sm">
-                        <span class="iconify mr-1" data-icon="mdi:bookmark"></span> Save
+                    <button onclick="clearAllModelElements()" class="p-2 md:px-3 md:py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm">
+                        <span class="iconify" data-icon="mdi:delete"></span>
+                        <span class="hidden md:inline">Clear</span>
+                    </button>
+                    <button onclick="saveModelAsEvidence()" class="p-2 md:px-4 md:py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg hover:opacity-90 text-sm">
+                        <span class="iconify" data-icon="mdi:bookmark"></span>
+                        <span class="hidden md:inline">Save</span>
                     </button>
                 </div>
             </div>
             
-            <div class="flex flex-1 gap-4 overflow-hidden">
-                <!-- Toolbar -->
-                <div class="w-16 bg-white border rounded-xl shadow-sm p-2 flex flex-col gap-2">
+            <div class="flex flex-1 gap-2 md:gap-4 overflow-hidden relative ${isFullscreen ? 'p-2 md:p-4 bg-gray-50' : ''} ${App.modelState.isToolbarPinned ? 'flex-col md:flex-row' : ''}">
+                <!-- Mobile Floating Tool Palette -->
+                <div class="floating-tool-palette md:hidden ${App.modelState.isToolbarPinned ? 'toolbar-pinned' : ''}">
+                    <div id="toolDrawer" class="tool-drawer ${App.modelState.drawerOpen ? 'open' : ''}">
+                        <button onclick="setModelTool('select'); if(!App.modelState.isToolbarPinned) toggleToolDrawer()" class="p-3 rounded-xl hover:bg-gray-100 ${App.modelState.currentTool === 'select' ? 'text-primary bg-blue-50' : 'text-gray-600'}">
+                            <span class="iconify text-xl" data-icon="mdi:cursor-default"></span>
+                        </button>
+                        <button onclick="setModelTool('node'); if(!App.modelState.isToolbarPinned) toggleToolDrawer()" class="p-3 rounded-xl hover:bg-gray-100 ${App.modelState.currentTool === 'node' ? 'text-primary bg-blue-50' : 'text-gray-600'}">
+                            <span class="iconify text-xl" data-icon="mdi:plus-circle"></span>
+                        </button>
+                        <button onclick="setModelTool('pen'); if(!App.modelState.isToolbarPinned) toggleToolDrawer()" class="p-3 rounded-xl hover:bg-gray-100 ${App.modelState.currentTool === 'pen' ? 'text-primary bg-blue-50' : 'text-gray-600'}">
+                            <span class="iconify text-xl" data-icon="mdi:pencil"></span>
+                        </button>
+                        <button onclick="setModelTool('shape'); if(!App.modelState.isToolbarPinned) toggleToolDrawer()" class="p-3 rounded-xl hover:bg-gray-100 ${App.modelState.currentTool === 'shape' ? 'text-primary bg-blue-50' : 'text-gray-600'}">
+                            <span class="iconify text-xl" data-icon="mdi:shape"></span>
+                        </button>
+                        <button onclick="setModelTool('note'); if(!App.modelState.isToolbarPinned) toggleToolDrawer()" class="p-3 rounded-xl hover:bg-gray-100 ${App.modelState.currentTool === 'note' ? 'text-primary bg-blue-50' : 'text-gray-600'}">
+                            <span class="iconify text-xl" data-icon="mdi:note-text"></span>
+                        </button>
+                        <button onclick="setModelTool('stamp'); if(!App.modelState.isToolbarPinned) toggleToolDrawer()" class="p-3 rounded-xl hover:bg-gray-100 ${App.modelState.currentTool === 'stamp' ? 'text-primary bg-blue-50' : 'text-gray-600'}">
+                            <span class="iconify text-xl" data-icon="mdi:sticker-emoji"></span>
+                        </button>
+                        <button onclick="toggleMultiSelect()" class="p-3 rounded-xl hover:bg-gray-100 ${App.modelState.isMultiSelectMode ? 'text-purple-600 bg-purple-50' : 'text-gray-600'}" title="Multi-select Mode">
+                            <span class="iconify text-xl" data-icon="mdi:select-multiple"></span>
+                        </button>
+                        ${App.modelState.selectedItems.length > 0 ? `
+                    <button onclick="deleteSelectedItems()" class="tool-btn p-3 rounded-xl hover:bg-red-100 text-red-600" title="Delete Selected">
+                        <span class="iconify text-xl" data-icon="mdi:trash-can-outline"></span>
+                    </button>
+                    ` : ''}
+                    <button onclick="toggleToolbarPin()" class="p-3 rounded-xl hover:bg-gray-100 ${App.modelState.isToolbarPinned ? 'text-primary' : 'text-gray-400'}">
+                            <span class="iconify text-xl" data-icon="${App.modelState.isToolbarPinned ? 'mdi:pin' : 'mdi:pin-outline'}"></span>
+                        </button>
+                    </div>
+                    <button onclick="toggleToolDrawer()" class="fab-toggle">
+                        <span class="iconify text-2xl" data-icon="${App.modelState.drawerOpen ? 'mdi:close' : (
+                            App.modelState.currentTool === 'select' ? 'mdi:cursor-default' :
+                            App.modelState.currentTool === 'node' ? 'mdi:plus-circle' :
+                            App.modelState.currentTool === 'pen' ? 'mdi:pencil' :
+                            App.modelState.currentTool === 'shape' ? 'mdi:shape' :
+                            App.modelState.currentTool === 'note' ? 'mdi:note-text' : 'mdi:sticker-emoji'
+                        )}"></span>
+                    </button>
+                </div>
+
+                <!-- Desktop Toolbar -->
+                <div class="hidden md:flex w-16 bg-white border rounded-xl shadow-sm p-2 flex-col gap-2 overflow-y-auto scrollbar-hide">
                     <button onclick="setModelTool('select')" class="tool-btn p-3 rounded-lg hover:bg-gray-100 ${App.modelState.currentTool === 'select' ? 'active' : ''}" title="Select (V)">
                         <span class="iconify text-xl" data-icon="mdi:cursor-default"></span>
                     </button>
@@ -2275,46 +2512,109 @@ function renderModelsModule() {
                     <button onclick="setModelTool('stamp')" class="tool-btn p-3 rounded-lg hover:bg-gray-100 ${App.modelState.currentTool === 'stamp' ? 'active' : ''}" title="Stamps (I)">
                         <span class="iconify text-xl" data-icon="mdi:sticker-emoji"></span>
                     </button>
-                    <hr class="my-1">
+                    <button onclick="toggleMultiSelect()" class="tool-btn p-3 rounded-lg hover:bg-gray-100 ${App.modelState.isMultiSelectMode ? 'active bg-purple-600' : ''}" title="Multi-select Mode">
+                        <span class="iconify text-xl" data-icon="mdi:select-multiple"></span>
+                    </button>
+                    <hr class="my-0.5">
+                    ${App.modelState.selectedItems.length > 1 ? `
+                    <button onclick="groupSelectedItems()" class="tool-btn p-3 rounded-lg hover:bg-gray-100 text-purple-600" title="Group Selection">
+                        <span class="iconify text-xl" data-icon="mdi:group"></span>
+                    </button>
+                    ` : ''}
+                    ${App.modelState.selectedItems.length === 1 && App.modelState.selectedItems[0].type === 'group' ? `
+                    <button onclick="ungroupSelectedItems()" class="tool-btn p-3 rounded-lg hover:bg-gray-100 text-purple-600" title="Ungroup">
+                        <span class="iconify text-xl" data-icon="mdi:ungroup"></span>
+                    </button>
+                    ` : ''}
+                    ${App.modelState.selectedItems.length > 0 ? `
+                    <button onclick="deleteSelectedItems()" class="tool-btn p-3 rounded-lg hover:bg-red-100 text-red-600" title="Delete Selected">
+                        <span class="iconify text-xl" data-icon="mdi:trash-can-outline"></span>
+                    </button>
+                    ` : ''}
+                    <hr class="my-0.5">
                     <input type="color" id="modelColorPicker" value="${App.modelState.penColor || '#3b82f6'}" 
                         onchange="App.modelState.penColor = this.value"
-                        class="w-full h-8 rounded cursor-pointer border-none p-0">
+                        class="w-full h-10 rounded cursor-pointer border-none p-0">
                 </div>
 
-                <div class="flex-1 flex flex-col gap-4">
+                <div class="flex-1 flex flex-col gap-2 md:gap-4 overflow-hidden">
                     <!-- Contextual Options -->
-                    <div id="modelContextBar" class="bg-white border rounded-xl shadow-sm p-2 flex items-center gap-4 overflow-x-auto min-h-[56px]">
+                    <div id="modelContextBar" class="bg-white border rounded-xl shadow-sm p-1.5 md:p-2 flex items-center gap-3 md:gap-4 overflow-x-auto min-h-[48px] md:min-h-[56px] flex-nowrap scrollbar-hide touch-pan-x">
                         ${renderModelContextBar(availableIcons, emojis)}
                     </div>
 
                     <!-- Canvas Area -->
                     <div class="flex-1 bg-white rounded-xl shadow-sm border overflow-hidden relative">
                         <div id="modelCanvas" class="model-canvas w-full h-full ${App.modelState.currentTool === 'pen' ? 'pen-mode' : ''}" 
-                            onmousedown="modelCanvasMouseDown(event)"
-                            onmousemove="modelCanvasMouseMove(event)"
-                            onmouseup="modelCanvasMouseUp(event)"
+                            onpointerdown="modelCanvasMouseDown(event)"
+                            onpointermove="modelCanvasMouseMove(event)"
+                            onpointerup="modelCanvasMouseUp(event)"
+                            onpointercancel="App.modelState.isDrawing = false"
+                            onwheel="handleCanvasWheel(event)"
                             ondblclick="canvasDblClick(event)">
                             
-                            <svg id="drawingSvg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 6;"></svg>
-                            <svg id="connectionsSvg" class="connection-line">
-                                <defs>
-                                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                                        <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
-                                    </marker>
-                                </defs>
-                            </svg>
-                            
-                            <!-- Drawing Layers -->
-                            <div id="shapesLayer" class="absolute inset-0 pointer-events-none" style="z-index: 5;"></div>
-                            <div id="notesLayer" class="absolute inset-0 pointer-events-none" style="z-index: 10;"></div>
-                            <div id="stampsLayer" class="absolute inset-0 pointer-events-none" style="z-index: 15;"></div>
+                            <div id="modelCanvasContent" class="absolute inset-0 origin-top-left pointer-events-none">
+                                <svg id="drawingSvg" class="absolute inset-0 w-full h-full" style="z-index: 6; pointer-events: none;"></svg>
+                                <svg id="connectionsSvg" class="connection-line">
+                                    <defs>
+                                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                                        </marker>
+                                    </defs>
+                                </svg>
+                                
+                                <!-- Drawing Layers -->
+                                <div id="shapesLayer" class="absolute inset-0 pointer-events-none" style="z-index: 5;"></div>
+                                <div id="notesLayer" class="absolute inset-0 pointer-events-none" style="z-index: 10;"></div>
+                                <div id="stampsLayer" class="absolute inset-0 pointer-events-none stamps-layer" style="z-index: 15;"></div>
+                                <div id="transformLayer" class="absolute inset-0 pointer-events-none" style="z-index: 100;"></div>
+                                <svg id="tempConnectionSvg" class="connection-line pointer-events-none" style="z-index:100;"></svg>
+                            </div>
                         </div>
-                        <svg id="tempConnectionSvg" class="connection-line pointer-events-none" style="z-index:100;"></svg>
                     </div>
                 </div>
             </div>
         </div>
     `;
+}
+
+function toggleToolDrawer() {
+    App.modelState.drawerOpen = !App.modelState.drawerOpen;
+    const drawer = document.getElementById('toolDrawer');
+    if (drawer) {
+        drawer.classList.toggle('open', App.modelState.drawerOpen);
+    }
+    // Update FAB icon if needed
+    const fabIcon = document.querySelector('.fab-toggle .iconify');
+    if (fabIcon) {
+        const icon = App.modelState.drawerOpen ? 'mdi:close' : (
+            App.modelState.currentTool === 'select' ? 'mdi:cursor-default' :
+            App.modelState.currentTool === 'node' ? 'mdi:plus-circle' :
+            App.modelState.currentTool === 'pen' ? 'mdi:pencil' :
+            App.modelState.currentTool === 'shape' ? 'mdi:shape' :
+            App.modelState.currentTool === 'note' ? 'mdi:note-text' : 'mdi:sticker-emoji'
+        );
+        fabIcon.setAttribute('data-icon', icon);
+    }
+}
+
+function toggleModelFullscreen() {
+    App.modelState.isFullscreen = !App.modelState.isFullscreen;
+    renderStudentContent();
+    if (App.modelState.isFullscreen) {
+        toast('Entered fullscreen mode', 'info');
+    }
+}
+
+function toggleToolbarPin() {
+    App.modelState.isToolbarPinned = !App.modelState.isToolbarPinned;
+    renderStudentContent();
+}
+
+function toggleMultiSelect() {
+    App.modelState.isMultiSelectMode = !App.modelState.isMultiSelectMode;
+    renderStudentContent();
+    toast(App.modelState.isMultiSelectMode ? 'Multi-select ON' : 'Multi-select OFF', 'info');
 }
 
 function renderModelContextBar(availableIcons, emojis) {
@@ -2329,8 +2629,9 @@ function renderModelContextBar(availableIcons, emojis) {
                         <span class="iconify text-lg" data-icon="${icon}"></span>
                     </button>
                 `).join('')}
-                <button onclick="openIconPicker()" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                <button onclick="openIconPicker()" class="px-2 py-1 rounded-lg hover:bg-gray-100 text-primary border-2 border-primary/20 flex items-center gap-1 transition-all">
                     <span class="iconify" data-icon="mdi:plus"></span>
+                    <span class="text-[10px] font-bold uppercase">More...</span>
                 </button>
             </div>
         `;
@@ -2338,10 +2639,23 @@ function renderModelContextBar(availableIcons, emojis) {
         return `
             <span class="text-xs font-bold text-gray-400 uppercase ml-2">Shapes:</span>
             <div class="flex gap-2">
-                ${['rectangle', 'circle', 'triangle', 'arrow'].map(s => `
-                    <button onclick="App.modelState.shapeType = '${s}'; renderStudentContent()" 
-                        class="p-2 rounded-lg ${App.modelState.shapeType === s ? 'bg-primary text-white' : 'hover:bg-gray-100'}">
-                        <span class="iconify" data-icon="mdi:shape-${s === 'rectangle' ? 'rectangle' : s === 'circle' ? 'circle' : s === 'triangle' ? 'triangle' : 'arrow-right'}"></span>
+                ${[
+                    { id: 'rectangle', icon: 'mdi:square-outline' },
+                    { id: 'circle', icon: 'mdi:circle-outline' },
+                    { id: 'triangle', icon: 'mdi:triangle-outline' },
+                    { id: 'diamond', icon: 'mdi:diamond-outline' },
+                    { id: 'hexagon', icon: 'mdi:hexagon-outline' },
+                    { id: 'octagon', icon: 'mdi:octagon-outline' },
+                    { id: 'cloud', icon: 'mdi:cloud-outline' },
+                    { id: 'star', icon: 'mdi:star-outline' },
+                    { id: 'heart', icon: 'mdi:heart-outline' },
+                    { id: 'cylinder', icon: 'mdi:cylinder' },
+                    { id: 'cube', icon: 'mdi:cube-outline' },
+                    { id: 'arrow', icon: 'mdi:arrow-right-thick' }
+                ].map(s => `
+                    <button onclick="App.modelState.shapeType = '${s.id}'; renderStudentContent()" 
+                        class="p-2 rounded-lg ${App.modelState.shapeType === s.id ? 'bg-primary text-white' : 'hover:bg-gray-100'}">
+                        <span class="iconify" data-icon="${s.icon}"></span>
                     </button>
                 `).join('')}
             </div>
@@ -2373,9 +2687,20 @@ function setModelTool(tool) {
 
 function modelCanvasMouseDown(event) {
     const canvas = document.getElementById('modelCanvas');
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    
+    // Multi-touch tracking
+    App.modelState.pointers.set(event.pointerId, event);
+    
+    if (App.modelState.pointers.size === 2) {
+        // Prepare for pinch zoom
+        const pts = Array.from(App.modelState.pointers.values());
+        App.modelState.lastPinchDist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+        return;
+    } else if (App.modelState.pointers.size > 2) return;
+
+    const coords = getCanvasCoords(event);
+    const x = coords.x;
+    const y = coords.y;
     
     App.modelState.isDrawing = true;
     App.modelState.shapeStart = { x, y };
@@ -2383,17 +2708,74 @@ function modelCanvasMouseDown(event) {
     if (App.modelState.currentTool === 'pen') {
         App.modelState.currentPath = [{ x, y }];
     } else if (App.modelState.currentTool === 'select') {
-        // Selection logic could go here
+        // If clicking background, start marquee selection or pan
+        if (event.button === 1 || event.shiftKey) { // Middle click or shift drag to pan
+            App.modelState.isPanning = true;
+            App.modelState.lastPanPos = { x: event.clientX, y: event.clientY };
+        }
     }
 }
 
 function modelCanvasMouseMove(event) {
+    App.modelState.pointers.set(event.pointerId, event);
+    
+    // Multi-touch gestures
+    if (App.modelState.pointers.size === 2) {
+        const pts = Array.from(App.modelState.pointers.values());
+        const dist = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
+        const centerX = (pts[0].clientX + pts[1].clientX) / 2;
+        const centerY = (pts[0].clientY + pts[1].clientY) / 2;
+        
+        // If items are selected, pinch to scale/rotate them
+        if (App.modelState.selectedItems.length > 0) {
+            if (App.modelState.lastPinchDist) {
+                const factor = dist / App.modelState.lastPinchDist;
+                const angle = Math.atan2(pts[0].clientY - pts[1].clientY, pts[0].clientX - pts[1].clientX) * 180 / Math.PI;
+                
+                App.modelState.selectedItems.forEach(item => {
+                    let el;
+                    if (item.type === 'node') el = App.work.modelNodes.find(i => i.id === item.id);
+                    else if (item.type === 'shape') el = App.work.modelShapes.find(i => i.id === item.id);
+                    else if (item.type === 'note') el = App.work.modelNotes.find(i => i.id === item.id);
+                    else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
+                    
+                    if (el) {
+                        el.width = (el.width || 40) * factor;
+                        el.height = (el.height || 40) * factor;
+                        if (App.modelState.lastPinchAngle) {
+                            el.rotation = (el.rotation || 0) + (angle - App.modelState.lastPinchAngle);
+                        }
+                    }
+                });
+                App.modelState.lastPinchAngle = angle;
+                renderModelElements();
+            }
+        } else {
+            // Otherwise, pinch to zoom canvas
+            if (App.modelState.lastPinchDist) {
+                const factor = dist / App.modelState.lastPinchDist;
+                applyZoom(factor, centerX, centerY);
+            }
+        }
+        App.modelState.lastPinchDist = dist;
+        return;
+    }
+
+    if (App.modelState.isPanning) {
+        const dx = event.clientX - App.modelState.lastPanPos.x;
+        const dy = event.clientY - App.modelState.lastPanPos.y;
+        App.modelState.pan.x += dx;
+        App.modelState.pan.y += dy;
+        App.modelState.lastPanPos = { x: event.clientX, y: event.clientY };
+        updateCanvasTransform();
+        return;
+    }
+
     if (!App.modelState.isDrawing) return;
     
-    const canvas = document.getElementById('modelCanvas');
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const coords = getCanvasCoords(event);
+    const x = coords.x;
+    const y = coords.y;
     
     if (App.modelState.currentTool === 'pen') {
         App.modelState.currentPath.push({ x, y });
@@ -2405,14 +2787,25 @@ function modelCanvasMouseMove(event) {
 }
 
 async function modelCanvasMouseUp(event) {
+    App.modelState.pointers.delete(event.pointerId);
+    if (App.modelState.pointers.size < 2) {
+        App.modelState.lastPinchDist = null;
+        App.modelState.lastPinchAngle = null;
+    }
+    
+    if (App.modelState.isPanning) {
+        App.modelState.isPanning = false;
+        return;
+    }
+
     if (!App.modelState.isDrawing) return;
     
-    const canvas = document.getElementById('modelCanvas');
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const coords = getCanvasCoords(event);
+    const x = coords.x;
+    const y = coords.y;
     
     const start = App.modelState.shapeStart;
+    const isDrag = Math.abs(x - start.x) > 10 || Math.abs(y - start.y) > 10;
     
     if (App.modelState.currentTool === 'pen') {
         if (App.modelState.currentPath.length > 2) {
@@ -2425,29 +2818,33 @@ async function modelCanvasMouseUp(event) {
             await saveAndBroadcast('modelPaths', App.work.modelPaths);
         }
     } else if (App.modelState.currentTool === 'shape') {
-        App.work.modelShapes.push({
-            id: 'shape_' + Date.now(),
-            type: App.modelState.shapeType,
-            x: Math.min(start.x, x),
-            y: Math.min(start.y, y),
-            width: Math.abs(x - start.x),
-            height: Math.abs(y - start.y),
-            color: App.modelState.penColor || '#3b82f6'
-        });
-        await saveAndBroadcast('modelShapes', App.work.modelShapes);
+        if (isDrag) {
+            App.work.modelShapes.push({
+                id: 'shape_' + Date.now(),
+                type: App.modelState.shapeType,
+                x: Math.min(start.x, x),
+                y: Math.min(start.y, y),
+                width: Math.abs(x - start.x),
+                height: Math.abs(y - start.y),
+                color: App.modelState.penColor || '#3b82f6'
+            });
+            await saveAndBroadcast('modelShapes', App.work.modelShapes);
+        }
     } else if (App.modelState.currentTool === 'note') {
-        App.work.modelNotes.push({
-            id: 'note_' + Date.now(),
-            text: 'New note...',
-            x,
-            y,
-            width: 150,
-            height: 100,
-            color: '#fef3c7'
-        });
-        await saveAndBroadcast('modelNotes', App.work.modelNotes);
+        if (!isDrag) {
+            App.work.modelNotes.push({
+                id: 'note_' + Date.now(),
+                text: 'New note...',
+                x: x - 75,
+                y: y - 50,
+                width: 150,
+                height: 100,
+                color: '#fef3c7'
+            });
+            await saveAndBroadcast('modelNotes', App.work.modelNotes);
+        }
     } else if (App.modelState.currentTool === 'stamp') {
-        if (App.modelState.selectedSticker) {
+        if (App.modelState.selectedSticker && !isDrag) {
             App.work.modelStickers.push({
                 id: 'stamp_' + Date.now(),
                 emoji: App.modelState.selectedSticker,
@@ -2457,7 +2854,14 @@ async function modelCanvasMouseUp(event) {
             await saveAndBroadcast('modelStickers', App.work.modelStickers);
         }
     } else if (App.modelState.currentTool === 'node' && App.modelState.selectedIcon) {
-        createNode(x - 60, y - 25, App.modelState.selectedIcon);
+        if (!isDrag) {
+            if (App.modelState.selectedItems.length > 0) {
+                App.modelState.selectedItems = [];
+                App.modelState.selectedNode = null;
+            } else {
+                createNode(x - 60, y - 25, App.modelState.selectedIcon);
+            }
+        }
     }
     
     App.modelState.isDrawing = false;
@@ -2473,6 +2877,12 @@ function renderModelPaths() {
     
     // Existing paths
     App.work.modelPaths.forEach(path => {
+        const isSelected = App.modelState.selectedItems.some(i => i.id === path.id);
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', `path-group ${isSelected ? 'selected' : ''}`);
+        g.setAttribute('style', 'pointer-events: auto; cursor: move;');
+        g.dataset.id = path.id;
+        
         const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const d = path.points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
         p.setAttribute('d', d);
@@ -2480,7 +2890,25 @@ function renderModelPaths() {
         p.setAttribute('stroke-width', path.width);
         p.setAttribute('fill', 'none');
         p.className = 'pen-path';
-        svg.appendChild(p);
+        
+        // Add a wider invisible path for easier selection
+        const invisible = p.cloneNode(true);
+        invisible.setAttribute('stroke-width', Math.max(20, path.width + 10));
+        invisible.setAttribute('stroke', 'transparent');
+        
+        g.appendChild(invisible);
+        g.appendChild(p);
+        
+        g.onpointerdown = (e) => {
+            e.stopPropagation();
+            startPathDrag(e, path.id);
+        };
+        g.onclick = (e) => {
+            e.stopPropagation();
+            selectItem(e, 'path', path.id);
+        };
+        
+        svg.appendChild(g);
     });
     
     // Current path preview
@@ -2495,6 +2923,70 @@ function renderModelPaths() {
     }
 }
 
+function startPathDrag(event, pathId) {
+    event.stopPropagation();
+    
+    const isSelected = App.modelState.selectedItems.some(i => i.id === pathId);
+    if (!isSelected) {
+        if (!event.shiftKey && !event.ctrlKey) {
+            App.modelState.selectedItems = [{ type: 'path', id: pathId }];
+        } else {
+            App.modelState.selectedItems.push({ type: 'path', id: pathId });
+        }
+        renderModelElements();
+    }
+    
+    const initialPositions = App.modelState.selectedItems.map(item => {
+        let el;
+        if (item.type === 'node') el = App.work.modelNodes.find(i => i.id === item.id);
+        else if (item.type === 'shape') el = App.work.modelShapes.find(i => i.id === item.id);
+        else if (item.type === 'note') el = App.work.modelNotes.find(i => i.id === item.id);
+        else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
+        else if (item.type === 'path') {
+            el = App.work.modelPaths.find(i => i.id === item.id);
+            // Paths don't have x,y, they have points. Store initial points.
+            return { ...item, initialPoints: JSON.parse(JSON.stringify(el.points)) };
+        }
+        return el ? { ...item, initialX: el.x, initialY: el.y } : null;
+    }).filter(i => i);
+    
+    const startX = event.clientX;
+    const startY = event.clientY;
+    
+    document.onpointermove = (e) => {
+        const dx = (e.clientX - startX) / App.modelState.zoom;
+        const dy = (e.clientY - startY) / App.modelState.zoom;
+        
+        initialPositions.forEach(pos => {
+            let el;
+            if (pos.type === 'node') el = App.work.modelNodes.find(i => i.id === pos.id);
+            else if (pos.type === 'shape') el = App.work.modelShapes.find(i => i.id === pos.id);
+            else if (pos.type === 'note') el = App.work.modelNotes.find(i => i.id === pos.id);
+            else if (pos.type === 'stamp') el = App.work.modelStickers.find(i => i.id === pos.id);
+            else if (pos.type === 'path') {
+                el = App.work.modelPaths.find(i => i.id === pos.id);
+                el.points = pos.initialPoints.map(p => ({ x: p.x + dx, y: p.y + dy }));
+            }
+            
+            if (el && pos.type !== 'path') {
+                el.x = pos.initialX + dx;
+                el.y = pos.initialY + dy;
+            }
+        });
+        renderModelElements();
+    };
+    
+    document.onpointerup = async () => {
+        document.onpointermove = null;
+        document.onpointerup = null;
+        await saveAndBroadcast('modelPaths', App.work.modelPaths);
+        if (initialPositions.some(i => i.type === 'node')) await saveAndBroadcast('modelNodes', App.work.modelNodes);
+        if (initialPositions.some(i => i.type === 'shape')) await saveAndBroadcast('modelShapes', App.work.modelShapes);
+        if (initialPositions.some(i => i.type === 'note')) await saveAndBroadcast('modelNotes', App.work.modelNotes);
+        if (initialPositions.some(i => i.type === 'stamp')) await saveAndBroadcast('modelStickers', App.work.modelStickers);
+    };
+}
+
 function renderCanvasPreview(x, y) {
     const svg = document.getElementById('drawingSvg');
     if (!svg) return;
@@ -2503,16 +2995,67 @@ function renderCanvasPreview(x, y) {
     
     const start = App.modelState.shapeStart;
     if (App.modelState.currentTool === 'shape') {
-        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        rect.setAttribute('x', Math.min(start.x, x));
-        rect.setAttribute('y', Math.min(start.y, y));
-        rect.setAttribute('width', Math.abs(x - start.x));
-        rect.setAttribute('height', Math.abs(y - start.y));
-        rect.setAttribute('stroke', App.modelState.penColor || '#3b82f6');
-        rect.setAttribute('stroke-width', '2');
-        rect.setAttribute('fill', 'rgba(59, 130, 246, 0.1)');
-        rect.setAttribute('stroke-dasharray', '5,5');
-        svg.appendChild(rect);
+        const type = App.modelState.shapeType;
+        const color = App.modelState.penColor || '#3b82f6';
+        const left = Math.min(start.x, x);
+        const top = Math.min(start.y, y);
+        const width = Math.abs(x - start.x);
+        const height = Math.abs(y - start.y);
+        
+        let shape;
+        if (type === 'circle') {
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+            shape.setAttribute('cx', left + width / 2);
+            shape.setAttribute('cy', top + height / 2);
+            shape.setAttribute('rx', width / 2);
+            shape.setAttribute('ry', height / 2);
+        } else if (type === 'triangle') {
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            shape.setAttribute('points', `${left + width / 2},${top} ${left + width},${top + height} ${left},${top + height}`);
+        } else if (type === 'diamond') {
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            shape.setAttribute('points', `${left + width / 2},${top} ${left + width},${top + height / 2} ${left + width / 2},${top + height} ${left},${top + height / 2}`);
+        } else if (type === 'hexagon') {
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            shape.setAttribute('points', `${left + width * 0.25},${top} ${left + width * 0.75},${top} ${left + width},${top + height / 2} ${left + width * 0.75},${top + height} ${left + width * 0.25},${top + height} ${left},${top + height / 2}`);
+        } else if (type === 'octagon') {
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            shape.setAttribute('points', `${left + width * 0.3},${top} ${left + width * 0.7},${top} ${left + width},${top + height * 0.3} ${left + width},${top + height * 0.7} ${left + width * 0.7},${top + height} ${left + width * 0.3},${top + height} ${left},${top + height * 0.7} ${left},${top + height * 0.3}`);
+        } else if (type === 'star') {
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const cx = left + width / 2, cy = top + height / 2;
+            let pts = "";
+            for (let i = 0; i < 10; i++) {
+                let r = i % 2 === 0 ? width / 2 : width / 4;
+                let angle = (i * 36) - 90;
+                let x = cx + r * Math.cos(angle * Math.PI / 180);
+                let y = cy + r * Math.sin(angle * Math.PI / 180);
+                pts += `${x},${y} `;
+            }
+            shape.setAttribute('points', pts.trim());
+        } else if (type === 'heart') {
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', `M${left + width / 2},${top + height * 0.3} C${left + width / 2},${top + height * 0.1} ${left + width * 0.1},${top + height * 0.1} ${left + width * 0.1},${top + height * 0.4} C${left + width * 0.1},${top + height * 0.7} ${left + width / 2},${top + height * 0.95} ${left + width / 2},${top + height * 0.95} C${left + width / 2},${top + height * 0.95} ${left + width * 0.9},${top + height * 0.7} ${left + width * 0.9},${top + height * 0.4} C${left + width * 0.9},${top + height * 0.1} ${left + width / 2},${top + height * 0.1} ${left + width / 2},${top + height * 0.3} Z`);
+        } else if (type === 'cylinder') {
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', `M${left + 5},${top + 10} a${width / 2 - 5},5 0 1,0 ${width - 10},0 a${width / 2 - 5},5 0 1,0 -${width - 10},0 M${left + 5},${top + 10} L${left + 5},${top + height - 10} a${width / 2 - 5},5 0 0,0 ${width - 10},0 L${left + width - 5},${top + 10}`);
+        } else if (type === 'cube') {
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            shape.setAttribute('d', `M${left + width * 0.1},${top + height * 0.3} L${left + width * 0.5},${top + height * 0.1} L${left + width * 0.9},${top + height * 0.3} L${left + width * 0.9},${top + height * 0.7} L${left + width * 0.5},${top + height * 0.95} L${left + width * 0.1},${top + height * 0.7} Z M${left + width * 0.1},${top + height * 0.3} L${left + width * 0.5},${top + height * 0.5} L${left + width * 0.9},${top + height * 0.3} M${left + width * 0.5},${top + height * 0.5} L${left + width * 0.5},${top + height * 0.95}`);
+        } else {
+            shape = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            shape.setAttribute('x', left);
+            shape.setAttribute('y', top);
+            shape.setAttribute('width', width);
+            shape.setAttribute('height', height);
+            if (type === 'rectangle') shape.setAttribute('rx', '4');
+        }
+        
+        shape.setAttribute('stroke', color);
+        shape.setAttribute('stroke-width', '2');
+        shape.setAttribute('fill', color + '20');
+        shape.setAttribute('stroke-dasharray', '5,5');
+        svg.appendChild(shape);
     }
 }
 
@@ -2524,49 +3067,308 @@ function renderModelElements() {
     const canvas = document.getElementById('modelCanvas');
     if (!canvas) return;
     
+    updateCanvasTransform();
+    
     // Nodes are handled by renderModelNodes
     renderModelNodes();
     
     // Shapes
     const shapesLayer = document.getElementById('shapesLayer');
-    shapesLayer.innerHTML = App.work.modelShapes.map(s => `
-        <div class="model-shape absolute pointer-events-auto" 
-            style="left:${s.x}px; top:${s.y}px; width:${s.width}px; height:${s.height}px; 
-            border: 2px solid ${s.color}; background: ${s.color}20; 
-            border-radius: ${s.type === 'circle' ? '50%' : '4px'}">
-            <button onclick="deleteModelElement('modelShapes', '${s.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 hover:opacity-100">
-                <span class="iconify text-xs" data-icon="mdi:close"></span>
-            </button>
-        </div>
-    `).join('');
+    shapesLayer.innerHTML = App.work.modelShapes.map(s => {
+        let shapeContent = '';
+        if (s.type === 'circle') {
+            shapeContent = `<circle cx="50" cy="50" r="45" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />`;
+        } else if (s.type === 'triangle') {
+            shapeContent = `<polygon points="50,5 95,95 5,95" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />`;
+        } else if (s.type === 'diamond') {
+            shapeContent = `<polygon points="50,5 95,50 50,95 5,50" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />`;
+        } else if (s.type === 'hexagon') {
+            shapeContent = `<polygon points="25,5 75,5 95,50 75,95 25,95 5,50" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />`;
+        } else if (s.type === 'octagon') {
+            shapeContent = `<polygon points="30,5 70,5 95,30 95,70 70,95 30,95 5,70 5,30" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />`;
+        } else if (s.type === 'star') {
+            shapeContent = `<polygon points="50,5 63,38 95,38 69,59 78,95 50,75 22,95 31,59 5,38 37,38" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />`;
+        } else if (s.type === 'cloud') {
+            shapeContent = `<path d="M25,60 a20,20 0 0,1 0,-40 a25,25 0 0,1 50,0 a20,20 0 0,1 0,40 Z" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />`;
+        } else if (s.type === 'heart') {
+            shapeContent = `<path d="M50,30 C50,10 10,10 10,40 C10,70 50,95 50,95 C50,95 90,70 90,40 C90,10 50,10 50,30 Z" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />`;
+        } else if (s.type === 'cylinder') {
+            shapeContent = `
+                <ellipse cx="50" cy="20" rx="40" ry="10" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />
+                <path d="M10,20 L10,80 a40,10 0 0,0 80,0 L90,20" stroke="${s.color}" stroke-width="2" fill="none" vector-effect="non-scaling-stroke" />
+                <ellipse cx="50" cy="80" rx="40" ry="10" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />
+            `;
+        } else if (s.type === 'cube') {
+            shapeContent = `
+                <path d="M10,30 L50,10 L90,30 L90,70 L50,95 L10,70 Z" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />
+                <path d="M10,30 L50,50 L90,30 M50,50 L50,95" stroke="${s.color}" stroke-width="2" fill="none" vector-effect="non-scaling-stroke" />
+            `;
+        } else if (s.type === 'arrow') {
+            shapeContent = `<path d="M5,40 L70,40 L70,20 L95,50 L70,80 L70,60 L5,60 Z" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />`;
+        } else {
+            shapeContent = `<rect x="5" y="5" width="90" height="90" rx="4" stroke="${s.color}" stroke-width="2" fill="${s.color}20" vector-effect="non-scaling-stroke" />`;
+        }
+
+        return `
+            <div class="model-shape absolute pointer-events-auto ${App.modelState.selectedItems.some(i => i.id === s.id) ? 'selected' : ''}" 
+                style="left:${s.x}px; top:${s.y}px; width:${s.width}px; height:${s.height}px; transform: rotate(${s.rotation || 0}deg)"
+                onclick="selectItem(event, 'shape', '${s.id}')"
+                onpointerdown="startShapeDrag(event, '${s.id}')">
+                <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="display:block;">
+                    ${shapeContent}
+                </svg>
+                <button onclick="deleteModelElement('modelShapes', '${s.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 hover:opacity-100" style="z-index:20;">
+                    <span class="iconify text-xs" data-icon="mdi:close"></span>
+                </button>
+            </div>
+        `;
+    }).join('');
     
     // Notes
     const notesLayer = document.getElementById('notesLayer');
-    notesLayer.innerHTML = App.work.modelNotes.map(n => `
-        <div class="note-shape absolute pointer-events-auto shadow-md p-2 bg-yellow-100 border-yellow-300 border rounded flex flex-col" 
-            style="left:${n.x}px; top:${n.y}px; width:${n.width}px; min-height:${n.height}px;">
-            <textarea class="flex-1 bg-transparent border-none resize-none text-sm focus:outline-none" 
-                onchange="updateModelNote('${n.id}', this.value)">${n.text}</textarea>
-            <button onclick="deleteModelElement('modelNotes', '${n.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 hover:opacity-100">
+    notesLayer.innerHTML = App.work.modelNotes.map(n => {
+        const isSelected = App.modelState.selectedItems.some(i => i.id === n.id);
+        return `
+        <div class="note-shape absolute pointer-events-auto shadow-md p-2 bg-yellow-100 border-yellow-300 border rounded flex flex-col ${isSelected ? 'selected' : ''}" 
+            style="left:${n.x}px; top:${n.y}px; width:${n.width}px; min-height:${n.height}px; transform: rotate(${n.rotation || 0}deg)"
+            onclick="selectItem(event, 'note', '${n.id}')"
+            onpointerdown="startNoteDrag(event, '${n.id}')"
+            ondblclick="event.stopPropagation(); editNoteText('${n.id}')">
+            <div class="flex-1 text-sm text-gray-800 overflow-hidden break-words pointer-events-none">${n.text}</div>
+            <button onclick="deleteModelElement('modelNotes', '${n.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 hover:opacity-100" style="z-index:20;">
                 <span class="iconify text-xs" data-icon="mdi:close"></span>
             </button>
         </div>
-    `).join('');
+        `;
+    }).join('');
     
     // Stamps
     const stampsLayer = document.getElementById('stampsLayer');
-    stampsLayer.innerHTML = App.work.modelStickers.map(s => `
-        <div class="absolute pointer-events-auto text-3xl select-none" 
-            style="left:${s.x}px; top:${s.y}px; cursor: move;" 
-            onmousedown="startStampDrag(event, '${s.id}')">
+    stampsLayer.innerHTML = App.work.modelStickers.map(s => {
+        const isSelected = App.modelState.selectedItems.some(i => i.id === s.id);
+        return `
+        <div class="absolute pointer-events-auto text-3xl select-none ${isSelected ? 'selected' : ''}" 
+            style="left:${s.x}px; top:${s.y}px; cursor: move; width:40px; height:40px; display:flex; align-items:center; justify-content:center; transform: rotate(${s.rotation || 0}deg)" 
+            onclick="selectItem(event, 'stamp', '${s.id}')"
+            onpointerdown="startStampDrag(event, '${s.id}')">
             ${s.emoji}
-            <button onclick="deleteModelElement('modelStickers', '${s.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 hover:opacity-100">
-                <span class="iconify text-[10px]" data-icon="mdi:close"></span>
+            <button onclick="deleteModelElement('modelStickers', '${s.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 hover:opacity-100" style="z-index:20;">
+                <span class="iconify text-xs" data-icon="mdi:close"></span>
             </button>
         </div>
-    `).join('');
+        `;
+    }).join('');
     
     renderModelPaths();
+    renderSelectionOverlay();
+}
+
+async function editNoteText(noteId) {
+    const note = App.work.modelNotes.find(n => n.id === noteId);
+    if (!note) return;
+    
+    const newText = prompt('Edit note text:', note.text);
+    if (newText !== null) {
+        note.text = newText;
+        await saveAndBroadcast('modelNotes', App.work.modelNotes);
+        renderModelElements();
+    }
+}
+
+function renderSelectionOverlay() {
+    const layer = document.getElementById('transformLayer');
+    if (!layer) return;
+    
+    layer.innerHTML = '';
+    
+    if (!App.modelState.selectedItems || App.modelState.selectedItems.length === 0) return;
+    
+    // Calculate bounding box
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    
+    App.modelState.selectedItems.forEach(item => {
+        let el;
+        let defW = 40, defH = 40;
+        
+        if (item.type === 'node') { 
+            el = App.work.modelNodes.find(i => i.id === item.id);
+            defW = 120; defH = 50;
+        }
+        else if (item.type === 'shape') { el = App.work.modelShapes.find(i => i.id === item.id); defW = 100; defH = 100; }
+        else if (item.type === 'note') { el = App.work.modelNotes.find(i => i.id === item.id); defW = 150; defH = 100; }
+        else if (item.type === 'stamp') {
+             el = App.work.modelStickers.find(i => i.id === item.id);
+             defW = 40; defH = 40;
+        }
+        else if (item.type === 'path') {
+            el = App.work.modelPaths.find(i => i.id === item.id);
+            if (el && el.points) {
+                el.points.forEach(p => {
+                    minX = Math.min(minX, p.x);
+                    minY = Math.min(minY, p.y);
+                    maxX = Math.max(maxX, p.x);
+                    maxY = Math.max(maxY, p.y);
+                });
+                return;
+            }
+        }
+        
+        if (el) {
+            minX = Math.min(minX, el.x);
+            minY = Math.min(minY, el.y);
+            maxX = Math.max(maxX, el.x + (el.width || defW));
+            maxY = Math.max(maxY, el.y + (el.height || defH));
+        }
+    });
+    
+    if (minX === Infinity) return;
+    
+    const width = maxX - minX;
+    const height = maxY - minY;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'selection-handles';
+    overlay.style.left = minX + 'px';
+    overlay.style.top = minY + 'px';
+    overlay.style.width = width + 'px';
+    overlay.style.height = height + 'px';
+    
+    // Add handles
+    ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w', 'rot'].forEach(h => {
+        const handle = document.createElement('div');
+        handle.className = `handle ${h}`;
+        handle.onpointerdown = (e) => startTransform(e, h, {x: minX, y: minY, w: width, h: height});
+        overlay.appendChild(handle);
+    });
+    
+    layer.appendChild(overlay);
+}
+
+function startTransform(event, handle, bounds) {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    App.modelState.transformMode = handle === 'rot' ? 'rotate' : 'resize';
+    App.modelState.transformStart = { 
+        x: event.clientX, 
+        y: event.clientY,
+        bounds: bounds,
+        handle: handle,
+        initialItems: JSON.parse(JSON.stringify(App.modelState.selectedItems.map(item => {
+            let el;
+            if (item.type === 'node') el = App.work.modelNodes.find(i => i.id === item.id);
+            else if (item.type === 'shape') el = App.work.modelShapes.find(i => i.id === item.id);
+            else if (item.type === 'note') el = App.work.modelNotes.find(i => i.id === item.id);
+            else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
+            else if (item.type === 'path') el = App.work.modelPaths.find(i => i.id === item.id);
+            return { ...item, ...el };
+        })))
+    };
+    
+    if (App.modelState.transformMode === 'rotate') {
+        const centerX = bounds.x + bounds.w / 2;
+        const centerY = bounds.y + bounds.h / 2;
+        // Adjust for pan/zoom to get screen space center
+        const canvas = document.getElementById('modelCanvas');
+        const rect = canvas.getBoundingClientRect();
+        App.modelState.transformOrigin = {
+            x: rect.left + App.modelState.pan.x + centerX * App.modelState.zoom,
+            y: rect.top + App.modelState.pan.y + centerY * App.modelState.zoom
+        };
+    }
+    
+    document.onpointermove = (e) => doTransform(e);
+    document.onpointerup = () => endTransform();
+}
+
+function doTransform(event) {
+    if (!App.modelState.transformMode) return;
+    
+    const start = App.modelState.transformStart;
+    
+    if (App.modelState.transformMode === 'rotate') {
+        const origin = App.modelState.transformOrigin;
+        const angle = Math.atan2(event.clientY - origin.y, event.clientX - origin.x) * 180 / Math.PI + 90;
+        
+        start.initialItems.forEach(initial => {
+            let el;
+            if (initial.type === 'node') el = App.work.modelNodes.find(i => i.id === initial.id);
+            else if (initial.type === 'shape') el = App.work.modelShapes.find(i => i.id === initial.id);
+            else if (initial.type === 'note') el = App.work.modelNotes.find(i => i.id === initial.id);
+            else if (initial.type === 'stamp') el = App.work.modelStickers.find(i => i.id === initial.id);
+            
+            if (el) {
+                // If single item, just rotate it. If group, rotation is more complex (for now just rotate individual items)
+                el.rotation = (initial.rotation || 0) + (angle - (Math.atan2(start.y - origin.y, start.x - origin.x) * 180 / Math.PI + 90));
+            }
+        });
+        renderModelElements();
+        return;
+    }
+
+    if (App.modelState.transformMode !== 'resize') return;
+    
+    const dx = (event.clientX - start.x) / App.modelState.zoom;
+    const dy = (event.clientY - start.y) / App.modelState.zoom;
+    const handle = start.handle;
+    
+    // Calculate new group bounds
+    let newBounds = { ...start.bounds };
+    if (handle.includes('e')) newBounds.w = Math.max(20, start.bounds.w + dx);
+    if (handle.includes('s')) newBounds.h = Math.max(20, start.bounds.h + dy);
+    if (handle.includes('w')) {
+        const newW = Math.max(20, start.bounds.w - dx);
+        newBounds.x = start.bounds.x + (start.bounds.w - newW);
+        newBounds.w = newW;
+    }
+    if (handle.includes('n')) {
+        const newH = Math.max(20, start.bounds.h - dy);
+        newBounds.y = start.bounds.y + (start.bounds.h - newH);
+        newBounds.h = newH;
+    }
+
+    const scaleX = newBounds.w / start.bounds.w;
+    const scaleY = newBounds.h / start.bounds.h;
+
+    start.initialItems.forEach(initial => {
+        let el;
+        if (initial.type === 'node') el = App.work.modelNodes.find(i => i.id === initial.id);
+        else if (initial.type === 'shape') el = App.work.modelShapes.find(i => i.id === initial.id);
+        else if (initial.type === 'note') el = App.work.modelNotes.find(i => i.id === initial.id);
+        else if (initial.type === 'stamp') el = App.work.modelStickers.find(i => i.id === initial.id);
+        else if (initial.type === 'path') el = App.work.modelPaths.find(i => i.id === initial.id);
+        
+        if (el) {
+            if (initial.type === 'path') {
+                el.points = initial.points.map(p => ({
+                    x: newBounds.x + (p.x - start.bounds.x) * scaleX,
+                    y: newBounds.y + (p.y - start.bounds.y) * scaleY
+                }));
+            } else {
+                // Position relative to group bounds
+                el.x = newBounds.x + (initial.x - start.bounds.x) * scaleX;
+                el.y = newBounds.y + (initial.y - start.bounds.y) * scaleY;
+                el.width = (initial.width || 40) * scaleX;
+                el.height = (initial.height || 40) * scaleY;
+            }
+        }
+    });
+    
+    renderModelElements();
+}
+
+async function endTransform() {
+    if (App.modelState.transformMode === 'resize') {
+        await saveAndBroadcast('modelNodes', App.work.modelNodes);
+        await saveAndBroadcast('modelShapes', App.work.modelShapes);
+        await saveAndBroadcast('modelNotes', App.work.modelNotes);
+        await saveAndBroadcast('modelStickers', App.work.modelStickers);
+        await saveAndBroadcast('modelPaths', App.work.modelPaths);
+    }
+    
+    App.modelState.transformMode = null;
+    document.onpointermove = null;
+    document.onpointerup = null;
 }
 
 async function updateModelNote(id, text) {
@@ -2584,27 +3386,311 @@ async function deleteModelElement(arrayName, id) {
 }
 
 function startStampDrag(event, stampId) {
+    if (event.target.tagName === 'BUTTON' || event.target.closest('button')) return;
     event.stopPropagation();
-    const stamp = App.work.modelStickers.find(s => s.id === stampId);
-    if (!stamp) return;
     
-    const canvas = document.getElementById('modelCanvas');
-    const rect = canvas.getBoundingClientRect();
-    const offset = {
-        x: event.clientX - rect.left - stamp.x,
-        y: event.clientY - rect.top - stamp.y
-    };
+    // Selection logic
+    const isSelected = App.modelState.selectedItems.some(i => i.id === stampId);
+    if (!isSelected) {
+        if (!event.shiftKey && !event.ctrlKey) {
+            App.modelState.selectedItems = [{ type: 'stamp', id: stampId }];
+        } else {
+            App.modelState.selectedItems.push({ type: 'stamp', id: stampId });
+        }
+        renderModelElements();
+    }
     
-    document.onmousemove = (e) => {
-        stamp.x = e.clientX - rect.left - offset.x;
-        stamp.y = e.clientY - rect.top - offset.y;
+    const initialPositions = App.modelState.selectedItems.map(item => {
+        let el;
+        if (item.type === 'node') el = App.work.modelNodes.find(i => i.id === item.id);
+        else if (item.type === 'shape') el = App.work.modelShapes.find(i => i.id === item.id);
+        else if (item.type === 'note') el = App.work.modelNotes.find(i => i.id === item.id);
+        else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
+        return el ? { ...item, initialX: el.x, initialY: el.y } : null;
+    }).filter(i => i);
+    
+    const startX = event.clientX;
+    const startY = event.clientY;
+    
+    document.onpointermove = (e) => {
+        const dx = (e.clientX - startX) / App.modelState.zoom;
+        const dy = (e.clientY - startY) / App.modelState.zoom;
+        
+        initialPositions.forEach(pos => {
+            let el;
+            if (pos.type === 'node') el = App.work.modelNodes.find(i => i.id === pos.id);
+            else if (pos.type === 'shape') el = App.work.modelShapes.find(i => i.id === pos.id);
+            else if (pos.type === 'note') el = App.work.modelNotes.find(i => i.id === pos.id);
+            else if (pos.type === 'stamp') el = App.work.modelStickers.find(i => i.id === pos.id);
+            
+            if (el) {
+                el.x = pos.initialX + dx;
+                el.y = pos.initialY + dy;
+            }
+        });
         renderModelElements();
     };
     
-    document.onmouseup = async () => {
-        document.onmousemove = null;
-        document.onmouseup = null;
+    document.onpointerup = async () => {
+        document.onpointermove = null;
+        document.onpointerup = null;
         await saveAndBroadcast('modelStickers', App.work.modelStickers);
+        if (initialPositions.some(i => i.type === 'node')) await saveAndBroadcast('modelNodes', App.work.modelNodes);
+        if (initialPositions.some(i => i.type === 'shape')) await saveAndBroadcast('modelShapes', App.work.modelShapes);
+        if (initialPositions.some(i => i.type === 'note')) await saveAndBroadcast('modelNotes', App.work.modelNotes);
+    };
+}
+
+function startShapeDrag(event, shapeId) {
+    if (event.target.tagName === 'BUTTON' || event.target.closest('button')) return;
+    event.stopPropagation();
+    
+    // If dragging an unselected item, select it (and deselect others unless modifier)
+    const isSelected = App.modelState.selectedItems.some(i => i.id === shapeId);
+    if (!isSelected) {
+        if (!event.shiftKey && !event.ctrlKey) {
+            App.modelState.selectedItems = [{ type: 'shape', id: shapeId }];
+        } else {
+            App.modelState.selectedItems.push({ type: 'shape', id: shapeId });
+        }
+        renderModelElements();
+    }
+    
+    // Initial positions for all selected items
+    const initialPositions = App.modelState.selectedItems.map(item => {
+        let el;
+        if (item.type === 'node') el = App.work.modelNodes.find(i => i.id === item.id);
+        else if (item.type === 'shape') el = App.work.modelShapes.find(i => i.id === item.id);
+        else if (item.type === 'note') el = App.work.modelNotes.find(i => i.id === item.id);
+        else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
+        return { ...item, initialX: el.x, initialY: el.y };
+    });
+    
+    const canvas = document.getElementById('modelCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    
+    document.onpointermove = (e) => {
+        const dx = (e.clientX - startX) / App.modelState.zoom;
+        const dy = (e.clientY - startY) / App.modelState.zoom;
+        
+        initialPositions.forEach(pos => {
+            let el;
+            if (pos.type === 'node') el = App.work.modelNodes.find(i => i.id === pos.id);
+            else if (pos.type === 'shape') el = App.work.modelShapes.find(i => i.id === pos.id);
+            else if (pos.type === 'note') el = App.work.modelNotes.find(i => i.id === pos.id);
+            else if (pos.type === 'stamp') el = App.work.modelStickers.find(i => i.id === pos.id);
+            
+            if (el) {
+                el.x = pos.initialX + dx;
+                el.y = pos.initialY + dy;
+            }
+        });
+        renderModelElements();
+    };
+    
+    document.onpointerup = async () => {
+        document.onpointermove = null;
+        document.onpointerup = null;
+        await saveAndBroadcast('modelShapes', App.work.modelShapes);
+        // Save others potentially moved
+        if (initialPositions.some(i => i.type === 'node')) await saveAndBroadcast('modelNodes', App.work.modelNodes);
+        if (initialPositions.some(i => i.type === 'note')) await saveAndBroadcast('modelNotes', App.work.modelNotes);
+        if (initialPositions.some(i => i.type === 'stamp')) await saveAndBroadcast('modelStickers', App.work.modelStickers);
+    };
+}
+
+function startNoteDrag(event, noteId) {
+    if (event.target.tagName === 'TEXTAREA' || event.target.tagName === 'BUTTON' || event.target.closest('button')) return;
+    event.stopPropagation();
+    
+    // Selection logic
+    const isSelected = App.modelState.selectedItems.some(i => i.id === noteId);
+    if (!isSelected) {
+        if (!event.shiftKey && !event.ctrlKey) {
+            App.modelState.selectedItems = [{ type: 'note', id: noteId }];
+        } else {
+            App.modelState.selectedItems.push({ type: 'note', id: noteId });
+        }
+        renderModelElements();
+    }
+    
+    const initialPositions = App.modelState.selectedItems.map(item => {
+        let el;
+        if (item.type === 'node') el = App.work.modelNodes.find(i => i.id === item.id);
+        else if (item.type === 'shape') el = App.work.modelShapes.find(i => i.id === item.id);
+        else if (item.type === 'note') el = App.work.modelNotes.find(i => i.id === item.id);
+        else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
+        return el ? { ...item, initialX: el.x, initialY: el.y } : null;
+    }).filter(i => i);
+    
+    const startX = event.clientX;
+    const startY = event.clientY;
+    
+    document.onpointermove = (e) => {
+        const dx = (e.clientX - startX) / App.modelState.zoom;
+        const dy = (e.clientY - startY) / App.modelState.zoom;
+        
+        initialPositions.forEach(pos => {
+            let el;
+            if (pos.type === 'node') el = App.work.modelNodes.find(i => i.id === pos.id);
+            else if (pos.type === 'shape') el = App.work.modelShapes.find(i => i.id === pos.id);
+            else if (pos.type === 'note') el = App.work.modelNotes.find(i => i.id === pos.id);
+            else if (pos.type === 'stamp') el = App.work.modelStickers.find(i => i.id === pos.id);
+            
+            if (el) {
+                el.x = pos.initialX + dx;
+                el.y = pos.initialY + dy;
+            }
+        });
+        renderModelElements();
+    };
+    
+    document.onpointerup = async () => {
+        document.onpointermove = null;
+        document.onpointerup = null;
+        await saveAndBroadcast('modelNotes', App.work.modelNotes);
+        // Save others
+        if (initialPositions.some(i => i.type === 'node')) await saveAndBroadcast('modelNodes', App.work.modelNodes);
+        if (initialPositions.some(i => i.type === 'shape')) await saveAndBroadcast('modelShapes', App.work.modelShapes);
+        if (initialPositions.some(i => i.type === 'stamp')) await saveAndBroadcast('modelStickers', App.work.modelStickers);
+    };
+}
+
+async function groupSelectedItems() {
+    if (App.modelState.selectedItems.length < 2) return;
+    
+    const groupId = 'group_' + Date.now();
+    const groupItems = [...App.modelState.selectedItems]; // Copy selection
+    
+    // Assign groupId to all selected items
+    groupItems.forEach(item => {
+        let el;
+        if (item.type === 'node') { 
+            el = App.work.modelNodes.find(i => i.id === item.id);
+            if (el) el.groupId = groupId;
+        } else if (item.type === 'shape') {
+            el = App.work.modelShapes.find(i => i.id === item.id);
+            if (el) el.groupId = groupId;
+        } else if (item.type === 'note') {
+            el = App.work.modelNotes.find(i => i.id === item.id);
+            if (el) el.groupId = groupId;
+        } else if (item.type === 'stamp') {
+            el = App.work.modelStickers.find(i => i.id === item.id);
+            if (el) el.groupId = groupId;
+        }
+    });
+    
+    // Save Group Meta (optional, but good for tracking)
+    App.work.modelGroups.push({
+        id: groupId,
+        items: groupItems
+    });
+    
+    await saveAndBroadcast('modelNodes', App.work.modelNodes);
+    await saveAndBroadcast('modelShapes', App.work.modelShapes);
+    await saveAndBroadcast('modelNotes', App.work.modelNotes);
+    await saveAndBroadcast('modelStickers', App.work.modelStickers);
+    await saveAndBroadcast('modelGroups', App.work.modelGroups);
+    
+    // Select the new group
+    App.modelState.selectedItems = [{ type: 'group', id: groupId }];
+    renderStudentContent();
+    toast('Items grouped!', 'success');
+}
+
+async function ungroupSelectedItems() {
+    if (App.modelState.selectedItems.length !== 1 || App.modelState.selectedItems[0].type !== 'group') return;
+    
+    const groupId = App.modelState.selectedItems[0].id;
+    
+    // Remove groupId from items
+    App.work.modelNodes.forEach(i => { if (i.groupId === groupId) delete i.groupId; });
+    App.work.modelShapes.forEach(i => { if (i.groupId === groupId) delete i.groupId; });
+    App.work.modelNotes.forEach(i => { if (i.groupId === groupId) delete i.groupId; });
+    App.work.modelStickers.forEach(i => { if (i.groupId === groupId) delete i.groupId; });
+    
+    App.work.modelGroups = App.work.modelGroups.filter(g => g.id !== groupId);
+    
+    await saveAndBroadcast('modelNodes', App.work.modelNodes);
+    await saveAndBroadcast('modelShapes', App.work.modelShapes);
+    await saveAndBroadcast('modelNotes', App.work.modelNotes);
+    await saveAndBroadcast('modelStickers', App.work.modelStickers);
+    await saveAndBroadcast('modelGroups', App.work.modelGroups);
+    
+    App.modelState.selectedItems = []; // Clear selection
+    renderStudentContent();
+    toast('Group ungrouped!', 'success');
+}
+
+async function deleteSelectedItems() {
+    if (App.modelState.selectedItems.length === 0) return;
+    if (!confirm(`Permanently delete ${App.modelState.selectedItems.length} selected items?`)) return;
+    
+    const items = [...App.modelState.selectedItems];
+    
+    for (const item of items) {
+        if (item.type === 'node') {
+            App.work.modelNodes = App.work.modelNodes.filter(i => i.id !== item.id);
+            App.work.modelConnections = App.work.modelConnections.filter(c => c.from !== item.id && c.to !== item.id);
+        } else if (item.type === 'shape') {
+            App.work.modelShapes = App.work.modelShapes.filter(i => i.id !== item.id);
+        } else if (item.type === 'note') {
+            App.work.modelNotes = App.work.modelNotes.filter(i => i.id !== item.id);
+        } else if (item.type === 'stamp') {
+            App.work.modelStickers = App.work.modelStickers.filter(i => i.id !== item.id);
+        } else if (item.type === 'path') {
+            App.work.modelPaths = App.work.modelPaths.filter(i => i.id !== item.id);
+        }
+    }
+    
+    App.modelState.selectedItems = [];
+    await saveToStorage();
+    renderStudentContent();
+    toast('Items deleted', 'info');
+}
+
+function handleCanvasWheel(event) {
+    event.preventDefault();
+    const zoomSpeed = 0.001;
+    const delta = -event.deltaY;
+    const factor = Math.pow(1.1, delta / 100);
+    applyZoom(factor, event.clientX, event.clientY);
+}
+
+function applyZoom(factor, centerX, centerY) {
+    const canvas = document.getElementById('modelCanvas');
+    const rect = canvas.getBoundingClientRect();
+    
+    // Position of zoom center relative to canvas top-left
+    const x = centerX - rect.left;
+    const y = centerY - rect.top;
+    
+    const oldZoom = App.modelState.zoom;
+    const newZoom = Math.min(5, Math.max(0.1, oldZoom * factor));
+    
+    // Adjust pan to keep center point under mouse/finger
+    App.modelState.pan.x = x - (x - App.modelState.pan.x) * (newZoom / oldZoom);
+    App.modelState.pan.y = y - (y - App.modelState.pan.y) * (newZoom / oldZoom);
+    App.modelState.zoom = newZoom;
+    
+    updateCanvasTransform();
+}
+
+function updateCanvasTransform() {
+    const content = document.getElementById('modelCanvasContent');
+    if (content) {
+        content.style.transform = `translate(${App.modelState.pan.x}px, ${App.modelState.pan.y}px) scale(${App.modelState.zoom})`;
+    }
+}
+
+function getCanvasCoords(event) {
+    const canvas = document.getElementById('modelCanvas');
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (event.clientX - rect.left - App.modelState.pan.x) / App.modelState.zoom,
+        y: (event.clientY - rect.top - App.modelState.pan.y) / App.modelState.zoom
     };
 }
 
@@ -2618,19 +3704,15 @@ function selectIconForNode(icon) {
     });
 }
 
-function initModelCanvas() {
-    renderModelNodes();
-}
-
 function canvasClick(event) {
     const canvas = document.getElementById('modelCanvas');
     if (!canvas) return;
     
-    if (event.target === canvas || event.target.tagName === 'svg' || event.target.classList.contains('model-canvas')) {
+    if (event.target === canvas || event.target.tagName === 'svg' || event.target.classList.contains('model-canvas') || event.target.id === 'modelCanvasContent') {
         if (App.modelState.selectedIcon) {
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left - 60;
-            const y = event.clientY - rect.top - 25;
+            const coords = getCanvasCoords(event);
+            const x = coords.x - 60;
+            const y = coords.y - 25;
             
             createNode(Math.max(0, x), Math.max(0, y), App.modelState.selectedIcon);
             App.modelState.selectedIcon = null;
@@ -2639,20 +3721,49 @@ function canvasClick(event) {
                 btn.classList.add('border-transparent');
             });
         } else {
-            App.modelState.selectedNode = null;
-            renderModelNodes();
+            // Selection logic
+            if (!event.shiftKey && !event.ctrlKey) {
+                App.modelState.selectedItems = [];
+                App.modelState.selectedNode = null;
+            }
+            renderModelElements();
         }
     }
+}
+
+function selectItem(event, type, id) {
+    event.stopPropagation();
+    
+    // Toggle selection if modifier key is pressed OR if Multi-select mode is ON
+    if (event.shiftKey || event.ctrlKey || App.modelState.isMultiSelectMode) {
+        const index = App.modelState.selectedItems.findIndex(i => i.id === id);
+        if (index > -1) {
+            App.modelState.selectedItems.splice(index, 1);
+        } else {
+            App.modelState.selectedItems.push({ type, id });
+        }
+    } else {
+        App.modelState.selectedItems = [{ type, id }];
+    }
+    
+    // Legacy support for single node selection logic (mostly for color highlights)
+    if (type === 'node' && App.modelState.selectedItems.length === 1) {
+        App.modelState.selectedNode = id;
+    } else {
+        App.modelState.selectedNode = null;
+    }
+    
+    renderModelElements();
 }
 
 function canvasDblClick(event) {
     const canvas = document.getElementById('modelCanvas');
     if (!canvas) return;
     
-    if (event.target === canvas || event.target.tagName === 'svg' || event.target.classList.contains('model-canvas')) {
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left - 60;
-        const y = event.clientY - rect.top - 25;
+    if (event.target === canvas || event.target.tagName === 'svg' || event.target.classList.contains('model-canvas') || event.target.id === 'modelCanvasContent') {
+        const coords = getCanvasCoords(event);
+        const x = coords.x - 60;
+        const y = coords.y - 25;
         
         createNode(Math.max(0, x), Math.max(0, y), 'mdi:circle');
     }
@@ -2673,49 +3784,55 @@ async function createNode(x, y, icon) {
     
     App.work.modelNodes.push(node);
     await saveAndBroadcast('modelNodes', App.work.modelNodes);
-    renderModelNodes();
+    
+    // Auto-select the new node
+    App.modelState.selectedItems = [{ type: 'node', id: node.id }];
+    
+    renderModelElements();
     toast('Node added!', 'success');
 }
 
 function renderModelNodes() {
-    const canvas = document.getElementById('modelCanvas');
+    const canvas = document.getElementById('modelCanvasContent');
     if (!canvas) return;
     
-    canvas.querySelectorAll('.model-node').forEach(n => n.remove());
+    // Clear existing nodes from this container
+    document.querySelectorAll('#modelCanvasContent > .model-node').forEach(n => n.remove());
     
     App.work.modelNodes.forEach(node => {
+        const isSelected = App.modelState.selectedItems.some(i => i.id === node.id);
         const el = document.createElement('div');
-        el.className = `model-node ${App.modelState.selectedNode === node.id ? 'selected' : ''}`;
+        el.className = `model-node ${isSelected ? 'selected' : ''}`;
         el.style.left = node.x + 'px';
         el.style.top = node.y + 'px';
         el.style.width = (node.width || 120) + 'px';
         el.style.minHeight = (node.height || 50) + 'px';
         el.style.borderColor = node.color;
+        el.style.transform = `rotate(${node.rotation || 0}deg)`;
         el.dataset.id = node.id;
         
         el.innerHTML = `
-            <div class="flex items-center gap-2">
-                <span class="iconify text-2xl cursor-pointer" data-icon="${node.icon}" style="color:${node.color}" onclick="event.stopPropagation(); openIconPickerForNode('${node.id}')"></span>
-                <input type="text" value="${node.label}" 
-                    class="node-label-input"
-                    onclick="event.stopPropagation()"
-                    onchange="updateNodeLabel('${node.id}', this.value)"
-                    onfocus="this.select()">
+            <div class="flex items-center gap-2 pointer-events-none">
+                <span class="iconify text-2xl" data-icon="${node.icon}" style="color:${node.color}"></span>
+                <span class="text-sm font-medium text-gray-700">${node.label}</span>
             </div>
-            <div class="node-handle top" onmousedown="startConnection(event, '${node.id}', 'top')"></div>
-            <div class="node-handle bottom" onmousedown="startConnection(event, '${node.id}', 'bottom')"></div>
-            <div class="node-handle left" onmousedown="startConnection(event, '${node.id}', 'left')"></div>
-            <div class="node-handle right" onmousedown="startConnection(event, '${node.id}', 'right')"></div>
+            <div class="node-handle top" onpointerdown="startConnection(event, '${node.id}', 'top')"></div>
+            <div class="node-handle bottom" onpointerdown="startConnection(event, '${node.id}', 'bottom')"></div>
+            <div class="node-handle left" onpointerdown="startConnection(event, '${node.id}', 'left')"></div>
+            <div class="node-handle right" onpointerdown="startConnection(event, '${node.id}', 'right')"></div>
         `;
         
-        el.onmousedown = (e) => {
-            if (e.target.classList.contains('node-handle') || e.target.tagName === 'INPUT') return;
+        el.onpointerdown = (e) => {
+            if (e.target.classList.contains('node-handle')) return;
             startNodeDrag(e, node.id);
         };
         el.onclick = (e) => {
-            if (e.target.classList.contains('node-handle') || e.target.tagName === 'INPUT') return;
+            if (e.target.classList.contains('node-handle')) return;
+            selectItem(e, 'node', node.id);
+        };
+        el.ondblclick = (e) => {
             e.stopPropagation();
-            selectNode(node.id);
+            editNodeLabel(node.id);
         };
         
         canvas.appendChild(el);
@@ -2724,11 +3841,15 @@ function renderModelNodes() {
     renderConnections();
 }
 
-async function updateNodeLabel(nodeId, label) {
+async function editNodeLabel(nodeId) {
     const node = App.work.modelNodes.find(n => n.id === nodeId);
-    if (node) {
-        node.label = label;
+    if (!node) return;
+    
+    const newLabel = prompt('Enter label for this concept:', node.label);
+    if (newLabel !== null) {
+        node.label = newLabel;
         await saveAndBroadcast('modelNodes', App.work.modelNodes);
+        renderModelNodes();
     }
 }
 
@@ -2738,7 +3859,7 @@ function openIconPickerForNode(nodeId) {
         if (node) {
             node.icon = icon;
             await saveAndBroadcast('modelNodes', App.work.modelNodes);
-            renderModelNodes();
+            renderModelElements();
         }
     };
     openIconPicker();
@@ -2850,88 +3971,109 @@ function startConnection(event, nodeId, handle) {
     App.modelState.connecting = nodeId;
     App.modelState.connectingHandle = handle;
     
-    document.onmousemove = (e) => {
+    document.onpointermove = (e) => {
         const canvas = document.getElementById('modelCanvas');
-        const rect = canvas.getBoundingClientRect();
         const svg = document.getElementById('tempConnectionSvg');
         
         const fromNode = App.work.modelNodes.find(n => n.id === App.modelState.connecting);
         if (fromNode) {
             const startPos = getHandlePosition(fromNode, App.modelState.connectingHandle);
-            const endX = e.clientX - rect.left;
-            const endY = e.clientY - rect.top;
+            const coords = getCanvasCoords(e);
+            let endX = coords.x;
+            let endY = coords.y;
             
+            // Visual Snap Feedback
+            const elements = document.elementsFromPoint(e.clientX, e.clientY);
+            const targetHandleEl = elements.find(el => el.classList.contains('node-handle'));
+            if (targetHandleEl) {
+                const targetNodeEl = targetHandleEl.closest('.model-node');
+                const targetNodeId = targetNodeEl?.dataset.id;
+                if (targetNodeId && targetNodeId !== App.modelState.connecting) {
+                    const targetNode = App.work.modelNodes.find(n => n.id === targetNodeId);
+                    const handle = ['top', 'bottom', 'left', 'right'].find(h => targetHandleEl.classList.contains(h));
+                    const snapPos = getHandlePosition(targetNode, handle);
+                    endX = snapPos.x;
+                    endY = snapPos.y;
+                }
+            }
+
             svg.innerHTML = `
                 <line x1="${startPos.x}" y1="${startPos.y}" x2="${endX}" y2="${endY}" 
                     stroke="#7c3aed" stroke-width="2" stroke-dasharray="5,5"/>
             `;
         }
     };
-    document.onmouseup = (e) => endConnection(e);
+    document.onpointerup = (e) => endConnection(e);
 }
 
 async function endConnection(event) {
-    document.onmousemove = null;
-    document.onmouseup = null;
+    document.onpointermove = null;
+    document.onpointerup = null;
     
     document.getElementById('tempConnectionSvg').innerHTML = '';
     
     const wasDrag = Date.now() - connectionStartTime > 200;
     
+    // Snap Connect Logic
+    const elements = document.elementsFromPoint(event.clientX, event.clientY);
+    const targetHandleEl = elements.find(el => el.classList.contains('node-handle'));
+    
+    if (targetHandleEl) {
+        const toNodeEl = targetHandleEl.closest('.model-node');
+        const toNodeId = toNodeEl?.dataset.id;
+        const toHandle = ['top', 'bottom', 'left', 'right'].find(h => targetHandleEl.classList.contains(h));
+        
+        if (toNodeId && toNodeId !== App.modelState.connecting) {
+            App.work.modelConnections.push({
+                id: 'conn_' + Date.now(),
+                from: App.modelState.connecting,
+                fromHandle: App.modelState.connectingHandle,
+                to: toNodeId,
+                toHandle: toHandle
+            });
+            await saveAndBroadcast('modelConnections', App.work.modelConnections);
+            renderModelElements();
+            toast('Connected!', 'success');
+            App.modelState.connecting = null;
+            App.modelState.connectingHandle = null;
+            return;
+        }
+    }
+
     if (wasDrag) {
-        const target = document.elementFromPoint(event.clientX, event.clientY);
-        if (target?.classList.contains('node-handle')) {
-            const toNodeEl = target.closest('.model-node');
-            const toNodeId = toNodeEl?.dataset.id;
-            const toHandle = ['top', 'bottom', 'left', 'right'].find(h => target.classList.contains(h));
+        const canvas = document.getElementById('modelCanvas');
+        const coords = getCanvasCoords(event);
+        const x = coords.x;
+        const y = coords.y;
+        
+        const fromNode = App.work.modelNodes.find(n => n.id === App.modelState.connecting);
+        if (fromNode && x > 0 && y > 0) {
+            const newNode = {
+                id: 'node_' + Date.now(),
+                icon: fromNode.icon,
+                label: 'New Concept',
+                x: Math.max(0, x),
+                y: Math.max(0, y),
+                width: 120,
+                height: 50,
+                color: fromNode.color
+            };
             
-            if (toNodeId && toNodeId !== App.modelState.connecting) {
-                App.work.modelConnections.push({
-                    id: 'conn_' + Date.now(),
-                    from: App.modelState.connecting,
-                    fromHandle: App.modelState.connectingHandle,
-                    to: toNodeId,
-                    toHandle: toHandle
-                });
-                await saveAndBroadcast('modelConnections', App.work.modelConnections);
-                renderConnections();
-                toast('Connected!', 'success');
-            }
-        } else {
-            const canvas = document.getElementById('modelCanvas');
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left - 60;
-            const y = event.clientY - rect.top - 25;
+            App.work.modelNodes.push(newNode);
             
-            const fromNode = App.work.modelNodes.find(n => n.id === App.modelState.connecting);
-            if (fromNode && x > 0 && y > 0) {
-                const newNode = {
-                    id: 'node_' + Date.now(),
-                    icon: fromNode.icon,
-                    label: 'New Concept',
-                    x: Math.max(0, x),
-                    y: Math.max(0, y),
-                    width: 120,
-                    height: 50,
-                    color: fromNode.color
-                };
-                
-                App.work.modelNodes.push(newNode);
-                
-                const oppositeHandle = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
-                App.work.modelConnections.push({
-                    id: 'conn_' + Date.now(),
-                    from: App.modelState.connecting,
-                    fromHandle: App.modelState.connectingHandle,
-                    to: newNode.id,
-                    toHandle: oppositeHandle[App.modelState.connectingHandle]
-                });
-                
-                await saveAndBroadcast('modelNodes', App.work.modelNodes);
-                await saveAndBroadcast('modelConnections', App.work.modelConnections);
-                renderModelNodes();
-                toast('Node created and connected!', 'success');
-            }
+            const oppositeHandle = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+            App.work.modelConnections.push({
+                id: 'conn_' + Date.now(),
+                from: App.modelState.connecting,
+                fromHandle: App.modelState.connectingHandle,
+                to: newNode.id,
+                toHandle: oppositeHandle[App.modelState.connectingHandle]
+            });
+            
+            await saveAndBroadcast('modelNodes', App.work.modelNodes);
+            await saveAndBroadcast('modelConnections', App.work.modelConnections);
+            renderModelElements();
+            toast('Node created and connected!', 'success');
         }
     } else {
         const node = App.work.modelNodes.find(n => n.id === App.modelState.connecting);
@@ -2972,7 +4114,7 @@ async function endConnection(event) {
             
             await saveAndBroadcast('modelNodes', App.work.modelNodes);
             await saveAndBroadcast('modelConnections', App.work.modelConnections);
-            renderModelNodes();
+            renderModelElements();
             toast('Node created and connected!', 'success');
         }
     }
@@ -3028,58 +4170,63 @@ function getHandlePosition(node, handle) {
 function startNodeDrag(event, nodeId) {
     event.stopPropagation();
     
-    const node = App.work.modelNodes.find(n => n.id === nodeId);
-    if (!node) return;
+    // Check if dragging selected
+    const isSelected = App.modelState.selectedItems.some(i => i.id === nodeId);
+    if (!isSelected) {
+        if (!event.shiftKey && !event.ctrlKey) {
+            selectItem(event, 'node', nodeId);
+        } else {
+            App.modelState.selectedItems.push({ type: 'node', id: nodeId });
+            renderModelElements();
+        }
+    }
     
-    const canvas = document.getElementById('modelCanvas');
-    const rect = canvas.getBoundingClientRect();
+    const initialPositions = App.modelState.selectedItems.map(item => {
+        let el;
+        if (item.type === 'node') el = App.work.modelNodes.find(i => i.id === item.id);
+        else if (item.type === 'shape') el = App.work.modelShapes.find(i => i.id === item.id);
+        else if (item.type === 'note') el = App.work.modelNotes.find(i => i.id === item.id);
+        else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
+        
+        return el ? { ...item, initialX: el.x, initialY: el.y } : null;
+    }).filter(i => i);
     
-    App.modelState.draggingNode = nodeId;
-    App.modelState.offset = {
-        x: event.clientX - rect.left - node.x,
-        y: event.clientY - rect.top - node.y
+    const startX = event.clientX;
+    const startY = event.clientY;
+    
+    document.onpointermove = (e) => {
+        const dx = (e.clientX - startX) / App.modelState.zoom;
+        const dy = (e.clientY - startY) / App.modelState.zoom;
+        
+        initialPositions.forEach(pos => {
+            let el;
+            if (pos.type === 'node') el = App.work.modelNodes.find(i => i.id === pos.id);
+            else if (pos.type === 'shape') el = App.work.modelShapes.find(i => i.id === pos.id);
+            else if (pos.type === 'note') el = App.work.modelNotes.find(i => i.id === pos.id);
+            else if (pos.type === 'stamp') el = App.work.modelStickers.find(i => i.id === pos.id);
+            
+            if (el) {
+                el.x = pos.initialX + dx;
+                el.y = pos.initialY + dy;
+            }
+        });
+        
+        renderModelElements();
     };
     
-    selectNode(nodeId);
-    
-    document.onmousemove = (e) => dragNode(e);
-    document.onmouseup = () => endNodeDrag();
-}
-
-function dragNode(event) {
-    if (!App.modelState.draggingNode) return;
-    
-    const canvas = document.getElementById('modelCanvas');
-    const rect = canvas.getBoundingClientRect();
-    const node = App.work.modelNodes.find(n => n.id === App.modelState.draggingNode);
-    
-    if (node) {
-        node.x = Math.max(0, Math.min(rect.width - (node.width || 120), event.clientX - rect.left - App.modelState.offset.x));
-        node.y = Math.max(0, Math.min(rect.height - (node.height || 50), event.clientY - rect.top - App.modelState.offset.y));
-        
-        const el = document.querySelector(`.model-node[data-id="${node.id}"]`);
-        if (el) {
-            el.style.left = node.x + 'px';
-            el.style.top = node.y + 'px';
-        }
-        renderConnections();
-    }
-}
-
-async function endNodeDrag() {
-    if (App.modelState.draggingNode) {
+    document.onpointerup = async () => {
+        document.onpointermove = null;
+        document.onpointerup = null;
         await saveAndBroadcast('modelNodes', App.work.modelNodes);
-    }
-    App.modelState.draggingNode = null;
-    document.onmousemove = null;
-    document.onmouseup = null;
+        if (initialPositions.some(i => i.type === 'shape')) await saveAndBroadcast('modelShapes', App.work.modelShapes);
+        if (initialPositions.some(i => i.type === 'note')) await saveAndBroadcast('modelNotes', App.work.modelNotes);
+        if (initialPositions.some(i => i.type === 'stamp')) await saveAndBroadcast('modelStickers', App.work.modelStickers);
+    };
 }
 
 function selectNode(nodeId) {
     App.modelState.selectedNode = nodeId;
-    document.querySelectorAll('.model-node').forEach(n => {
-        n.classList.toggle('selected', n.dataset.id === nodeId);
-    });
+    renderModelElements();
 }
 
 async function clearAllModelElements() {
@@ -3980,6 +5127,7 @@ async function renderTeacherContent() {
     const content = document.getElementById('mainContent');
     const renderers = {
         overview: renderTeacherOverview,
+        lessons: renderTeacherLessons,
         snapshots: renderTeacherSnapshots,
         students: renderTeacherStudents,
         access: renderTeacherAccess,
@@ -4011,6 +5159,111 @@ async function renderTeacherContent() {
     setTimeout(() => {
         if (App.teacherModule === 'livemodels') initViewerCanvas();
     }, 50);
+}
+
+async function renderTeacherLessons() {
+    const lessons = await dbGetAll(STORE_LESSONS);
+    
+    return `
+        <div class="max-w-5xl mx-auto">
+            <div class="mb-8 flex items-center justify-between">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900">Lesson Designer</h2>
+                    <p class="text-gray-500">Create and manage activity presets for your classes.</p>
+                </div>
+                <button onclick="saveCurrentAsLesson()" class="px-6 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:opacity-90 shadow-lg">
+                    <span class="iconify" data-icon="mdi:plus-circle"></span>
+                    Save Current Activity as Preset
+                </button>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ${lessons.length === 0 ? `
+                    <div class="col-span-full py-20 text-center bg-white rounded-2xl border-2 border-dashed">
+                        <span class="iconify text-6xl text-gray-200 mx-auto mb-4" data-icon="mdi:book-open-variant"></span>
+                        <p class="text-gray-400">No lesson presets saved yet.</p>
+                    </div>
+                ` : lessons.map(lesson => `
+                    <div class="bg-white rounded-2xl border hover:border-primary transition-all p-6 flex flex-col shadow-sm">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-primary">
+                                <span class="iconify text-2xl" data-icon="mdi:lightbulb-variant"></span>
+                            </div>
+                            <button onclick="deleteLesson('${lesson.id}')" class="text-red-400 hover:text-red-600 p-1">
+                                <span class="iconify text-xl" data-icon="mdi:delete-outline"></span>
+                            </button>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">${lesson.name}</h3>
+                        <p class="text-sm text-gray-500 line-clamp-2 mb-4 flex-1">${lesson.settings.phenomenon.description || 'No description'}</p>
+                        
+                        <div class="space-y-3 pt-4 border-t">
+                            <button onclick="launchLesson('${lesson.id}')" class="w-full py-3 bg-gradient-to-r from-teacher to-orange-500 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                                <span class="iconify" data-icon="mdi:rocket-launch"></span>
+                                Start New Session
+                            </button>
+                            <button onclick="applyLessonToCurrent('${lesson.id}')" class="w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+                                Apply to This Class
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+async function saveCurrentAsLesson() {
+    const name = prompt('Enter a name for this lesson preset:', App.teacherSettings.phenomenon.title || 'New Activity');
+    if (!name) return;
+
+    const lesson = {
+        id: 'lesson_' + Date.now(),
+        name: name,
+        settings: JSON.parse(JSON.stringify(App.teacherSettings)),
+        timestamp: Date.now()
+    };
+
+    await dbPut(STORE_LESSONS, lesson);
+    toast('Lesson preset saved!', 'success');
+    renderTeacherContent();
+}
+
+async function deleteLesson(id) {
+    if (confirm('Permanently delete this lesson preset?')) {
+        await dbDelete(STORE_LESSONS, id);
+        renderTeacherContent();
+    }
+}
+
+async function launchLesson(lessonId) {
+    if (confirm('This will create a NEW class session with these settings. Continue?')) {
+        const lesson = await dbGet(STORE_LESSONS, lessonId);
+        if (!lesson) return;
+
+        App.classCode = generateCode();
+        App.teacherSettings = JSON.parse(JSON.stringify(lesson.settings));
+        App.work = getInitialWorkState();
+        App.sharedData = { debatePosts: [] };
+        
+        await saveToStorage();
+        await registerUser();
+        
+        document.getElementById('displayClassCode').textContent = App.classCode;
+        updateModeUI();
+        toast('New session started!', 'success');
+    }
+}
+
+async function applyLessonToCurrent(lessonId) {
+    if (confirm('Overwrite current class settings with this preset?')) {
+        const lesson = await dbGet(STORE_LESSONS, lessonId);
+        if (!lesson) return;
+
+        App.teacherSettings = JSON.parse(JSON.stringify(lesson.settings));
+        await saveToStorage();
+        updateModeUI();
+        toast('Settings applied!', 'success');
+    }
 }
 
 async function renderTeacherSnapshots() {
