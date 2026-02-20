@@ -3,13 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2563eb">
     <title>InquiryOS - NGSS Platform</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/flask-outline.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
     <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registered', reg))
+                    .catch(err => console.error('Service Worker registration failed', err));
+            });
+        }
+
         tailwind.config = {
             theme: {
                 extend: {
@@ -676,20 +688,53 @@
 <!-- Icon Picker Modal -->
 <div id="iconPickerModal" class="fixed inset-0 z-50 hidden items-center justify-center">
     <div class="modal-overlay absolute inset-0" onclick="closeIconPicker()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        <div class="p-4 border-b">
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-4 border-b flex items-center justify-between">
             <h3 class="font-semibold text-gray-900">Select Icon</h3>
+            <button onclick="closeIconPicker()" class="p-2 hover:bg-gray-100 rounded-lg">
+                <span class="iconify" data-icon="mdi:close"></span>
+            </button>
         </div>
-        <div class="p-4 border-b">
-            <input type="text" id="iconSearchInput" placeholder="Search icons..." 
-                class="w-full px-3 py-2 border rounded-lg"
-                oninput="searchIcons()">
+        
+        <div class="p-4 border-b space-y-4">
+            <div class="flex gap-2">
+                <div class="relative flex-1">
+                    <span class="iconify absolute left-3 top-3 text-gray-400" data-icon="mdi:magnify"></span>
+                    <input type="text" id="iconSearchInput" placeholder="Search across all icons..." 
+                        class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                        oninput="searchIcons()">
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-2">
+                <span class="text-xs font-semibold text-gray-500 uppercase w-full">Presets</span>
+                <button onclick="setPresetSearch('science')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs hover:bg-blue-200">Science</button>
+                <button onclick="setPresetSearch('nature')" class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200">Nature</button>
+                <button onclick="setPresetSearch('physics')" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs hover:bg-purple-200">Physics</button>
+                <button onclick="setPresetSearch('chemistry')" class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs hover:bg-red-200">Chemistry</button>
+                <button onclick="setPresetSearch('human')" class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs hover:bg-yellow-200">People</button>
+                <button onclick="setPresetSearch('arrow')" class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs hover:bg-gray-200">Arrows</button>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-gray-500 uppercase">Collections</span>
+                <button onclick="clearCollections()" class="text-xs text-primary hover:underline">Clear Filter</button>
+            </div>
+            <div id="collectionFilters" class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <!-- Dynamically populated -->
+            </div>
         </div>
-        <div id="iconPickerContent" class="p-4 max-h-64 overflow-y-auto">
-            <div class="grid grid-cols-8 gap-2" id="iconGrid"></div>
+
+        <div id="iconPickerContent" class="p-4 flex-1 overflow-y-auto bg-gray-50">
+            <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2" id="iconGrid"></div>
+            <div id="iconPickerStatus" class="text-center py-8 text-gray-500 hidden">
+                Searching for icons...
+            </div>
         </div>
-        <div class="p-4 border-t bg-gray-50">
-            <button onclick="closeIconPicker()" class="w-full py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        
+        <div class="p-4 border-t bg-white flex justify-between items-center">
+            <span id="iconResultCount" class="text-xs text-gray-500">0 icons found</span>
+            <button onclick="closeIconPicker()" class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Cancel</button>
         </div>
     </div>
 </div>
@@ -1214,7 +1259,8 @@ async function loadIconSets() {
             total: info.total,
             category: info.category || 'General',
             samples: info.samples || []
-        })).filter(s => s.total > 50).slice(0, 50);
+        })).filter(s => s.total > 10); // Minimal filter for quality
+        App.selectedIconCollections = []; // Allow multiple selection
     } catch (e) {
         console.error('Failed to load icon sets:', e);
         App.availableIconSets = [
@@ -1226,28 +1272,32 @@ async function loadIconSets() {
     }
 }
 
-async function loadIconsFromIconify(query = '', prefix = null) {
-    const iconPrefix = prefix || App.currentIconSet;
+async function loadIconsFromIconify(query = '', prefixOverride = null) {
+    let prefixes = prefixOverride || (App.selectedIconCollections.length > 0 ? App.selectedIconCollections.join(',') : null);
     
     try {
         if (query) {
-            const url = `https://api.iconify.design/search?query=${encodeURIComponent(query)}&limit=100&prefix=${iconPrefix}`;
+            let url = `https://api.iconify.design/search?query=${encodeURIComponent(query)}&limit=150`;
+            if (prefixes) {
+                url += `&prefixes=${prefixes}`;
+            }
             const response = await fetch(url);
             const data = await response.json();
             App.iconSearchResults = data.icons || [];
-        } else {
-            const url = `https://api.iconify.design/collection?prefix=${iconPrefix}`;
+        } else if (prefixes && !prefixes.includes(',')) {
+            // Only fetch collection if a single prefix is selected and no query
+            const url = `https://api.iconify.design/collection?prefix=${prefixes}`;
             const response = await fetch(url);
             const data = await response.json();
             
             let icons = [];
             if (data.uncategorized) {
-                icons = data.uncategorized.map(name => `${iconPrefix}:${name}`);
+                icons = data.uncategorized.map(name => `${prefixes}:${name}`);
             }
             if (data.categories) {
                 Object.values(data.categories).forEach(categoryIcons => {
                     categoryIcons.forEach(name => {
-                        const fullName = `${iconPrefix}:${name}`;
+                        const fullName = `${prefixes}:${name}`;
                         if (!icons.includes(fullName)) {
                             icons.push(fullName);
                         }
@@ -1255,10 +1305,13 @@ async function loadIconsFromIconify(query = '', prefix = null) {
                 });
             }
             App.iconSearchResults = icons.slice(0, 200);
+        } else {
+            // Default icons if no query and no single prefix
+            App.iconSearchResults = ['mdi:flask', 'mdi:atom', 'mdi:dna', 'mdi:microscope', 'mdi:chart-line', 'mdi:magnify', 'mdi:lightbulb'];
         }
     } catch (e) {
         console.error('Iconify API error:', e);
-        App.iconSearchResults = ['mdi:atom', 'mdi:leaf', 'mdi:water', 'mdi:fire', 'mdi:arrow-right', 'mdi:circle', 'mdi:square', 'mdi:flask'];
+        App.iconSearchResults = ['mdi:alert-circle'];
     }
 }
 
@@ -2695,27 +2748,82 @@ async function openIconPicker() {
     if (App.iconSearchResults.length === 0) {
         await loadIconsFromIconify();
     }
+    renderIconFilters();
     renderIconGrid();
     document.getElementById('iconPickerModal').classList.remove('hidden');
     document.getElementById('iconPickerModal').classList.add('flex');
 }
 
-function renderIconGrid() {
-    const grid = document.getElementById('iconGrid');
-    const icons = App.iconSearchQuery ? App.iconSearchResults : 
-        (App.teacherSettings.lessonIcons?.length > 0 ? App.teacherSettings.lessonIcons : App.iconSearchResults);
+function renderIconFilters() {
+    const container = document.getElementById('collectionFilters');
+    if (!container) return;
     
-    grid.innerHTML = icons.slice(0, 64).map(icon => `
-        <button onclick="selectIcon('${icon}')" class="p-2 rounded hover:bg-blue-100">
-            <span class="iconify text-xl" data-icon="${icon}"></span>
+    // Show top 20 or popular collections
+    const popular = ['mdi', 'fa6-solid', 'lucide', 'tabler', 'ph', 'bi', 'ri', 'ic'];
+    const sets = App.availableIconSets.filter(s => popular.includes(s.prefix) || App.selectedIconCollections.includes(s.prefix));
+    
+    container.innerHTML = sets.map(s => `
+        <button onclick="toggleCollection('${s.prefix}')" 
+            class="flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-all ${App.selectedIconCollections.includes(s.prefix) ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200 hover:border-primary'}">
+            ${s.name}
         </button>
     `).join('');
 }
 
+async function toggleCollection(prefix) {
+    const index = App.selectedIconCollections.indexOf(prefix);
+    if (index > -1) {
+        App.selectedIconCollections.splice(index, 1);
+    } else {
+        App.selectedIconCollections.push(prefix);
+    }
+    renderIconFilters();
+    await searchIcons();
+}
+
+async function clearCollections() {
+    App.selectedIconCollections = [];
+    renderIconFilters();
+    await searchIcons();
+}
+
+async function setPresetSearch(query) {
+    const input = document.getElementById('iconSearchInput');
+    input.value = query;
+    await searchIcons();
+}
+
+function renderIconGrid() {
+    const grid = document.getElementById('iconGrid');
+    const countEl = document.getElementById('iconResultCount');
+    const icons = App.iconSearchResults;
+    
+    grid.innerHTML = icons.map(icon => `
+        <button onclick="selectIcon('${icon}')" class="aspect-square flex items-center justify-center p-2 rounded-lg hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all group" title="${icon}">
+            <span class="iconify text-2xl group-hover:scale-110 transition-transform" data-icon="${icon}"></span>
+        </button>
+    `).join('');
+    
+    if (countEl) countEl.textContent = `${icons.length} icons found`;
+    
+    if (icons.length === 0 && App.iconSearchQuery) {
+        grid.innerHTML = `<div class="col-span-full py-12 text-center text-gray-400">No icons found for "${App.iconSearchQuery}"</div>`;
+    }
+}
+
 async function searchIcons() {
     const query = document.getElementById('iconSearchInput').value.trim();
+    const status = document.getElementById('iconPickerStatus');
+    const grid = document.getElementById('iconGrid');
+    
     App.iconSearchQuery = query;
+    if (status) status.classList.remove('hidden');
+    if (grid) grid.style.opacity = '0.5';
+    
     await loadIconsFromIconify(query);
+    
+    if (status) status.classList.add('hidden');
+    if (grid) grid.style.opacity = '1';
     renderIconGrid();
 }
 
@@ -4815,16 +4923,9 @@ async function deleteCategory(id) {
 function renderIconManager() {
     const content = document.getElementById('mainContent');
     
-    const popularSets = [
-        { prefix: 'mdi', name: 'Material Design' },
-        { prefix: 'fa6-solid', name: 'Font Awesome 6' },
-        { prefix: 'lucide', name: 'Lucide' },
-        { prefix: 'tabler', name: 'Tabler' },
-        { prefix: 'ph', name: 'Phosphor' },
-        { prefix: 'carbon', name: 'Carbon' },
-        { prefix: 'fluent', name: 'Fluent UI' },
-        { prefix: 'heroicons', name: 'Heroicons' }
-    ];
+    // Top collections for quick access
+    const topPrefixes = ['mdi', 'fa6-solid', 'lucide', 'tabler', 'ph', 'carbon', 'fluent', 'heroicons', 'bi', 'ri'];
+    const popularSets = App.availableIconSets.filter(s => topPrefixes.includes(s.prefix));
     
     content.innerHTML = `
         <div class="max-w-4xl mx-auto">
@@ -4834,64 +4935,71 @@ function renderIconManager() {
             </div>
             
             <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
-                <h3 class="font-semibold text-gray-900 mb-4">Lesson-Specific Icons (${App.teacherSettings.lessonIcons?.length || 0})</h3>
-                <p class="text-sm text-gray-500 mb-4">Select icons to make available for this lesson. If none selected, default icons will be used.</p>
+                <h3 class="font-semibold text-gray-900 mb-4 flex items-center justify-between">
+                    <span>Lesson-Specific Icons (${App.teacherSettings.lessonIcons?.length || 0})</span>
+                    <button onclick="clearLessonIcons()" class="text-sm text-red-600 hover:underline">Clear All</button>
+                </h3>
                 
-                <div class="flex flex-wrap gap-2 mb-4 p-4 bg-blue-50 rounded-lg min-h-16">
+                <div class="flex flex-wrap gap-2 p-4 bg-blue-50 rounded-lg min-h-16">
                     ${App.teacherSettings.lessonIcons?.length ? App.teacherSettings.lessonIcons.map(icon => `
-                        <button onclick="removeLessonIcon('${icon}')" class="p-2 bg-white rounded-lg border-2 border-blue-500 hover:bg-red-50" title="Click to remove: ${icon}">
+                        <button onclick="removeLessonIcon('${icon}')" class="p-2 bg-white rounded-lg border-2 border-primary hover:border-red-500 hover:bg-red-50 transition-colors group relative" title="Click to remove">
                             <span class="iconify text-xl" data-icon="${icon}"></span>
+                            <span class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 scale-75">
+                                <span class="iconify" data-icon="mdi:close"></span>
+                            </span>
                         </button>
                     `).join('') : '<p class="text-blue-600 text-sm italic">No lesson icons selected - using defaults</p>'}
                 </div>
-                
-                <button onclick="clearLessonIcons()" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
-                    Clear All Lesson Icons
-                </button>
             </div>
             
             <div class="bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="font-semibold text-gray-900 mb-4">Browse Icons</h3>
+                <h3 class="font-semibold text-gray-900 mb-4">Browse & Search Icons</h3>
                 
-                <div class="mb-4">
-                    <label class="text-sm font-medium text-gray-700 block mb-2">Icon Set</label>
-                    <div class="flex flex-wrap gap-2 mb-4">
+                <div class="mb-6">
+                    <label class="text-xs font-semibold text-gray-500 uppercase block mb-3">Filter by Collection</label>
+                    <div class="flex flex-wrap gap-2 mb-4 max-h-32 overflow-y-auto p-1">
+                        <button onclick="changeIconSet(null)" 
+                            class="icon-set-btn px-3 py-1 rounded-full text-xs border ${!App.currentIconSet ? 'bg-primary text-white border-primary' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}">
+                            All Collections
+                        </button>
                         ${popularSets.map(s => `
                             <button onclick="changeIconSet('${s.prefix}')" 
-                                class="icon-set-btn px-3 py-1 rounded-full text-sm border ${App.currentIconSet === s.prefix ? 'active' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
+                                class="icon-set-btn px-3 py-1 rounded-full text-xs border ${App.currentIconSet === s.prefix ? 'bg-primary text-white border-primary' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}">
                                 ${s.name}
                             </button>
                         `).join('')}
                     </div>
                 </div>
                 
-                <div class="mb-4">
+                <div class="mb-6">
                     <div class="flex gap-2">
-                        <input type="text" id="iconManagerSearch" placeholder="Search icons..." 
-                            class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                            onkeypress="if(event.key==='Enter')searchIconsForManager()">
-                        <button onclick="searchIconsForManager()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600">
-                            <span class="iconify mr-1" data-icon="mdi:magnify"></span> Search
+                        <div class="relative flex-1">
+                            <span class="iconify absolute left-3 top-3 text-gray-400" data-icon="mdi:magnify"></span>
+                            <input type="text" id="iconManagerSearch" placeholder="Search icons..." 
+                                class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                                onkeypress="if(event.key==='Enter')searchIconsForManager()">
+                        </div>
+                        <button onclick="searchIconsForManager()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-medium">
+                            Search
                         </button>
                     </div>
                 </div>
                 
-                <div id="iconManagerGrid" class="grid grid-cols-10 gap-2 max-h-96 overflow-y-auto p-2 bg-gray-50 rounded-lg">
-                    <p class="col-span-10 text-center text-gray-400 py-8">Click "Search" or select an icon set to load icons</p>
+                <div id="iconManagerGrid" class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-96 overflow-y-auto p-4 bg-gray-50 rounded-xl border-inner">
+                    <p class="col-span-full text-center text-gray-400 py-12">Click "Search" or select a collection to begin</p>
                 </div>
             </div>
         </div>
     `;
     
-    loadIconsForManager();
+    if (App.currentIconSet || App.iconSearchQuery) {
+        loadIconsForManager();
+    }
 }
 
 async function changeIconSet(prefix) {
     App.currentIconSet = prefix;
-    document.querySelectorAll('.icon-set-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.textContent.trim() === App.availableIconSets.find(s => s.prefix === prefix)?.name || btn.onclick.toString().includes(prefix));
-    });
-    await loadIconsForManager();
+    renderTeacherContent(); // Re-render to update UI state
 }
 
 async function loadIconsForManager() {

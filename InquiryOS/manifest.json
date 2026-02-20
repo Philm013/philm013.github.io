@@ -1,0 +1,17 @@
+{
+  "name": "InquiryOS - NGSS Platform",
+  "short_name": "InquiryOS",
+  "description": "A collaborative platform for NGSS Science & Engineering Practices.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/flask-outline.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
