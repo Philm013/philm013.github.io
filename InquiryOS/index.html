@@ -565,11 +565,11 @@
 <body class="bg-gray-100">
 
 <!-- ==================== LOGIN VIEW ==================== -->
-<div id="loginView" class="view active h-[100dvh] flex items-center justify-center p-0 md:p-8 bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
-    <div class="bg-white md:rounded-3xl shadow-2xl max-w-5xl w-full h-full md:h-auto overflow-hidden flex flex-col md:flex-row md:min-h-[600px] border border-white relative">
+<div id="loginView" class="view active min-h-[100dvh] flex items-center justify-center p-0 md:p-8 bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-y-auto">
+    <div class="bg-white md:rounded-3xl shadow-2xl max-w-5xl w-full min-h-[100dvh] md:min-h-[600px] md:h-auto flex flex-col md:flex-row border border-white relative">
         
         <!-- Step 1: Role Selection -->
-        <div id="loginStep1" class="flex-1 p-8 md:p-12 flex flex-col items-center justify-center text-center animate-in fade-in duration-500">
+        <div id="loginStep1" class="flex-1 p-6 md:p-12 flex flex-col items-center justify-center text-center animate-in fade-in duration-500">
             <div class="mb-8">
                 <div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto mb-4">
                     <span class="iconify text-4xl" data-icon="mdi:auto-fix"></span>
@@ -578,19 +578,19 @@
                 <p class="text-gray-500">How will you be using InquiryOS today?</p>
             </div>
             
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl">
-                <button onclick="selectRole('student')" class="group p-8 bg-white border-4 border-gray-100 rounded-3xl hover:border-primary hover:shadow-xl transition-all flex flex-col items-center gap-4">
-                    <div class="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                        <span class="iconify text-5xl" data-icon="mdi:account-school"></span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 w-full max-w-2xl">
+                <button onclick="selectRole('student')" class="group p-6 md:p-8 bg-white border-4 border-gray-100 rounded-3xl hover:border-primary hover:shadow-xl transition-all flex flex-col items-center gap-4">
+                    <div class="w-16 h-16 md:w-20 md:h-20 bg-blue-50 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <span class="iconify text-4xl md:text-5xl" data-icon="mdi:account-school"></span>
                     </div>
                     <div>
                         <span class="text-xl font-bold text-gray-900 block">I'm a Student</span>
                         <span class="text-sm text-gray-500">I'm here to investigate and learn</span>
                     </div>
                 </button>
-                <button onclick="selectRole('teacher')" class="group p-8 bg-white border-4 border-gray-100 rounded-3xl hover:border-teacher hover:shadow-xl transition-all flex flex-col items-center gap-4">
-                    <div class="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center text-teacher group-hover:scale-110 transition-transform">
-                        <span class="iconify text-5xl" data-icon="mdi:human-male-board"></span>
+                <button onclick="selectRole('teacher')" class="group p-6 md:p-8 bg-white border-4 border-gray-100 rounded-3xl hover:border-teacher hover:shadow-xl transition-all flex flex-col items-center gap-4">
+                    <div class="w-16 h-16 md:w-20 md:h-20 bg-red-50 rounded-2xl flex items-center justify-center text-teacher group-hover:scale-110 transition-transform">
+                        <span class="iconify text-4xl md:text-5xl" data-icon="mdi:human-male-board"></span>
                     </div>
                     <div>
                         <span class="text-xl font-bold text-gray-900 block">I'm a Teacher</span>
@@ -599,7 +599,7 @@
                 </button>
             </div>
 
-            <div id="sessionLibrary" class="mt-12 w-full max-w-md hidden">
+            <div id="sessionLibrary" class="mt-8 md:mt-12 w-full max-w-md hidden">
                 <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Jump back in</h3>
                 <div id="sessionList" class="space-y-3 max-h-40 overflow-y-auto pr-2 custom-scrollbar text-left">
                     <!-- Recent sessions -->
@@ -608,7 +608,7 @@
         </div>
 
         <!-- Step 2: Personal Details -->
-        <div id="loginStep2" class="hidden flex-1 p-8 md:p-12 flex flex-col justify-center animate-in slide-in-from-right duration-500">
+        <div id="loginStep2" class="hidden flex-1 p-6 md:p-12 flex flex-col justify-center animate-in slide-in-from-right duration-500">
             <div class="max-w-md mx-auto w-full">
                 <button onclick="goToLoginStep(1)" class="mb-8 text-sm font-bold text-gray-400 hover:text-gray-600 flex items-center gap-2">
                     <span class="iconify" data-icon="mdi:arrow-left"></span>
@@ -1291,7 +1291,8 @@ function dbGetByIndex(storeName, indexName, value) {
 
 // ==================== NGSS DATA ====================
 let ngssData = {
-    elements3D: null,
+    elements3D: { dimensions: [] },
+    pes: { 'K-5': [], '6-8': [], '9-12': [] },
     loaded: false
 };
 
@@ -1733,19 +1734,82 @@ async function loadIconsFromIconify(query = '', prefixOverride = null) {
 
 async function loadNGSSData() {
     try {
+        const fetchJSON = async (url) => {
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`HTTP error! status: ${r.status}`);
+            return await r.json();
+        };
+
         const [elements3D, ngssK5, ngss68, ngss912] = await Promise.all([
-            fetch('https://philm013.github.io/JSON/ngss3DElements.json').then(r => r.json()),
-            fetch('https://philm013.github.io/JSON/ngssK5.json').then(r => r.json()),
-            fetch('https://philm013.github.io/JSON/ngss68.json').then(r => r.json()),
-            fetch('https://philm013.github.io/JSON/ngss912.json').then(r => r.json())
+            fetchJSON('https://philm013.github.io/JSON/ngss3DElements.json'),
+            fetchJSON('https://philm013.github.io/JSON/ngssK5.json'),
+            fetchJSON('https://philm013.github.io/JSON/ngss68.json'),
+            fetchJSON('https://philm013.github.io/JSON/ngss912.json')
         ]);
 
-        ngssData.elements3D = elements3D;
-        ngssData.pes = {
-            'K-5': ngssK5,
-            '6-8': ngss68,
-            '9-12': ngss912
+        // Process and normalize 3D elements (SEP, CCC, DCI)
+        const processedDimensions = (Array.isArray(elements3D) ? elements3D : []).map(dim => {
+            const items = dim.elements || dim.core_ideas || dim.coreIdeas || [];
+            return {
+                ...dim,
+                elements: items.map(item => {
+                    // Extract ID from name if not present (e.g. "SEP1: ..." -> "SEP1")
+                    let id = item.id || item.code;
+                    if (!id && item.name && item.name.includes(':')) {
+                        id = item.name.split(':')[0].trim();
+                    }
+                    
+                    // Build description from components if it's a DCI core idea
+                    let description = item.description;
+                    if (!description && item.components) {
+                        description = item.components.map(c => c.name).join(', ');
+                    }
+
+                    return {
+                        id: id || 'NGSS',
+                        name: item.name || 'Untitled Element',
+                        description: description || 'Core element of the NGSS framework.'
+                    };
+                })
+            };
+        });
+
+        // Combine all DCI dimensions into one 'DCI' category for the UI
+        const dciElements = processedDimensions
+            .filter(d => d.code && d.code.startsWith('DCI'))
+            .flatMap(d => d.elements || []);
+            
+        ngssData.elements3D = {
+            dimensions: [
+                ...processedDimensions.filter(d => d.code && !d.code.startsWith('DCI')),
+                {
+                    code: 'DCI',
+                    name: 'Disciplinary Core Ideas',
+                    elements: dciElements
+                }
+            ]
         };
+
+        // Flatten Performance Expectations for the search/filter renderer
+        const flattenPEs = (data) => {
+            if (!Array.isArray(data)) return [];
+            return data.flatMap(grade => 
+                (grade.topics || []).flatMap(topic => 
+                    (topic.performanceExpectations || []).map(pe => ({
+                        ...pe,
+                        title: pe.title || pe.name || pe.id,
+                        description: pe.description || pe.expectation || pe.details?.description || ''
+                    }))
+                )
+            );
+        };
+
+        ngssData.pes = {
+            'K-5': flattenPEs(ngssK5),
+            '6-8': flattenPEs(ngss68),
+            '9-12': flattenPEs(ngss912)
+        };
+
         ngssData.loaded = true;
     } catch (e) {
         console.error('Failed to load NGSS data:', e);
@@ -1778,7 +1842,7 @@ async function loadNGSSData() {
                 }
             ] 
         };
-        ngssData.pes = {};
+        ngssData.pes = { 'K-5': [], '6-8': [], '9-12': [] };
         ngssData.loaded = true;
     }
 }
@@ -1900,29 +1964,42 @@ function generateCode() {
 }
 
 async function initializeApp() {
+    console.log('Initializing app in mode:', App.mode);
     const loginView = document.getElementById('loginView');
     const appView = document.getElementById('appView');
     
-    loginView.classList.remove('active');
-    appView.classList.add('active');
+    if (loginView) {
+        loginView.classList.remove('active');
+        loginView.style.setProperty('display', 'none', 'important');
+    }
     
-    // Explicitly force display states to override any utility class conflicts
-    loginView.style.setProperty('display', 'none', 'important');
-    appView.style.setProperty('display', 'flex', 'important');
+    if (appView) {
+        appView.classList.add('active');
+        appView.style.setProperty('display', 'flex', 'important');
+    }
     
-    document.getElementById('userName').textContent = App.user.name;
+    const userNameEl = document.getElementById('userName');
+    if (userNameEl) userNameEl.textContent = App.user.name;
+    
     const avatarEl = document.getElementById('userAvatar');
-    avatarEl.textContent = App.user.avatar || App.user.name.charAt(0).toUpperCase();
-    avatarEl.className = "w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-xl shadow-inner border border-white";
+    if (avatarEl) {
+        avatarEl.textContent = App.user.avatar || App.user.name.charAt(0).toUpperCase();
+        avatarEl.className = "w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-xl shadow-inner border border-white";
+    }
     
-    document.getElementById('displayClassCode').textContent = App.classCode;
+    const classCodeEl = document.getElementById('displayClassCode');
+    if (classCodeEl) classCodeEl.textContent = App.classCode;
     
-    await loadFromStorage();
-    await registerUser();
-    startSync();
-    updateModeUI();
-    
-    toast(`Welcome, ${App.user.name}!`, 'success');
+    try {
+        await loadFromStorage();
+        await registerUser();
+        startSync();
+        updateModeUI();
+        toast(`Welcome, ${App.user.name}!`, 'success');
+    } catch (e) {
+        console.error('Initialization phase error:', e);
+        updateModeUI(); // Try to show something anyway
+    }
 }
 
 function switchMode(mode) {
@@ -1932,104 +2009,122 @@ function switchMode(mode) {
 }
 
 function updateModeUI() {
-    const isTeacher = App.mode === 'teacher';
-    const isFullscreen = App.modelState.isFullscreen;
-    
-    // Toggle body class for fullscreen
-    document.body.classList.toggle('view-fullscreen', isFullscreen);
-    
-    let subtitle = isTeacher ? 'Teacher Mode' : 'Student Mode';
-    if (isTeacher && App.viewingStudentId) {
-        subtitle = 'Viewing Student Work';
-    }
-    const subtitleEl = document.getElementById('headerSubtitle');
-    const studentNavEl = document.getElementById('teacherStudentNav');
-    const viewingNameEl = document.getElementById('viewingName');
-    const viewingAvatarEl = document.getElementById('viewingAvatar');
-    
-    subtitleEl.textContent = subtitle;
-    
-    if (isTeacher && App.viewingStudentId) {
-        studentNavEl.classList.remove('hidden');
-        studentNavEl.classList.add('flex');
+    console.log('Updating UI for mode:', App.mode);
+    try {
+        const isTeacher = App.mode === 'teacher';
+        const isFullscreen = App.modelState?.isFullscreen || false;
         
-        // Find the student's name
-        dbGetByIndex(STORE_USERS, 'classCode', App.classCode).then(users => {
-            const s = users.find(u => u.visitorId === App.viewingStudentId);
-            if (s) {
-                viewingNameEl.textContent = s.name;
-                viewingAvatarEl.textContent = s.avatar || s.name.charAt(0).toUpperCase();
-                viewingAvatarEl.className = "w-10 h-10 bg-white border border-gray-200 shadow-sm rounded-full flex items-center justify-center text-lg";
+        // Toggle body class for fullscreen
+        document.body.classList.toggle('view-fullscreen', isFullscreen);
+        
+        let subtitle = isTeacher ? 'Teacher Mode' : 'Student Mode';
+        if (isTeacher && App.viewingStudentId) {
+            subtitle = 'Viewing Student Work';
+        }
+        
+        const subtitleEl = document.getElementById('headerSubtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = subtitle;
+            console.log('Set subtitle to:', subtitle);
+        }
+        
+        const studentNavEl = document.getElementById('teacherStudentNav');
+        const viewingNameEl = document.getElementById('viewingName');
+        const viewingAvatarEl = document.getElementById('viewingAvatar');
+        
+        if (isTeacher && App.viewingStudentId && studentNavEl) {
+            studentNavEl.classList.remove('hidden');
+            studentNavEl.classList.add('flex');
+            
+            // Find the student's name
+            dbGetByIndex(STORE_USERS, 'classCode', App.classCode).then(users => {
+                const s = users.find(u => u.visitorId === App.viewingStudentId);
+                if (s && viewingNameEl && viewingAvatarEl) {
+                    viewingNameEl.textContent = s.name;
+                    viewingAvatarEl.textContent = s.avatar || s.name.charAt(0).toUpperCase();
+                    viewingAvatarEl.className = "w-10 h-10 bg-white border border-gray-200 shadow-sm rounded-full flex items-center justify-center text-lg";
+                }
+            });
+        } else if (studentNavEl) {
+            studentNavEl.classList.add('hidden');
+            studentNavEl.classList.remove('flex');
+        }
+        
+        const headerIcon = document.getElementById('headerIcon');
+        if (headerIcon) headerIcon.className = `w-10 h-10 rounded-xl flex items-center justify-center ${isTeacher ? 'bg-gradient-to-br from-teacher to-orange-500' : 'bg-gradient-to-br from-primary to-secondary'}`;
+        
+        const appHeader = document.getElementById('appHeader');
+        if (appHeader) appHeader.className = `${isTeacher ? 'bg-red-50' : 'bg-white'} shadow-sm border-b flex-shrink-0`;
+        
+        const studentBtn = document.getElementById('studentModeBtn');
+        if (studentBtn) studentBtn.className = `mode-btn px-4 py-2 rounded-lg text-sm font-medium ${!isTeacher ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-white/50'}`;
+        
+        const teacherBtn = document.getElementById('teacherModeBtn');
+        if (teacherBtn) teacherBtn.className = `mode-btn px-4 py-2 rounded-lg text-sm font-medium ${isTeacher ? 'bg-white shadow text-teacher' : 'text-gray-600 hover:bg-white/50'}`;
+        
+        const eb = document.getElementById('evidenceBank');
+        if (eb) eb.style.display = (isTeacher && !App.viewingStudentId) ? 'none' : 'block';
+        
+        // Update bottom nav for mobile
+        const bottomNav = document.getElementById('bottomNav');
+        if (bottomNav) {
+            if (isTeacher) {
+                bottomNav.innerHTML = `
+                    <button onclick="showTeacherModule('overview')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'overview' ? 'text-teacher' : 'text-gray-500'}">
+                        <span class="iconify text-2xl" data-icon="mdi:view-dashboard"></span>
+                        <span class="text-[10px] font-medium">Overview</span>
+                    </button>
+                    <button onclick="showTeacherModule('snapshots')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'snapshots' ? 'text-teacher' : 'text-gray-500'}">
+                        <span class="iconify text-2xl" data-icon="mdi:camera-outline"></span>
+                        <span class="text-[10px] font-medium">Snapshots</span>
+                    </button>
+                    <button onclick="showTeacherModule('noticeboard')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'noticeboard' ? 'text-teacher' : 'text-gray-500'}">
+                        <span class="iconify text-2xl" data-icon="mdi:bulletin-board"></span>
+                        <span class="text-[10px] font-medium">Board</span>
+                    </button>
+                    <button onclick="showTeacherModule('students')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'students' ? 'text-teacher' : 'text-gray-500'}">
+                        <span class="iconify text-2xl" data-icon="mdi:account-group"></span>
+                        <span class="text-[10px] font-medium">Students</span>
+                    </button>
+                    <button onclick="toggleSidebar()" class="flex flex-col items-center gap-1 text-gray-500">
+                        <span class="iconify text-2xl" data-icon="mdi:menu"></span>
+                        <span class="text-[10px] font-medium">More</span>
+                    </button>
+                `;
+            } else {
+                bottomNav.innerHTML = `
+                    <button onclick="showStudentModule('questions')" class="flex flex-col items-center gap-1 ${App.currentModule === 'questions' ? 'text-primary' : 'text-gray-500'}">
+                        <span class="iconify text-2xl" data-icon="mdi:help-circle"></span>
+                        <span class="text-[10px] font-medium">Questions</span>
+                    </button>
+                    <button onclick="showStudentModule('models')" class="flex flex-col items-center gap-1 ${App.currentModule === 'models' ? 'text-primary' : 'text-gray-500'}">
+                        <span class="iconify text-2xl" data-icon="mdi:cube-outline"></span>
+                        <span class="text-[10px] font-medium">Models</span>
+                    </button>
+                    <button onclick="showStudentModule('analysis')" class="flex flex-col items-center gap-1 ${App.currentModule === 'analysis' ? 'text-primary' : 'text-gray-500'}">
+                        <span class="iconify text-2xl" data-icon="mdi:chart-line"></span>
+                        <span class="text-[10px] font-medium">Data</span>
+                    </button>
+                    <button onclick="showStudentModule('explanations')" class="flex flex-col items-center gap-1 ${App.currentModule === 'explanations' ? 'text-primary' : 'text-gray-500'}">
+                        <span class="iconify text-2xl" data-icon="mdi:lightbulb-on"></span>
+                        <span class="text-[10px] font-medium">CER</span>
+                    </button>
+                    <button onclick="toggleSidebar()" class="flex flex-col items-center gap-1 text-gray-500">
+                        <span class="iconify text-2xl" data-icon="mdi:menu"></span>
+                        <span class="text-[10px] font-medium">More</span>
+                    </button>
+                `;
             }
-        });
-    } else {
-        studentNavEl.classList.add('hidden');
-        studentNavEl.classList.remove('flex');
-    }
-    
-    document.getElementById('headerIcon').className = `w-10 h-10 rounded-xl flex items-center justify-center ${isTeacher ? 'bg-gradient-to-br from-teacher to-orange-500' : 'bg-gradient-to-br from-primary to-secondary'}`;
-    document.getElementById('appHeader').className = `${isTeacher ? 'bg-red-50' : 'bg-white'} shadow-sm border-b flex-shrink-0`;
-    
-    document.getElementById('studentModeBtn').className = `mode-btn px-4 py-2 rounded-lg text-sm font-medium ${!isTeacher ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-white/50'}`;
-    document.getElementById('teacherModeBtn').className = `mode-btn px-4 py-2 rounded-lg text-sm font-medium ${isTeacher ? 'bg-white shadow text-teacher' : 'text-gray-600 hover:bg-white/50'}`;
-    
-    document.getElementById('evidenceBank').style.display = (isTeacher && !App.viewingStudentId) ? 'none' : 'block';
-    
-    // Update bottom nav for mobile
-    const bottomNav = document.getElementById('bottomNav');
-    if (isTeacher) {
-        bottomNav.innerHTML = `
-            <button onclick="showTeacherModule('overview')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'overview' ? 'text-teacher' : 'text-gray-500'}">
-                <span class="iconify text-2xl" data-icon="mdi:view-dashboard"></span>
-                <span class="text-[10px] font-medium">Overview</span>
-            </button>
-            <button onclick="showTeacherModule('snapshots')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'snapshots' ? 'text-teacher' : 'text-gray-500'}">
-                <span class="iconify text-2xl" data-icon="mdi:camera-outline"></span>
-                <span class="text-[10px] font-medium">Snapshots</span>
-            </button>
-            <button onclick="showTeacherModule('noticeboard')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'noticeboard' ? 'text-teacher' : 'text-gray-500'}">
-                <span class="iconify text-2xl" data-icon="mdi:bulletin-board"></span>
-                <span class="text-[10px] font-medium">Board</span>
-            </button>
-            <button onclick="showTeacherModule('students')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'students' ? 'text-teacher' : 'text-gray-500'}">
-                <span class="iconify text-2xl" data-icon="mdi:account-group"></span>
-                <span class="text-[10px] font-medium">Students</span>
-            </button>
-            <button onclick="toggleSidebar()" class="flex flex-col items-center gap-1 text-gray-500">
-                <span class="iconify text-2xl" data-icon="mdi:menu"></span>
-                <span class="text-[10px] font-medium">More</span>
-            </button>
-        `;
-    } else {
-        bottomNav.innerHTML = `
-            <button onclick="showStudentModule('questions')" class="flex flex-col items-center gap-1 ${App.currentModule === 'questions' ? 'text-primary' : 'text-gray-500'}">
-                <span class="iconify text-2xl" data-icon="mdi:help-circle"></span>
-                <span class="text-[10px] font-medium">Questions</span>
-            </button>
-            <button onclick="showStudentModule('models')" class="flex flex-col items-center gap-1 ${App.currentModule === 'models' ? 'text-primary' : 'text-gray-500'}">
-                <span class="iconify text-2xl" data-icon="mdi:cube-outline"></span>
-                <span class="text-[10px] font-medium">Models</span>
-            </button>
-            <button onclick="showStudentModule('analysis')" class="flex flex-col items-center gap-1 ${App.currentModule === 'analysis' ? 'text-primary' : 'text-gray-500'}">
-                <span class="iconify text-2xl" data-icon="mdi:chart-line"></span>
-                <span class="text-[10px] font-medium">Data</span>
-            </button>
-            <button onclick="showStudentModule('explanations')" class="flex flex-col items-center gap-1 ${App.currentModule === 'explanations' ? 'text-primary' : 'text-gray-500'}">
-                <span class="iconify text-2xl" data-icon="mdi:lightbulb-on"></span>
-                <span class="text-[10px] font-medium">CER</span>
-            </button>
-            <button onclick="toggleSidebar()" class="flex flex-col items-center gap-1 text-gray-500">
-                <span class="iconify text-2xl" data-icon="mdi:menu"></span>
-                <span class="text-[10px] font-medium">More</span>
-            </button>
-        `;
-    }
+        }
 
-    renderNavigation();
-    if (isTeacher) {
-        renderTeacherContent();
-    } else {
-        renderStudentContent();
+        renderNavigation();
+        if (isTeacher) {
+            renderTeacherContent();
+        } else {
+            renderStudentContent();
+        }
+    } catch (e) {
+        console.error('Error updating UI:', e);
     }
 }
 
@@ -2424,105 +2519,115 @@ function closeSessionMenu() {
 
 // ==================== NAVIGATION ====================
 function renderNavigation() {
-    const nav = document.getElementById('navContent');
-    
-    if (App.mode === 'teacher') {
-        nav.innerHTML = `
-            <h3 class="text-xs font-semibold text-gray-400 uppercase mb-3">Teacher Dashboard</h3>
-            <ul class="space-y-1">
-                ${[
-                    { id: 'overview', icon: 'mdi:view-dashboard', label: 'Overview' },
-                    { id: 'lessons', icon: 'mdi:book-plus', label: 'Lesson Designer' },
-                    { id: 'snapshots', icon: 'mdi:camera-outline', label: 'Student Snapshots' },
-                    { id: 'students', icon: 'mdi:account-group', label: 'Students' },
-                    { id: 'access', icon: 'mdi:lock-open-variant', label: 'Access Control' },
-                    { id: 'noticeboard', icon: 'mdi:bulletin-board', label: 'Notice & Wonder Board' },
-                    { id: 'livemodels', icon: 'mdi:cube-outline', label: 'View: Models' },
-                    { id: 'livedata', icon: 'mdi:table', label: 'View: Data Tables' },
-                    { id: 'moderation', icon: 'mdi:shield-check', label: 'Moderation' },
-                    { id: 'categories', icon: 'mdi:folder-multiple', label: 'Categories' },
-                    { id: 'icons', icon: 'mdi:emoticon', label: 'Icon Library' },
-                    { id: 'ngss', icon: 'mdi:school', label: 'NGSS Standards' },
-                    { id: 'settings', icon: 'mdi:cog', label: 'Settings' }
-                ].map(m => `
-                    <li>
-                        <button onclick="showTeacherModule('${m.id}')" class="teacher-nav w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${App.teacherModule === m.id ? 'active' : 'text-gray-700 hover:bg-gray-100'}">
-                            <span class="iconify" data-icon="${m.icon}"></span>
-                            ${m.label}
-                        </button>
-                    </li>
-                `).join('')}
-            </ul>
-            
-            <div class="mt-6 p-4 bg-gray-50 rounded-xl">
-                <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3">Quick Stats</h4>
-                <div class="grid grid-cols-2 gap-2 text-center">
-                    <div class="p-2 bg-blue-100 rounded-lg">
-                        <p class="text-lg font-bold text-blue-700">${App.work.notices.length}</p>
-                        <p class="text-xs text-blue-600">Notices</p>
-                    </div>
-                    <div class="p-2 bg-yellow-100 rounded-lg">
-                        <p class="text-lg font-bold text-yellow-700">${App.work.wonders.length}</p>
-                        <p class="text-xs text-yellow-600">Wonders</p>
-                    </div>
-                </div>
-            </div>
-        `;
-    } else {
-        const modules = [
-            { id: 'questions', icon: 'mdi:help-circle', label: '1. Questions', sep: 'SEP1' },
-            { id: 'models', icon: 'mdi:cube-outline', label: '2. Models', sep: 'SEP2' },
-            { id: 'investigation', icon: 'mdi:microscope', label: '3. Investigation', sep: 'SEP3' },
-            { id: 'analysis', icon: 'mdi:chart-line', label: '4. Analysis', sep: 'SEP4' },
-            { id: 'math', icon: 'mdi:calculator', label: '5. Math', sep: 'SEP5' },
-            { id: 'explanations', icon: 'mdi:lightbulb-on', label: '6. Explanations', sep: 'SEP6' },
-            { id: 'argument', icon: 'mdi:forum', label: '7. Argument', sep: 'SEP7' },
-            { id: 'communication', icon: 'mdi:share-variant', label: '8. Communication', sep: 'SEP8' }
-        ];
+    try {
+        const nav = document.getElementById('navContent');
+        if (!nav) return;
         
-        nav.innerHTML = `
-            <h3 class="text-xs font-semibold text-gray-400 uppercase mb-3">Science Practices</h3>
-            <ul class="space-y-1">
-                ${modules.map(m => {
-                    const locked = !App.teacherSettings.moduleAccess[m.id];
-                    return `
+        if (App.mode === 'teacher') {
+            nav.innerHTML = `
+                <h3 class="text-xs font-semibold text-gray-400 uppercase mb-3">Teacher Dashboard</h3>
+                <ul class="space-y-1">
+                    ${[
+                        { id: 'overview', icon: 'mdi:view-dashboard', label: 'Overview' },
+                        { id: 'lessons', icon: 'mdi:book-plus', label: 'Lesson Designer' },
+                        { id: 'snapshots', icon: 'mdi:camera-outline', label: 'Student Snapshots' },
+                        { id: 'students', icon: 'mdi:account-group', label: 'Students' },
+                        { id: 'access', icon: 'mdi:lock-open-variant', label: 'Access Control' },
+                        { id: 'noticeboard', icon: 'mdi:bulletin-board', label: 'Notice & Wonder Board' },
+                        { id: 'livemodels', icon: 'mdi:cube-outline', label: 'View: Models' },
+                        { id: 'livedata', icon: 'mdi:table', label: 'View: Data Tables' },
+                        { id: 'moderation', icon: 'mdi:shield-check', label: 'Moderation' },
+                        { id: 'categories', icon: 'mdi:folder-multiple', label: 'Categories' },
+                        { id: 'icons', icon: 'mdi:emoticon', label: 'Icon Library' },
+                        { id: 'ngss', icon: 'mdi:school', label: 'NGSS Standards' },
+                        { id: 'settings', icon: 'mdi:cog', label: 'Settings' }
+                    ].map(m => `
                         <li>
-                            <button onclick="${locked ? '' : `showStudentModule('${m.id}')`}" 
-                                class="nav-btn w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${App.currentModule === m.id ? 'active' : 'text-gray-700 hover:bg-gray-100'} ${locked ? 'opacity-50 cursor-not-allowed' : ''}">
+                            <button onclick="showTeacherModule('${m.id}')" class="teacher-nav w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${App.teacherModule === m.id ? 'active' : 'text-gray-700 hover:bg-gray-100'}">
                                 <span class="iconify" data-icon="${m.icon}"></span>
-                                <span class="flex-1 text-left">${m.label}</span>
-                                ${locked ? '<span class="iconify text-gray-400" data-icon="mdi:lock"></span>' : ''}
+                                ${m.label}
                             </button>
                         </li>
-                    `;
-                }).join('')}
-            </ul>
-            
-            <div class="mt-6 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
-                <h4 class="text-sm font-semibold text-gray-700 mb-2">Progress</h4>
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div class="h-full bg-gradient-to-r from-primary to-secondary transition-all" style="width:${calculateProgress()}%"></div>
+                    `).join('')}
+                </ul>
+                
+                <div class="mt-6 p-4 bg-gray-50 rounded-xl">
+                    <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3">Quick Stats</h4>
+                    <div class="grid grid-cols-2 gap-2 text-center">
+                        <div class="p-2 bg-blue-100 rounded-lg">
+                            <p class="text-lg font-bold text-blue-700">${App.work.notices?.length || 0}</p>
+                            <p class="text-xs text-blue-600">Notices</p>
+                        </div>
+                        <div class="p-2 bg-yellow-100 rounded-lg">
+                            <p class="text-lg font-bold text-yellow-700">${App.work.wonders?.length || 0}</p>
+                            <p class="text-xs text-yellow-600">Wonders</p>
+                        </div>
+                    </div>
                 </div>
-                <p class="text-xs text-gray-500 mt-2">${calculateProgress()}% Complete</p>
-            </div>
-        `;
-        
-        renderEvidenceBank();
+            `;
+        } else {
+            const modules = [
+                { id: 'questions', icon: 'mdi:help-circle', label: '1. Questions', sep: 'SEP1' },
+                { id: 'models', icon: 'mdi:cube-outline', label: '2. Models', sep: 'SEP2' },
+                { id: 'investigation', icon: 'mdi:microscope', label: '3. Investigation', sep: 'SEP3' },
+                { id: 'analysis', icon: 'mdi:chart-line', label: '4. Analysis', sep: 'SEP4' },
+                { id: 'math', icon: 'mdi:calculator', label: '5. Math', sep: 'SEP5' },
+                { id: 'explanations', icon: 'mdi:lightbulb-on', label: '6. Explanations', sep: 'SEP6' },
+                { id: 'argument', icon: 'mdi:forum', label: '7. Argument', sep: 'SEP7' },
+                { id: 'communication', icon: 'mdi:share-variant', label: '8. Communication', sep: 'SEP8' }
+            ];
+            
+            nav.innerHTML = `
+                <h3 class="text-xs font-semibold text-gray-400 uppercase mb-3">Science Practices</h3>
+                <ul class="space-y-1">
+                    ${modules.map(m => {
+                        const locked = !App.teacherSettings.moduleAccess[m.id];
+                        return `
+                            <li>
+                                <button onclick="${locked ? '' : `showStudentModule('${m.id}')`}" 
+                                    class="nav-btn w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${App.currentModule === m.id ? 'active' : 'text-gray-700 hover:bg-gray-100'} ${locked ? 'opacity-50 cursor-not-allowed' : ''}">
+                                    <span class="iconify" data-icon="${m.icon}"></span>
+                                    <span class="flex-1 text-left">${m.label}</span>
+                                    ${locked ? '<span class="iconify text-gray-400" data-icon="mdi:lock"></span>' : ''}
+                                </button>
+                            </li>
+                        `;
+                    }).join('')}
+                </ul>
+                
+                <div class="mt-6 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Progress</h4>
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-primary to-secondary transition-all" style="width:${calculateProgress()}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">${calculateProgress()}% Complete</p>
+                </div>
+            `;
+            
+            renderEvidenceBank();
+        }
+    } catch (e) {
+        console.error('Error rendering navigation:', e);
     }
 }
 
 function calculateProgress() {
-    let p = 0;
-    if (App.work.notices.length) p += 10;
-    if (App.work.wonders.length) p += 10;
-    if (App.work.mainQuestion) p += 10;
-    if (App.work.modelNodes.length) p += 15;
-    if (App.work.variables.length) p += 10;
-    if (App.work.dataTable.rows.some(r => Object.values(r).some(v => v))) p += 15;
-    if (App.work.evidence.length) p += 10;
-    if (App.work.claim) p += 10;
-    if (App.work.reasoning) p += 10;
-    return Math.min(100, p);
+    try {
+        let p = 0;
+        if (App.work.notices?.length) p += 10;
+        if (App.work.wonders?.length) p += 10;
+        if (App.work.mainQuestion) p += 10;
+        if (App.work.modelNodes?.length) p += 15;
+        if (App.work.variables?.length) p += 10;
+        if (App.work.dataTable?.rows?.some(r => Object.values(r).some(v => v))) p += 15;
+        if (App.work.evidence?.length) p += 10;
+        if (App.work.claim) p += 10;
+        if (App.work.reasoning) p += 10;
+        return Math.min(100, p);
+    } catch (e) {
+        console.error('Error calculating progress:', e);
+        return 0;
+    }
 }
 
 function renderEvidenceBank() {
@@ -2634,55 +2739,65 @@ function renderStatusBanner() {
 }
 
 function renderStudentContent() {
-    renderStatusBanner();
-    // Force module if set by teacher
-    if (App.mode === 'student' && App.teacherSettings.forceModule && App.currentModule !== App.teacherSettings.forceModule) {
-        App.currentModule = App.teacherSettings.forceModule;
-        renderNavigation();
-    }
+    try {
+        renderStatusBanner();
+        // Force module if set by teacher
+        if (App.mode === 'student' && App.teacherSettings.forceModule && App.currentModule !== App.teacherSettings.forceModule) {
+            App.currentModule = App.teacherSettings.forceModule;
+            renderNavigation();
+        }
 
-    const content = document.getElementById('mainContent');
-    const appView = document.getElementById('appView');
-    
-    // Remove old view classes
-    appView.className = 'view active ' + (App.mode === 'teacher' ? 'view-teacher' : 'view-student');
-    appView.classList.add('view-' + App.currentModule);
+        const content = document.getElementById('mainContent');
+        if (!content) return;
+        
+        const appView = document.getElementById('appView');
+        
+        // Remove old view classes
+        if (appView) {
+            appView.className = 'view active ' + (App.mode === 'teacher' ? 'view-teacher' : 'view-student');
+            appView.classList.add('view-' + App.currentModule);
+        }
 
-    const renderers = {
-        questions: renderQuestionsModule,
-        models: renderModelsModule,
-        investigation: renderInvestigationModule,
-        analysis: renderAnalysisModule,
-        math: renderMathModule,
-        explanations: renderExplanationsModule,
-        argument: renderArgumentModule,
-        communication: renderCommunicationModule
-    };
-    
-    const html = renderers[App.currentModule]?.() || '<p>Module not found</p>';
-    
-    if (App.isViewingExemplar) {
-        content.innerHTML = `
-            <div class="relative min-h-full">
-                <div class="absolute inset-0 z-[150] bg-white/10 pointer-events-auto cursor-not-allowed" title="You are viewing a read-only example"></div>
-                <div class="pointer-events-none opacity-80 filter grayscale-[0.2]">
-                    ${html}
+        const renderers = {
+            questions: renderQuestionsModule,
+            models: renderModelsModule,
+            investigation: renderInvestigationModule,
+            analysis: renderAnalysisModule,
+            math: renderMathModule,
+            explanations: renderExplanationsModule,
+            argument: renderArgumentModule,
+            communication: renderCommunicationModule
+        };
+        
+        const html = renderers[App.currentModule]?.() || '<p>Module not found</p>';
+        
+        if (App.isViewingExemplar) {
+            content.innerHTML = `
+                <div class="relative min-h-full">
+                    <div class="absolute inset-0 z-[150] bg-white/10 pointer-events-auto cursor-not-allowed" title="You are viewing a read-only example"></div>
+                    <div class="pointer-events-none opacity-80 filter grayscale-[0.2]">
+                        ${html}
+                    </div>
+                    <div class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[160] bg-purple-600 text-white px-6 py-3 rounded-full shadow-2xl font-bold flex items-center gap-3">
+                        <span class="iconify text-xl" data-icon="mdi:eye"></span>
+                        TEACHER EXAMPLE VIEW
+                        <button onclick="toggleExemplarView()" class="ml-4 bg-white text-purple-600 px-4 py-1 rounded-full text-sm">Return to My Work</button>
+                    </div>
                 </div>
-                <div class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[160] bg-purple-600 text-white px-6 py-3 rounded-full shadow-2xl font-bold flex items-center gap-3">
-                    <span class="iconify text-xl" data-icon="mdi:eye"></span>
-                    TEACHER EXAMPLE VIEW
-                    <button onclick="toggleExemplarView()" class="ml-4 bg-white text-purple-600 px-4 py-1 rounded-full text-sm">Return to My Work</button>
-                </div>
-            </div>
-        `;
-    } else {
-        content.innerHTML = html;
+            `;
+        } else {
+            content.innerHTML = html;
+        }
+        
+        setTimeout(() => {
+            if (App.currentModule === 'models') initModelCanvas();
+            if (App.currentModule === 'analysis') initChart();
+        }, 50);
+    } catch (e) {
+        console.error('Error rendering student content:', e);
+        const content = document.getElementById('mainContent');
+        if (content) content.innerHTML = '<p class="p-8 text-center text-red-500">Error loading student content.</p>';
     }
-    
-    setTimeout(() => {
-        if (App.currentModule === 'models') initModelCanvas();
-        if (App.currentModule === 'analysis') initChart();
-    }, 50);
 }
 
 // ==================== QUESTIONS MODULE ====================
@@ -6188,51 +6303,59 @@ async function toggleDashboardMode(isMonitoring) {
 
 
 async function renderTeacherContent() {
-    if (App.isExemplarMode) {
-        const content = document.getElementById('mainContent');
-        content.innerHTML = await renderActivityDashboard();
-        setTimeout(() => {
-            if (App.currentModule === 'models') initModelCanvas();
-            if (App.currentModule === 'analysis') initChart();
-        }, 50);
-        return;
-    }
-
-    const content = document.getElementById('mainContent');
-    const renderers = {
-        overview: renderTeacherOverview,
-        lessons: renderTeacherLessons,
-        snapshots: renderTeacherSnapshots,
-        students: renderTeacherStudents,
-        access: renderTeacherAccess,
-        noticeboard: renderTeacherNoticeBoard,
-        livemodels: renderLiveModels,
-        livedata: renderLiveData,
-        moderation: renderModeration,
-        categories: renderCategoryManager,
-        icons: renderIconManager,
-        ngss: renderNGSSBrowser,
-        settings: renderSessionSettings
-    };
-    
-    const renderer = renderers[App.teacherModule];
-    if (renderer) {
-        try {
-            const result = await renderer();
-            if (typeof result === 'string') {
-                content.innerHTML = result;
+    try {
+        if (App.isExemplarMode) {
+            const content = document.getElementById('mainContent');
+            if (content) {
+                content.innerHTML = await renderActivityDashboard();
+                setTimeout(() => {
+                    if (App.currentModule === 'models') initModelCanvas();
+                    if (App.currentModule === 'analysis') initChart();
+                }, 50);
             }
-        } catch (e) {
-            console.error('Render error:', e);
-            content.innerHTML = '<p class="p-8 text-center text-red-500">Error loading module content.</p>';
+            return;
         }
-    } else {
-        content.innerHTML = '<p>Module not found</p>';
+
+        const content = document.getElementById('mainContent');
+        if (!content) return;
+        
+        const renderers = {
+            overview: renderTeacherOverview,
+            lessons: renderTeacherLessons,
+            snapshots: renderTeacherSnapshots,
+            students: renderTeacherStudents,
+            access: renderTeacherAccess,
+            noticeboard: renderTeacherNoticeBoard,
+            livemodels: renderLiveModels,
+            livedata: renderLiveData,
+            moderation: renderModeration,
+            categories: renderCategoryManager,
+            icons: renderIconManager,
+            ngss: renderNGSSBrowser,
+            settings: renderSessionSettings
+        };
+        
+        const renderer = renderers[App.teacherModule];
+        if (renderer) {
+            try {
+                const result = await renderer();
+                if (typeof result === 'string') {
+                    content.innerHTML = result;
+                }
+            } catch (e) {
+                console.error('Render error in module:', e);
+                content.innerHTML = '<p class="p-8 text-center text-red-500">Error loading module content.</p>';
+            }
+        } else {
+            content.innerHTML = '<p>Module not found</p>';
+        }
+        
+        setTimeout(() => {
+            if (App.teacherModule === 'livemodels') initViewerCanvas();
+        }, 50);
+    } catch (e) {
+        console.error('Error rendering teacher content:', e);
     }
-    
-    setTimeout(() => {
-        if (App.teacherModule === 'livemodels') initViewerCanvas();
-    }, 50);
 }
 
 async function renderTeacherLessons() {
@@ -6446,7 +6569,13 @@ function calculateStudentProgress(work) {
     return Math.min(100, p);
 }
 
-function renderTeacherOverview() {
+async function renderTeacherOverview() {
+    const phenomenon = App.teacherSettings?.phenomenon || { title: '', description: '', tags: [], ngssStandards: [] };
+    const noticesCount = App.work?.notices?.length || 0;
+    const wondersCount = App.work?.wonders?.length || 0;
+    const nodesCount = App.work?.modelNodes?.length || 0;
+    const postsCount = App.sharedData?.debatePosts?.length || 0;
+
     return `
         <div class="max-w-5xl mx-auto">
             <div class="mb-6">
@@ -6460,7 +6589,7 @@ function renderTeacherOverview() {
                             <span class="iconify text-blue-600 text-2xl" data-icon="mdi:eye"></span>
                         </div>
                         <div>
-                            <p class="text-2xl font-bold">${App.work.notices.length}</p>
+                            <p class="text-2xl font-bold">${noticesCount}</p>
                             <p class="text-sm text-gray-600">Notices</p>
                         </div>
                     </div>
@@ -6471,7 +6600,7 @@ function renderTeacherOverview() {
                             <span class="iconify text-yellow-600 text-2xl" data-icon="mdi:lightbulb"></span>
                         </div>
                         <div>
-                            <p class="text-2xl font-bold">${App.work.wonders.length}</p>
+                            <p class="text-2xl font-bold">${wondersCount}</p>
                             <p class="text-sm text-gray-600">Wonders</p>
                         </div>
                     </div>
@@ -6482,7 +6611,7 @@ function renderTeacherOverview() {
                             <span class="iconify text-green-600 text-2xl" data-icon="mdi:cube-outline"></span>
                         </div>
                         <div>
-                            <p class="text-2xl font-bold">${App.work.modelNodes.length}</p>
+                            <p class="text-2xl font-bold">${nodesCount}</p>
                             <p class="text-sm text-gray-600">Model Nodes</p>
                         </div>
                     </div>
@@ -6493,7 +6622,7 @@ function renderTeacherOverview() {
                             <span class="iconify text-purple-600 text-2xl" data-icon="mdi:forum"></span>
                         </div>
                         <div>
-                            <p class="text-2xl font-bold">${App.sharedData.debatePosts.length}</p>
+                            <p class="text-2xl font-bold">${postsCount}</p>
                             <p class="text-sm text-gray-600">Posts</p>
                         </div>
                     </div>
@@ -6538,20 +6667,20 @@ function renderTeacherOverview() {
                     <div class="space-y-4">
                         <div>
                             <label class="text-sm font-medium text-gray-700 block mb-1">Title</label>
-                            <input type="text" id="phenomTitle" value="${App.teacherSettings.phenomenon.title}" 
+                            <input type="text" id="phenomTitle" value="${phenomenon.title || ''}" 
                                 onchange="updatePhenomenon()"
                                 class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none">
                         </div>
                         <div>
                             <label class="text-sm font-medium text-gray-700 block mb-1">Description</label>
                             <textarea id="phenomDesc" rows="3" onchange="updatePhenomenon()"
-                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none">${App.teacherSettings.phenomenon.description}</textarea>
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none">${phenomenon.description || ''}</textarea>
                         </div>
                         
                         <div class="pt-4 border-t border-gray-100">
                             <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Linked Standards</p>
                             <div class="space-y-2">
-                                ${App.teacherSettings.phenomenon.ngssStandards.length > 0 ? App.teacherSettings.phenomenon.ngssStandards.map(peId => `
+                                ${phenomenon.ngssStandards?.length > 0 ? phenomenon.ngssStandards.map(peId => `
                                     <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg group">
                                         <span class="text-xs font-bold text-gray-700">${peId}</span>
                                         <button onclick="removeFromPhenomenon('${peId}')" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -6569,6 +6698,9 @@ function renderTeacherOverview() {
 }
 
 async function updatePhenomenon() {
+    if (!App.teacherSettings) App.teacherSettings = { phenomenon: {} };
+    if (!App.teacherSettings.phenomenon) App.teacherSettings.phenomenon = {};
+
     App.teacherSettings.phenomenon = {
         title: document.getElementById('phenomTitle')?.value || '',
         description: document.getElementById('phenomDesc')?.value || '',
