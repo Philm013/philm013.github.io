@@ -180,8 +180,6 @@ const Nexus = {
                 await this.openFile(initialFile);
             }
 
-            this.loadSettings();
-            this.setupMobileKeyboardFix();
             this.setView(window.innerWidth < 768 ? 'explorer' : 'editor');
             console.log("Nexus System Initialization Complete.");
 
@@ -255,6 +253,51 @@ const Nexus = {
             } else if (!Nexus.state.aiOpen && mobileNav) {
                 mobileNav.style.display = 'flex';
             }
+        });
+    },
+
+    /**
+     * Sets up the custom context menu for the CodeMirror editor.
+     * Handles positioning, visibility, and action dispatching.
+     * @private
+     */
+    setupEditorContextMenu() {
+        const menu = document.getElementById('editor-context-menu');
+        if (!menu || !this.editor || !this.editor.cm) return;
+
+        const cm = this.editor.cm;
+        const wrapper = cm.getWrapperElement();
+
+        const showMenu = (e) => {
+            e.preventDefault();
+            const { clientX: x, clientY: y } = e;
+            
+            menu.style.left = `${x}px`;
+            menu.style.top = `${y}px`;
+            menu.classList.remove('hidden');
+
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) menu.style.left = `${window.innerWidth - rect.width - 10}px`;
+            if (rect.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - rect.height - 10}px`;
+        };
+
+        wrapper.addEventListener('contextmenu', showMenu);
+        window.addEventListener('click', () => menu.classList.add('hidden'));
+
+        menu.querySelectorAll('[data-action]').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.action;
+                const selection = cm.getSelection();
+                
+                if (action === 'explain') this.prepareChat(`/explain ${selection}`);
+                else if (action === 'fix') this.prepareChat(`/fix ${selection}`);
+                else if (action === 'select-component') {
+                    if (this.modals) this.modals.alert("Coming Soon", "Component selection from preview is being developed.");
+                }
+                
+                menu.classList.add('hidden');
+            };
         });
     },
 

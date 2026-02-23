@@ -3,6 +3,7 @@
  * @description specialized logic for real-time monitoring and feedback on student models and data. 
  */
 
+import { App } from '../core/state.js';
 import { dbGet, dbGetByIndex, STORE_USERS, STORE_SESSIONS } from '../core/storage.js';
 import { saveAndBroadcast, loadFromStorage, saveToStorage } from '../core/sync.js';
 import { renderTeacherContent, updateModeUI } from '../ui/renderer.js';
@@ -501,46 +502,6 @@ export const clearAllCurated = async () => {
         toast('Curated set cleared', 'info');
     }
 };
-
-/**
- * Loads icons from Iconify for the manager view.
- */
-export async function loadIconsForManager() {
-    const grid = document.getElementById('iconManagerGrid');
-    if (!grid) return;
-    
-    grid.innerHTML = '<div class="col-span-full py-20 flex items-center justify-center h-full"><span class="iconify animate-spin text-4xl text-primary" data-icon="mdi:loading"></span></div>';
-    
-    // We reuse the existing icon loading logic from search
-    const prefixes = App.currentIconSet || null;
-    const query = document.getElementById('iconManagerSearch')?.value.trim() || '';
-    
-    try {
-        let url = `https://api.iconify.design/search?query=${encodeURIComponent(query || 'science')}&limit=150`;
-        if (prefixes) url += `&prefixes=${prefixes}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        const icons = data.icons || [];
-
-        if (icons.length === 0) {
-            grid.innerHTML = '<p class="col-span-full text-center text-gray-400 py-20">No icons found. Try a different search.</p>';
-            return;
-        }
-
-        grid.innerHTML = icons.map(icon => {
-            const isSelected = App.teacherSettings.lessonIcons?.includes(icon);
-            return `
-                <button onclick="window.addLessonIcon('${icon}')" 
-                    class="p-4 rounded-2xl transition-all aspect-square flex items-center justify-center ${isSelected ? 'bg-primary text-white shadow-lg shadow-blue-200 ring-4 ring-primary/20' : 'bg-white text-gray-600 hover:bg-blue-50 hover:text-primary border border-gray-100 shadow-sm'}"
-                    title="${icon}">
-                    <span class="iconify text-2xl" data-icon="${icon}"></span>
-                </button>
-            `;
-        }).join('');
-    } catch (e) {
-        grid.innerHTML = '<p class="col-span-full text-center text-red-400 py-20">Failed to connect to library. Check connection.</p>';
-    }
-}
 
 export const changeIconSet = async (prefix) => { App.currentIconSet = prefix; renderTeacherContent(); loadIconsForManager(); };
 export const searchIconsForManager = () => { loadIconsForManager(); };

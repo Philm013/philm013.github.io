@@ -180,3 +180,51 @@ export async function saveReasoning(text) {
     App.work.reasoning = text;
     await saveAndBroadcast('reasoning', text);
 }
+
+/**
+ * Helper to render a CER field with consistent styling and behavior.
+ */
+function renderCerField(label, initial, color, placeholder, value, onInput, tip) {
+    const colorClasses = {
+        red: 'border-red-100 bg-red-50/30 text-red-600',
+        blue: 'border-blue-100 bg-blue-50/30 text-blue-600',
+        green: 'border-green-100 bg-green-50/30 text-green-600'
+    }[color];
+
+    const ringClasses = {
+        red: 'focus:ring-red-500/20 focus:border-red-500',
+        blue: 'focus:ring-blue-500/20 focus:border-blue-500',
+        green: 'focus:ring-green-500/20 focus:border-green-500'
+    }[color];
+
+    return `
+        <div class="bg-white rounded-[2.5rem] p-8 md:p-10 border border-gray-100 shadow-sm relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-${color}-500/5 to-transparent rounded-full -mr-16 -mt-16"></div>
+            
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 relative">
+                <div class="flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-2xl ${colorClasses} border flex items-center justify-center font-black text-2xl shadow-sm">
+                        ${initial}
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-black text-gray-900">${label}</h4>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">${tip}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative">
+                <textarea 
+                    oninput="${onInput}(this.value)"
+                    placeholder="${placeholder}"
+                    class="w-full min-h-[180px] p-8 bg-gray-50/50 border-2 border-gray-100 rounded-[2rem] text-lg font-medium text-gray-700 placeholder:text-gray-300 focus:outline-none focus:bg-white transition-all resize-none shadow-inner ${ringClasses}"
+                >${value || ''}</textarea>
+                
+                <div class="absolute bottom-6 right-8 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">Auto-saving to cloud</span>
+                    <span class="iconify text-green-400 animate-pulse" data-icon="mdi:sync"></span>
+                </div>
+            </div>
+        </div>
+    `;
+}
