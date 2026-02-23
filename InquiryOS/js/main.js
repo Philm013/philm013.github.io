@@ -51,6 +51,11 @@ window.importSession = importSession;
 window.handleImportFile = handleImportFile;
 window.saveCurrentSession = saveCurrentSession;
 
+import { openGenericInput, closeGenericInput, submitGenericInput } from './ui/utils.js';
+window.openGenericInput = openGenericInput;
+window.closeGenericInput = closeGenericInput;
+window.submitGenericInput = submitGenericInput;
+
 // Explicitly expose new functions
 import { openIconPicker, closeIconPicker, searchIcons, selectIcon, selectIconForNode } from './modules/models.js';
 import { switchViewerModule, stopViewingStudent } from './teacher/viewer.js';
@@ -63,8 +68,35 @@ window.selectIcon = selectIcon;
 window.selectIconForNode = selectIconForNode;
 window.switchViewerModule = switchViewerModule;
 window.stopViewingStudent = stopViewingStudent;
+import { viewStudentWork } from './teacher/viewer.js';
+window.viewStudentWork = viewStudentWork;
 window.launchTemplate = launchTemplate;
 window.applyTemplate = applyTemplate;
+
+import { clearAllPosts } from './teacher/noticeboard.js';
+window.clearAllPosts = clearAllPosts;
+
+import { setFeedbackSticker, closeCommentModal, deleteComment, startCommentDrag, renderViewerNodes, handleViewerPointerDown, handleViewerWheel, handleViewerClick } from './teacher/viewer.js';
+window.setFeedbackSticker = setFeedbackSticker;
+window.closeCommentModal = closeCommentModal;
+window.deleteComment = deleteComment;
+window.startCommentDrag = startCommentDrag;
+window.renderViewerNodes = renderViewerNodes;
+window.handleViewerPointerDown = handleViewerPointerDown;
+window.handleViewerWheel = handleViewerWheel;
+window.handleViewerClick = handleViewerClick;
+
+import { openRowNoteModal, closeRowNoteModal, saveRowNote, toggleRowNote } from './modules/investigation.js';
+window.openRowNoteModal = openRowNoteModal;
+window.closeRowNoteModal = closeRowNoteModal;
+window.saveRowNote = saveRowNote;
+window.toggleRowNote = toggleRowNote;
+
+import { openArgumentFeedback, saveArgumentFeedback, flagPost, deletePost } from './modules/argument.js';
+window.openArgumentFeedback = openArgumentFeedback;
+window.saveArgumentFeedback = saveArgumentFeedback;
+window.flagPost = flagPost;
+window.deletePost = deletePost;
 
 // Expose all exported functions from modules
 Object.assign(window, auth);

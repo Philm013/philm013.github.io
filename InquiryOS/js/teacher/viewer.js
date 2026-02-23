@@ -111,7 +111,7 @@ export async function renderLiveModels() {
                             <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
                             <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Model Viewer</span>
                         </div>
-                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">${!App.teacherSettings.showCommentsToStudents ? 'Grading: Hidden' : 'Grading: Live'}</p>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">${!App.teacherSettings.showFeedbackToStudents ? 'Grading: Hidden' : 'Grading: Live'}</p>
                     </div>
                 </div>
                 ${renderViewerModuleTabs()}
@@ -122,7 +122,10 @@ export async function renderLiveModels() {
                     </button>
                 </div>
             </div>
-            <div id="viewerCanvas" class="flex-1 bg-slate-100 model-canvas relative overflow-hidden" onclick="window.handleViewerClick(event)">
+            <div id="viewerCanvas" class="flex-1 bg-slate-100 model-canvas relative overflow-hidden" 
+                onclick="window.handleViewerClick(event)"
+                onpointerdown="window.handleViewerPointerDown(event)"
+                onwheel="window.handleViewerWheel(event)">
                 <div id="viewerCanvasContent" class="absolute inset-0 origin-top-left pointer-events-none">
                     <svg id="viewerPathsSvg" class="absolute inset-0 w-full h-full" style="z-index: 6; pointer-events: none;"></svg>
                     <svg id="viewerConnectionsSvg" class="connection-line">
@@ -187,16 +190,18 @@ export async function renderLiveGeneric() {
 }
 
 function renderViewerToolbar() {
-    const stickers = ['⭐', '✅', '❓', '💡', '🎯', '👏'];
     return `
-        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl border p-2 flex items-center gap-2 z-[60]">
-            <button onclick="window.setViewerTool('comment')" class="p-3 rounded-xl hover:bg-primary/10 ${App.viewerState.addingComment ? 'bg-primary text-white' : 'text-primary'}">
+        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-[2rem] shadow-2xl p-2 flex items-center gap-2 z-[60] border border-white/10 backdrop-blur-xl">
+            <button onclick="window.setViewerTool('comment')" 
+                class="flex items-center gap-3 px-6 py-3 rounded-[1.5rem] transition-all ${App.viewerState.addingComment ? 'bg-primary text-white shadow-lg' : 'hover:bg-white/10 text-gray-400'}">
                 <span class="iconify text-xl" data-icon="mdi:comment-plus"></span>
+                <span class="text-xs font-black uppercase tracking-widest">Add Feedback</span>
             </button>
-            <div class="w-px h-6 bg-gray-200 mx-1"></div>
-            ${stickers.map(s => `<button onclick="window.setViewerSticker('${s}')" class="p-2 rounded-xl hover:bg-gray-100 ${App.viewerState.selectedSticker === s ? 'bg-blue-100' : ''}">${s}</button>`).join('')}
-            <div class="w-px h-6 bg-gray-200 mx-1"></div>
-            <button onclick="window.clearViewerFeedback()" class="p-3 text-red-500 hover:bg-red-50 rounded-xl"><span class="iconify text-xl" data-icon="mdi:delete-sweep"></span></button>
+            <div class="w-px h-8 bg-white/10 mx-1"></div>
+            <button onclick="window.clearViewerFeedback()" 
+                class="p-3 text-red-400 hover:bg-red-500/20 rounded-full transition-all" title="Clear All Feedback">
+                <span class="iconify text-xl" data-icon="mdi:delete-sweep"></span>
+            </button>
         </div>
     `;
 }
@@ -343,7 +348,7 @@ export async function addDataRowSticker(rowIndex, emoji) {
     } else {
         App.work.dataTable.feedback[rowIndex] = emoji;
     }
-    await saveAndBroadcast('dataTable.feedback', App.work.feedback);
+    await saveAndBroadcast('dataTable.feedback', App.work.dataTable.feedback);
     renderTeacherContent();
 }
 
@@ -699,10 +704,14 @@ export const toggleShowAllIcons = async () => {
  * Re-renders all elements on the teacher's viewer canvas.
  */
 export function initViewerCanvas() {
-    const canvas = document.getElementById('viewerCanvasContent');
-    if (!canvas) return;
+    const content = document.getElementById('viewerCanvasContent');
+    if (!content) return;
     
-    // We re-use student modeling render logic but in a read-only context
+    // Apply local viewer transforms
+    if (!App.viewerState.pan) App.viewerState.pan = { x: 0, y: 0 };
+    if (!App.viewerState.zoom) App.viewerState.zoom = 1;
+    content.style.transform = `translate(${App.viewerState.pan.x}px, ${App.viewerState.pan.y}px) scale(${App.viewerState.zoom})`;
+
     const nodesLayer = document.getElementById('viewerNodesLayer');
     const shapesLayer = document.getElementById('viewerShapesLayer');
     const commentsLayer = document.getElementById('viewerCommentsLayer');
@@ -739,12 +748,17 @@ export function initViewerCanvas() {
 
     if (commentsLayer) {
         commentsLayer.innerHTML = (App.work.modelComments || []).map(c => `
-            <div class="comment-bubble" style="left:${c.x}px; top:${c.y}px;">
-                <p class="font-bold text-[10px] text-red-600 uppercase mb-1">${c.author}</p>
-                ${c.text}
+            <div class="comment-bubble group/comment" style="left:${c.x}px; top:${c.y}px; cursor: move;" 
+                onpointerdown="window.startCommentDrag(event, '${c.id}')">
+                <div class="flex items-start gap-3">
+                    ${c.sticker ? `<div class="w-10 h-10 bg-white rounded-xl shadow-inner border border-gray-100 flex items-center justify-center text-2xl shrink-0">${c.sticker}</div>` : ''}
+                    <div class="flex-1 min-w-[120px]">
+                        <p class="font-black text-[9px] text-red-600 uppercase mb-1 tracking-widest">${c.author}</p>
+                        <p class="text-xs font-medium text-gray-700 leading-relaxed">${c.text || 'Checked!'}</p>
+                    </div>
+                </div>
+                <button onclick="window.deleteComment('${c.id}')" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/comment:opacity-100 transition-opacity shadow-sm">×</button>
             </div>
-        `).join('') + (App.work.modelStickers || []).map(s => `
-            <div class="absolute text-3xl pointer-events-none" style="left:${s.x}px; top:${s.y}px;">${s.emoji}</div>
         `).join('');
     }
 
@@ -776,17 +790,115 @@ export async function presentToClass(type) {
     toast(`Presenting student ${type} to class (Simulated)`, 'success');
 }
 
-export async function saveComment() {
-    const val = document.getElementById('commentText')?.value.trim();
-    if (val && App.viewerState.commentPosition) {
-        if (!App.work.modelComments) App.work.modelComments = [];
-        App.work.modelComments.push({ id: 'c_' + Date.now(), text: val, x: App.viewerState.commentPosition.x, y: App.viewerState.commentPosition.y, author: App.user.name, time: Date.now() });
-        await saveAndBroadcast('modelComments', App.work.modelComments);
-        App.viewerState.addingComment = false;
-        document.getElementById('commentModal').classList.add('hidden');
-        renderTeacherContent();
-        toast('Comment added!', 'success');
+/**
+ * UI: Closes the comment modal and resets state.
+ */
+export function closeCommentModal() {
+    const modal = document.getElementById('commentModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
     }
+    App.viewerState.addingComment = false;
+    App.viewerState.commentPosition = null;
+    App.viewerState.selectedSticker = null;
+    App.editingPostId = null;
+    
+    // Reset sticker UI
+    document.querySelectorAll('.feedback-sticker-btn').forEach(b => b.classList.remove('bg-blue-100', 'border-primary'));
+}
+
+/**
+ * UI: Sets the sticker to be attached to the feedback.
+ */
+export function setFeedbackSticker(sticker) {
+    App.viewerState.selectedSticker = (App.viewerState.selectedSticker === sticker) ? null : sticker;
+    document.querySelectorAll('.feedback-sticker-btn').forEach(b => {
+        const isSelected = b.dataset.sticker === App.viewerState.selectedSticker;
+        b.classList.toggle('bg-blue-100', isSelected);
+        b.classList.toggle('border-primary', isSelected);
+    });
+}
+
+export async function saveComment() {
+    // Check if we are editing an argument post instead of a model comment
+    if (App.editingPostId) {
+        const argument = await import('../modules/argument.js');
+        return argument.saveArgumentFeedback();
+    }
+
+    const val = document.getElementById('commentText')?.value.trim();
+    if (App.viewerState.commentPosition) {
+        if (!App.work.modelComments) App.work.modelComments = [];
+        
+        const comment = { 
+            id: 'c_' + Date.now(), 
+            text: val || '', 
+            sticker: App.viewerState.selectedSticker,
+            x: App.viewerState.commentPosition.x, 
+            y: App.viewerState.commentPosition.y, 
+            author: App.user.name, 
+            time: Date.now() 
+        };
+        
+        App.work.modelComments.push(comment);
+        await saveAndBroadcast('modelComments', App.work.modelComments);
+        
+        closeCommentModal();
+        renderTeacherContent();
+        toast('Feedback posted!', 'success');
+    }
+}
+
+/**
+ * Starts dragging a feedback comment.
+ */
+export function startCommentDrag(event, id) {
+    if (event.target.closest('button')) return; // Don't drag if clicking delete button
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const comment = App.work.modelComments.find(c => c.id === id);
+    if (!comment) return;
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const initX = comment.x;
+    const initY = comment.y;
+    const zoom = App.viewerState.zoom || 1;
+
+    const onPointerMove = (e) => {
+        const dx = (e.clientX - startX) / zoom;
+        const dy = (e.clientY - startY) / zoom;
+        comment.x = initX + dx;
+        comment.y = initY + dy;
+        renderViewerNodes();
+    };
+
+    const onPointerUp = async () => {
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+        await saveAndBroadcast('modelComments', App.work.modelComments);
+    };
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+}
+
+/**
+ * Re-renders viewer elements.
+ */
+export function renderViewerNodes() {
+    initViewerCanvas();
+}
+
+/**
+ * Deletes a specific feedback comment.
+ */
+export async function deleteComment(id) {
+    App.work.modelComments = (App.work.modelComments || []).filter(c => c.id !== id);
+    await saveAndBroadcast('modelComments', App.work.modelComments);
+    renderViewerNodes();
 }
 
 export async function clearViewerFeedback() {
@@ -802,11 +914,14 @@ export async function clearViewerFeedback() {
 
 
 export const handleViewerClick = (e) => {
+    if (App.viewerState.isPanning) return;
     const canvas = document.getElementById('viewerCanvas');
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left);
-    const y = (e.clientY - rect.top);
+    
+    // Calculate coords relative to transformed content
+    const x = (e.clientX - rect.left - (App.viewerState.pan?.x || 0)) / (App.viewerState.zoom || 1);
+    const y = (e.clientY - rect.top - (App.viewerState.pan?.y || 0)) / (App.viewerState.zoom || 1);
     
     if (App.viewerState.addingComment) { 
         App.viewerState.commentPosition = { x, y }; 
@@ -814,24 +929,67 @@ export const handleViewerClick = (e) => {
         if (modal) {
             modal.classList.remove('hidden'); 
             modal.classList.add('flex');
+            document.getElementById('commentText')?.focus();
         }
-    } else if (App.viewerState.selectedSticker) {
-        if (!App.work.modelStickers) App.work.modelStickers = [];
-        App.work.modelStickers.push({ id: 's_' + Date.now(), emoji: App.viewerState.selectedSticker, x: x-20, y: y-20 });
-        saveAndBroadcast('modelStickers', App.work.modelStickers); 
-        renderTeacherContent();
     }
 };
+
+/**
+ * Panning logic for the viewer.
+ */
+export function handleViewerPointerDown(e) {
+    if (!App.viewerState.addingComment && !App.viewerState.selectedSticker) {
+        App.viewerState.isPanning = true;
+        const startX = e.clientX - (App.viewerState.pan?.x || 0);
+        const startY = e.clientY - (App.viewerState.pan?.y || 0);
+
+        const onPointerMove = (moveEvent) => {
+            if (!App.viewerState.pan) App.viewerState.pan = { x: 0, y: 0 };
+            App.viewerState.pan.x = moveEvent.clientX - startX;
+            App.viewerState.pan.y = moveEvent.clientY - startY;
+            initViewerCanvas();
+        };
+
+        const onPointerUp = () => {
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
+            setTimeout(() => { App.viewerState.isPanning = false; }, 50);
+        };
+
+        document.addEventListener('pointermove', onPointerMove);
+        document.addEventListener('pointerup', onPointerUp);
+    }
+}
+
+/**
+ * Zooming logic for the viewer.
+ */
+export function handleViewerWheel(e) {
+    e.preventDefault();
+    if (!App.viewerState.pan) App.viewerState.pan = { x: 0, y: 0 };
+    if (!App.viewerState.zoom) App.viewerState.zoom = 1;
+
+    const zoomSpeed = 0.001;
+    const delta = -e.deltaY;
+    const newZoom = Math.min(Math.max(0.1, App.viewerState.zoom + delta * zoomSpeed), 5);
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const dx = (mouseX - App.viewerState.pan.x) / App.viewerState.zoom;
+    const dy = (mouseY - App.viewerState.pan.y) / App.viewerState.zoom;
+
+    App.viewerState.pan.x = mouseX - dx * newZoom;
+    App.viewerState.pan.y = mouseY - dy * newZoom;
+    App.viewerState.zoom = newZoom;
+
+    initViewerCanvas();
+}
 
 export const setViewerTool = (t) => { 
     App.viewerState.addingComment = (t === 'comment'); 
     App.viewerState.selectedSticker = null; 
-    renderTeacherContent(); 
-};
-
-export const setViewerSticker = (s) => { 
-    App.viewerState.selectedSticker = (App.viewerState.selectedSticker === s) ? null : s; 
-    App.viewerState.addingComment = false; 
     renderTeacherContent(); 
 };
 

@@ -997,19 +997,66 @@
     </div>
 </div>
 
-<!-- Comment Modal -->
-<div id="commentModal" class="fixed inset-0 z-50 hidden items-center justify-center">
-    <div class="modal-overlay absolute inset-0" onclick="closeCommentModal()"></div>
+<!-- Generic Input Modal -->
+<div id="genericInputModal" class="fixed inset-0 z-[60] hidden items-center justify-center">
+    <div class="modal-overlay absolute inset-0" onclick="window.closeGenericInput()"></div>
+    <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden animate-in zoom-in duration-300">
+        <div class="p-6 border-b bg-gray-50/50">
+            <h3 class="font-black text-gray-900 uppercase tracking-tighter" id="genericInputTitle">Input Required</h3>
+        </div>
+        <div class="p-6">
+            <input type="text" id="genericInputField" class="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-primary focus:bg-white focus:outline-none transition-all text-lg font-bold" placeholder="Type here...">
+        </div>
+        <div class="p-6 border-t bg-gray-50/50 flex justify-end gap-3">
+            <button onclick="window.closeGenericInput()" class="px-6 py-3 text-gray-500 font-black text-xs uppercase tracking-widest hover:bg-gray-100 rounded-xl transition-all">Cancel</button>
+            <button onclick="window.submitGenericInput()" class="px-8 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:opacity-90 transition-all">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Row Note Modal -->
+<div id="rowNoteModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="modal-overlay absolute inset-0" onclick="closeRowNoteModal()"></div>
     <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
         <div class="p-4 border-b">
-            <h3 class="font-semibold text-gray-900">Add Comment</h3>
+            <h3 class="font-semibold text-gray-900">Add Row Note</h3>
         </div>
         <div class="p-4">
-            <textarea id="commentText" rows="3" class="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none" placeholder="Enter your feedback..."></textarea>
+            <textarea id="rowNoteText" rows="3" class="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none" placeholder="Enter notes for this observation..."></textarea>
         </div>
         <div class="p-4 border-t bg-gray-50 flex justify-end gap-2">
-            <button onclick="closeCommentModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-            <button onclick="saveComment()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600">Add Comment</button>
+            <button onclick="closeRowNoteModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+            <button onclick="saveRowNote()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600">Save Note</button>
+        </div>
+    </div>
+</div>
+
+<!-- Comment Modal -->
+<div id="commentModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="modal-overlay absolute inset-0" onclick="window.closeCommentModal()"></div>
+    <div class="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in duration-300">
+        <div class="p-6 border-b bg-gray-50/50">
+            <h3 class="font-black text-gray-900 uppercase tracking-tighter">Teacher Feedback</h3>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Leave a note and optional sticker</p>
+        </div>
+        <div class="p-6 space-y-6">
+            <div>
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Your Comment</label>
+                <textarea id="commentText" rows="3" class="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-primary focus:bg-white focus:outline-none transition-all text-sm font-medium" placeholder="Excellent work on this part..."></textarea>
+            </div>
+            
+            <div>
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-3 block">Attach Sticker (Optional)</label>
+                <div class="grid grid-cols-6 gap-2" id="feedbackStickerGrid">
+                    ${['⭐', '✅', '❓', '💡', '🎯', '👏', '🎨', '🧪', '🧬', '🔭', '📐', '🧠'].map(s => `
+                        <button onclick="window.setFeedbackSticker('${s}')" class="feedback-sticker-btn w-10 h-10 flex items-center justify-center text-xl rounded-xl border-2 border-transparent hover:bg-blue-50 transition-all" data-sticker="${s}">${s}</button>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+        <div class="p-6 border-t bg-gray-50/50 flex justify-end gap-3">
+            <button onclick="window.closeCommentModal()" class="px-6 py-3 text-gray-500 font-black text-xs uppercase tracking-widest hover:bg-gray-100 rounded-xl transition-all">Cancel</button>
+            <button onclick="window.saveComment()" class="px-8 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:opacity-90 transition-all">Post Feedback</button>
         </div>
     </div>
 </div>

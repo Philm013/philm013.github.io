@@ -524,7 +524,7 @@ export function renderTeacherAccess() {
                                 <p class="text-[10px] text-blue-600 uppercase font-black tracking-widest">Allow students to see your grading/comments</p>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" ${App.teacherSettings.showCommentsToStudents ? 'checked' : ''} 
+                                <input type="checkbox" ${App.teacherSettings.showFeedbackToStudents ? 'checked' : ''} 
                                     onchange="window.toggleFeedbackVisibility()" class="sr-only peer">
                                 <div class="w-14 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                             </label>
@@ -600,10 +600,10 @@ export function renderSessionSettings() {
                     <div class="grid gap-4">
                         <label class="flex items-center justify-between p-6 bg-gray-50 rounded-3xl cursor-pointer hover:bg-gray-100 transition-all group border-2 border-transparent hover:border-primary/10">
                             <div>
-                                <p class="font-bold text-gray-800 text-lg">Show Teacher Responses</p>
+                                <p class="font-bold text-gray-800 text-lg">Show Feedback & Grades</p>
                                 <p class="text-xs text-gray-500 mt-1">Allow students to see your comments and stickers on their practice boards.</p>
                             </div>
-                            <input type="checkbox" ${App.teacherSettings.showTeacherResponses ? 'checked' : ''} onchange="window.toggleTeacherSetting('showTeacherResponses')" class="w-7 h-7 rounded-xl text-primary focus:ring-offset-0 focus:ring-primary transition-all">
+                            <input type="checkbox" ${App.teacherSettings.showFeedbackToStudents ? 'checked' : ''} onchange="window.toggleFeedbackVisibility()" class="w-7 h-7 rounded-xl text-primary focus:ring-offset-0 focus:ring-primary transition-all">
                         </label>
                         <label class="flex items-center justify-between p-6 bg-gray-50 rounded-3xl cursor-pointer hover:bg-gray-100 transition-all group border-2 border-transparent hover:border-primary/10">
                             <div>
@@ -793,9 +793,13 @@ export async function exitActivityDashboard() {
 }
 
 export async function saveCurrentAsLesson() {
-    const name = prompt('Name:', App.teacherSettings.phenomenon.title); if (!name) return;
-    const lesson = { id: 'l_' + Date.now(), name, settings: JSON.parse(JSON.stringify(App.teacherSettings)), timestamp: Date.now() };
-    await dbPut(STORE_LESSONS, lesson); toast('Saved!', 'success'); renderTeacherContent();
+    window.openGenericInput('Save Preset', 'Enter template name...', App.teacherSettings.phenomenon.title, async (name) => {
+        if (!name) return;
+        const lesson = { id: 'l_' + Date.now(), name, settings: JSON.parse(JSON.stringify(App.teacherSettings)), timestamp: Date.now() };
+        await dbPut(STORE_LESSONS, lesson); 
+        toast('Preset Saved!', 'success'); 
+        renderTeacherContent();
+    });
 }
 
 export async function deleteLesson(id) { if (confirm('Delete lesson?')) { await dbDelete(STORE_LESSONS, id); renderTeacherContent(); } }
@@ -867,10 +871,10 @@ export const toggleTeacherSetting = async (k) => {
  * Toggles visibility of teacher comments/feedback for students.
  */
 export async function toggleFeedbackVisibility() {
-    App.teacherSettings.showCommentsToStudents = !App.teacherSettings.showCommentsToStudents;
+    App.teacherSettings.showFeedbackToStudents = !App.teacherSettings.showFeedbackToStudents;
     await saveToStorage();
     renderTeacherContent();
-    toast(App.teacherSettings.showCommentsToStudents ? 'Feedback is now visible to students' : 'Feedback is now hidden from students', 'info');
+    toast(App.teacherSettings.showFeedbackToStudents ? 'Feedback is now visible to students' : 'Feedback is now hidden from students', 'info');
 }
 
 /**

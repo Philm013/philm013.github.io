@@ -65,27 +65,66 @@ export function renderArgumentModule() {
 
 function renderDiscussionPosts(colors) {
     const posts = App.sharedData.debatePosts || [];
+    const isTeacher = App.mode === 'teacher';
+    
     if (posts.length === 0) return `
         <div class="h-full flex flex-col items-center justify-center text-center opacity-30 grayscale py-20">
-            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6 shadow-inner border border-white">
                 <span class="iconify text-5xl" data-icon="mdi:forum-outline"></span>
             </div>
-            <h3 class="text-lg font-bold text-gray-400">Discussion is Empty</h3>
-            <p class="text-sm text-gray-400 mt-1 max-w-xs">Be the first to share a claim or ask a question about the phenomenon!</p>
+            <h3 class="text-xl font-black text-gray-400 uppercase tracking-tighter">Discussion is Empty</h3>
+            <p class="text-sm font-medium text-gray-400 mt-1 max-w-xs">Be the first to share a claim or ask a question about the phenomenon!</p>
         </div>
     `;
     
     return posts.map(p => `
-        <div class="p-5 bg-${colors[p.type]}-50/50 rounded-2xl border-l-4 border-${colors[p.type]}-500 shadow-sm animate-in slide-in-from-bottom-2">
-            <div class="flex flex-wrap items-center gap-3 mb-3">
-                <span class="px-3 py-1 bg-${colors[p.type]}-100 text-${colors[p.type]}-700 rounded-full text-[9px] font-black uppercase tracking-widest border border-${colors[p.type]}-200">${p.type}</span>
-                <span class="text-sm font-bold text-gray-700 flex items-center gap-1">
-                    <span class="iconify" data-icon="mdi:account-circle"></span>
+        <div class="p-6 bg-white border border-gray-100 rounded-[2rem] shadow-sm animate-in slide-in-from-bottom-2 relative group">
+            <div class="flex flex-wrap items-center gap-3 mb-4">
+                <div class="w-8 h-8 bg-${colors[p.type]}-50 rounded-lg flex items-center justify-center text-${colors[p.type]}-600 border border-${colors[p.type]}-100">
+                    <span class="text-[10px] font-black uppercase">${p.type.charAt(0)}</span>
+                </div>
+                <span class="px-3 py-1 bg-${colors[p.type]}-50 text-${colors[p.type]}-700 rounded-full text-[9px] font-black uppercase tracking-widest border border-${colors[p.type]}-100">${p.type}</span>
+                <span class="text-sm font-black text-gray-900 flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px]">${p.author.charAt(0).toUpperCase()}</div>
                     ${p.author}
                 </span>
-                <span class="text-[10px] text-gray-400 font-medium ml-auto uppercase tracking-tighter">${new Date(p.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                <span class="text-[10px] text-gray-400 font-bold ml-auto uppercase tracking-tighter">${new Date(p.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                
+                ${isTeacher ? `
+                    <div class="flex gap-2">
+                        <button onclick="window.openArgumentFeedback('${p.id}')" class="p-2 text-primary hover:bg-blue-50 rounded-lg transition-all" title="Give Feedback">
+                            <span class="iconify" data-icon="mdi:comment-check"></span>
+                        </button>
+                        <button onclick="window.deletePost('${p.id}')" class="p-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                            <span class="iconify" data-icon="mdi:trash-can-outline"></span>
+                        </button>
+                    </div>
+                ` : ''}
             </div>
-            <p class="text-gray-700 leading-relaxed font-medium">${p.text}</p>
+            <p class="text-gray-700 leading-relaxed font-medium pl-11 text-lg">${p.text}</p>
+            
+            ${p.feedback && App.teacherSettings.showFeedbackToStudents ? `
+                <div class="mt-4 ml-11 p-4 bg-blue-50 border border-blue-100 rounded-2xl relative">
+                    <div class="flex items-start gap-3">
+                        ${p.feedback.sticker ? `<span class="text-2xl">${p.feedback.sticker}</span>` : '<span class="iconify text-primary text-xl" data-icon="mdi:comment-text"></span>'}
+                        <div>
+                            <p class="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Teacher Feedback</p>
+                            <p class="text-sm font-bold text-blue-900">${p.feedback.text || 'Checked!'}</p>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+            
+            <div class="mt-4 pl-11 flex gap-4">
+                <button class="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-primary transition-colors flex items-center gap-1">
+                    <span class="iconify" data-icon="mdi:comment-outline"></span>
+                    Reply
+                </button>
+                <button onclick="window.flagPost('${p.id}')" class="text-[10px] font-black ${p.flagged ? 'text-red-500' : 'text-gray-400'} uppercase tracking-widest hover:text-red-500 transition-colors flex items-center gap-1">
+                    <span class="iconify" data-icon="mdi:flag-outline"></span>
+                    ${p.flagged ? 'Flagged' : 'Flag'}
+                </button>
+            </div>
         </div>
     `).join('');
 }
@@ -140,4 +179,68 @@ export async function addPost() {
     await saveAndBroadcast('debatePosts', App.sharedData.debatePosts);
     renderStudentContent();
     toast('Argument shared with the class!', 'success');
+}
+
+/**
+ * UI: Opens the feedback modal for a specific argument post.
+ */
+export function openArgumentFeedback(postId) {
+    App.editingPostId = postId;
+    const post = App.sharedData.debatePosts.find(p => p.id === postId);
+    if (!post) return;
+
+    const modal = document.getElementById('commentModal');
+    const input = document.getElementById('commentText');
+    if (modal && input) {
+        input.value = post.feedback?.text || '';
+        if (post.feedback?.sticker) {
+            window.setFeedbackSticker(post.feedback.sticker);
+        }
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        input.focus();
+    }
+}
+
+/**
+ * Persists feedback for an argument post.
+ */
+export async function saveArgumentFeedback() {
+    const postId = App.editingPostId;
+    const val = document.getElementById('commentText')?.value.trim();
+    const sticker = App.viewerState.selectedSticker;
+    
+    const post = App.sharedData.debatePosts.find(p => p.id === postId);
+    if (post) {
+        post.feedback = { text: val, sticker, time: Date.now() };
+        await saveAndBroadcast('debatePosts', App.sharedData.debatePosts);
+        window.closeCommentModal();
+        renderStudentContent();
+        toast('Feedback updated', 'success');
+    }
+}
+
+/**
+ * Flags a post for teacher review.
+ */
+export async function flagPost(postId) {
+    const post = App.sharedData.debatePosts.find(p => p.id === postId);
+    if (post) {
+        post.flagged = !post.flagged;
+        await saveAndBroadcast('debatePosts', App.sharedData.debatePosts);
+        renderStudentContent();
+        toast(post.flagged ? 'Post flagged for teacher review' : 'Flag removed', 'info');
+    }
+}
+
+/**
+ * Deletes a discussion post.
+ */
+export async function deletePost(id) {
+    if (confirm('Delete this post?')) {
+        App.sharedData.debatePosts = App.sharedData.debatePosts.filter(p => p.id !== id);
+        await saveAndBroadcast('debatePosts', App.sharedData.debatePosts);
+        renderStudentContent();
+        toast('Post deleted', 'info');
+    }
 }

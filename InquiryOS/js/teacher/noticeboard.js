@@ -168,22 +168,91 @@ export async function renderTeacherNoticeBoard() {
 
 
 export function renderModeration() {
+    const posts = App.sharedData.debatePosts || [];
+    const flaggedPosts = posts.filter(p => p.flagged);
+    
     return `
-        <div class="max-w-4xl mx-auto">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">Discussion Moderation</h2>
-            <div class="bg-white rounded-2xl border p-6">
-                ${(App.sharedData.debatePosts || []).map(p => `
-                    <div class="p-4 border-b last:border-0 flex justify-between items-center group">
-                        <div>
-                            <p class="font-bold text-sm">${p.author} <span class="text-[10px] text-gray-400 font-normal uppercase ml-2">${p.type}</span></p>
-                            <p class="text-gray-700 mt-1">${p.text}</p>
-                        </div>
-                        <button onclick="window.deletePost('${p.id}')" class="text-red-400 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity">Delete</button>
+        <div class="max-w-5xl mx-auto space-y-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tighter">Class Moderation</h2>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Manage Discussions & Safety</p>
+                </div>
+                <div class="flex gap-4">
+                    <div class="px-6 py-3 bg-white border border-gray-100 rounded-2xl shadow-sm text-center">
+                        <p class="text-2xl font-black text-gray-900">${posts.length}</p>
+                        <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Posts</p>
                     </div>
-                `).join('') || '<p class="text-gray-400 text-center py-8">No posts yet</p>'}
+                    <div class="px-6 py-3 bg-red-50 border border-red-100 rounded-2xl shadow-sm text-center">
+                        <p class="text-2xl font-black text-red-600">${flaggedPosts.length}</p>
+                        <p class="text-[9px] font-black text-red-400 uppercase tracking-widest">Flagged</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-6 border-b bg-gray-50/50 flex items-center justify-between">
+                    <h3 class="font-black text-gray-900 uppercase tracking-tight text-sm">Recent Activity</h3>
+                    <button onclick="window.clearAllPosts()" class="text-[10px] font-black text-red-500 uppercase tracking-[0.2em] hover:underline">Reset Entire Board</button>
+                </div>
+                
+                <div class="divide-y divide-gray-100">
+                    ${posts.map(p => `
+                        <div class="p-6 flex items-start gap-6 hover:bg-gray-50/50 transition-colors group">
+                            <div class="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center text-xl shrink-0 font-black">
+                                ${p.author.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-1">
+                                    <span class="font-black text-gray-900">${p.author}</span>
+                                    <span class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[9px] font-black uppercase tracking-widest">${p.type}</span>
+                                    <span class="text-[10px] text-gray-400 font-medium">${new Date(p.time).toLocaleString()}</span>
+                                    ${p.flagged ? '<span class="px-2 py-0.5 bg-red-100 text-red-600 rounded text-[9px] font-black uppercase animate-pulse">Flagged</span>' : ''}
+                                </div>
+                                <p class="text-gray-700 font-medium leading-relaxed">${p.text}</p>
+                                ${p.feedback ? `
+                                    <div class="mt-2 p-3 bg-blue-50/50 rounded-xl border border-blue-100/50 flex items-start gap-2">
+                                        <span class="text-lg">${p.feedback.sticker || '💬'}</span>
+                                        <p class="text-xs text-blue-800 font-medium">${p.feedback.text}</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onclick="window.openArgumentFeedback('${p.id}')" class="p-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all" title="Edit Feedback">
+                                    <span class="iconify" data-icon="mdi:comment-edit"></span>
+                                </button>
+                                ${p.flagged ? `
+                                    <button onclick="window.flagPost('${p.id}')" class="p-3 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all" title="Clear Flag">
+                                        <span class="iconify" data-icon="mdi:flag-off"></span>
+                                    </button>
+                                ` : ''}
+                                <button onclick="window.deletePost('${p.id}')" class="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all" title="Delete Post">
+                                    <span class="iconify" data-icon="mdi:trash-can-outline"></span>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('') || `
+                        <div class="py-20 text-center opacity-30 grayscale">
+                            <span class="iconify text-6xl mb-4 mx-auto" data-icon="mdi:shield-check-outline"></span>
+                            <p class="text-sm font-black uppercase tracking-widest">No activity to moderate</p>
+                        </div>
+                    `}
+                </div>
             </div>
         </div>
     `;
+}
+
+/**
+ * Deletes all posts from the argument board.
+ */
+export async function clearAllPosts() {
+    if (confirm('DANGER: This will permanently delete all posts from the class board. Continue?')) {
+        App.sharedData.debatePosts = [];
+        await saveToStorage();
+        renderTeacherContent();
+        toast('Discussion board reset', 'warning');
+    }
 }
 
 export function renderCategoryManager() {
@@ -273,16 +342,4 @@ export const deleteCategory = async (id) => {
         renderTeacherContent(); 
     } 
 };
-
-/**
- * Deletes a discussion post.
- */
-export async function deletePost(id) {
-    if (confirm('Delete this post?')) {
-        App.sharedData.debatePosts = App.sharedData.debatePosts.filter(p => p.id !== id);
-        await saveToStorage();
-        renderTeacherContent();
-        toast('Post deleted', 'info');
-    }
-}
 

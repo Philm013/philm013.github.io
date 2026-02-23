@@ -300,7 +300,7 @@ function renderTeacherFeedback() {
     // Remove old feedback
     canvas.querySelectorAll('.teacher-feedback').forEach(el => el.remove());
     
-    if (!App.teacherSettings.showCommentsToStudents && App.mode === 'student') return;
+    if (!App.teacherSettings.showFeedbackToStudents && App.mode === 'student') return;
 
     // Render Comments
     (App.work.modelComments || []).forEach(c => {
@@ -898,13 +898,14 @@ export function canvasDblClick(event) {
     if (App.modelState.currentTool === 'node') {
         createNode(coords.x - 60, coords.y - 25, App.modelState.selectedIcon || 'mdi:plus-circle');
     } else if (App.modelState.currentTool === 'note') {
-        const text = prompt('Enter note text:');
-        if (text) {
-            const note = { id: 'note_' + Date.now(), text, x: coords.x - 50, y: coords.y - 30, width: 100, height: 60, color: '#fef3c7' };
-            App.work.modelNotes.push(note);
-            saveAndBroadcast('modelNotes', App.work.modelNotes);
-            renderModelElements();
-        }
+        window.openGenericInput('Add Note', 'Type your note here...', '', (text) => {
+            if (text) {
+                const note = { id: 'note_' + Date.now(), text, x: coords.x - 50, y: coords.y - 30, width: 100, height: 60, color: '#fef3c7' };
+                App.work.modelNotes.push(note);
+                saveAndBroadcast('modelNotes', App.work.modelNotes);
+                renderModelElements();
+            }
+        });
     }
 }
 

@@ -165,7 +165,7 @@ export function updateModeUI() {
  * Renders the content for the currently active student module.
  */
 export function renderStudentContent() {
-    if (App.mode === 'teacher' && App.isExemplarMode) {
+    if (App.mode === 'teacher' && (App.isExemplarMode || App.viewingStudentId)) {
         renderTeacherContent();
         return;
     }
@@ -339,7 +339,7 @@ export function renderStatusBanner() {
         `;
     }
     
-    if (App.teacherSettings.showCommentsToStudents && (App.work.modelComments?.length > 0 || App.work.modelStickers?.length > 0)) {
+    if (App.teacherSettings.showFeedbackToStudents && (App.work.modelComments?.length > 0 || App.work.modelStickers?.length > 0)) {
         html += `
             <div class="bg-blue-600 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-bold border-t border-blue-500">
                 <span class="iconify" data-icon="mdi:comment-check"></span>
@@ -417,15 +417,6 @@ export async function toggleExemplarView() {
     }
     renderNavigation();
     renderStudentContent();
-}
-
-/**
- * Switches the teacher to view a specific student's work.
- */
-export async function viewStudentWork(visitorId) {
-    // This is now handled in viewer.js but keeping proxy for safety
-    const viewer = await import('../teacher/viewer.js');
-    return viewer.viewStudentWork(visitorId);
 }
 
 /**

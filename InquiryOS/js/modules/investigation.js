@@ -114,7 +114,7 @@ function renderVariableBank() {
 function renderDataTable() {
     const dt = App.work.dataTable || { columns: [], rows: [] };
     const vars = App.work.variables || [];
-    const showFeedback = App.teacherSettings.showCommentsToStudents || App.mode === 'teacher';
+    const showFeedback = App.teacherSettings.showFeedbackToStudents || App.mode === 'teacher';
     
     return `
         <div class="overflow-x-auto">
@@ -220,12 +220,7 @@ function renderDataTable() {
 }
 
 export async function toggleRowNote(index) {
-    const note = prompt('Add a note for this row:', App.work.dataTable.rows[index].note || '');
-    if (note !== null) {
-        App.work.dataTable.rows[index].note = note;
-        await saveAndBroadcast('dataTable.rows', App.work.dataTable.rows);
-        renderStudentContent();
-    }
+    window.openRowNoteModal(index);
 }
 
 
@@ -267,13 +262,68 @@ export async function linkColumnToVariable(colId, varId) {
 }
 
 export async function updateColumnName(colId, name) { const col = App.work.dataTable.columns.find(c => c.id === colId); if (col) col.name = name; await saveAndBroadcast('dataTable', App.work.dataTable); }
-export async function addDataColumn() { const name = prompt('Column name:', 'New Column'); if (!name) return; const colId = 'col_' + Date.now(); App.work.dataTable.columns.push({ id: colId, name, type: 'number', unit: '', variableId: '' }); await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); }
+
+export async function addDataColumn() { 
+    window.openGenericInput('Add Data Column', 'Enter column name...', 'New Column', async (name) => {
+        if (!name) return;
+        const colId = 'col_' + Date.now(); 
+        App.work.dataTable.columns.push({ id: colId, name, type: 'number', unit: '', variableId: '' }); 
+        await saveAndBroadcast('dataTable', App.work.dataTable); 
+        renderStudentContent();
+    });
+}
 export async function updateColumnType(colId, type) { const col = App.work.dataTable.columns.find(c => c.id === colId); if (col) col.type = type; await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); }
 export async function updateColumnUnit(colId, unit) { const col = App.work.dataTable.columns.find(c => c.id === colId); if (col) col.unit = unit; await saveAndBroadcast('dataTable', App.work.dataTable); }
 export async function deleteColumn(colId) { if (confirm('Delete column?')) { App.work.dataTable.columns = App.work.dataTable.columns.filter(c => c.id !== colId); App.work.dataTable.rows.forEach(row => delete row[colId]); await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); } }
 export async function addDataRow() { const row = {}; App.work.dataTable.columns.forEach(col => row[col.id] = ''); App.work.dataTable.rows.push(row); await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); }
 export async function updateCell(rowIndex, colId, value) { App.work.dataTable.rows[rowIndex][colId] = value; await saveAndBroadcast('dataTable', App.work.dataTable); }
-export async function deleteDataRow(index) { App.work.dataTable.rows.splice(index, 1); await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); }
+export async function deleteDataRow(index) { 
+    App.work.dataTable.rows.splice(index, 1); 
+    await saveAndBroadcast('dataTable', App.work.dataTable); 
+    renderStudentContent(); 
+}
+
+/**
+ * UI: Opens the row note modal.
+ */
+export function openRowNoteModal(index) {
+    App.editingRowIndex = index;
+    const modal = document.getElementById('rowNoteModal');
+    const input = document.getElementById('rowNoteText');
+    if (modal && input) {
+        input.value = App.work.dataTable.rows[index].note || '';
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        input.focus();
+    }
+}
+
+/**
+ * UI: Closes the row note modal.
+ */
+export function closeRowNoteModal() {
+    const modal = document.getElementById('rowNoteModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    App.editingRowIndex = null;
+}
+
+/**
+ * Persists the row note from the modal.
+ */
+export async function saveRowNote() {
+    const index = App.editingRowIndex;
+    const val = document.getElementById('rowNoteText')?.value.trim();
+    if (index !== null && index !== undefined) {
+        App.work.dataTable.rows[index].note = val || '';
+        await saveAndBroadcast('dataTable', App.work.dataTable);
+        closeRowNoteModal();
+        renderStudentContent();
+        toast('Note saved', 'success');
+    }
+}
 
 export async function saveDataAsEvidence() {
     if (!App.work.dataTable.rows.some(r => Object.values(r).some(v => v))) { toast('Add some data first!', 'warning'); return; }

@@ -37,7 +37,7 @@ export const App = {
     teacherSettings: {
         forceModule: null,
         guidedMode: false,
-        showCommentsToStudents: false,
+        showFeedbackToStudents: true,
         exemplars: {}, // Maps moduleId -> work state
         moduleAccess: {
             questions: true, 
@@ -61,7 +61,6 @@ export const App = {
             { id: 'cat_systems', name: 'Systems', color: '#a855f7' },
             { id: 'cat_energy', name: 'Energy', color: '#f59e0b' }
         ],
-        showTeacherResponses: true,
         anonymousMode: false,
         allowStudentReplies: true,
         lessonIcons: [],

@@ -147,6 +147,47 @@ export function copyJoinLink() {
 }
 
 /**
+ * UI: Opens a generic text input modal.
+ * @param {string} title - Modal title.
+ * @param {string} placeholder - Input placeholder.
+ * @param {string} initialValue - Initial input value.
+ * @param {Function} callback - Function called with the input value on confirm.
+ */
+export function openGenericInput(title, placeholder, initialValue, callback) {
+    const modal = document.getElementById('genericInputModal');
+    const titleEl = document.getElementById('genericInputTitle');
+    const input = document.getElementById('genericInputField');
+    if (!modal || !input) return;
+
+    if (titleEl) titleEl.textContent = title;
+    input.placeholder = placeholder || 'Type here...';
+    input.value = initialValue || '';
+    App.genericInputCallback = callback;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    input.focus();
+    input.select();
+}
+
+export function closeGenericInput() {
+    const modal = document.getElementById('genericInputModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    App.genericInputCallback = null;
+}
+
+export function submitGenericInput() {
+    const val = document.getElementById('genericInputField')?.value.trim();
+    if (typeof App.genericInputCallback === 'function') {
+        App.genericInputCallback(val);
+    }
+    closeGenericInput();
+}
+
+/**
  * Generates a random 6-character alphanumeric class code.
  * @returns {string} The generated code.
  */
