@@ -18,7 +18,9 @@ export function renderModelsModule() {
         ? App.teacherSettings.lessonIcons 
         : ['mdi:atom', 'mdi:leaf', 'mdi:water', 'mdi:fire', 'mdi:weather-sunny', 'mdi:flower', 'mdi:bacteria', 'mdi:flask-outline', 'mdi:microscope', 'mdi:dna', 'mdi:earth', 'mdi:mountain', 'mdi:magnet', 'mdi:battery-high', 'mdi:cog', 'mdi:human', 'mdi:heart', 'mdi:brain', 'mdi:lungs', 'mdi:skeleton', 'mdi:home', 'mdi:factory', 'mdi:car', 'mdi:bicycle', 'mdi:bus', 'mdi:train', 'mdi:airplane'];
     
-    const emojis = ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '🌲', '🌻', '🐟', '🐦', '🦋', '🐝', '☁️', '⛈️', '🔥', '🌍', '🌋', '🍎', '🥩', '🍖', '⚙️', '⚖️', '💀', '👽', '👻', '💩', '🤡', '👹', '👺', '👾', '🤖'];
+    const emojis = App.teacherSettings.lessonEmojis?.length > 0 
+        ? App.teacherSettings.lessonEmojis 
+        : ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '⚙️', '⚖️', '🔬', '🧬', '🌍', '🔭', '🏗️', '🌉', '🔨', '📏', '🌲', '🌻', '🐟', '🐦', '🦋', '🐝', '☁️', '⛈️', '🔥', '🌋', '🍎', '🥩', '🧠', '💀', '👾', '📡', '🛸', '🧭', '📐'];
 
     const isFullscreen = App.modelState.isFullscreen;
 

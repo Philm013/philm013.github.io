@@ -15,6 +15,9 @@ import { toast } from '../ui/utils.js';
 export async function renderTeacherNoticeBoard() {
     const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
     const studentList = allUsers.filter(u => u.mode === 'student');
+    const phenomenon = App.teacherSettings?.phenomenon || { title: '', description: '', tags: [], ngssStandards: [] };
+    const linkedStandards = phenomenon.ngssStandards || [];
+    
     let items = { notices: [], wonders: [], ideas: [], testableQuestions: [] };
     
     for (const student of studentList) {
@@ -41,16 +44,82 @@ export async function renderTeacherNoticeBoard() {
 
     return `
         <div class="max-w-7xl mx-auto">
-            <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 class="text-3xl font-black text-gray-900">Notice & Wonder Board</h2>
-                    <p class="text-gray-500 mt-1">Live collaborative view of contributions from ${studentList.length} students.</p>
+                    <h2 class="text-3xl font-black text-gray-900">Inquiry Collaboration Board</h2>
+                    <p class="text-gray-500 mt-1">Live collaborative view of contributions from ${studentList.length} student scientists.</p>
                 </div>
-                <button onclick="window.renderTeacherContent()" class="p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm flex items-center gap-2 font-bold text-gray-600 transition-all active:scale-95">
-                    <span class="iconify" data-icon="mdi:refresh"></span>
-                    Refresh Board
-                </button>
+                <div class="flex flex-wrap gap-3 items-center">
+                    <div class="flex -space-x-2 mr-4">
+                        ${studentList.slice(0, 5).map(s => `
+                            <div class="w-10 h-10 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-bold shadow-sm" title="${s.name}">
+                                ${s.avatar || s.name.charAt(0).toUpperCase()}
+                            </div>
+                        `).join('')}
+                        ${studentList.length > 5 ? `<div class="w-10 h-10 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-[10px] font-black shadow-sm">+${studentList.length - 5}</div>` : ''}
+                    </div>
+                    <button onclick="window.renderTeacherContent()" class="p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 shadow-sm transition-all flex items-center gap-2 font-bold active:scale-95">
+                        <span class="iconify text-xl" data-icon="mdi:refresh"></span>
+                        Refresh Board
+                    </button>
+                </div>
             </div>
+
+            <!-- Dark Mode Phenomenon & standards section -->
+            <div class="mb-8 p-8 bg-gradient-to-br from-gray-900 via-blue-950 to-indigo-950 rounded-[2.5rem] text-white shadow-2xl border border-white/5 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-8 opacity-10">
+                    <span class="iconify text-9xl" data-icon="mdi:microscope"></span>
+                </div>
+                
+                <div class="flex flex-col lg:flex-row gap-10 relative z-10">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-4 mb-6">
+                            <span class="p-3 bg-blue-500/20 rounded-2xl border border-blue-500/30">
+                                <span class="iconify text-3xl text-blue-300" data-icon="mdi:flask-outline"></span>
+                            </span>
+                            <div>
+                                <h3 class="text-2xl font-black tracking-tight">Active Phenomenon: ${phenomenon.title || 'Inquiry Project'}</h3>
+                                <div class="flex gap-2 mt-1">
+                                    ${phenomenon.tags?.map(t => `<span class="text-[10px] font-black uppercase tracking-widest text-blue-400/80">${t}</span>`).join(' • ') || '<span class="text-[10px] font-black uppercase tracking-widest text-blue-400/80">Scientific Exploration</span>'}
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-blue-100/70 text-lg leading-relaxed mb-6 font-medium">${phenomenon.description || 'Observe, question, and investigate the scientific mystery presented in class.'}</p>
+                        <div class="flex gap-2">
+                            <button onclick="window.showTeacherModule('overview')" class="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl text-xs font-black uppercase tracking-widest transition-all">Edit Context</button>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full lg:w-96 p-6 bg-white/5 rounded-3xl backdrop-blur-xl border border-white/10 flex flex-col">
+                        <h4 class="text-xs font-black uppercase tracking-widest text-blue-300 mb-4 flex items-center gap-2">
+                            <span class="iconify" data-icon="mdi:medal"></span>
+                            Linked NGSS Dimensions
+                        </h4>
+                        <div class="space-y-3 flex-1">
+                            ${linkedStandards.length > 0 ? linkedStandards.map(s => `
+                                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5 group transition-all hover:bg-white/10">
+                                    <div class="w-2 h-2 rounded-full bg-blue-400"></div>
+                                    <span class="text-xs font-bold text-white">${s}</span>
+                                    <span class="text-[10px] text-gray-400 ml-auto font-black uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">PE</span>
+                                </div>
+                            `).join('') : `
+                                <div class="py-10 text-center border-2 border-dashed border-white/10 rounded-2xl">
+                                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">No Standards Linked</p>
+                                    <button onclick="window.showTeacherModule('ngss')" class="mt-2 text-xs text-blue-400 font-bold hover:underline">Browse Standards</button>
+                                </div>
+                            `}
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 bg-blue-600 rounded-lg text-[9px] font-black uppercase">SEP1</span>
+                                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Asking Questions</span>
+                            </div>
+                            <span class="iconify text-gray-600" data-icon="mdi:chevron-right"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
                 ${categories.map(cat => `
                     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col h-[700px] overflow-hidden">

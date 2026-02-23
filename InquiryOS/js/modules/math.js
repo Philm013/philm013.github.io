@@ -16,29 +16,91 @@ let calcValue = '';
  * @returns {string} HTML content for the module.
  */
 export function renderMathModule() {
+    const vars = (App.work.variables || []).filter(v => v.type);
+    
     return `
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-6xl mx-auto">
             ${renderModuleHeader('Using Mathematics', 'mdi:calculator', 'SEP5')}
             
-            <div class="grid md:grid-cols-2 gap-6">
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 class="font-semibold text-gray-900 mb-4">Calculator</h3>
-                    <input type="text" id="calcDisplay" class="w-full px-4 py-3 border-2 rounded-lg font-mono text-xl mb-4 text-right" placeholder="0" readonly>
-                    <div class="grid grid-cols-4 gap-2">
-                        ${renderCalculatorButtons()}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                <!-- Calculator & Variable Injector -->
+                <div class="space-y-8">
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-black text-gray-900">Scientific Calculator</h3>
+                            <div class="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100">
+                                <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                Solver
+                            </div>
+                        </div>
+                        <input type="text" id="calcDisplay" class="w-full px-6 py-6 bg-gray-900 text-white rounded-3xl font-mono text-3xl mb-6 text-right shadow-inner border-4 border-gray-800" placeholder="0" readonly>
+                        <div class="grid grid-cols-4 gap-3">
+                            ${renderCalculatorButtons()}
+                        </div>
+                    </div>
+
+                    <!-- Variable Palette -->
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
+                        <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1 mb-4">Variable Injection Palette</h3>
+                        <div class="flex flex-wrap gap-2">
+                            ${vars.map(v => `
+                                <button onclick="window.injectVariableToCalc('${v.name}')" 
+                                    class="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold border-2 border-blue-100 hover:bg-blue-100 transition-all flex items-center gap-2 group">
+                                    <span class="iconify group-hover:rotate-12 transition-transform" data-icon="mdi:link-variant"></span>
+                                    ${v.name}
+                                </button>
+                            `).join('')}
+                            ${vars.length === 0 ? `
+                                <div class="w-full py-6 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                                    <p class="text-xs text-gray-400 font-medium px-4">Define variables in the Investigation module to use them in calculations.</p>
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
                 
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 class="font-semibold text-gray-900 mb-4">Math Expressions</h3>
-                    <div class="space-y-3 mb-4 max-h-48 overflow-y-auto custom-scrollbar" id="savedExpressions">
+                <!-- Expressions & Log -->
+                <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="text-xl font-black text-gray-900">Computational Log</h3>
+                            <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Saved Expressions</p>
+                        </div>
+                        <span class="px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-[10px] font-black uppercase tracking-widest">${App.work.mathExpressions?.length || 0} Saved</span>
+                    </div>
+
+                    <div class="space-y-4 flex-1 overflow-y-auto max-h-[400px] mb-8 pr-2 custom-scrollbar" id="savedExpressions">
                         ${renderSavedExpressions()}
                     </div>
-                    ${renderMathEntryForm()}
+
+                    <div class="mt-auto">
+                        <div class="p-6 bg-purple-50 rounded-3xl border border-purple-100">
+                            <h4 class="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-4 ml-1">Manual Entry & Notes</h4>
+                            <div class="space-y-3">
+                                <input type="text" id="mathExprInput" placeholder="Expression (e.g. 2 * 3.14 * radius)" 
+                                    class="w-full px-5 py-3 bg-white border-2 border-purple-100 rounded-2xl font-mono text-sm focus:border-purple-500 focus:outline-none transition-all">
+                                <input type="text" id="mathNoteInput" placeholder="What does this represent?" 
+                                    class="w-full px-5 py-3 bg-white border-2 border-purple-100 rounded-2xl text-sm font-medium focus:border-purple-500 focus:outline-none transition-all">
+                                <button onclick="window.saveMathExpr()" class="w-full py-4 bg-purple-600 text-white rounded-2xl font-black shadow-lg shadow-purple-100 hover:-translate-y-0.5 transition-all">
+                                    Archive Calculation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     `;
+}
+
+/**
+ * Injects a variable name into the calculator display.
+ */
+export function injectVariableToCalc(name) {
+    const display = document.getElementById('calcDisplay');
+    if (!display) return;
+    calcValue += name;
+    display.value = calcValue;
 }
 
 /**

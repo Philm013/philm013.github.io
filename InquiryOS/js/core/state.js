@@ -65,7 +65,7 @@ export const App = {
         anonymousMode: false,
         allowStudentReplies: true,
         lessonIcons: [],
-        lessonEmojis: ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡'],
+        lessonEmojis: ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '⚙️', '⚖️', '🔬', '🧬', '🌍', '🔭', '🏗️', '🌉', '🔨', '📏'],
         showAllIcons: true
     },
     

@@ -393,13 +393,21 @@ export async function toggleExemplarView() {
     if (App.isViewingExemplar) {
         // Cache current work
         App.studentWorkCache = JSON.parse(JSON.stringify(App.work));
+        
         // Show exemplar
-        App.work = App.teacherSettings.exemplars[App.currentModule] || getInitialWorkState();
+        const exemplar = App.teacherSettings.exemplars?.[App.currentModule];
+        if (exemplar) {
+            App.work = JSON.parse(JSON.stringify(exemplar));
+        } else {
+            App.work = getInitialWorkState();
+        }
+        
         toast('Viewing Teacher Example', 'info');
     } else {
         // Restore work
         if (App.studentWorkCache) App.work = App.studentWorkCache;
         App.studentWorkCache = null;
+        toast('Returned to My Work', 'info');
     }
     renderNavigation();
     renderStudentContent();

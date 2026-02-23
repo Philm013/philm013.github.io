@@ -21,7 +21,7 @@ export function renderExplanationsModule() {
                 <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col overflow-hidden h-full lg:sticky lg:top-4">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-xs font-black text-gray-900 uppercase tracking-widest">Evidence Bank</h3>
-                        <span class="px-2 py-0.5 bg-purple-100 text-purple-600 rounded text-[9px] font-black uppercase tracking-widest">${(App.work.evidence || []).length} Items</span>
+                        <span class="px-2 py-0.5 bg-purple-100 text-purple-600 rounded text-[9px] font-black uppercase tracking-widest">${(App.work.evidence || []).length + (App.work.modelExplanations || []).length + (App.work.modelGeneralExplanation ? 1 : 0)} Items</span>
                     </div>
                     <div class="space-y-3 flex-1 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar" id="evidenceSelectionBank">
                         ${renderEvidenceSelectionBank()}
@@ -33,71 +33,21 @@ export function renderExplanationsModule() {
                     ${renderCerField('Scientific Claim', 'C', 'red', 'Based on your inquiry, what is the answer to your driving question?', App.work.claim, 'window.saveClaim', 'A clear, concise statement that answers the investigation question.')}
                     ${renderCerField('Evidence Description', 'E', 'blue', 'According to my data and observations...', App.work.evidenceText, 'window.saveEvidenceText', 'Specific data and observations that support your claim.')}
                     ${renderCerField('Reasoning & Justification', 'R', 'green', 'This evidence supports my claim because...', App.work.reasoning, 'window.saveReasoning', 'Explain how the evidence logically supports the claim using scientific principles.')}
-                    
-                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                        <div class="flex items-center justify-between mb-8">
-                            <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center shadow-sm">
-                                    <span class="iconify text-2xl" data-icon="mdi:vector-difference-ba"></span>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-black text-gray-900">Model Integration</h3>
-                                    <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Cross-Practice Synthesis</p>
-                                </div>
-                            </div>
-                            <button onclick="window.showStudentModule('models')" class="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-purple-100 transition-all flex items-center gap-2">
-                                Open Model
-                                <span class="iconify" data-icon="mdi:arrow-right"></span>
-                            </button>
-                        </div>
-                        <div class="space-y-4">
-                            ${renderModelExplanationSummary()}
-                        </div>
-                    </div>
                 </div>
             </div>
-        </div>
-    `;
-}
-
-function renderCerField(label, initial, color, placeholder, value, onchange, tooltip = '') {
-    return `
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 hover:border-${color}-200 transition-colors group">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 bg-${color}-50 text-${color}-600 rounded-2xl flex items-center justify-center font-black text-2xl shadow-sm border border-${color}-100">
-                        ${initial}
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-black text-gray-900">${label}</h3>
-                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">${tooltip}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 px-3 py-1 bg-gray-50 text-gray-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-gray-100 opacity-60 group-focus-within:opacity-100 transition-opacity">
-                    <span class="w-2 h-2 bg-${color}-500 rounded-full"></span>
-                    Autosaving
-                </div>
-            </div>
-            <textarea rows="4" 
-                class="w-full px-6 py-5 bg-gray-50/50 border-2 border-gray-100 rounded-2xl text-lg font-medium text-gray-700 focus:border-${color}-500 focus:bg-white focus:outline-none transition-all placeholder:text-gray-300"
-                placeholder="${placeholder}"
-                onchange="${onchange}(this.value)">${value || ''}</textarea>
         </div>
     `;
 }
 
 function renderEvidenceSelectionBank() {
     const evidence = App.work.evidence || [];
-    if (evidence.length === 0) {
-        return `
-            <div class="py-16 text-center flex flex-col items-center opacity-30 grayscale">
-                <span class="iconify text-5xl mb-4" data-icon="mdi:folder-open-outline"></span>
-                <p class="text-[10px] font-black uppercase tracking-widest">No evidence collected</p>
-            </div>
-        `;
-    }
+    const modelExps = App.work.modelExplanations || [];
+    const generalExp = App.work.modelGeneralExplanation;
     
-    return evidence.map(e => `
+    let html = '';
+
+    // 1. Regular Evidence
+    html += evidence.map(e => `
         <div onclick="window.toggleEvidenceSelection('${e.id}')" 
             class="evidence-card p-4 rounded-2xl border-2 cursor-pointer transition-all ${App.work.selectedEvidence?.includes(e.id) ? 'border-purple-500 bg-purple-50 shadow-md' : 'border-gray-50 bg-white hover:border-purple-200 hover:shadow-sm'}">
             <div class="flex items-center gap-3">
@@ -110,6 +60,53 @@ function renderEvidenceSelectionBank() {
             <p class="text-[10px] text-gray-400 mt-2 line-clamp-2 leading-relaxed">${e.description}</p>
         </div>
     `).join('');
+
+    // 2. Model General Explanation
+    if (generalExp) {
+        const id = 'exp_general';
+        html += `
+            <div onclick="window.toggleEvidenceSelection('${id}')" 
+                class="evidence-card p-4 rounded-2xl border-2 cursor-pointer transition-all ${App.work.selectedEvidence?.includes(id) ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-50 bg-white hover:border-blue-200 hover:shadow-sm'}">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-blue-600 shadow-inner">
+                        <span class="iconify" data-icon="mdi:comment-quote"></span>
+                    </div>
+                    <span class="font-bold text-sm text-gray-800 flex-1 truncate">Model Overview</span>
+                    ${App.work.selectedEvidence?.includes(id) ? '<span class="iconify text-blue-600" data-icon="mdi:check-circle"></span>' : ''}
+                </div>
+                <p class="text-[10px] text-gray-400 mt-2 line-clamp-2 leading-relaxed">${generalExp}</p>
+            </div>
+        `;
+    }
+
+    // 3. Model Points
+    html += modelExps.filter(x => x.text).map((exp, i) => {
+        const id = 'exp_' + exp.id;
+        return `
+            <div onclick="window.toggleEvidenceSelection('${id}')" 
+                class="evidence-card p-4 rounded-2xl border-2 cursor-pointer transition-all ${App.work.selectedEvidence?.includes(id) ? 'border-amber-500 bg-amber-50 shadow-md' : 'border-gray-50 bg-white hover:border-amber-200 hover:shadow-sm'}">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-amber-600 shadow-inner">
+                        <span class="text-[10px] font-black">${i + 1}</span>
+                    </div>
+                    <span class="font-bold text-sm text-gray-800 flex-1 truncate">Model Point #${i + 1}</span>
+                    ${App.work.selectedEvidence?.includes(id) ? '<span class="iconify text-amber-600" data-icon="mdi:check-circle"></span>' : ''}
+                </div>
+                <p class="text-[10px] text-gray-400 mt-2 line-clamp-2 leading-relaxed">${exp.text}</p>
+            </div>
+        `;
+    }).join('');
+
+    if (!html) {
+        return `
+            <div class="py-16 text-center flex flex-col items-center opacity-30 grayscale">
+                <span class="iconify text-5xl mb-4" data-icon="mdi:folder-open-outline"></span>
+                <p class="text-[10px] font-black uppercase tracking-widest">No evidence collected</p>
+            </div>
+        `;
+    }
+    
+    return html;
 }
 
 

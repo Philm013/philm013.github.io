@@ -10,6 +10,20 @@ import { renderTeacherContent, updateModeUI, renderStudentContent } from '../ui/
 import { renderNavigation } from '../ui/navigation.js';
 import { toast, generateCode, calculateStudentProgress } from '../ui/utils.js';
 
+function renderStatTile(label, count, icon, color) {
+    return `
+        <div class="bg-white rounded-3xl shadow-sm p-6 border border-gray-50 flex items-center gap-4">
+            <div class="w-14 h-14 bg-${color}-50 rounded-2xl flex items-center justify-center text-${color}-600 shadow-sm border border-${color}-100">
+                <span class="iconify text-3xl" data-icon="${icon}"></span>
+            </div>
+            <div>
+                <p class="text-2xl font-black text-gray-900">${count}</p>
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${label}</p>
+            </div>
+        </div>
+    `;
+}
+
 /**
  * Renders the primary teacher dashboard overview.
  */
@@ -195,10 +209,16 @@ export async function renderTeacherSnapshots() {
                     `;
                 }).join('')}
                 ${students.length === 0 ? `
-                    <div class="col-span-full py-24 text-center bg-white rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center">
-                        <span class="iconify text-6xl text-gray-200 mb-4" data-icon="mdi:account-search-outline"></span>
-                        <h3 class="text-lg font-bold text-gray-400">Waiting for Students</h3>
-                        <p class="text-sm text-gray-400 mt-1">Invite students using class code: <span class="font-mono font-black text-primary">${App.classCode}</span></p>
+                    <div class="col-span-full py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center shadow-inner">
+                        <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                            <span class="iconify text-6xl text-gray-200" data-icon="mdi:account-search-outline"></span>
+                        </div>
+                        <h3 class="text-2xl font-black text-gray-400">Classroom is currently empty</h3>
+                        <p class="text-gray-400 mt-2 max-w-sm mx-auto leading-relaxed">Students will appear here in real-time as they join the class session with your code.</p>
+                        <div class="mt-8 flex items-center gap-3 px-6 py-3 bg-primary text-white rounded-2xl font-black shadow-lg shadow-blue-100">
+                            <span class="iconify text-xl" data-icon="mdi:qrcode"></span>
+                            CODE: ${App.classCode}
+                        </div>
                     </div>
                 ` : ''}
             </div>
@@ -537,37 +557,100 @@ export async function renderActivityDashboard() {
     const isMonitoring = App.viewerState.isMonitoring;
     return `
         <div class="h-full flex flex-col -m-6">
-            <div class="bg-orange-600 text-white p-4 flex items-center justify-between shadow-lg z-50">
-                <div class="flex items-center gap-4">
-                    <button onclick="window.exitActivityDashboard()" class="p-2 hover:bg-orange-700 rounded-lg">
-                        <span class="iconify text-xl" data-icon="mdi:arrow-left"></span>
+            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl z-50">
+                <div class="flex items-center gap-6">
+                    <button onclick="window.exitActivityDashboard()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                        <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
                     </button>
-                    <h2 class="font-bold text-lg uppercase tracking-tight">${App.currentModule}</h2>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-black text-2xl uppercase tracking-tighter">${App.currentModule}</h2>
+                            <span class="px-2 py-0.5 bg-orange-500 text-white rounded text-[10px] font-black uppercase tracking-widest">Guided</span>
+                        </div>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Practice Command Center</p>
+                    </div>
                 </div>
-                <div class="flex items-center gap-1 bg-orange-700 p-1 rounded-xl">
-                    <button onclick="window.toggleDashboardMode(false)" class="px-4 py-2 rounded-lg text-sm font-bold ${!isMonitoring ? 'bg-white text-orange-600 shadow' : 'text-white'}">Edit Exemplar</button>
-                    <button onclick="window.toggleDashboardMode(true)" class="px-4 py-2 rounded-lg text-sm font-bold ${isMonitoring ? 'bg-white text-orange-600 shadow' : 'text-white'}">Monitor Class</button>
+                <div class="flex items-center gap-1 bg-white/5 p-1.5 rounded-2xl border border-white/10">
+                    <button onclick="window.toggleDashboardMode(false)" class="px-6 py-3 rounded-xl text-sm font-black transition-all ${!isMonitoring ? 'bg-white text-gray-900 shadow-xl scale-105' : 'text-gray-400 hover:text-white'}">
+                        <span class="iconify inline mr-2" data-icon="mdi:pencil-box"></span>
+                        Edit Exemplar
+                    </button>
+                    <button onclick="window.toggleDashboardMode(true)" class="px-6 py-3 rounded-xl text-sm font-black transition-all ${isMonitoring ? 'bg-white text-gray-900 shadow-xl scale-105' : 'text-gray-400 hover:text-white'}">
+                        <span class="iconify inline mr-2" data-icon="mdi:monitor-dashboard"></span>
+                        Monitor Class
+                    </button>
                 </div>
             </div>
-            <div class="flex-1 overflow-auto bg-gray-50 p-6">
-                ${isMonitoring ? await renderMonitorView() : `<div class="bg-white p-8 rounded-3xl shadow-sm border border-orange-100 min-h-full"><p class="text-orange-600 font-black mb-6 uppercase tracking-widest text-xs flex items-center gap-2"><span class="iconify" data-icon="mdi:pencil-box"></span> You are editing the class exemplar</p>${window.renderStudentContentHtml()}</div>`}
+            <div class="flex-1 overflow-auto bg-gray-50 p-8 custom-scrollbar">
+                <div class="max-w-7xl mx-auto h-full">
+                    ${isMonitoring ? await renderMonitorView() : `
+                        <div class="bg-white rounded-[40px] shadow-sm border border-gray-100 min-h-full flex flex-col overflow-hidden">
+                            <div class="p-8 border-b border-gray-50 bg-orange-50/30 flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-xl font-black text-gray-900">Class Exemplar Editor</h3>
+                                    <p class="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Creating reference work for students</p>
+                                </div>
+                                <div class="flex items-center gap-2 px-4 py-2 bg-white rounded-2xl border border-orange-100 text-orange-600 text-[10px] font-black uppercase tracking-widest shadow-sm">
+                                    <span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+                                    Live to Class
+                                </div>
+                            </div>
+                            <div class="flex-1 p-8">
+                                ${window.renderStudentContentHtml()}
+                            </div>
+                        </div>
+                    `}
+                </div>
             </div>
         </div>
     `;
 }
 
+
 async function renderMonitorView() {
     const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
     const students = allUsers.filter(u => u.mode === 'student');
-    return `<div class="grid md:grid-cols-3 gap-6">${await Promise.all(students.map(async s => {
-        const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + s.visitorId);
-        const w = saved ? saved.work : {};
-        return `<div class="bg-white rounded-2xl border p-4 shadow-sm">
-            <div class="flex justify-between items-center mb-3"><span class="font-bold">${s.name}</span><span class="text-xs font-bold text-primary">${calculateStudentProgress(w)}%</span></div>
-            <button onclick="window.viewStudentWork('${s.visitorId}')" class="w-full py-2 bg-blue-50 text-primary rounded-lg text-xs font-bold">View detail</button>
-        </div>`;
-    })).then(r => r.join(''))}</div>`;
+    const now = Date.now();
+
+    return `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            ${await Promise.all(students.map(async s => {
+                const isOnline = now - s.lastSeen < 15000;
+                const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + s.visitorId);
+                const progress = saved ? calculateStudentProgress(saved.work) : 0;
+                
+                return `
+                    <div class="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm hover:shadow-xl transition-all group">
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-2xl shadow-inner border border-white group-hover:scale-110 transition-transform">
+                                ${s.avatar || s.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span class="w-3 h-3 rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-gray-300'}"></span>
+                        </div>
+                        <h4 class="font-black text-gray-900 text-lg mb-1">${s.name}</h4>
+                        <div class="flex items-center gap-2 mb-6">
+                            <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-primary" style="width:${progress}%"></div>
+                            </div>
+                            <span class="text-[10px] font-black text-primary">${progress}%</span>
+                        </div>
+                        <button onclick="window.viewStudentWork('${s.visitorId}')" 
+                            class="w-full py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all">
+                            View Work Board
+                        </button>
+                    </div>
+                `;
+            })).then(r => r.join(''))}
+            ${students.length === 0 ? `
+                <div class="col-span-full py-24 text-center opacity-30 grayscale">
+                    <span class="iconify text-6xl mb-4" data-icon="mdi:account-group-outline"></span>
+                    <p class="text-sm font-black uppercase tracking-widest">No student work to monitor yet</p>
+                </div>
+            ` : ''}
+        </div>
+    `;
 }
+
 
 /**
  * Reuses student module renderers for the exemplar editor.

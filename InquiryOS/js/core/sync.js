@@ -141,8 +141,9 @@ export async function syncWithStorage() {
         }
         
         // 3. Sync Work
+        // IMPORTANT: Skip syncing work if student is viewing an exemplar
         const targetId = App.mode === 'student' ? App.user.visitorId : App.viewingStudentId;
-        if (targetId) {
+        if (targetId && !App.isViewingExemplar) {
             const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + targetId);
             if (saved && saved.timestamp > App.syncState.lastSync) {
                 // To avoid bleeding, we merge into a fresh state if it's a major sync

@@ -113,6 +113,7 @@ function renderVariableBank() {
 
 function renderDataTable() {
     const dt = App.work.dataTable || { columns: [], rows: [] };
+    const vars = App.work.variables || [];
     const showFeedback = App.teacherSettings.showCommentsToStudents || App.mode === 'teacher';
     
     return `
@@ -122,19 +123,38 @@ function renderDataTable() {
                     <tr class="bg-gray-100">
                         <th class="border p-2 w-10"></th>
                         ${(dt.columns || []).map((col, i) => `
-                            <th class="border p-0 min-w-32">
-                                <div class="p-2">
-                                    <input type="text" value="${col.name}" 
-                                        onchange="window.updateColumnName('${col.id}', this.value)"
-                                        class="w-full font-semibold text-sm bg-transparent border-none focus:outline-none mb-1">
+                            <th class="border p-0 min-w-40">
+                                <div class="p-2 space-y-2">
                                     <div class="flex items-center gap-2">
-                                        <select onchange="window.updateColumnType('${col.id}', this.value)" 
-                                            class="text-xs bg-white border rounded px-1 py-0.5">
-                                            <option value="text" ${col.type === 'text' ? 'selected' : ''}>Text</option>
-                                            <option value="number" ${col.type === 'number' ? 'selected' : ''}>Number</option>
-                                        </select>
-                                        ${col.type === 'number' ? `<input type="text" value="${col.unit || ''}" placeholder="unit" onchange="window.updateColumnUnit('${col.id}', this.value)" class="text-xs w-16 border rounded px-1 py-0.5">` : ''}
-                                        ${i > 0 ? `<button onclick="window.deleteColumn('${col.id}')" class="text-red-400">×</button>` : ''}
+                                        <input type="text" value="${col.name}" 
+                                            onchange="window.updateColumnName('${col.id}', this.value)"
+                                            class="flex-1 font-bold text-sm bg-transparent border-none focus:outline-none placeholder:text-gray-300"
+                                            placeholder="Label...">
+                                        ${i > 0 ? `<button onclick="window.deleteColumn('${col.id}')" class="text-red-300 hover:text-red-500 transition-colors">
+                                            <span class="iconify" data-icon="mdi:close-circle"></span>
+                                        </button>` : ''}
+                                    </div>
+                                    
+                                    <div class="flex flex-col gap-1.5">
+                                        <div class="flex items-center gap-1">
+                                            <span class="iconify text-[10px] text-gray-400" data-icon="mdi:link-variant"></span>
+                                            <select onchange="window.linkColumnToVariable('${col.id}', this.value)" 
+                                                class="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 w-full font-medium">
+                                                <option value="">No Variable Link</option>
+                                                ${vars.filter(v => v.type).map(v => `
+                                                    <option value="${v.id}" ${col.variableId === v.id ? 'selected' : ''}>${v.name}</option>
+                                                `).join('')}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="flex items-center gap-1">
+                                            <select onchange="window.updateColumnType('${col.id}', this.value)" 
+                                                class="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 font-bold">
+                                                <option value="text" ${col.type === 'text' ? 'selected' : ''}>TXT</option>
+                                                <option value="number" ${col.type === 'number' ? 'selected' : ''}>NUM</option>
+                                            </select>
+                                            ${col.type === 'number' ? `<input type="text" value="${col.unit || ''}" placeholder="Unit" onchange="window.updateColumnUnit('${col.id}', this.value)" class="text-[10px] w-full border border-gray-200 rounded px-1.5 py-0.5">` : ''}
+                                        </div>
                                     </div>
                                 </div>
                             </th>
@@ -145,32 +165,69 @@ function renderDataTable() {
                 </thead>
                 <tbody>
                     ${(dt.rows || []).map((row, ri) => `
-                        <tr class="hover:bg-gray-50">
-                            <td class="border p-2 text-center text-gray-400 text-xs">${ri + 1}</td>
-                            ${dt.columns.map(col => `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="border p-2 text-center text-gray-400 text-[10px] font-bold">${ri + 1}</td>
+                            ${(dt.columns || []).map(col => `
                                 <td class="border p-0">
                                     <input type="${col.type === 'number' ? 'number' : 'text'}"
                                         value="${row[col.id] || ''}"
                                         onchange="window.updateCell(${ri}, '${col.id}', this.value)"
-                                        class="data-cell w-full p-2 border-none focus:bg-blue-50"
-                                        step="${col.type === 'number' ? '0.01' : ''}">
+                                        class="data-cell w-full p-3 border-none focus:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
+                                        step="${col.type === 'number' ? '0.01' : ''}"
+                                        placeholder="...">
                                 </td>
                             `).join('')}
+                            <td class="border p-2 text-center">
+                                <div class="relative group/note inline-block">
+                                    <button onclick="window.toggleRowNote(${ri})" class="p-1.5 rounded-lg hover:bg-gray-100 transition-all ${row.note ? 'text-primary' : 'text-gray-300'}">
+                                        <span class="iconify" data-icon="${row.note ? 'mdi:note-text' : 'mdi:note-plus-outline'}"></span>
+                                    </button>
+                                    ${row.note ? `
+                                        <div class="absolute right-full mr-3 top-1/2 -translate-y-1/2 w-56 p-4 bg-gray-900 text-white text-[11px] rounded-2xl shadow-2xl opacity-0 group-hover/note:opacity-100 pointer-events-none transition-all z-50 border border-white/10 scale-95 group-hover/note:scale-100">
+                                            <p class="font-black text-blue-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Row Note</p>
+                                            ${row.note}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </td>
                             ${showFeedback ? `
-                                <td class="border p-2 text-center text-xl">
+                                <td class="border p-2 text-center text-xl bg-blue-50/20">
                                     ${dt.feedback?.[ri] || ''}
                                 </td>
                             ` : ''}
                             <td class="border p-2 text-center">
-                                <button onclick="window.deleteDataRow(${ri})" class="text-red-400">×</button>
+                                <button onclick="window.deleteDataRow(${ri})" class="p-1.5 text-gray-300 hover:text-red-500 transition-colors">
+                                    <span class="iconify" data-icon="mdi:trash-can-outline"></span>
+                                </button>
                             </td>
                         </tr>
                     `).join('')}
+                    ${(dt.rows || []).length === 0 ? `
+                        <tr>
+                            <td colspan="100%" class="p-12 text-center bg-gray-50/50">
+                                <div class="flex flex-col items-center opacity-30">
+                                    <span class="iconify text-4xl mb-2" data-icon="mdi:table-off"></span>
+                                    <p class="text-[10px] font-black uppercase tracking-widest">No data rows added</p>
+                                    <button onclick="window.addDataRow()" class="mt-4 text-xs font-bold text-primary hover:underline">Add first row</button>
+                                </div>
+                            </td>
+                        </tr>
+                    ` : ''}
                 </tbody>
             </table>
         </div>
     `;
 }
+
+export async function toggleRowNote(index) {
+    const note = prompt('Add a note for this row:', App.work.dataTable.rows[index].note || '');
+    if (note !== null) {
+        App.work.dataTable.rows[index].note = note;
+        await saveAndBroadcast('dataTable.rows', App.work.dataTable.rows);
+        renderStudentContent();
+    }
+}
+
 
 
 export async function addVariable() {
@@ -196,6 +253,17 @@ export async function dropVar(event) {
 export async function removeVariable(id) {
     const v = App.work.variables.find(x => x.id === id); if (v) v.type = null;
     await saveAndBroadcast('variables', App.work.variables); renderStudentContent();
+}
+
+export async function linkColumnToVariable(colId, varId) {
+    const col = App.work.dataTable.columns.find(c => c.id === colId);
+    if (col) {
+        col.variableId = varId;
+        const v = App.work.variables.find(x => x.id === varId);
+        if (v && !col.name) col.name = v.name;
+        await saveAndBroadcast('dataTable', App.work.dataTable);
+        renderStudentContent();
+    }
 }
 
 export async function updateColumnName(colId, name) { const col = App.work.dataTable.columns.find(c => c.id === colId); if (col) col.name = name; await saveAndBroadcast('dataTable', App.work.dataTable); }
