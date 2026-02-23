@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI Template Studio Pro</title>
+    
+    <!-- Tailwind CSS & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- CodeMirror (Editor Core & Modes) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+
+    <!-- html2canvas (Thumbnail Generation) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* Mobile Viewport Fixes */
+        :root {
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-top: env(safe-area-inset-top, 0px);
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background: #0f172a; color: #f8fafc; 
+            overscroll-behavior-y: none; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
+        /* CodeMirror Overrides */
+        .CodeMirror { height: 100%; font-family: 'Fira Code', ui-monospace, SFMono-Regular, monospace; font-size: 14px; background: #1e293b !important; }
+        .CodeMirror-vscrollbar, .CodeMirror-hscrollbar { display: none !important; }
+        
+        /* Custom Scrollbars */
+        .hide-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .hide-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .hide-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        
+        /* Loader Animation */
+        .loader { border: 3px solid #334155; border-bottom-color: #8b5cf6; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; }
+        .loader-sm { border-width: 2px; width: 16px; height: 16px; border-bottom-color: #fff; }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .tab-transition { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body x-data="templateStudio()" x-init="initApp()" class="fixed inset-0 flex flex-col md:flex-row overflow-hidden selection:bg-indigo-500/30">
+
+    <!-- DESKTOP SIDEBAR -->
+    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-col justify-between shrink-0 z-20 shadow-xl relative">
+        <div>
+            <div class="h-16 flex items-center px-6 border-b border-slate-800 pt-[var(--safe-top)]">
+                <i class="fa-solid fa-layer-group text-indigo-500 text-2xl"></i>
+                <span class="ml-3 font-bold text-xl tracking-wide">Studio<span class="text-indigo-500">Pro</span></span>
+            </div>
+            <nav class="p-4 space-y-2">
+                <button @click="switchView('home')" :class="currentView === 'home' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full flex items-center p-3 rounded-xl tab-transition">
+                    <i class="fa-solid fa-house w-6 text-center"></i><span class="ml-3 font-medium">Home</span>
+                </button>
+                <button @click="switchView('library')" :class="currentView === 'library' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full flex items-center p-3 rounded-xl tab-transition">
+                    <i class="fa-solid fa-folder-open w-6 text-center"></i><span class="ml-3 font-medium">My Library</span>
+                </button>
+                <button @click="createNewTemplate()" :class="currentView === 'editor' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full flex items-center p-3 rounded-xl tab-transition">
+                    <i class="fa-solid fa-plus w-6 text-center"></i><span class="ml-3 font-medium">New Project</span>
+                </button>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800 pb-[calc(1rem+var(--safe-bottom))]">
+            <button @click="settingsOpen = true" class="w-full flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl tab-transition">
+                <i class="fa-solid fa-gear w-6 text-center"></i><span class="ml-3 font-medium">API Settings</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN APP WRAPPER -->
+    <main class="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden relative pt-[var(--safe-top)]">
+        
+        <!-- 1. HOME VIEW -->
+        <div x-show="currentView === 'home'" class="absolute inset-0 overflow-y-auto p-6 md:p-10 pb-32 md:pb-10 hide-scrollbar" x-transition.opacity style="display: none;">
+            <div class="max-w-4xl mx-auto mt-6 md:mt-12 text-center">
+                <div class="inline-block px-4 py-2 rounded-full bg-indigo-500/10 text-indigo-400 mb-6 border border-indigo-500/20 text-xs font-bold tracking-widest uppercase">
+                    v3.0 Serverless Edition
+                </div>
+                <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-6 tracking-tight leading-tight">Create the web, <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Powered by AI</span></h1>
+                <p class="text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+                    Your personal browser-based IDE. Generate UI with Gemini, inject Unsplash stock photos directly into code, and export clean HTML files. All securely saved locally to IndexedDB.
+                </p>
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    <button @click="switchView('library')" class="px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold tab-transition shadow-lg hover:bg-indigo-500 active:scale-95">
+                        <i class="fa-solid fa-layer-group mr-2"></i> Browse Templates
+                    </button>
+                    <button @click="createNewTemplate()" class="px-8 py-4 bg-slate-800 text-white border border-slate-700 rounded-xl font-bold tab-transition hover:bg-slate-700 active:scale-95">
+                        <i class="fa-solid fa-code mr-2"></i> Blank Project
+                    </button>
+                </div>
+            </div>
+            
+            <div class="max-w-5xl mx-auto mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-slate-900/80 border border-slate-800 p-8 rounded-3xl shadow-lg">
+                    <i class="fa-solid fa-image text-emerald-400 text-4xl mb-6"></i>
+                    <h3 class="text-xl font-bold mb-3">Unsplash Base64</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">Search and inject high-res stock photos securely as Base64 strings straight into your code so they load instantly.</p>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 p-8 rounded-3xl shadow-lg">
+                    <i class="fa-solid fa-robot text-purple-400 text-4xl mb-6"></i>
+                    <h3 class="text-xl font-bold mb-3">Gemini UI Gen</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">Chat with Gemini. A strict system prompt guarantees it returns production-ready Tailwind HTML ready to be injected.</p>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 p-8 rounded-3xl shadow-lg">
+                    <i class="fa-solid fa-camera text-blue-400 text-4xl mb-6"></i>
+                    <h3 class="text-xl font-bold mb-3">Canvas Previews</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">Saving a project automatically uses an off-screen engine to render a high-quality thumbnail of your code.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. LIBRARY VIEW -->
+        <div x-show="currentView === 'library'" class="absolute inset-0 overflow-y-auto p-6 md:p-8 pb-32 md:pb-8 hide-scrollbar" style="display: none;" x-transition.opacity>
+            <div class="max-w-7xl mx-auto">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-3xl font-bold text-white tracking-tight">Your Projects</h2>
+                    <button @click="createNewTemplate()" class="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold tab-transition active:scale-95 shadow-lg hover:bg-indigo-500 flex items-center">
+                        <i class="fa-solid fa-plus md:mr-2"></i><span class="hidden md:inline">New Project</span>
+                    </button>
+                </div>
+
+                <template x-if="templates.length === 0">
+                    <div class="text-center py-32 bg-slate-900/50 rounded-3xl border border-slate-800 border-dashed">
+                        <i class="fa-solid fa-folder-open text-6xl mb-4 text-slate-700"></i>
+                        <p class="text-lg text-slate-400">Your library is empty. Start creating!</p>
+                    </div>
+                </template>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <template x-for="tpl in templates" :key="tpl.id">
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col hover:border-indigo-500/50 tab-transition shadow-xl group relative">
+                            
+                            <!-- Snapshot Preview -->
+                            <div class="h-48 bg-slate-950 relative overflow-hidden border-b border-slate-800 flex items-center justify-center">
+                                <template x-if="tpl.thumbnail">
+                                    <img :src="tpl.thumbnail" class="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105" alt="Preview">
+                                </template>
+                                <template x-if="!tpl.thumbnail">
+                                    <div class="flex flex-col items-center justify-center text-slate-600">
+                                        <i class="fa-solid fa-image text-5xl mb-3 opacity-30"></i>
+                                        <span class="text-xs font-bold uppercase tracking-widest opacity-50">No Preview</span>
+                                    </div>
+                                </template>
+                                
+                                <!-- Floating Preview Button -->
+                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                                    <button @click.stop="previewFullscreen(tpl)" class="bg-white/20 hover:bg-white/40 text-white backdrop-blur-md rounded-full w-12 h-12 flex items-center justify-center transform scale-75 group-hover:scale-100 transition-all shadow-lg" title="Preview Fullscreen">
+                                        <i class="fa-solid fa-eye text-xl"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Card Info -->
+                            <div class="p-5 flex-1 flex flex-col relative z-20 bg-slate-900">
+                                <div class="flex justify-between items-start mb-2 gap-2">
+                                    <h3 class="text-lg font-bold text-white truncate" x-text="tpl.name"></h3>
+                                    <span x-show="tpl.isDefault" class="text-[10px] uppercase tracking-widest font-bold bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded shrink-0">Preset</span>
+                                </div>
+                                <div class="flex items-center text-xs text-slate-400 mb-6">
+                                    <i class="fa-solid fa-tag mr-2 text-slate-600"></i><span x-text="tpl.genre" class="truncate font-medium"></span>
+                                </div>
+                                
+                                <div class="mt-auto flex justify-between gap-2">
+                                    <button @click="openInEditor(tpl)" class="flex-1 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white py-2.5 rounded-xl text-sm font-bold tab-transition active:scale-95 border border-indigo-500/30 flex items-center justify-center">
+                                        <i class="fa-solid fa-pen-to-square mr-2"></i> Edit
+                                    </button>
+                                    <button @click="exportTemplate(tpl)" class="w-11 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white rounded-xl tab-transition active:scale-95 flex items-center justify-center border border-slate-700" title="Export HTML">
+                                        <i class="fa-solid fa-download"></i>
+                                    </button>
+                                    <button x-show="!tpl.isDefault" @click="deleteTemplate(tpl.id)" class="w-11 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-xl tab-transition active:scale-95 flex items-center justify-center border border-slate-700 hover:border-red-500/30" title="Delete">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. EDITOR VIEW (Takes full absolute inset) -->
+        <div x-show="currentView === 'editor'" class="absolute inset-0 z-40 bg-slate-950 flex flex-col" style="display: none;" x-transition.opacity>
+            
+            <!-- Editor Top Navbar -->
+            <div class="h-16 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-3 md:px-6 shrink-0 shadow-md z-20">
+                <button @click="switchView('library')" class="md:hidden p-2 text-slate-400 active:text-white mr-2 bg-slate-800 rounded-lg active:scale-95">
+                    <i class="fa-solid fa-chevron-left text-lg"></i>
+                </button>
+                
+                <div class="flex flex-col md:flex-row md:items-center space-y-1 md:space-y-0 md:space-x-4 flex-1 min-w-0">
+                    <input type="text" x-model="activeTemplate.name" class="bg-transparent text-lg md:text-xl font-bold text-white focus:outline-none focus:border-b-2 border-indigo-500 w-full md:w-64 truncate pb-0.5" placeholder="Project Name...">
+                    <input type="text" x-model="activeTemplate.genre" class="hidden md:block bg-transparent text-sm text-slate-400 focus:outline-none focus:border-b border-slate-500 w-40 pb-0.5" placeholder="Genre / Tags">
+                </div>
+                
+                <div class="flex items-center space-x-2 md:space-x-3 ml-2 shrink-0">
+                    <span x-show="saveStatus" x-text="saveStatus" class="text-xs font-bold text-emerald-400 absolute right-32 md:static" x-transition></span>
+                    
+                    <div class="hidden md:flex space-x-1 border-r border-slate-700 pr-3 mr-1 bg-slate-800/50 p-1 rounded-lg">
+                        <button @click="setEditorMode('code')" :class="editorMode === 'code' ? 'text-indigo-400 bg-slate-700 shadow' : 'text-slate-400 hover:text-white'" class="p-1.5 px-2 rounded transition-all"><i class="fa-solid fa-code"></i></button>
+                        <button @click="setEditorMode('split')" :class="editorMode === 'split' ? 'text-indigo-400 bg-slate-700 shadow' : 'text-slate-400 hover:text-white'" class="p-1.5 px-2 rounded transition-all"><i class="fa-solid fa-columns"></i></button>
+                        <button @click="setEditorMode('preview')" :class="editorMode === 'preview' ? 'text-indigo-400 bg-slate-700 shadow' : 'text-slate-400 hover:text-white'" class="p-1.5 px-2 rounded transition-all"><i class="fa-solid fa-desktop"></i></button>
+                    </div>
+                    
+                    <button @click="exportTemplate(activeTemplate)" class="bg-slate-800 hover:bg-slate-700 text-white w-10 h-10 rounded-xl flex items-center justify-center tab-transition active:scale-95 border border-slate-700" title="Export HTML">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
+                    <button @click="saveActiveTemplate()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 h-10 rounded-xl text-sm font-bold tab-transition active:scale-95 shadow-lg shadow-emerald-900/50 flex items-center justify-center w-24 relative">
+                        <span x-show="isSaving" class="loader loader-sm absolute"></span>
+                        <span x-show="!isSaving"><i class="fa-solid fa-floppy-disk md:mr-2"></i><span class="hidden md:inline">Save</span></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Workspace Body -->
+            <div class="flex-1 flex relative overflow-hidden bg-slate-950 pb-[calc(4rem+var(--safe-bottom))] md:pb-0">
+                
+                <!-- Tools/AI Sidebar (Left) -->
+                <div x-show="(isMobile && mobileTab === 'tools') || (!isMobile)" class="w-full md:w-[350px] bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 z-10 shadow-2xl relative h-full">
+                    
+                    <!-- Internal Tabs -->
+                    <div class="flex border-b border-slate-800 shrink-0 bg-slate-900 p-2 gap-1 overflow-x-auto hide-scrollbar">
+                        <button @click="toolTab = 'blocks'" :class="toolTab === 'blocks' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="flex-1 py-2 px-3 rounded-lg font-bold text-xs tab-transition shadow-sm"><i class="fa-solid fa-cubes md:mr-1"></i><span class="hidden md:inline">Blocks</span></button>
+                        <button @click="toolTab = 'images'" :class="toolTab === 'images' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="flex-1 py-2 px-3 rounded-lg font-bold text-xs tab-transition shadow-sm"><i class="fa-solid fa-image md:mr-1"></i><span class="hidden md:inline">Images</span></button>
+                        <button @click="toolTab = 'ai'; scrollChat()" :class="toolTab === 'ai' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="flex-1 py-2 px-3 rounded-lg font-bold text-xs tab-transition shadow-sm"><i class="fa-solid fa-wand-magic-sparkles md:mr-1"></i><span class="hidden md:inline">AI</span></button>
+                    </div>
+
+                    <!-- BLOCKS TAB -->
+                    <div x-show="toolTab === 'blocks'" class="flex-1 overflow-y-auto p-4 hide-scrollbar">
+                        <div class="space-y-3">
+                            <template x-for="block in componentBlocks">
+                                <button @click="insertCode(block.code)" class="w-full text-left p-4 bg-slate-800/50 border border-slate-700 hover:border-indigo-500 rounded-xl tab-transition active:scale-[0.98] group flex flex-col">
+                                    <div class="font-bold text-white text-sm flex items-center">
+                                        <i :class="block.icon + ' ' + block.color" class="mr-3 text-lg w-5 text-center"></i><span x-text="block.name"></span>
+                                    </div>
+                                    <div class="text-xs text-slate-400 mt-2 pl-8" x-text="block.desc"></div>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- IMAGES TAB (Unsplash API) -->
+                    <div x-show="toolTab === 'images'" class="flex-1 flex flex-col overflow-hidden relative" style="display: none;">
+                        <div x-show="!keys.unsplash" class="absolute inset-0 bg-slate-900/95 z-20 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
+                            <i class="fa-solid fa-camera text-5xl text-emerald-500 mb-4 opacity-80"></i>
+                            <h4 class="font-bold text-lg text-white mb-2">Unsplash Setup</h4>
+                            <p class="text-sm text-slate-400 mb-6">Add an Unsplash API Key in Settings to inject stock photos as Base64 strings.</p>
+                            <button @click="settingsOpen = true" class="bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl active:scale-95 shadow-lg">Open Settings</button>
+                        </div>
+                        <div class="p-3 border-b border-slate-800 bg-slate-900 shrink-0">
+                            <div class="relative">
+                                <input type="text" x-model="unsplashQuery" @keydown.enter="searchUnsplash()" placeholder="Search Unsplash..." class="w-full bg-slate-800 border border-slate-700 rounded-lg py-2.5 pl-10 pr-16 text-sm text-white focus:outline-none focus:border-emerald-500">
+                                <i class="fa-solid fa-search absolute left-3.5 top-3 text-slate-500"></i>
+                                <button @click="searchUnsplash()" class="absolute right-1 top-1 bg-emerald-600 text-white text-xs px-3 py-1.5 rounded hover:bg-emerald-500 font-bold">Search</button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-3 hide-scrollbar relative">
+                            <div x-show="isUnsplashLoading" class="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-10"><span class="loader"></span></div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <template x-for="img in unsplashResults" :key="img.id">
+                                    <div class="relative group cursor-pointer aspect-square rounded-xl overflow-hidden border border-slate-700 hover:border-emerald-500 shadow-md" @click="insertBase64Image(img)">
+                                        <img :src="img.urls.thumb" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
+                                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col justify-center items-center transition-opacity">
+                                            <i class="fa-solid fa-download text-emerald-400 text-2xl mb-1"></i>
+                                            <span class="text-[10px] text-white font-bold uppercase tracking-widest mt-1">Insert B64</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div x-show="isImageInserting" class="absolute inset-0 bg-slate-900/90 z-30 flex flex-col items-center justify-center backdrop-blur-sm">
+                            <span class="loader mb-4"></span>
+                            <p class="text-sm font-bold text-emerald-400 animate-pulse">Encoding Base64 Image...</p>
+                        </div>
+                    </div>
+
+                    <!-- AI CHAT TAB -->
+                    <div x-show="toolTab === 'ai'" class="flex-1 flex flex-col overflow-hidden relative" style="display: none;">
+                        <div x-show="!keys.gemini" class="absolute inset-0 bg-slate-900/95 z-20 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
+                            <i class="fa-solid fa-robot text-5xl text-purple-500 mb-4 opacity-80"></i>
+                            <h4 class="font-bold text-lg text-white mb-2">Gemini Setup</h4>
+                            <p class="text-sm text-slate-400 mb-6">Enter your Gemini API key in settings to unlock HTML/Tailwind generation.</p>
+                            <button @click="settingsOpen = true" class="bg-purple-600 text-white font-bold px-6 py-3 rounded-xl active:scale-95 shadow-lg">Open Settings</button>
+                        </div>
+                        
+                        <div class="flex-1 overflow-y-auto hide-scrollbar space-y-4 p-4" id="chat-container">
+                            <div class="bg-purple-900/20 border border-purple-500/20 p-4 rounded-xl text-sm text-purple-200">
+                                <i class="fa-solid fa-wand-magic-sparkles mb-2 text-purple-400"></i><br> Describe a layout. I will generate strict Tailwind HTML for you to inject.
+                            </div>
+                            
+                            <template x-for="msg in aiChat" :key="msg.id">
+                                <div :class="msg.role === 'user' ? 'bg-indigo-600 text-white self-end ml-8' : 'bg-slate-800 text-slate-200 border border-slate-700 mr-8'" class="p-4 rounded-2xl text-sm shadow-md">
+                                    <span x-text="msg.text" class="whitespace-pre-wrap leading-relaxed"></span>
+                                    <div x-show="msg.role === 'ai' && msg.code" class="mt-3 pt-3 border-t border-slate-600/50 text-right">
+                                        <button @click="insertCode(msg.code)" class="text-xs bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg text-white font-bold active:scale-95 shadow-md flex items-center ml-auto"><i class="fa-solid fa-code-merge mr-2"></i>Insert HTML</button>
+                                    </div>
+                                </div>
+                            </template>
+                            <div x-show="isAiLoading" class="p-4 bg-slate-800 rounded-2xl border border-slate-700 mr-8 flex items-center w-max"><span class="loader loader-sm"></span><span class="ml-3 text-sm text-slate-400 font-medium">Writing Code...</span></div>
+                        </div>
+
+                        <div class="mt-auto shrink-0 bg-slate-900 p-3 border-t border-slate-800">
+                            <textarea x-model="aiPrompt" @keydown.enter.prevent="askGemini()" placeholder="e.g. A dark mode pricing table..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-purple-500 resize-none h-20 shadow-inner hide-scrollbar"></textarea>
+                            <button @click="askGemini()" :disabled="isAiLoading || !aiPrompt.trim()" class="w-full mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 disabled:opacity-50 text-white py-2.5 rounded-xl font-bold active:scale-95 shadow-lg">
+                                Generate UI <i class="fa-solid fa-arrow-up ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Code Editor (Middle/Right Split) -->
+                <div x-show="(isMobile && mobileTab === 'code') || (!isMobile && (editorMode === 'code' || editorMode === 'split'))" class="flex-1 flex flex-col border-r border-slate-800 w-full md:w-1/2 z-0 relative bg-[#1e293b] h-full" style="display: none;">
+                    <textarea id="code-editor" class="hidden"></textarea>
+                </div>
+
+                <!-- Live Preview (Right Split) -->
+                <div x-show="(isMobile && mobileTab === 'preview') || (!isMobile && (editorMode === 'preview' || editorMode === 'split'))" class="flex-1 bg-slate-200 w-full md:w-1/2 overflow-hidden flex flex-col shadow-inner z-0 relative h-full" style="display: none;">
+                    <div class="bg-slate-300 h-10 flex items-center px-4 space-x-2 border-b border-slate-400 shrink-0 text-slate-600">
+                        <div class="hidden md:flex space-x-1.5"><div class="w-3 h-3 rounded-full bg-red-400 shadow-sm"></div><div class="w-3 h-3 rounded-full bg-yellow-400 shadow-sm"></div><div class="w-3 h-3 rounded-full bg-green-400 shadow-sm"></div></div>
+                        <div class="bg-white/50 px-3 py-1 rounded-md mx-2 flex-1 text-center font-mono opacity-60 hidden md:block text-[10px] uppercase tracking-widest font-bold">Live Browser</div>
+                        <span class="md:hidden font-bold uppercase tracking-wider text-[10px]">Live Preview</span>
+                        <div class="ml-auto flex space-x-2">
+                             <button @click="previewWidth = '375px'" :class="previewWidth === '375px' ? 'text-indigo-600 bg-white/50 shadow-sm' : ''" class="p-1 px-2 rounded-md transition-all active:scale-90"><i class="fa-solid fa-mobile-screen"></i></button>
+                             <button @click="previewWidth = '100%'" :class="previewWidth === '100%' ? 'text-indigo-600 bg-white/50 shadow-sm' : ''" class="p-1 px-2 rounded-md transition-all active:scale-90"><i class="fa-solid fa-desktop"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-auto flex justify-center items-start pt-0 md:pt-4 pb-0 md:pb-4 hide-scrollbar">
+                         <!-- Sandboxed to prevent navigation hijacking -->
+                         <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin" :style="'width: ' + previewWidth + '; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);'" class="h-full bg-white shadow-2xl md:rounded-b-xl border border-slate-300 md:border-none origin-top"></iframe>
+                    </div>
+                </div>
+
+                <!-- MOBILE EDITOR TABS (Fixed Bottom) -->
+                <div class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-700 flex justify-around items-center pb-[var(--safe-bottom)] z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] h-16">
+                    <button @click="setMobileTab('preview')" :class="mobileTab === 'preview' ? 'text-indigo-400' : 'text-slate-400'" class="flex-1 h-full flex flex-col items-center justify-center tab-transition">
+                        <i class="fa-solid fa-eye text-xl mb-1"></i><span class="text-[10px] font-bold uppercase tracking-widest">Preview</span>
+                    </button>
+                    <button @click="setMobileTab('code')" :class="mobileTab === 'code' ? 'text-indigo-400' : 'text-slate-400'" class="flex-1 h-full flex flex-col items-center justify-center tab-transition border-x border-slate-800">
+                        <i class="fa-solid fa-code text-xl mb-1"></i><span class="text-[10px] font-bold uppercase tracking-widest">Code</span>
+                    </button>
+                    <button @click="setMobileTab('tools')" :class="mobileTab === 'tools' ? 'text-purple-400' : 'text-slate-400'" class="flex-1 h-full flex flex-col items-center justify-center tab-transition">
+                        <i class="fa-solid fa-toolbox text-xl mb-1"></i><span class="text-[10px] font-bold uppercase tracking-widest">Tools</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MOBILE MAIN BOTTOM NAV (Home & Library Views) -->
+    <nav x-show="currentView !== 'editor'" class="md:hidden fixed bottom-0 w-full bg-slate-900/95 backdrop-blur-md border-t border-slate-800 flex justify-around pb-[var(--safe-bottom)] z-30 h-16" x-transition.opacity>
+        <button @click="switchView('home')" :class="currentView === 'home' ? 'text-indigo-400' : 'text-slate-500'" class="flex-1 h-full flex flex-col items-center justify-center tab-transition active:bg-slate-800">
+            <i class="fa-solid fa-house text-xl mb-1"></i><span class="text-[10px] font-bold uppercase tracking-widest">Home</span>
+        </button>
+        <button @click="switchView('library')" :class="currentView === 'library' ? 'text-indigo-400' : 'text-slate-500'" class="flex-1 h-full flex flex-col items-center justify-center tab-transition active:bg-slate-800 border-x border-slate-800">
+            <i class="fa-solid fa-folder-open text-xl mb-1"></i><span class="text-[10px] font-bold uppercase tracking-widest">Library</span>
+        </button>
+        <button @click="settingsOpen = true" class="flex-1 h-full flex flex-col items-center justify-center text-slate-500 tab-transition active:bg-slate-800">
+            <i class="fa-solid fa-gear text-xl mb-1"></i><span class="text-[10px] font-bold uppercase tracking-widest">Settings</span>
+        </button>
+    </nav>
+
+    <!-- SETTINGS MODAL -->
+    <div x-show="settingsOpen" style="display: none;" class="fixed inset-0 bg-slate-950 md:bg-slate-900/80 z-[60] flex md:items-center justify-center pt-[var(--safe-top)] backdrop-blur-sm" x-transition.opacity>
+        <div class="bg-slate-900 md:border border-slate-700 md:rounded-3xl p-6 md:p-8 w-full h-full md:h-auto md:max-w-xl shadow-2xl flex flex-col overflow-y-auto hide-scrollbar" @click.away="if(!isMobile) settingsOpen = false">
+            <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4 md:border-none md:pb-0 shrink-0">
+                <h3 class="text-2xl font-bold text-white"><i class="fa-solid fa-gear mr-3 text-indigo-500"></i>Settings</h3>
+                <button @click="settingsOpen = false" class="text-slate-400 hover:text-white p-2 active:scale-90 bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center transition-transform"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="space-y-6 flex-1 py-2">
+                <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 shadow-inner">
+                    <label class="block text-sm font-bold text-slate-200 mb-3"><i class="fa-solid fa-robot text-purple-400 mr-2"></i>Gemini API Key</label>
+                    <input type="password" x-model="keys.gemini" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 text-white focus:border-indigo-500 focus:outline-none font-mono text-sm transition-colors">
+                </div>
+                <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 shadow-inner">
+                    <label class="block text-sm font-bold text-slate-200 mb-3"><i class="fa-solid fa-camera text-emerald-400 mr-2"></i>Unsplash Access Key</label>
+                    <input type="password" x-model="keys.unsplash" placeholder="Your Unsplash Access Key..." class="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 text-white focus:border-emerald-500 focus:outline-none font-mono text-sm transition-colors">
+                </div>
+                <p class="text-xs text-slate-500 text-center"><i class="fa-solid fa-shield-halved mr-1"></i> Keys are stored exclusively in your browser's local storage.</p>
+            </div>
+            <div class="mt-6 shrink-0 pb-[var(--safe-bottom)] flex justify-end">
+                <button @click="saveSettings()" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 md:py-3 rounded-xl font-bold tab-transition shadow-lg active:scale-95 text-lg md:text-base">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULLSCREEN PREVIEW MODAL -->
+    <div x-show="fullscreenPreview" style="display: none;" class="fixed inset-0 bg-white z-[70] flex flex-col pt-[var(--safe-top)]" x-transition.opacity>
+        <div class="bg-slate-900 text-white p-3 flex justify-between items-center shrink-0 shadow-lg">
+            <span class="font-bold truncate px-3 text-lg flex items-center"><i class="fa-solid fa-desktop mr-3 text-indigo-400"></i><span x-text="previewData.name"></span></span>
+            <button @click="fullscreenPreview = false" class="bg-slate-800 hover:bg-red-500 px-5 py-2.5 rounded-xl font-bold tab-transition active:scale-95 flex items-center shadow border border-slate-700">
+                <i class="fa-solid fa-xmark md:mr-2 text-lg"></i><span class="hidden md:inline">Close</span>
+            </button>
+        </div>
+        <!-- Sandboxed iframe prevents parent navigation -->
+        <iframe :srcdoc="previewData.html" sandbox="allow-scripts allow-same-origin" class="w-full flex-1 border-none bg-slate-50"></iframe>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // --- 1. CONFIG & PROMPTS ---
+        const GEMINI_SYSTEM_PROMPT = `You are an Expert Frontend Developer, UI/UX Designer, and Tailwind CSS Master.
+CONTEXT: You are the backend engine for a serverless web IDE. Users will ask you to create HTML templates or specific UI components.
+TASK: Generate semantic, highly responsive, modern HTML5 code using Tailwind CSS utility classes.
+FORMAT: 
+1. You MUST return ONLY the raw HTML code inside a single \`\`\`html code block.
+2. DO NOT include conversational text.
+3. If providing a full template, include the <html> structure and CDN links for Tailwind (https://cdn.tailwindcss.com) and FontAwesome (https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css).
+4. For images, use solid color placeholders (e.g. <div class="bg-gray-200 w-full h-64"></div>).
+CONSTRAINTS: Use Tailwind CSS exclusively. Ensure layouts are mobile-responsive using sm:, md:, lg: prefixes.
+FEW-SHOT EXAMPLES:
+User: "Create a blue button."
+AI:
+\`\`\`html
+<button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-colors">Click Me</button>
+\`\`\`
+`;
+
+        const PRELOADED_TEMPLATES = [
+            {
+                id: 'def-1', name: 'Flexible Dashboard', genre: 'Dashboard', isDefault: true, lastModified: Date.now(), thumbnail: '',
+                html: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dashboard</title><script src="https://cdn.tailwindcss.com"><\/script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans"><header class="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-10"><div class="container mx-auto flex justify-between items-center"><h1 class="text-xl font-bold"><i class="fa-solid fa-cube mr-2"></i>App Base</h1><nav class="hidden md:flex space-x-6 font-medium"><a href="#" class="hover:text-indigo-200">Dashboard</a><a href="#" class="hover:text-indigo-200">Settings</a></nav><button class="md:hidden text-white text-xl"><i class="fa-solid fa-bars"></i></button></div></header><main class="flex-1 container mx-auto p-4 md:p-8 md:grid md:grid-cols-3 gap-6"><div class="md:col-span-2 space-y-6"><section class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100"><h2 class="text-2xl font-bold mb-4">Welcome Back</h2><p class="text-slate-600 mb-6 leading-relaxed">This template stacks cleanly on mobile phones while providing a wide layout on desktops.</p><button class="bg-indigo-600 text-white px-6 py-3 rounded-xl shadow hover:bg-indigo-700 transition font-medium">Get Started</button></section><section class="grid grid-cols-2 gap-4"><div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 text-center"><i class="fa-solid fa-chart-pie text-3xl text-blue-500 mb-3"></i><h3 class="font-bold">Stats</h3></div><div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 text-center"><i class="fa-solid fa-users text-3xl text-emerald-500 mb-3"></i><h3 class="font-bold">Users</h3></div></section></div><aside class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit mt-6 md:mt-0"><h3 class="font-bold text-lg mb-4 text-slate-800">Quick Actions</h3><ul class="space-y-3"><li><a href="#" class="flex items-center text-slate-600 hover:text-indigo-600"><i class="fa-solid fa-plus w-6 text-center"></i> New Project</a></li><li><a href="#" class="flex items-center text-slate-600 hover:text-indigo-600"><i class="fa-solid fa-gear w-6 text-center"></i> Preferences</a></li></ul></aside></main><footer class="bg-white border-t border-slate-200 p-6 text-center text-slate-500 text-sm mt-auto"><p>&copy; 2024 Template Studio</p></footer></body></html>`
+            },
+            {
+                id: 'def-2', name: 'SaaS Landing Page', genre: 'Marketing', isDefault: true, lastModified: Date.now() - 1000, thumbnail: '',
+                html: `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><script src="https://cdn.tailwindcss.com"><\/script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body class="font-sans text-gray-800 bg-white"><header class="absolute w-full z-50 py-6"><div class="container mx-auto px-6 flex justify-between items-center"><a href="#" class="text-2xl font-black text-indigo-600 tracking-tighter"><i class="fa-solid fa-rocket mr-1"></i> SaaSify.</a><a href="#" class="bg-gray-900 text-white px-6 py-2.5 rounded-full font-bold text-sm shadow-lg hover:bg-indigo-600 transition">Log in</a></div></header><section class="pt-40 pb-20 px-6 text-center max-w-5xl mx-auto"><h1 class="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6 tracking-tight leading-tight">Scale your startup to the <span class="text-indigo-600">moon.</span></h1><p class="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto">The all-in-one platform to manage your workflow, scale operations, and boost revenue.</p><div class="flex flex-col sm:flex-row justify-center gap-4"><button class="bg-indigo-600 text-white px-8 py-4 rounded-full text-lg font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition transform hover:-translate-y-1">Start 14-Day Free Trial</button></div></section><section class="py-24 bg-gray-50 px-6 border-t border-gray-100"><div class="container mx-auto"><h2 class="text-3xl md:text-4xl font-extrabold text-center mb-16">Everything you need</h2><div class="grid md:grid-cols-3 gap-8"><div class="p-8 bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition"><div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mb-6 text-2xl"><i class="fa-solid fa-chart-line"></i></div><h3 class="text-xl font-bold mb-3">Real-time Analytics</h3><p class="text-gray-500 leading-relaxed">Deep insights into your data as it happens.</p></div><div class="p-8 bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition"><div class="w-14 h-14 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mb-6 text-2xl"><i class="fa-solid fa-users"></i></div><h3 class="text-xl font-bold mb-3">Team Sync</h3><p class="text-gray-500 leading-relaxed">Collaborate in real-time with your team.</p></div><div class="p-8 bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition"><div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 text-2xl"><i class="fa-solid fa-shield-halved"></i></div><h3 class="text-xl font-bold mb-3">Security</h3><p class="text-gray-500 leading-relaxed">Bank-grade encryption ensuring your data remains yours.</p></div></div></div></section></body></html>`
+            },
+            {
+                id: 'def-3', name: 'Minimalist Portfolio', genre: 'Creative', isDefault: true, lastModified: Date.now() - 2000, thumbnail: '',
+                html: `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-[#fafafa] text-[#222] font-serif selection:bg-black selection:text-white"><main class="max-w-5xl mx-auto px-6 py-12 md:py-24"><header class="mb-16 md:mb-24 flex flex-col md:flex-row md:items-end md:justify-between gap-6"><div class="max-w-xl"><h1 class="text-5xl md:text-7xl font-bold mb-4 tracking-tighter">Jane Doe.</h1><p class="text-xl md:text-2xl text-gray-500 italic">Capturing moments. Based in Tokyo.</p></div><nav class="font-sans text-sm tracking-widest uppercase flex space-x-8"><a href="#" class="border-b border-black pb-1 font-bold">Work</a><a href="#" class="text-gray-400 hover:text-black transition">About</a><a href="#" class="text-gray-400 hover:text-black transition">Contact</a></nav></header><section class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12"><div class="group cursor-pointer aspect-[3/4] bg-gray-200 overflow-hidden relative"><div class="w-full h-full bg-slate-300"></div><div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition duration-500 flex items-center justify-center"><span class="text-white font-sans tracking-widest uppercase text-sm border border-white px-6 py-3">View Project</span></div></div><div class="group cursor-pointer aspect-[3/4] bg-gray-200 overflow-hidden relative md:mt-20"><div class="w-full h-full bg-slate-400"></div><div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition duration-500 flex items-center justify-center"><span class="text-white font-sans tracking-widest uppercase text-sm border border-white px-6 py-3">View Project</span></div></div></section><footer class="pt-20 md:pt-40 pb-12 text-center"><p class="font-sans text-xs tracking-widest uppercase text-gray-400">&copy; 2024 Jane Doe Photography</p></footer></main></body></html>`
+            },
+            {
+                id: 'def-4', name: 'Community Blog Feed', genre: 'Blog / Content', isDefault: true, lastModified: Date.now() - 3000, thumbnail: '',
+                html: `<!DOCTYPE html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><script src="https://cdn.tailwindcss.com"><\/script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body class="bg-gray-100 text-gray-800 font-sans"><nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50"><div class="container mx-auto px-4 py-3 flex justify-between items-center"><a href="#" class="text-2xl font-bold text-rose-600"><i class="fa-solid fa-fire-flame-curved"></i> Ignite</a><div class="hidden md:flex space-x-6"><a href="#" class="font-medium hover:text-rose-600">Latest</a><a href="#" class="font-medium hover:text-rose-600">Discuss</a></div><button class="bg-rose-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-rose-700 transition">Subscribe</button></div></nav><main class="container mx-auto px-4 py-8 md:grid md:grid-cols-3 gap-8"><div class="md:col-span-2 space-y-6"><article class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200"><div class="flex items-center space-x-3 mb-4"><div class="w-10 h-10 rounded-full bg-gray-300"></div><div><p class="font-bold text-sm">Alex Chen</p><p class="text-xs text-gray-500">2 hours ago in <span class="text-rose-600">Development</span></p></div></div><h2 class="text-2xl font-bold mb-3 hover:text-rose-600 cursor-pointer transition">The Future of Serverless</h2><p class="text-gray-600 mb-4 line-clamp-3">Serverless is evolving rapidly. In this post, we explore the newest trends in edge computing, cold start mitigations, and why the next generation of web apps will abandon traditional servers entirely...</p><div class="flex items-center space-x-6 text-gray-500 text-sm font-medium"><button class="hover:text-rose-600"><i class="fa-regular fa-heart mr-1"></i> 342</button><button class="hover:text-blue-600"><i class="fa-regular fa-comment mr-1"></i> 56</button></div></article></div><aside class="space-y-6 mt-6 md:mt-0"><div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200"><h3 class="font-bold text-lg mb-4">Trending Topics</h3><div class="flex flex-wrap gap-2"><span class="bg-gray-100 px-3 py-1 rounded-full text-sm font-medium hover:bg-gray-200 cursor-pointer">#javascript</span><span class="bg-gray-100 px-3 py-1 rounded-full text-sm font-medium hover:bg-gray-200 cursor-pointer">#webdev</span></div></div></aside></main></body></html>`
+            }
+        ];
+
+        const UI_BLOCKS = [
+            { name: 'HTML5 Boilerplate', icon: 'fa-brands fa-html5', color: 'text-orange-500', desc: 'Empty canvas with Tailwind CDN & Fonts', code: `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>New App</title>\n  <script src="https://cdn.tailwindcss.com"><\/script>\n  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">\n</head>\n<body class="bg-slate-50 text-slate-900">\n  <!-- Start Building Here -->\n</body>\n</html>\n` },
+            { name: 'Responsive Navbar', icon: 'fa-solid fa-bars', color: 'text-blue-400', desc: 'Header with logo and desktop/mobile links', code: `<nav class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center">\n  <div class="font-black text-2xl text-indigo-600 tracking-tighter">Logo.</div>\n  <ul class="hidden md:flex space-x-8 text-gray-500 font-semibold">\n    <li><a href="#" class="hover:text-indigo-600 transition">Home</a></li>\n    <li><a href="#" class="hover:text-indigo-600 transition">Products</a></li>\n  </ul>\n  <button class="md:hidden text-gray-600 text-2xl"><i class="fa-solid fa-bars"></i></button>\n</nav>\n` },
+            { name: 'Hero Section', icon: 'fa-solid fa-rocket', color: 'text-purple-400', desc: 'Large title, subtitle, and CTA button', code: `<section class="bg-gradient-to-br from-indigo-900 to-purple-900 text-white py-24 px-6 text-center">\n  <div class="max-w-3xl mx-auto">\n    <h1 class="text-5xl md:text-6xl font-extrabold mb-6 tracking-tight">The ultimate tool.</h1>\n    <p class="text-xl mb-10 opacity-80 leading-relaxed">Build faster, launch quicker, and scale infinitely.</p>\n    <button class="bg-white text-indigo-900 px-8 py-4 rounded-full font-extrabold shadow-xl">Start Free</button>\n  </div>\n</section>\n` }
+        ];
+
+        // --- 2. INDEXED DB ---
+        const DB_NAME = 'StudioProDB_Final';
+        let db;
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, 1);
+                req.onerror = () => reject("DB Error");
+                req.onsuccess = (e) => { db = e.target.result; resolve(); };
+                req.onupgradeneeded = (e) => {
+                    let database = e.target.result;
+                    if (!database.objectStoreNames.contains('templates')) {
+                        database.createObjectStore('templates', { keyPath: 'id' });
+                    }
+                };
+            });
+        }
+
+        // --- 3. ALPINE.JS CONTROLLER ---
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('templateStudio', () => ({
+                currentView: 'home', 
+                templates: [],
+                editorMode: 'split', 
+                mobileTab: 'code', 
+                toolTab: 'blocks',
+                isMobile: window.innerWidth < 768,
+                
+                keys: {
+                    gemini: localStorage.getItem('gemini_api_key') || '',
+                    unsplash: localStorage.getItem('unsplash_api_key') || ''
+                },
+                
+                settingsOpen: false,
+                saveStatus: '',
+                isSaving: false,
+                cmEditor: null,
+                previewWidth: '100%',
+                componentBlocks: UI_BLOCKS,
+                fullscreenPreview: false,
+                previewData: {},
+
+                activeTemplate: { id: '', name: '', genre: '', html: '', thumbnail: '', isDefault: false },
+                
+                aiPrompt: '', aiChat: [], isAiLoading: false,
+                unsplashQuery: '', unsplashResults: [], isUnsplashLoading: false, isImageInserting: false,
+
+                async initApp() {
+                    window.addEventListener('resize', () => {
+                        this.isMobile = window.innerWidth < 768;
+                        if(this.currentView === 'editor') this.refreshCodeMirror();
+                    });
+
+                    await initDB();
+                    await this.seedDefaults();
+                    await this.loadTemplates();
+                },
+
+                switchView(view) {
+                    this.currentView = view;
+                    if(view === 'library') this.loadTemplates();
+                },
+
+                // --- Storage & Generation Methods ---
+                seedDefaults() {
+                    return new Promise((resolve) => {
+                        const tx = db.transaction('templates', 'readwrite');
+                        const store = tx.objectStore('templates');
+                        store.count().onsuccess = (e) => {
+                            if (e.target.result === 0) {
+                                PRELOADED_TEMPLATES.forEach(tpl => store.put(tpl));
+                                setTimeout(() => this.generateMissingThumbnails(), 2000); // Async gen
+                            }
+                        };
+                        tx.oncomplete = () => resolve();
+                    });
+                },
+                loadTemplates() {
+                    return new Promise((resolve) => {
+                        const tx = db.transaction('templates', 'readonly');
+                        tx.objectStore('templates').getAll().onsuccess = (e) => {
+                            this.templates = e.target.result.sort((a, b) => b.lastModified - a.lastModified);
+                            resolve();
+                        };
+                    });
+                },
+                
+                async saveActiveTemplate() {
+                    if (!this.activeTemplate.id) return;
+                    this.isSaving = true;
+                    
+                    if (this.activeTemplate.isDefault) {
+                        this.activeTemplate.id = 'usr-' + Date.now();
+                        this.activeTemplate.isDefault = false;
+                        this.activeTemplate.name += ' (My Copy)';
+                    }
+                    
+                    this.activeTemplate.html = this.cmEditor.getValue();
+                    this.activeTemplate.lastModified = Date.now();
+
+                    // Generate Thumbnail off-screen to ensure it captures even if preview tab is hidden
+                    this.activeTemplate.thumbnail = await this.captureOffscreen(this.activeTemplate.html);
+
+                    const tx = db.transaction('templates', 'readwrite');
+                    tx.objectStore('templates').put(Alpine.raw(this.activeTemplate));
+                    tx.oncomplete = () => {
+                        this.isSaving = false;
+                        this.saveStatus = 'Saved!';
+                        setTimeout(() => this.saveStatus = '', 2500);
+                        this.loadTemplates();
+                    };
+                },
+                
+                deleteTemplate(id) {
+                    if(confirm("Permanently delete this project?")) {
+                        db.transaction('templates', 'readwrite').objectStore('templates').delete(id).onsuccess = () => this.loadTemplates();
+                    }
+                },
+
+                // Offscreen HTML2Canvas Engine
+                async generateMissingThumbnails() {
+                    for (let i = 0; i < this.templates.length; i++) {
+                        if (!this.templates[i].thumbnail) {
+                            const b64 = await this.captureOffscreen(this.templates[i].html);
+                            if (b64) {
+                                this.templates[i].thumbnail = b64;
+                                const tx = db.transaction('templates', 'readwrite');
+                                tx.objectStore('templates').put(Alpine.raw(this.templates[i]));
+                                this.templates = [...this.templates];
+                            }
+                        }
+                    }
+                },
+                captureOffscreen(html) {
+                    return new Promise((resolve) => {
+                        const iframe = document.createElement('iframe');
+                        iframe.style.width = '1024px'; iframe.style.height = '768px';
+                        iframe.style.position = 'fixed'; iframe.style.left = '-9999px'; iframe.style.top = '-9999px';
+                        iframe.sandbox = "allow-scripts allow-same-origin";
+                        document.body.appendChild(iframe);
+                        iframe.srcdoc = html;
+                        
+                        iframe.onload = () => {
+                            setTimeout(async () => {
+                                try {
+                                    const canvas = await html2canvas(iframe.contentDocument.body, { 
+                                        useCORS: true, allowTaint: true, scale: 0.5, width: 1024, height: 768
+                                    });
+                                    document.body.removeChild(iframe);
+                                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                                } catch (e) {
+                                    document.body.removeChild(iframe);
+                                    resolve('');
+                                }
+                            }, 800); // Give tailwind time to render
+                        };
+                    });
+                },
+
+                // --- Editor Flow ---
+                createNewTemplate() {
+                    this.activeTemplate = { id: 'usr-' + Date.now(), name: 'Untitled Project', genre: 'Custom', html: this.componentBlocks[0].code, isDefault: false, thumbnail: '' };
+                    this.openEditor();
+                },
+                openInEditor(tpl) {
+                    this.activeTemplate = JSON.parse(JSON.stringify(tpl));
+                    this.openEditor();
+                },
+                openEditor() {
+                    this.currentView = 'editor';
+                    this.mobileTab = 'code'; 
+                    this.editorMode = 'split';
+                    
+                    this.$nextTick(() => {
+                        if (!this.cmEditor) {
+                            this.cmEditor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+                                mode: 'htmlmixed', theme: 'monokai', lineNumbers: true, 
+                                autoCloseTags: true, lineWrapping: true, tabSize: 2, scrollbarStyle: "null"
+                            });
+                            
+                            let timeout;
+                            this.cmEditor.on('change', () => {
+                                clearTimeout(timeout);
+                                timeout = setTimeout(() => {
+                                    this.activeTemplate.html = this.cmEditor.getValue();
+                                    document.getElementById('preview-frame').srcdoc = this.activeTemplate.html;
+                                }, 400); 
+                            });
+                        }
+                        this.cmEditor.setValue(this.activeTemplate.html);
+                        setTimeout(() => this.cmEditor.refresh(), 50); // Crucial refresh fix
+                        document.getElementById('preview-frame').srcdoc = this.activeTemplate.html;
+                    });
+                },
+                
+                setEditorMode(mode) {
+                    this.editorMode = mode;
+                    this.refreshCodeMirror();
+                },
+                setMobileTab(tab) {
+                    this.mobileTab = tab;
+                    if(tab === 'code') this.refreshCodeMirror();
+                },
+                refreshCodeMirror() {
+                    this.$nextTick(() => { setTimeout(() => { if(this.cmEditor) this.cmEditor.refresh(); }, 50); });
+                },
+                
+                previewFullscreen(tpl) {
+                    this.previewData = tpl;
+                    this.fullscreenPreview = true;
+                },
+                
+                insertCode(codeStr) {
+                    if(!this.cmEditor) return;
+                    const doc = this.cmEditor.getDoc();
+                    doc.replaceRange(codeStr, doc.getCursor());
+                    
+                    if(this.isMobile) {
+                        this.setMobileTab('code'); // Auto switch to code view to verify
+                    } else {
+                        this.cmEditor.focus();
+                    }
+                },
+                saveSettings() {
+                    localStorage.setItem('gemini_api_key', this.keys.gemini);
+                    localStorage.setItem('unsplash_api_key', this.keys.unsplash);
+                    this.settingsOpen = false;
+                },
+                scrollChat() {
+                    setTimeout(() => {
+                        const el = document.getElementById('chat-container');
+                        if(el) el.scrollTop = el.scrollHeight;
+                    }, 50);
+                },
+                
+                exportTemplate(tpl) {
+                    const blob = new Blob([tpl.html], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = (tpl.name || 'template').replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.html';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                },
+
+                // --- Unsplash API ---
+                async searchUnsplash() {
+                    if (!this.keys.unsplash) return;
+                    if (!this.unsplashQuery.trim()) return;
+                    this.isUnsplashLoading = true;
+                    try {
+                        const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(this.unsplashQuery)}&per_page=12&client_id=${this.keys.unsplash}`);
+                        if(!res.ok) throw new Error("API Error");
+                        this.unsplashResults = (await res.json()).results;
+                    } catch (e) { alert("Unsplash search failed. Verify your API key."); } 
+                    finally { this.isUnsplashLoading = false; }
+                },
+                
+                async insertBase64Image(imgObj) {
+                    this.isImageInserting = true;
+                    try {
+                        const res = await fetch(imgObj.urls.regular + "&w=1080&fit=max");
+                        const blob = await res.blob();
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64data = reader.result;
+                            const altText = (imgObj.alt_description || 'Stock photo').replace(/"/g, '&quot;');
+                            this.insertCode(`<img src="${base64data}" alt="${altText}" class="w-full h-auto object-cover rounded-xl shadow-md" />\n`);
+                            this.isImageInserting = false;
+                        };
+                        reader.readAsDataURL(blob);
+                    } catch (e) {
+                        alert("Failed to download image (CORS or Network issue).");
+                        this.isImageInserting = false;
+                    }
+                },
+
+                // --- Gemini REST API ---
+                async askGemini() {
+                    if (!this.aiPrompt.trim() || !this.keys.gemini) return;
+                    
+                    const userText = this.aiPrompt;
+                    this.aiPrompt = ''; 
+                    this.aiChat.push({ id: Date.now(), role: 'user', text: userText });
+                    this.isAiLoading = true;
+                    this.scrollChat();
+
+                    try {
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.keys.gemini}`, {
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: `${GEMINI_SYSTEM_PROMPT}\n\nUser Request: ${userText}\n\nAI (HTML ONLY):` }] }],
+                                generationConfig: { temperature: 0.2 } 
+                            })
+                        });
+
+                        if (!response.ok) throw new Error("API Failed. Verify your Gemini Key.");
+
+                        const data = await response.json();
+                        let aiOutput = data.candidates[0].content.parts[0].text;
+                        
+                        let cleanCode = aiOutput;
+                        const match = aiOutput.match(/```html\n([\s\S]*?)```/);
+                        if (match) cleanCode = match[1];
+                        else cleanCode = cleanCode.replace(/```html/g, '').replace(/```/g, '').trim();
+
+                        this.aiChat.push({ id: Date.now()+1, role: 'ai', text: "Code generated successfully.", code: cleanCode });
+                    } catch (error) {
+                        this.aiChat.push({ id: Date.now()+1, role: 'ai', text: `Error: ${error.message}` });
+                    } finally {
+                        this.isAiLoading = false;
+                        this.scrollChat();
+                    }
+                }
+            }));
+        });
+    </script>
+</body>
+</html>

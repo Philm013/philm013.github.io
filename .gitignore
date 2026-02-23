@@ -3,3 +3,23 @@
 
 # GitHub App credentials
 gha-creds-*.json
+
+# Global ignores
+node_modules/
+.DS_Store
+Thumbs.db
+*.bak
+*.bak.*
+*.tmp
+*.swp
+*.orig
+*.log
+.vscode/
+.idea/
+Screenshot_*.png
+TEMP/
+
+# InquiryOS Linting & Tooling
+InquiryOS/.htmlhintrc
+InquiryOS/.stylelintrc.json
+InquiryOS/eslint.config.mjs

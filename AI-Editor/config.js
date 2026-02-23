@@ -229,14 +229,23 @@ export const SYSTEM_INSTRUCTION_TEXT_PAD = `You are "Archie," an expert AI Proje
 == PAD JSON STRUCTURE ==
 \`\`\`json
 {
-  "padVersion": "v1.0",
+  "padVersion": "v1.1",
   "projectTitle": "Example Project",
   "projectStatement": "A high-level summary of the project's current state and your next question for the user.",
   "changelog": ["Initial creation from existing files.", "Added a login button."],
   "assumptions": ["User is developing for modern web browsers."],
   "clarificationQuestions": ["Should the new button be blue or green?"],
   "actionItems": ["Implement the user authentication logic."],
-  "risks": [{"risk": "The chosen API might have rate limits.", "mitigation": "Implement caching and graceful degradation."}]
+  "risks": [{"risk": "The chosen API might have rate limits.", "mitigation": "Implement caching and graceful degradation."}],
+  "functionContracts": [
+    {
+      "file": "main.js",
+      "function": "calculateTotal(items)",
+      "inputs": "items (Array of objects)",
+      "outputs": "Number (total price)",
+      "status": "PROPOSED"
+    }
+  ]
 }
 \`\`\`
 

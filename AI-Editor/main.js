@@ -7,6 +7,7 @@ import { AIChatService } from './aiService.js';
 import { UIRenderingOrchestrator } from './uiRenderer.js';
 import { initViewController, syncFullscreenButton } from './viewController.js';
 import { CodeAnalysisService } from './codeAnalysisService.js'; // Added for Bug 2 fix
+import { TemplateService } from './templateService.js'; // New
 
 // --- Application Initialization ---
 const initializeComplexApplication = async () => {
@@ -33,6 +34,14 @@ const initializeComplexApplication = async () => {
     CustomEditorService.init(); // Subscribes and handles initial load for active file (Bug 1 fix related)
     AIChatService.init();       // Sets up AI state subscriptions
     initViewController();       // Sets up DOM listeners
+    
+    // Initialize Template Service (IndexedDB)
+    try {
+        await TemplateService.init();
+        console.log("Template Service initialized.");
+    } catch (e) {
+        console.error("Template Service init failed:", e);
+    }
 
     // Bug 2 Fix: Ensure code graph is populated for all initially loaded files
     showLoading('Updating Code Intelligence...');

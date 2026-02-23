@@ -170,10 +170,14 @@
             padding: 12px;
         }
         
-        .grid { display: grid; gap: 10px; }
+        .grid { 
+            display: grid; 
+            gap: 8px; 
+            padding: 4px;
+        }
         .grid-sessions { grid-template-columns: 1fr; }
-        .grid-icons { grid-template-columns: repeat(5, 1fr); }
-        .grid-emojis { grid-template-columns: repeat(6, 1fr); }
+        .grid-icons { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); }
+        .grid-emojis { grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); }
         .grid-images { grid-template-columns: repeat(2, 1fr); }
         
         .session-card {
@@ -269,27 +273,27 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.2s;
-            padding: 6px;
+            padding: 8px;
             overflow: hidden;
         }
         
-        .icon-item:hover, .emoji-item:hover { border-color: var(--accent); background: var(--accent-dim); }
+        .icon-item:hover, .emoji-item:hover { border-color: var(--accent); background: var(--bg-hover); transform: translateY(-2px); }
         .icon-item.selected, .emoji-item.selected { border-color: var(--accent); background: var(--accent-dim); }
         
-        .icon-item svg { width: 24px; height: 24px; color: var(--text); }
-        .icon-item img { width: 28px; height: 28px; object-fit: contain; }
+        .icon-item svg { width: 20px; height: 20px; color: var(--text); }
+        .icon-item img { width: 24px; height: 24px; object-fit: contain; }
 		.icon-item span {
-			font-size: 12px;
+			font-size: 10px;
 			color: var(--text-dim);
-			margin-top: 4px;
+			margin-top: 6px;
 			text-align: center;
-			overflow: clip;
+			overflow: hidden;
 			text-overflow: ellipsis;
 			width: 100%;
 			white-space: nowrap;
 		}
         
-        .emoji-item { font-size: 28px; line-height: 1; }
+        .emoji-item { font-size: 24px; line-height: 1; }
         
         .image-item {
             aspect-ratio: 4/3;
@@ -321,13 +325,18 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            background: var(--bg-panel);
         }
         
         .category-chips {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            padding: 0 12px 12px;
+            padding: 8px 12px 12px;
+            background: var(--bg-panel);
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
         
         .chip {
@@ -336,10 +345,13 @@
             border: 1px solid var(--border);
             border-radius: 20px;
             font-size: 11px;
+            font-weight: 500;
             cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-muted);
         }
         
-        .chip:hover { border-color: var(--accent); }
+        .chip:hover { border-color: var(--accent); color: var(--text); background: var(--bg-hover); }
         .chip.active { background: var(--accent); border-color: var(--accent); color: white; }
         
         .main {
@@ -430,57 +442,68 @@
         .editor-bar {
             display: none;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
             margin-left: auto;
+            background: var(--bg-base);
+            padding: 4px 8px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
         }
         
         .editor-bar.active { display: flex; }
         
         .tool-group {
             display: flex;
-            background: var(--bg-base);
-            border-radius: 10px;
-            padding: 4px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 2px;
             gap: 2px;
         }
         
         .tool-btn {
-            width: 38px;
-            height: 38px;
+            width: 32px;
+            height: 32px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             background: transparent;
             color: var(--text-muted);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 14px;
+            transition: all 0.2s;
         }
         
         .tool-btn:hover { background: var(--bg-hover); color: var(--text); }
         .tool-btn.active { background: var(--accent); color: white; }
         
         .color-well {
-            width: 38px;
-            height: 38px;
-            border-radius: 8px;
-            border: 2px solid var(--border);
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
             overflow: hidden;
             cursor: pointer;
+            position: relative;
         }
         
         .color-well input {
-            width: 150%;
-            height: 150%;
-            margin: -25%;
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: 200%;
+            height: 200%;
             cursor: pointer;
             border: none;
+            padding: 0;
         }
         
         .stroke-slider {
-            width: 80px;
+            width: 60px;
+            height: 4px;
             accent-color: var(--accent);
+            cursor: pointer;
         }
         
         .viewport {
@@ -902,15 +925,29 @@
                 <div class="tool-group" id="toolGroup"></div>
                 
                 <div class="tool-group">
-                    <div class="color-well" title="Stroke Color">
-                        <input type="color" id="strokeColor" value="#ef4444">
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                        <span style="font-size:8px; color:var(--text-dim); text-transform:uppercase; font-weight:700;">Stroke</span>
+                        <div class="color-well" title="Stroke Color">
+                            <input type="color" id="strokeColor" value="#ef4444">
+                        </div>
                     </div>
-                    <div class="color-well" title="Fill Color">
-                        <input type="color" id="fillColor" value="#ffffff">
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                        <span style="font-size:8px; color:var(--text-dim); text-transform:uppercase; font-weight:700;">Fill</span>
+                        <div class="color-well" title="Fill Color">
+                            <input type="color" id="fillColor" value="#ffffff">
+                        </div>
                     </div>
                 </div>
                 
-                <input type="range" class="stroke-slider" id="strokeSlider" min="1" max="20" value="4" title="Stroke Width">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <span style="font-size:8px; color:var(--text-dim); text-transform:uppercase; font-weight:700;">Width</span>
+                    <input type="range" class="stroke-slider" id="strokeSlider" min="1" max="20" value="4" title="Stroke Width">
+                </div>
+                
+                <div class="tool-group">
+                    <button class="tool-btn" id="undoBtn" title="Undo (Ctrl+Z)">↺</button>
+                    <button class="tool-btn" id="redoBtn" title="Redo (Ctrl+Y)">↻</button>
+                </div>
                 
                 <button class="btn btn-ghost btn-sm" id="layersBtn">📑</button>
                 <button class="btn btn-danger btn-sm" id="deleteBtn">Delete</button>
@@ -1518,6 +1555,7 @@ const Icons = {
         Editor.pendingAsset = { type: 'icon', data: icon };
         Editor.setTool('image');
         Toast.show(`Icon "${icon.name}" selected`);
+        Library.setTab('captures');
         this.render();
     }
 };
@@ -1530,7 +1568,7 @@ const Emojis = {
         'Smileys': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😉','😊','😇','🥰','😍','🤩','😘','😋','😛','😜','🤪','😝','🤗','🤔','🤐','😐','😏','😒','🙄','😬','😌','😔','😪','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','😵','🤯','🤠','🥳','😎','🤓','😕','😟','🙁','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','😤','😡','😠','🤬','😈','👿','💀','💩','🤡','👹','👺','👻','👽','👾','🤖'],
         'Gestures': ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🧠','🦷','🦴','👀','👁️','👅','👄'],
         'People': ['👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇','🤦','🤷','👮','🕵️','💂','🥷','👷','🤴','👸','👳','👲','🧕','🤵','👰','🤰','🤱','👼','🎅','🤶','🦸','🦹','🧙','🧚','🧛','🧜','🧝','🧞','🧟','💆','💇','🚶','🧍','🧎','🏃','💃','🕺'],
-        'Animals': ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐓','🦃','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿️','🦔'],
+        'Animals': ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','REX','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐓','🦃','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿️','🦔'],
         'Food': ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🌽','🥕','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🥪','🥙','🧆','🌮','🌯','🥗','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🍤','🍙','🍚','🍘','🍥','🥠','🍢','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🥛','🍼','☕','🍵','🧃','🥤','🧋','🍶','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾'],
         'Objects': ['⌚','📱','💻','⌨️','🖥️','🖨️','🖱️','💽','💾','💿','📀','📷','📹','🎥','📞','☎️','📺','📻','🎙️','⏰','⌛','⏳','📡','🔋','🔌','💡','🔦','🕯️','💸','💵','💴','💶','💷','💰','💳','💎','🔧','🔨','🛠️','⚙️','🔩','🔫','💣','🔪','🗡️','⚔️','🛡️','🔮','💊','💉','🧬','🧪','🌡️','🧹','🧺','🧻','🚽','🧼','🔑','🗝️','🚪','🛋️','🛏️','🧸','🎁','🎈','🎀','🎊','🎉'],
         'Symbols': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','⭐','🌟','✨','⚡','🔥','💥','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🚭','❗','❕','❓','❔','‼️','⁉️','🔅','🔆','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','💹','❇️','✳️','❎','✔️','☑️','🔘','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤','🔺','🔻','🔸','🔹','🔶','🔷','🔳','🔲','▪️','▫️','◾','◽','◼️','◻️','🟥','🟧','🟨','🟩','🟦','🟪','⬛','⬜','🟫'],
@@ -1569,7 +1607,7 @@ const Emojis = {
         if (!query) {
             this.filtered = this.categories[this.currentCategory];
         } else {
-            this.filtered = Object.values(this.categories).flat();
+            this.filtered = Object.values(this.categories).flat().filter(e => e.includes(query));
         }
         this.render();
     },
@@ -1579,7 +1617,7 @@ const Emojis = {
         grid.innerHTML = '';
         
         if (this.filtered.length === 0) {
-            grid.innerHTML = '<div class="no-results" style="grid-column:span 6;">No emojis found</div>';
+            grid.innerHTML = '<div class="no-results" style="grid-column:1/-1;">No emojis found</div>';
             return;
         }
         
@@ -1597,6 +1635,7 @@ const Emojis = {
         Editor.pendingAsset = { type: 'emoji', data: emoji };
         Editor.setTool('image');
         Toast.show('Emoji selected');
+        Library.setTab('captures');
         this.render();
     }
 };
@@ -1720,7 +1759,7 @@ const Stock = {
     showLoading() {
         if (this.images.length === 0) {
             const grid = document.getElementById('stockGrid');
-            grid.innerHTML = '<div class="loading-spinner" style="grid-column:span 2;"><div class="spinner"></div>Loading images...</div>';
+            grid.innerHTML = '<div class="loading-spinner" style="grid-column:1/-1;"><div class="spinner"></div>Loading images...</div>';
         }
     },
     
@@ -1747,7 +1786,7 @@ const Stock = {
         grid.innerHTML = '';
         
         if (this.images.length === 0) {
-            grid.innerHTML = '<div class="no-results" style="grid-column:span 2;">No images found</div>';
+            grid.innerHTML = '<div class="no-results" style="grid-column:1/-1;">No images found</div>';
             return;
         }
         
@@ -1764,7 +1803,7 @@ const Stock = {
         
         const trigger = document.createElement('div');
         trigger.className = 'loading-spinner';
-        trigger.style.gridColumn = 'span 2';
+        trigger.style.gridColumn = '1/-1';
         trigger.innerHTML = '<div class="spinner"></div>';
         grid.appendChild(trigger);
         
@@ -1796,9 +1835,11 @@ const Stock = {
                 Editor.session.shapes.push(shape);
                 Editor.draw();
                 Editor.updateLayers();
+                Library.setTab('captures');
                 Toast.show('Image added!');
             } else {
                 Library.addCapture(image, 'Stock Image');
+                Library.setTab('captures');
             }
         } catch (e) {
             Toast.show('Failed to load image', 'error');
@@ -2304,6 +2345,9 @@ const Editor = {
     showLayersPanel: false,
     editingText: null,
     textOverlay: null,
+    
+    history: [],
+    historyIndex: -1,
 
     init() {
         this.canvas = document.getElementById('mainCanvas');
@@ -2315,11 +2359,16 @@ const Editor = {
         
         window.addEventListener('resize', () => this.resize());
         
-        this.container.addEventListener('mousedown', (e) => this.onDown(e));
-        window.addEventListener('mousemove', (e) => this.onMove(e));
-        window.addEventListener('mouseup', (e) => this.onUp(e));
+        this.container.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+        window.addEventListener('pointermove', (e) => this.onPointerMove(e));
+        window.addEventListener('pointerup', (e) => this.onPointerUp(e));
+        window.addEventListener('pointercancel', (e) => this.onPointerUp(e));
         this.container.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
         
+        this.pointers = new Map();
+        this.initialPinchDistance = 0;
+        this.initialPinchScale = 1;
+
         window.addEventListener('keydown', (e) => this.onKey(e));
         
         this.textOverlay.addEventListener('input', () => this.onTextInput());
@@ -2354,6 +2403,7 @@ const Editor = {
             { id: 'select', icon: '↖', key: 'V' },
             { id: 'rect', icon: '□', key: 'R' },
             { id: 'circle', icon: '○', key: 'C' },
+            { id: 'path', icon: '✎', key: 'P' },
             { id: 'arrow', icon: '→', key: 'A' },
             { id: 'line', icon: '/', key: 'L' },
             { id: 'text', icon: 'T', key: 'T' },
@@ -2384,6 +2434,11 @@ const Editor = {
         
         document.getElementById('emptyState').classList.add('hidden');
         
+        // Reset history
+        this.history = [];
+        this.historyIndex = -1;
+        this.saveHistory();
+
         // Load stock images
         session.shapes.forEach(async (shape) => {
             if (shape.type === 'stockImage' && shape.imgSrc && !this.loadedImages.has(shape.id)) {
@@ -2413,11 +2468,11 @@ const Editor = {
     fitToView() {
         if (!this.session) return;
         
-        const padding = 80;
+        const padding = 40;
         const availW = this.canvas.width - padding * 2;
         const availH = this.canvas.height - padding * 2;
         
-        const scale = Math.min(availW / this.session.width, availH / this.session.height, 1.5);
+        const scale = Math.min(availW / this.session.width, availH / this.session.height);
         
         this.viewport.scale = scale;
         this.viewport.x = (this.canvas.width - this.session.width * scale) / 2;
@@ -2443,6 +2498,38 @@ const Editor = {
         document.getElementById('zoomLevel').textContent = Math.round(this.viewport.scale * 100) + '%';
     },
 
+    saveHistory() {
+        if (!this.session) return;
+        const state = JSON.stringify(this.session.shapes);
+        if (this.historyIndex < this.history.length - 1) {
+            this.history = this.history.slice(0, this.historyIndex + 1);
+        }
+        this.history.push(state);
+        this.historyIndex++;
+        if (this.history.length > 50) {
+            this.history.shift();
+            this.historyIndex--;
+        }
+    },
+
+    undo() {
+        if (this.historyIndex > 0) {
+            this.historyIndex--;
+            this.session.shapes = JSON.parse(this.history[this.historyIndex]);
+            this.draw();
+            this.updateLayers();
+        }
+    },
+
+    redo() {
+        if (this.historyIndex < this.history.length - 1) {
+            this.historyIndex++;
+            this.session.shapes = JSON.parse(this.history[this.historyIndex]);
+            this.draw();
+            this.updateLayers();
+        }
+    },
+
     toWorld(x, y) {
         return {
             x: (x - this.viewport.x) / this.viewport.scale,
@@ -2461,6 +2548,13 @@ const Editor = {
         if (shape.type === 'emoji' || shape.type === 'icon') {
             const size = shape.size || 48;
             return { x: shape.x, y: shape.y, w: size, h: size };
+        } else if (shape.type === 'path') {
+            if (!shape.points || shape.points.length === 0) return { x: shape.x, y: shape.y, w: 10, h: 10 };
+            const xs = shape.points.map(p => p.x);
+            const ys = shape.points.map(p => p.y);
+            const minX = Math.min(...xs), maxX = Math.max(...xs);
+            const minY = Math.min(...ys), maxY = Math.max(...ys);
+            return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
         } else if (['arrow', 'line'].includes(shape.type)) {
             const x = Math.min(shape.x, shape.x2);
             const y = Math.min(shape.y, shape.y2);
@@ -2493,9 +2587,20 @@ const Editor = {
     },
 
     getResizeHandle(shape, wx, wy) {
+        const handleSize = 12 / this.viewport.scale;
+
+        if (shape.type === 'path') {
+            for (let i = 0; i < shape.points.length; i++) {
+                const p = shape.points[i];
+                if (Math.abs(wx - p.x) < handleSize && Math.abs(wy - p.y) < handleSize) {
+                    return 'p' + i;
+                }
+            }
+            return null;
+        }
+
         const bounds = this.getShapeBounds(shape);
         const padding = 8 / this.viewport.scale;
-        const handleSize = 12 / this.viewport.scale;
         
         const handles = [
             { id: 'nw', x: bounds.x - padding, y: bounds.y - padding },
@@ -2512,10 +2617,19 @@ const Editor = {
         return null;
     },
 
-    onDown(e) {
+    onPointerDown(e) {
         if (!this.session) return;
         if (e.target === this.textOverlay) return;
+        this.pointers.set(e.pointerId, e);
         
+        if (this.pointers.size === 2) {
+            this.isDown = false;
+            const p = Array.from(this.pointers.values());
+            this.initialPinchDistance = Math.hypot(p[0].clientX - p[1].clientX, p[0].clientY - p[1].clientY);
+            this.initialPinchScale = this.viewport.scale;
+            return;
+        }
+
         if (this.editingText) this.commitText();
         
         const rect = this.container.getBoundingClientRect();
@@ -2527,10 +2641,10 @@ const Editor = {
         this.start = { x: mx, y: my };
         this.last = { x: mx, y: my };
         
-        if (this.tool === 'hand' || e.button === 1) {
+        if (this.tool === 'hand' || e.button === 1 || e.pointerType === 'touch') {
             this.isPan = true;
             this.container.classList.add('pan-mode');
-            return;
+            if (this.tool !== 'hand' && e.pointerType !== 'touch') return;
         }
         
         if (this.tool === 'select') {
@@ -2542,6 +2656,7 @@ const Editor = {
                     this.resizeHandle = handle;
                     this.activeShape = shape;
                     this.resizeStart = { ...this.getShapeBounds(shape), wx: w.x, wy: w.y };
+                    this.isPan = false;
                     return;
                 }
             }
@@ -2549,17 +2664,54 @@ const Editor = {
             const hit = this.hitTestAll(w.x, w.y);
             if (!e.shiftKey) this.session.shapes.forEach(s => s.selected = false);
             if (hit) {
+                this.isPan = false;
                 hit.selected = true;
                 this.activeShape = hit;
+                
+                // Special logic for adding points to paths
+                if (hit.type === 'path' && !e.shiftKey) {
+                    for (let i = 0; i < hit.points.length - 1; i++) {
+                        const dist = Utils.pointToLine(w.x, w.y, hit.points[i].x, hit.points[i].y, hit.points[i+1].x, hit.points[i+1].y);
+                        if (dist < 10 / this.viewport.scale) {
+                            hit.points.splice(i + 1, 0, { x: w.x, y: w.y });
+                            this.isResize = true;
+                            this.resizeHandle = 'p' + (i + 1);
+                            this.resizeStart = { wx: w.x, wy: w.y };
+                            break;
+                        }
+                    }
+                }
+
                 if (hit.type === 'text' && e.detail === 2) {
                     this.startTextEdit(hit);
                     return;
                 }
-            } else {
+            } else if (e.pointerType === 'touch') {
                 this.isPan = true;
                 this.container.classList.add('pan-mode');
             }
+        } else if (this.tool === 'path') {
+            this.isPan = false;
+            // Check if we should continue existing path or start new
+            const selectedPath = this.session.shapes.find(s => s.type === 'path' && s.selected);
+            if (selectedPath) {
+                selectedPath.points.push({ x: w.x, y: w.y });
+                this.activeShape = selectedPath;
+            } else {
+                this.session.shapes.forEach(s => s.selected = false);
+                const shape = {
+                    id: Utils.uid(),
+                    type: 'path',
+                    points: [{ x: w.x, y: w.y }, { x: w.x, y: w.y }],
+                    stroke: this.style.stroke,
+                    strokeWidth: parseInt(this.style.strokeWidth),
+                    selected: true
+                };
+                this.session.shapes.push(shape);
+                this.activeShape = shape;
+            }
         } else if (this.tool === 'image' && this.pendingAsset) {
+            this.isPan = false;
             this.session.shapes.forEach(s => s.selected = false);
             
             if (this.pendingAsset.type === 'icon') {
@@ -2595,6 +2747,7 @@ const Editor = {
             Emojis.render();
             this.setTool('select');
         } else if (this.tool === 'text') {
+            this.isPan = false;
             this.session.shapes.forEach(s => s.selected = false);
             const shape = {
                 id: Utils.uid(),
@@ -2610,6 +2763,7 @@ const Editor = {
             this.session.shapes.push(shape);
             this.startTextEdit(shape);
         } else {
+            this.isPan = false;
             this.session.shapes.forEach(s => s.selected = false);
             const shape = {
                 id: Utils.uid(),
@@ -2675,13 +2829,28 @@ const Editor = {
         this.textOverlay.value = '';
         this.editingText = null;
         
+        this.saveHistory();
         this.setTool('select');
         this.draw();
         this.updateLayers();
     },
 
-    onMove(e) {
+    onPointerMove(e) {
         if (!this.session) return;
+        this.pointers.set(e.pointerId, e);
+
+        if (this.pointers.size === 2) {
+            const p = Array.from(this.pointers.values());
+            const dist = Math.hypot(p[0].clientX - p[1].clientX, p[0].clientY - p[1].clientY);
+            const delta = dist / this.initialPinchDistance;
+            
+            const midX = (p[0].clientX + p[1].clientX) / 2;
+            const midY = (p[0].clientY + p[1].clientY) / 2;
+            const rect = this.container.getBoundingClientRect();
+            
+            this.zoomAt(midX - rect.left, midY - rect.top, delta * this.initialPinchScale);
+            return;
+        }
         
         const rect = this.container.getBoundingClientRect();
         const mx = e.clientX - rect.left;
@@ -2717,6 +2886,9 @@ const Editor = {
         if (this.isPan) {
             this.viewport.x += dx;
             this.viewport.y += dy;
+        } else if (this.isResize && this.activeShape && this.resizeHandle && this.resizeHandle.startsWith('p')) {
+            const index = parseInt(this.resizeHandle.substring(1));
+            this.activeShape.points[index] = { x: w.x, y: w.y };
         } else if (this.isResize && this.activeShape && this.resizeStart) {
             const shape = this.activeShape;
             const rs = this.resizeStart;
@@ -2772,7 +2944,12 @@ const Editor = {
                     s.y += wDy;
                     if (s.x2 !== undefined) s.x2 += wDx;
                     if (s.y2 !== undefined) s.y2 += wDy;
+                    if (s.points) {
+                        s.points.forEach(p => { p.x += wDx; p.y += wDy; });
+                    }
                 });
+            } else if (this.tool === 'path' && this.activeShape) {
+                this.activeShape.points[this.activeShape.points.length - 1] = { x: w.x, y: w.y };
             } else if (['rect', 'circle'].includes(this.tool)) {
                 this.activeShape.w = w.x - this.activeShape.x;
                 this.activeShape.h = w.y - this.activeShape.y;
@@ -2785,7 +2962,12 @@ const Editor = {
         this.draw();
     },
 
-    async onUp() {
+    async onPointerUp(e) {
+        if (!this.isDown) return;
+        
+        const wasDrawing = !!this.activeShape && this.tool !== 'select';
+        const wasModifying = this.isResize || (this.isDown && this.tool === 'select' && this.activeShape);
+
         this.isDown = false;
         this.isPan = false;
         this.isResize = false;
@@ -2794,6 +2976,10 @@ const Editor = {
         this.activeShape = null;
         this.container.classList.remove('pan-mode', 'resize-nw', 'resize-ne', 'resize-sw', 'resize-se');
         
+        if (wasDrawing || wasModifying) {
+            this.saveHistory();
+        }
+
         if (this.session) {
             const stored = Library.sessions.find(s => s.id === this.session.id);
             if (stored) {
@@ -2836,6 +3022,16 @@ const Editor = {
         if (key === 'l') this.setTool('line');
         if (key === 't') this.setTool('text');
         if (key === 'i') this.setTool('image');
+        
+        if ((e.ctrlKey || e.metaKey) && key === 'z') {
+            e.preventDefault();
+            this.undo();
+        }
+        if ((e.ctrlKey || e.metaKey) && (key === 'y' || (e.shiftKey && key === 'z'))) {
+            e.preventDefault();
+            this.redo();
+        }
+
         if (key === 'delete' || key === 'backspace') { e.preventDefault(); this.deleteSelected(); }
     },
 
@@ -2852,6 +3048,12 @@ const Editor = {
         if (shape.type === 'emoji' || shape.type === 'icon') {
             const size = shape.size || 48;
             return Utils.pointInRect(wx, wy, shape.x - padding, shape.y - padding, size + padding * 2, size + padding * 2);
+        } else if (shape.type === 'path') {
+            if (!shape.points) return false;
+            for (let i = 0; i < shape.points.length - 1; i++) {
+                if (Utils.pointToLine(wx, wy, shape.points[i].x, shape.points[i].y, shape.points[i+1].x, shape.points[i+1].y) < 15 / this.viewport.scale) return true;
+            }
+            return false;
         } else if (['rect', 'stockImage', 'text'].includes(shape.type)) {
             const b = this.getShapeBounds(shape);
             return Utils.pointInRect(wx, wy, b.x - padding, b.y - padding, b.w + padding * 2, b.h + padding * 2);
@@ -2943,6 +3145,14 @@ const Editor = {
         if (shape.type === 'rect') {
             if (shape.fill && shape.fill !== 'transparent') ctx.fillRect(shape.x, shape.y, shape.w, shape.h);
             ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+        } else if (shape.type === 'path') {
+            if (!shape.points || shape.points.length < 2) return;
+            ctx.beginPath();
+            ctx.moveTo(shape.points[0].x, shape.points[0].y);
+            for (let i = 1; i < shape.points.length; i++) {
+                ctx.lineTo(shape.points[i].x, shape.points[i].y);
+            }
+            ctx.stroke();
         } else if (shape.type === 'circle') {
             ctx.beginPath();
             ctx.ellipse(shape.x + shape.w / 2, shape.y + shape.h / 2, Math.abs(shape.w / 2), Math.abs(shape.h / 2), 0, 0, Math.PI * 2);
@@ -3020,19 +3230,27 @@ const Editor = {
         ctx.setLineDash([]);
         
         const handleSize = 10 / this.viewport.scale;
-        const handles = [
-            { x: bounds.x - padding, y: bounds.y - padding },
-            { x: bounds.x + bounds.w + padding, y: bounds.y - padding },
-            { x: bounds.x - padding, y: bounds.y + bounds.h + padding },
-            { x: bounds.x + bounds.w + padding, y: bounds.y + bounds.h + padding }
-        ];
+        let handles = [];
+        
+        if (shape.type === 'path') {
+            handles = shape.points.map((p, i) => ({ x: p.x, y: p.y, id: 'p' + i }));
+        } else {
+            handles = [
+                { x: bounds.x - padding, y: bounds.y - padding },
+                { x: bounds.x + bounds.w + padding, y: bounds.y - padding },
+                { x: bounds.x - padding, y: bounds.y + bounds.h + padding },
+                { x: bounds.x + bounds.w + padding, y: bounds.y + bounds.h + padding }
+            ];
+        }
         
         handles.forEach(h => {
             ctx.fillStyle = '#fff';
             ctx.strokeStyle = '#8b5cf6';
             ctx.lineWidth = 2 / this.viewport.scale;
-            ctx.fillRect(h.x - handleSize / 2, h.y - handleSize / 2, handleSize, handleSize);
-            ctx.strokeRect(h.x - handleSize / 2, h.y - handleSize / 2, handleSize, handleSize);
+            ctx.beginPath();
+            ctx.arc(h.x, h.y, handleSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
         });
     },
 
@@ -3050,6 +3268,7 @@ const Editor = {
     deleteSelected() {
         if (!this.session) return;
         this.session.shapes = this.session.shapes.filter(s => !s.selected);
+        this.saveHistory();
         this.draw();
         this.updateLayers();
         Toast.show('Deleted');
@@ -3090,6 +3309,7 @@ const Editor = {
                 let icon = '?';
                 if (shape.type === 'rect') icon = '□';
                 else if (shape.type === 'circle') icon = '○';
+                else if (shape.type === 'path') icon = '✎';
                 else if (shape.type === 'arrow') icon = '→';
                 else if (shape.type === 'line') icon = '/';
                 else if (shape.type === 'text') icon = 'T';
@@ -3222,6 +3442,14 @@ const Exporter = {
             if (shape.type === 'rect') {
                 if (shape.fill && shape.fill !== 'transparent') ctx.fillRect(shape.x, shape.y, shape.w, shape.h);
                 ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+            } else if (shape.type === 'path') {
+                if (!shape.points || shape.points.length < 2) continue;
+                ctx.beginPath();
+                ctx.moveTo(shape.points[0].x, shape.points[0].y);
+                for (let i = 1; i < shape.points.length; i++) {
+                    ctx.lineTo(shape.points[i].x, shape.points[i].y);
+                }
+                ctx.stroke();
             } else if (shape.type === 'circle') {
                 ctx.beginPath();
                 ctx.ellipse(shape.x + shape.w / 2, shape.y + shape.h / 2, Math.abs(shape.w / 2), Math.abs(shape.h / 2), 0, 0, Math.PI * 2);
@@ -3403,6 +3631,8 @@ const App = {
         
         document.getElementById('layersBtn').addEventListener('click', () => Editor.toggleLayers());
         document.getElementById('deleteBtn').addEventListener('click', () => Editor.deleteSelected());
+        document.getElementById('undoBtn').addEventListener('click', () => Editor.undo());
+        document.getElementById('redoBtn').addEventListener('click', () => Editor.redo());
         
         document.getElementById('zoomIn').addEventListener('click', () => Editor.zoom(0.25));
         document.getElementById('zoomOut').addEventListener('click', () => Editor.zoom(-0.25));
@@ -3452,4 +3682,3 @@ window.onload = () => App.init();
 </script>
 </body>
 </html>
-

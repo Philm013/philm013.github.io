@@ -1,0 +1,28 @@
+{
+  "name": "inquiryos",
+  "version": "1.0.0",
+  "description": "",
+  "main": "sw.js",
+  "scripts": {
+    "lint:js": "node node_modules/eslint/bin/eslint.js \"**/*.{html,js}\"",
+    "lint:css": "node node_modules/stylelint/bin/stylelint.mjs \"**/*.{html,css}\"",
+    "lint:html": "node node_modules/htmlhint/bin/htmlhint index.html",
+    "lint:fix": "npm run lint:js -- --fix && npm run lint:css -- --fix",
+    "lint": "npm run lint:js && npm run lint:css && npm run lint:html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.1",
+    "eslint-plugin-html": "^8.1.4",
+    "globals": "^17.3.0",
+    "htmlhint": "^1.9.1",
+    "stylelint": "^17.3.0",
+    "stylelint-config-html": "^1.1.0",
+    "stylelint-config-standard": "^40.0.0"
+  }
+}

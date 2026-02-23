@@ -286,19 +286,26 @@ const UIRenderingOrchestratorInternal = (() => {
 
     // --- NEW: Dev PAD Rendering ---
     const renderPad = (padState) => {
-        if (!padModal || !padLog || !padInputArea) return;
+        const standalonePadLog = document.getElementById('pad-log');
+        const assistantPadLog = document.getElementById('assistant-pad-log');
+        const logs = [standalonePadLog, assistantPadLog].filter(Boolean);
+        
+        if (logs.length === 0) return;
 
         toggleElementVisibility(padModal, padState.isVisible);
-        if (!padState.isVisible) return;
+        // We don't hide the assistant modal based on padState.isVisible anymore, 
+        // as it's now a tab within that modal.
         
-        const padSendButton = document.getElementById('pad-send-btn');
-        const padInputField = document.getElementById('pad-input');
-        if (padSendButton) padSendButton.disabled = padState.isGenerating;
-        if (padInputField) padInputField.disabled = padState.isGenerating;
+        const padSendButtons = [document.getElementById('pad-send-btn'), document.getElementById('assistant-pad-send-btn')].filter(Boolean);
+        const padInputFields = [document.getElementById('pad-input'), document.getElementById('assistant-pad-input')].filter(Boolean);
+        
+        padSendButtons.forEach(btn => btn.disabled = padState.isGenerating);
+        padInputFields.forEach(input => input.disabled = padState.isGenerating);
 
         if (padState.isGenerating && padState.history.length === 0) {
-            padLog.innerHTML = `<div class="pad-loading-placeholder">Initializing PAD... Analyzing project files...</div>`;
-            toggleElementVisibility(padInputArea, false);
+            logs.forEach(log => {
+                log.innerHTML = `<div class="pad-loading-placeholder">Initializing PAD... Analyzing project files...</div>`;
+            });
             return;
         }
 
@@ -348,6 +355,30 @@ const UIRenderingOrchestratorInternal = (() => {
                         const content = item.risk ? `<strong>${escapeHtml(item.risk)}:</strong> ${marked.parseInline(String(item.mitigation || ''))}` : marked.parseInline(String(item));
                         return `<li>${content}</li>`;
                     }).join('');
+
+                    const renderContractsTable = (contracts) => {
+                        if (!contracts || !contracts.length) return '';
+                        const rows = contracts.map(c => `
+                            <tr>
+                                <td>${escapeHtml(String(c.file || ''))}</td>
+                                <td>${escapeHtml(String(c.function || ''))}</td>
+                                <td>${escapeHtml(String(c.inputs || ''))}</td>
+                                <td>${escapeHtml(String(c.outputs || ''))}</td>
+                                <td><span class="status-badge ${(c.status || '').toLowerCase()}">${escapeHtml(String(c.status || ''))}</span></td>
+                            </tr>`).join('');
+                        return `
+                            <div class="pad-section">
+                                <h2>Function Contracts</h2>
+                                <div class="pad-table-wrapper">
+                                    <table class="pad-table">
+                                        <thead>
+                                            <tr><th>File</th><th>Function</th><th>Inputs</th><th>Outputs</th><th>Status</th></tr>
+                                        </thead>
+                                        <tbody>${rows}</tbody>
+                                    </table>
+                                </div>
+                            </div>`;
+                    };
                     
                     historyHtml += `
                         <div class="pad-message ai">
@@ -357,6 +388,7 @@ const UIRenderingOrchestratorInternal = (() => {
                                     <p>${marked.parse(String(padData.projectStatement || ''))}</p>
                                 </div>
                                 ${questionsFormHtml}
+                                ${renderContractsTable(padData.functionContracts)}
                                 ${padData.actionItems?.length ? `<div class="pad-section"><h2>Action Items</h2><ul>${renderList(padData.actionItems)}</ul></div>` : ''}
                                 ${padData.changelog?.length ? `<div class="pad-section"><h2>Changelog</h2><ul>${renderList(padData.changelog)}</ul></div>` : ''}
                                 ${padData.assumptions?.length ? `<div class="pad-section"><h2>Assumptions</h2><ul>${renderList(padData.assumptions)}</ul></div>` : ''}
@@ -367,11 +399,13 @@ const UIRenderingOrchestratorInternal = (() => {
             }
         });
         
-        padLog.innerHTML = historyHtml;
-        // Scroll to the bottom after rendering new content
-        setTimeout(() => {
-             padLog.scrollTop = padLog.scrollHeight;
-        }, 0);
+        logs.forEach(log => {
+            log.innerHTML = historyHtml;
+            // Scroll to the bottom after rendering new content
+            setTimeout(() => {
+                 log.scrollTop = log.scrollHeight;
+            }, 0);
+        });
     };
 
 

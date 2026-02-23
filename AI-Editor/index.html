@@ -43,6 +43,7 @@
                 <button id="load-file-btn" class="load-file-trigger">Load File...</button>
                 <input type="file" id="file-loader-input" class="is-hidden" accept="*/*" multiple> 
                 <button id="create-rule-btn" class="action-button">+ Create Rule</button>
+                <button id="templates-btn" class="action-button">Templates</button>
             </div>
         </aside>
         <div id="sidebar-backdrop-element" class="sidebar-overlay-backdrop"></div>
@@ -55,8 +56,10 @@
                     <button id="toggle-pad-btn" class="action-button" title="Open Dev PAD Wizard">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" /></svg>
                     </button>
+                    <button id="quick-open-btn" class="action-button" title="Quick Open (Ctrl+P)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 2 9.5 2S3 5.91 3 9.5 5.91 17 9.5 17c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
                     <button id="toggle-view-btn" class="action-button" title="Toggle Preview" disabled><svg class="edit-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" /></svg><svg class="preview-icon is-hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" /></svg></button>
                     <button id="format-code-action" class="action-button" title="Apply Formatting" disabled><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h18v2H3V3zm0 4h18v2H3V7zm0 4h18v2H3v-2zm0 4h18v2H3v-2zm0 4h18v2H3v-2zM9 5h12v2H9V5zm0 4h9v2H9v-2zm0 4h6v2H9v-2zm0 4h3v2H9v-2z" /></svg></button>
+                    <button id="save-template-btn" class="action-button" title="Save as Template" disabled><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg></button>
                     <button id="download-file-action" class="action-button" title="Download Current File" disabled><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" /></svg></button>
                     <button id="fullscreen-toggle-action" class="action-button" title="Toggle Fullscreen"><svg class="enter-fullscreen-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" /></svg><svg class="exit-fullscreen-icon is-hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" /></svg></button>
                 </div>
@@ -82,32 +85,50 @@
     <div id="main-ai-chat-modal" class="ai-chat-modal">
         <div class="ai-chat-modal-content">
             <div class="ai-chat-modal-header">
-                <h2>AI Document Assistant (Beta)</h2>
+                <h2>AI Assistant</h2>
                 <div class="header-controls">
                     <label for="ai-global-search-toggle" title="Allow AI 'grep_files' tool to search across all open files. If disabled, it only searches the active file unless specific IDs are provided." style="font-size: 0.9em; display: flex; align-items: center; margin-right: 10px; color: var(--text-secondary); cursor: help;">
                         <input type="checkbox" id="ai-global-search-toggle" style="margin-right: 5px;"> Global Search
                     </label>
                     <select id="model-selector" class="header-btn">
-                     <option value="gemini-flash-latest">Gemini Flash</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
-            </select>
+                        <option value="gemini-flash-latest">Gemini Flash</option>
+                        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                        <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
+                    </select>
                     <button id="main-ai-chat-close-btn" class="ai-chat-modal-close" title="Close Chat">×</button>
                 </div>
             </div>
-            <div id="main-ai-chat-log" class="ai-chat-log">
-                <div id="main-ai-chat-selection-context" class="ai-chat-selection-context is-hidden">
-                    <strong>Selected Text:</strong>
-                    <pre><code id="main-ai-chat-context-code"></code></pre>
-                </div>
-                <p style="text-align:center; color:#777; font-style:italic;">Ask a question about the current document...</p>
+            
+            <div class="assistant-tabs">
+                <button class="assistant-tab active" data-tab="chat">Chat</button>
+                <button class="assistant-tab" data-tab="pad">Project PAD</button>
             </div>
-            <div class="ai-chat-input-area">
-                <div id="chat-filename-suggestions" class="autocomplete-suggestions is-hidden">
-                    <ul></ul>
+
+            <div id="chat-tab-content" class="assistant-tab-content active">
+                <div id="main-ai-chat-log" class="ai-chat-log">
+                    <div id="main-ai-chat-selection-context" class="ai-chat-selection-context is-hidden">
+                        <strong>Selected Text:</strong>
+                        <pre><code id="main-ai-chat-context-code"></code></pre>
+                    </div>
+                    <p style="text-align:center; color:#777; font-style:italic;">Ask a question about the current document...</p>
                 </div>
-                <textarea id="main-ai-chat-input" rows="1" placeholder="Ask AI to review, explain, suggest changes... (Type @ for filename suggestions)"></textarea>
-                <button id="main-ai-chat-send-btn" title="Send Message"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg></button>
+                <div class="ai-chat-input-area">
+                    <div id="chat-filename-suggestions" class="autocomplete-suggestions is-hidden">
+                        <ul></ul>
+                    </div>
+                    <textarea id="main-ai-chat-input" rows="1" placeholder="Ask AI to review, explain, suggest changes... (Type @ for filename suggestions)"></textarea>
+                    <button id="main-ai-chat-send-btn" title="Send Message"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg></button>
+                </div>
+            </div>
+
+            <div id="pad-tab-content" class="assistant-tab-content">
+                <div id="assistant-pad-log" class="pad-log">
+                    <!-- PAD content will be rendered here -->
+                </div>
+                <div class="pad-input-area">
+                    <textarea id="assistant-pad-input" rows="1" placeholder="Provide instructions or respond to Archie..."></textarea>
+                    <button id="assistant-pad-send-btn" title="Send Message"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" /></svg></button>
+                </div>
             </div>
         </div>
     </div>
@@ -150,6 +171,28 @@
           </div>
      </div>
 
+    <!-- Templates Modal -->
+    <div id="templates-modal" class="templates-modal is-hidden">
+        <div class="templates-modal-content">
+            <div class="templates-modal-header">
+                <h2>Templates Library</h2>
+                <button id="templates-modal-close-btn" class="templates-modal-close">×</button>
+            </div>
+            <div id="templates-grid" class="templates-grid">
+                <!-- Templates injected here -->
+                <div class="no-templates-msg">No templates saved yet.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Open Modal -->
+    <div id="quick-open-modal" class="quick-open-modal is-hidden">
+        <div class="quick-open-content">
+            <input type="text" id="quick-open-input" placeholder="Search files..." autocomplete="off">
+            <ul id="quick-open-results" class="quick-open-results"></ul>
+        </div>
+    </div>
+
     <div id="loading-indicator" class="loading-indicator-overlay is-hidden">Processing...</div>
     <div id="notification-area"></div>
 
@@ -186,43 +229,45 @@
 
     <!-- Load Gemini SDK -->
     <script type="module">
-      window.sdkInitializationPromise = new Promise(async (resolve) => {
-          window.genAiInstance = null;
-          window.AiClass = null;
+        window.sdkInitializationPromise = new Promise((resolve) => {
+            (async () => {
+                window.genAiInstance = null;
+                window.AiClass = null;
 
-          try {
-               const GEMINI_API_KEY = "AIzaSyC70cXxItO4NGCEWo2B9lM9ZfbBSepASRM"; // Placeholder, AI service will prompt if needed
+                try {
+                    const GEMINI_API_KEY = "AIzaSyC70cXxItO4NGCEWo2B9lM9ZfbBSepASRM"; // Placeholder, AI service will prompt if needed
 
-              if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY") {
-                  console.warn("[SDK Loader] Gemini API Key not pre-configured in HTML. AI service will prompt if needed.");
-              }
+                    if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY") {
+                        console.warn("[SDK Loader] Gemini API Key not pre-configured in HTML. AI service will prompt if needed.");
+                    }
 
-              console.log("[SDK Loader] Attempting to load Google AI SDK from esm.run...");
-              const module = await import("https://esm.run/@google/generative-ai");
-              window.AiClass = module.GoogleGenerativeAI || module.GoogleGenAI;
+                    console.log("[SDK Loader] Attempting to load Google AI SDK from esm.run...");
+                    const module = await import("https://esm.run/@google/generative-ai");
+                    window.AiClass = module.GoogleGenerativeAI || module.GoogleGenAI;
 
-              if (window.AiClass) {
-                  console.log("[SDK Loader] SDK Class loaded successfully.");
-                   if (GEMINI_API_KEY && GEMINI_API_KEY !== "YOUR_GEMINI_API_KEY") {
-                       try {
-                           window.genAiInstance = new window.AiClass(GEMINI_API_KEY);
-                           console.log("[SDK Loader] Google AI SDK instance created with pre-configured key.");
-                       } catch (instantiationError) {
-                           console.error("[SDK Loader] Error instantiating Google AI SDK with pre-configured key:", instantiationError);
-                       }
-                   } else {
-                        console.log("[SDK Loader] SDK class loaded. Instance will be created by AI service later if key is provided via prompt.");
-                   }
-              } else {
-                   console.error("[SDK Loader] Loaded Google AI SDK module, but couldn't find expected class.");
-              }
-          } catch (err) {
-              console.error("[SDK Loader] Failed to load Google AI SDK module:", err);
-          } finally {
-              console.log("[SDK Loader] Resolving SDK initialization promise.");
-              resolve();
-          }
-      });
+                    if (window.AiClass) {
+                        console.log("[SDK Loader] SDK Class loaded successfully.");
+                        if (GEMINI_API_KEY && GEMINI_API_KEY !== "YOUR_GEMINI_API_KEY") {
+                            try {
+                                window.genAiInstance = new window.AiClass(GEMINI_API_KEY);
+                                console.log("[SDK Loader] Google AI SDK instance created with pre-configured key.");
+                            } catch (instantiationError) {
+                                console.error("[SDK Loader] Error instantiating Google AI SDK with pre-configured key:", instantiationError);
+                            }
+                        } else {
+                            console.log("[SDK Loader] SDK class loaded. Instance will be created by AI service later if key is provided via prompt.");
+                        }
+                    } else {
+                        console.error("[SDK Loader] Loaded Google AI SDK module, but couldn't find expected class.");
+                    }
+                } catch (err) {
+                    console.error("[SDK Loader] Failed to load Google AI SDK module:", err);
+                } finally {
+                    console.log("[SDK Loader] Resolving SDK initialization promise.");
+                    resolve();
+                }
+            })();
+        });
     </script>
 
     <!-- Load Your Main App Module LAST -->
