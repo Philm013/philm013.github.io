@@ -59,7 +59,7 @@ window.submitGenericInput = submitGenericInput;
 // Explicitly expose new functions
 import { openIconPicker, closeIconPicker, searchIcons, selectIcon, selectIconForNode } from './modules/models.js';
 import { switchViewerModule, stopViewingStudent } from './teacher/viewer.js';
-import { launchTemplate, applyTemplate } from './teacher/dashboard.js';
+import { launchTemplate, applyTemplate, previewTemplate, previewPreset, closeLessonPreview } from './teacher/dashboard.js';
 
 window.openIconPicker = openIconPicker;
 window.closeIconPicker = closeIconPicker;
@@ -68,6 +68,12 @@ window.selectIcon = selectIcon;
 window.selectIconForNode = selectIconForNode;
 window.switchViewerModule = switchViewerModule;
 window.stopViewingStudent = stopViewingStudent;
+window.previewTemplate = previewTemplate;
+window.previewPreset = previewPreset;
+window.closeLessonPreview = closeLessonPreview;
+
+import { editInquiryItem } from './modules/questions.js';
+window.editInquiryItem = editInquiryItem;
 import { viewStudentWork } from './teacher/viewer.js';
 window.viewStudentWork = viewStudentWork;
 window.launchTemplate = launchTemplate;
@@ -76,7 +82,7 @@ window.applyTemplate = applyTemplate;
 import { clearAllPosts } from './teacher/noticeboard.js';
 window.clearAllPosts = clearAllPosts;
 
-import { setFeedbackSticker, closeCommentModal, deleteComment, startCommentDrag, renderViewerNodes, handleViewerPointerDown, handleViewerWheel, handleViewerClick } from './teacher/viewer.js';
+import { setFeedbackSticker, closeCommentModal, deleteComment, startCommentDrag, renderViewerNodes, handleViewerPointerDown, handleViewerWheel, handleViewerClick, openTableRowFeedback, addDataRowSticker } from './teacher/viewer.js';
 window.setFeedbackSticker = setFeedbackSticker;
 window.closeCommentModal = closeCommentModal;
 window.deleteComment = deleteComment;
@@ -85,6 +91,8 @@ window.renderViewerNodes = renderViewerNodes;
 window.handleViewerPointerDown = handleViewerPointerDown;
 window.handleViewerWheel = handleViewerWheel;
 window.handleViewerClick = handleViewerClick;
+window.openTableRowFeedback = openTableRowFeedback;
+window.addDataRowSticker = addDataRowSticker;
 
 import { openRowNoteModal, closeRowNoteModal, saveRowNote, toggleRowNote } from './modules/investigation.js';
 window.openRowNoteModal = openRowNoteModal;

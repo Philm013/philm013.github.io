@@ -306,17 +306,22 @@ export async function renderLiveData() {
                                         ${dt.columns.map(c => `
                                             <td class="p-5 text-sm text-gray-700 border-r border-gray-50 last:border-0">${r[c.id] || '<span class="text-gray-200">...</span>'}</td>
                                         `).join('')}
-                                        <td class="p-2 text-center border-l border-gray-100">
-                                            <div class="flex flex-wrap justify-center gap-1">
-                                                ${stickers.slice(0, 3).map(s => `
-                                                    <button onclick="window.addDataRowSticker(${ri}, '${s}')" 
-                                                        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 transition-all ${dt.feedback?.[ri] === s ? 'bg-blue-100 ring-2 ring-blue-400 scale-110' : ''}">
-                                                        ${s}
-                                                    </button>
-                                                `).join('')}
-                                                <button onclick="window.addDataRowSticker(${ri}, null)" class="text-[10px] text-gray-300 hover:text-red-500">×</button>
-                                            </div>
-                                        </td>
+                                                                        <td class="p-2 text-center border-l border-gray-100">
+                                                                            <div class="flex flex-wrap justify-center gap-1">
+                                                                                ${stickers.slice(0, 3).map(s => `
+                                                                                    <button onclick="window.addDataRowSticker(${ri}, '${s}')" 
+                                                                                        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 transition-all ${dt.feedback?.[ri]?.sticker === s ? 'bg-blue-100 ring-2 ring-blue-400 scale-110' : ''}">
+                                                                                        ${s}
+                                                                                    </button>
+                                                                                `).join('')}
+                                                                                <button onclick="window.openTableRowFeedback(${ri})" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-600 transition-all ${dt.feedback?.[ri]?.text ? 'bg-blue-50 ring-1 ring-blue-200' : ''}">
+                                                                                    <span class="iconify" data-icon="mdi:comment-text-outline"></span>
+                                                                                </button>
+                                                                                <button onclick="window.addDataRowSticker(${ri}, null)" class="text-[10px] text-gray-300 hover:text-red-500">×</button>
+                                                                            </div>
+                                                                            ${dt.feedback?.[ri]?.text ? `<p class="text-[9px] text-blue-600 font-bold mt-1 max-w-[100px] truncate mx-auto">${dt.feedback[ri].text}</p>` : ''}
+                                                                        </td>
+                                        
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -339,23 +344,62 @@ export async function renderLiveData() {
 
 
 /**
+ * UI: Opens feedback modal for a specific data table row.
+ */
+export function openTableRowFeedback(rowIndex) {
+    App.editingRowIndex = rowIndex;
+    const dt = App.work.dataTable;
+    const feedback = dt.feedback?.[rowIndex] || { text: '', sticker: null };
+    
+    const modal = document.getElementById('commentModal');
+    const input = document.getElementById('commentText');
+    if (modal && input) {
+        input.value = feedback.text || '';
+        if (feedback.sticker) window.setFeedbackSticker(feedback.sticker);
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        input.focus();
+    }
+}
+
+/**
  * Adds a feedback sticker to a specific data row.
  */
 export async function addDataRowSticker(rowIndex, emoji) {
     if (!App.work.dataTable.feedback) App.work.dataTable.feedback = {};
+    
     if (emoji === null) {
         delete App.work.dataTable.feedback[rowIndex];
     } else {
-        App.work.dataTable.feedback[rowIndex] = emoji;
+        const current = App.work.dataTable.feedback[rowIndex] || { text: '' };
+        App.work.dataTable.feedback[rowIndex] = { ...current, sticker: emoji };
     }
     await saveAndBroadcast('dataTable.feedback', App.work.dataTable.feedback);
     renderTeacherContent();
 }
 
 
-export function renderIconManager() {
+/**
+ * UI: Renders the icon manager/curator view.
+ */
+export async function renderIconManager() {
     const topPrefixes = ['mdi', 'fa6-solid', 'lucide', 'tabler', 'ph', 'carbon', 'fluent', 'heroicons', 'bi', 'ri'];
-    const popularSets = App.availableIconSets.filter(s => topPrefixes.includes(s.prefix));
+    
+    // Fetch all available collections if not already loaded
+    if (!App.availableIconSets || App.availableIconSets.length === 0) {
+        try {
+            const res = await fetch('https://api.iconify.design/collections');
+            const data = await res.json();
+            App.availableIconSets = Object.keys(data).map(prefix => ({
+                prefix,
+                name: data[prefix].name,
+                total: data[prefix].total,
+                category: data[prefix].category
+            }));
+        } catch (e) { console.error('Failed to load Iconify collections', e); }
+    }
+
+    const popularSets = (App.availableIconSets || []).filter(s => topPrefixes.includes(s.prefix));
     
     // Comprehensive Preset Filters
     const presets = [
@@ -410,20 +454,38 @@ export function renderIconManager() {
                                                 <span class="iconify" data-icon="mdi:close"></span>
                                             </span>
                                         </button>
-                                    `).join('') : '<p class="text-gray-300 text-xs italic m-auto">Add icons from the browser below</p>'}
+                                    `).join('') : '<div class="m-auto text-center"><p class="text-gray-300 text-[10px] font-black uppercase tracking-widest">Add icons from below</p></div>'}
                                 </div>
                             </div>
                             <div class="space-y-4">
-                                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Emojis (${App.teacherSettings.lessonEmojis?.length || 0})</label>
-                                <div class="flex flex-wrap gap-2 p-4 bg-gray-50/50 rounded-3xl min-h-[120px] border border-gray-100 content-start">
+                                <div class="flex items-center justify-between px-1">
+                                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Emoji Bank (${App.teacherSettings.lessonEmojis?.length || 0})</label>
+                                    <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+                                </div>
+                                <div class="flex flex-wrap gap-2 p-6 bg-gray-50/50 rounded-[2rem] min-h-[160px] border-2 border-dashed border-gray-100 content-start">
                                     ${App.teacherSettings.lessonEmojis?.length ? App.teacherSettings.lessonEmojis.map(emoji => `
-                                        <button onclick="window.removeLessonEmoji('${emoji}')" class="text-3xl p-2 bg-white rounded-xl border-2 border-transparent hover:border-red-500 hover:bg-red-50 transition-all group relative shadow-sm">
+                                        <button onclick="window.removeLessonEmoji('${emoji}')" class="text-3xl p-3 bg-white rounded-2xl border-2 border-transparent hover:border-red-50 hover:text-red-500 transition-all group relative shadow-sm hover:-translate-y-1">
                                             ${emoji}
-                                            <span class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 scale-75 transition-all">
+                                            <span class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 scale-75 transition-all shadow-lg">
                                                 <span class="iconify" data-icon="mdi:close"></span>
                                             </span>
                                         </button>
-                                    `).join('') : '<p class="text-gray-300 text-xs italic m-auto">Select from common set or paste</p>'}
+                                    `).join('') : '<div class="m-auto text-center"><p class="text-gray-300 text-[10px] font-black uppercase tracking-widest">Select from library</p></div>'}
+                                </div>
+                                
+                                <div class="mt-4 space-y-3">
+                                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Enable Domain Defaults</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${Object.keys(App.teacherSettings.emojiSets).map(set => {
+                                            const isActive = App.teacherSettings.activeEmojiSets?.includes(set);
+                                            return `
+                                                <button onclick="window.toggleEmojiSet('${set}')" 
+                                                    class="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${isActive ? 'bg-yellow-100 border-yellow-400 text-yellow-700' : 'bg-white border-gray-100 text-gray-400 hover:border-yellow-200'}">
+                                                    ${set}
+                                                </button>
+                                            `;
+                                        }).join('')}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -462,43 +524,41 @@ export function renderIconManager() {
             </div>
 
             <!-- Global Icon Navigator -->
-            <div class="bg-white rounded-[3rem] shadow-xl border border-gray-100 p-8 md:p-10">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10">
-                    <div class="flex items-center gap-5">
-                        <div class="w-16 h-16 bg-blue-600 text-white rounded-3xl flex items-center justify-center shadow-lg shadow-blue-200">
+            <div class="bg-white rounded-[3rem] shadow-xl border border-gray-100 p-8 md:p-12">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-10 mb-12">
+                    <div class="flex items-center gap-6">
+                        <div class="w-16 h-16 bg-blue-600 text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-blue-200">
                             <span class="iconify text-3xl" data-icon="mdi:magnify-plus"></span>
                         </div>
                         <div>
-                            <h3 class="text-2xl font-black text-gray-900">Global Navigator</h3>
-                            <p class="text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">Search 200,000+ open-source icons</p>
+                            <h3 class="text-2xl font-black text-gray-900 uppercase tracking-tight">Global Navigator</h3>
+                            <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1">Search 200,000+ open-source icons</p>
                         </div>
                     </div>
                     
-                    <div class="flex-1 max-w-xl">
-                        <div class="flex gap-3">
-                            <div class="relative flex-1 group">
-                                <input type="text" id="iconManagerSearch" placeholder="Search by keyword (e.g. 'Photosynthesis', 'Bridge')..." 
-                                    class="w-full pl-6 pr-6 py-5 bg-gray-50 border-2 border-gray-100 rounded-[2rem] text-lg font-bold focus:border-blue-500 focus:bg-white focus:outline-none transition-all placeholder:text-gray-300 shadow-inner"
-                                    onkeypress="if(event.key==='Enter')window.searchIconsForManager()">
-                                <button onclick="window.searchIconsForManager()" class="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
-                                    <span class="iconify text-2xl" data-icon="mdi:arrow-right"></span>
-                                </button>
-                            </div>
+                    <div class="flex-1 max-w-2xl">
+                        <div class="relative group">
+                            <input type="text" id="iconManagerSearch" placeholder="Search by keyword (e.g. 'DNA', 'Robot')..." 
+                                class="w-full pl-8 pr-20 py-6 bg-gray-50 border-2 border-gray-100 rounded-[2.5rem] text-xl font-bold focus:border-blue-500 focus:bg-white focus:outline-none transition-all placeholder:text-gray-300 shadow-inner"
+                                onkeypress="if(event.key==='Enter')window.searchIconsForManager()">
+                            <button onclick="window.searchIconsForManager()" class="absolute right-4 top-1/2 -translate-y-1/2 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95">
+                                <span class="iconify text-2xl" data-icon="mdi:arrow-right"></span>
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-10">
-                    <div class="space-y-8">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">
+                    <div class="space-y-10">
                         <div class="space-y-4">
                             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Quick Filters</label>
                             <div class="grid grid-cols-1 gap-2">
                                 ${presets.map(p => `
-                                    <button onclick="window.applyPresetFilter('${p.query}')" class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-blue-200 hover:bg-white transition-all text-left group">
-                                        <span class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-sm group-hover:scale-110 transition-transform">
+                                    <button onclick="window.applyPresetFilter('${p.query}')" class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-blue-200 hover:bg-white transition-all text-left group">
+                                        <span class="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-sm group-hover:scale-110 transition-transform border border-gray-100">
                                             <span class="iconify text-xl" data-icon="${p.icon}"></span>
                                         </span>
-                                        <span class="font-bold text-gray-700">${p.label}</span>
+                                        <span class="font-black text-gray-700 uppercase text-xs tracking-wider">${p.label}</span>
                                     </button>
                                 `).join('')}
                             </div>
@@ -506,15 +566,18 @@ export function renderIconManager() {
 
                         <div class="space-y-4">
                             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Icon Libraries</label>
-                            <div class="flex flex-wrap gap-2 max-h-[300px] overflow-y-auto p-1 custom-scrollbar">
+                            <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                 <button onclick="window.changeIconSet(null)" 
-                                    class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${!App.currentIconSet ? 'bg-primary border-primary text-white shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-primary/30 hover:text-primary'}">
+                                    class="w-full text-left px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${!App.currentIconSet ? 'bg-primary border-primary text-white shadow-lg' : 'bg-white border-gray-100 text-gray-400 hover:border-primary/30 hover:text-primary'}">
                                     All Sources
                                 </button>
                                 ${popularSets.map(s => `
                                     <button onclick="window.changeIconSet('${s.prefix}')" 
-                                        class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${App.currentIconSet === s.prefix ? 'bg-primary border-primary text-white shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-primary/30 hover:text-primary'}">
-                                        ${s.name.split(' ')[0]}
+                                        class="w-full text-left px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${App.currentIconSet === s.prefix ? 'bg-primary border-primary text-white shadow-lg' : 'bg-white border-gray-100 text-gray-400 hover:border-primary/30 hover:text-primary'}">
+                                        <div class="flex items-center justify-between">
+                                            <span>${s.name}</span>
+                                            <span class="opacity-50 text-[8px]">${(s.total/1000).toFixed(1)}k</span>
+                                        </div>
                                     </button>
                                 `).join('')}
                             </div>
@@ -522,10 +585,10 @@ export function renderIconManager() {
                     </div>
 
                     <div class="lg:col-span-3">
-                        <div id="iconManagerGrid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-4 min-h-[500px] max-h-[700px] overflow-y-auto p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100 shadow-inner custom-scrollbar content-start">
-                            <div class="col-span-full py-32 text-center flex flex-col items-center opacity-20 grayscale">
-                                <span class="iconify text-8xl mb-6" data-icon="mdi:library-search"></span>
-                                <p class="text-lg font-black uppercase tracking-[0.2em]">Select a library or search above</p>
+                        <div id="iconManagerGrid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-4 min-h-[600px] max-h-[800px] overflow-y-auto p-10 bg-gray-50 rounded-[3rem] border-2 border-gray-100 shadow-inner custom-scrollbar content-start">
+                            <div class="col-span-full py-40 text-center flex flex-col items-center opacity-20 grayscale">
+                                <span class="iconify text-9xl mb-8" data-icon="mdi:library-search"></span>
+                                <p class="text-xl font-black uppercase tracking-[0.3em]">Explore the Repository</p>
                             </div>
                         </div>
                     </div>
@@ -561,7 +624,7 @@ export async function loadIconsForManager() {
     const lowerQuery = query.toLowerCase();
     for (const [topic, expansion] of Object.entries(topicExpansion)) {
         if (lowerQuery.includes(topic)) {
-            searchUrl += ',' + expansion;
+            searchUrl += ' ' + expansion.replace(/,/g, ' ');
             break;
         }
     }
@@ -581,7 +644,7 @@ export async function loadIconsForManager() {
             });
             const fuzzyResults = fuse.search(query);
             if (fuzzyResults.length > 0) {
-                // Combine original results (for breadth) with fuzzy sorted results (for precision)
+                // Combine fuzzy results with original results
                 const fuzzyIcons = fuzzyResults.map(r => r.item);
                 icons = [...new Set([...fuzzyIcons, ...icons])].slice(0, 150);
             }
@@ -700,6 +763,24 @@ export const toggleShowAllIcons = async () => {
     await saveToStorage(); renderTeacherContent();
 };
 
+export const toggleEmojiSet = async (set) => {
+    if (!App.teacherSettings.activeEmojiSets) App.teacherSettings.activeEmojiSets = ['general'];
+    const idx = App.teacherSettings.activeEmojiSets.indexOf(set);
+    if (idx > -1) {
+        if (App.teacherSettings.activeEmojiSets.length > 1) {
+            App.teacherSettings.activeEmojiSets.splice(idx, 1);
+        } else {
+            toast('At least one set must be active', 'warning');
+            return;
+        }
+    } else {
+        App.teacherSettings.activeEmojiSets.push(set);
+    }
+    await saveToStorage();
+    renderTeacherContent();
+    toast(`${set.charAt(0).toUpperCase() + set.slice(1)} emojis toggled`, 'success');
+};
+
 /**
  * Re-renders all elements on the teacher's viewer canvas.
  */
@@ -784,10 +865,25 @@ export function initViewerCanvas() {
 }
 
 /**
- * Placeholder for presenting a student's work to the whole class.
+ * Broadcasts the current student's work to the whole class as a presentation.
  */
 export async function presentToClass(type) {
-    toast(`Presenting student ${type} to class (Simulated)`, 'success');
+    if (!App.viewingStudentId) return;
+    
+    const users = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
+    const s = users.find(u => u.visitorId === App.viewingStudentId);
+    
+    App.sharedData.currentPresentation = {
+        type: type, // 'model' | 'data'
+        visitorId: App.viewingStudentId,
+        studentName: s ? s.name : 'Student',
+        moduleId: App.currentModule,
+        timestamp: Date.now()
+    };
+    
+    await saveToStorage();
+    await saveAndBroadcast('debatePosts', App.sharedData.debatePosts); // Triggers sync
+    toast(`Now presenting ${s ? s.name : 'student'}'s ${type} to the class!`, 'success');
 }
 
 /**
@@ -803,6 +899,7 @@ export function closeCommentModal() {
     App.viewerState.commentPosition = null;
     App.viewerState.selectedSticker = null;
     App.editingPostId = null;
+    App.editingRowIndex = null;
     
     // Reset sticker UI
     document.querySelectorAll('.feedback-sticker-btn').forEach(b => b.classList.remove('bg-blue-100', 'border-primary'));
@@ -821,10 +918,23 @@ export function setFeedbackSticker(sticker) {
 }
 
 export async function saveComment() {
-    // Check if we are editing an argument post instead of a model comment
+    // 1. Check for Argument Post feedback
     if (App.editingPostId) {
         const argument = await import('../modules/argument.js');
         return argument.saveArgumentFeedback();
+    }
+
+    // 2. Check for Data Table row feedback
+    if (App.editingRowIndex !== null && App.editingRowIndex !== undefined && App.teacherModule === 'livedata') {
+        const val = document.getElementById('commentText')?.value.trim();
+        const sticker = App.viewerState.selectedSticker;
+        if (!App.work.dataTable.feedback) App.work.dataTable.feedback = {};
+        App.work.dataTable.feedback[App.editingRowIndex] = { text: val, sticker, time: Date.now() };
+        await saveAndBroadcast('dataTable.feedback', App.work.dataTable.feedback);
+        closeCommentModal();
+        renderTeacherContent();
+        toast('Row feedback updated', 'success');
+        return;
     }
 
     const val = document.getElementById('commentText')?.value.trim();

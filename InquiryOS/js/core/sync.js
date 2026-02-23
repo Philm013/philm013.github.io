@@ -170,23 +170,41 @@ export async function syncWithStorage() {
         if (changed) {
             App.syncState.lastSync = Date.now();
             
-            // Auto-force student to module if teacher has set one
-            if (App.mode === 'student' && App.teacherSettings.forceModule && App.currentModule !== App.teacherSettings.forceModule) {
-                App.currentModule = App.teacherSettings.forceModule;
+            // Recalculate Class Stats if teacher
+            if (App.mode === 'teacher') {
+                const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
+                const students = allUsers.filter(u => u.mode === 'student');
+                let notices = 0, wonders = 0, nodes = 0;
+                for (const s of students) {
+                    const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + s.visitorId);
+                    if (saved && saved.work) {
+                        notices += saved.work.notices?.length || 0;
+                        wonders += saved.work.wonders?.length || 0;
+                        nodes += saved.work.modelNodes?.length || 0;
+                    }
+                }
+                App.classStats = { notices, wonders, nodes, posts: App.sharedData.debatePosts?.length || 0 };
             }
-
-            renderNavigation();
-            if (App.mode === 'student' || App.viewingStudentId) {
-                if (App.mode === 'teacher' && App.teacherModule === 'students') {
-                    renderTeacherContent();
-                } else if (App.mode === 'student') {
+            
+            // Auto-force student to module if teacher has set one
+            if (App.mode === 'student' && App.teacherSettings.forceModule) {
+                if (App.currentModule !== App.teacherSettings.forceModule) {
+                    App.currentModule = App.teacherSettings.forceModule;
+                    renderNavigation();
                     renderStudentContent();
                 } else {
-                    renderTeacherContent();
+                    // Just update content if we are already on the right module
+                    renderStudentContent();
                 }
             } else {
-                renderTeacherContent();
+                renderNavigation();
+                if (App.mode === 'teacher') {
+                    renderTeacherContent();
+                } else {
+                    renderStudentContent();
+                }
             }
+            
             renderEvidenceBank();
             updateHealthIndicator('sync', 'good');
             const lastSyncEl = document.getElementById('lastSyncTime');

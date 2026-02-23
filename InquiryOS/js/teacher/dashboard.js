@@ -5,7 +5,7 @@
 
 import { App, getInitialWorkState } from '../core/state.js';
 import { dbGetAll, dbPut, dbDelete, dbGet, dbGetByIndex, STORE_LESSONS, STORE_USERS, STORE_SESSIONS } from '../core/storage.js';
-import { saveToStorage, registerUser, loadFromStorage } from '../core/sync.js';
+import { saveToStorage, registerUser, loadFromStorage, saveAndBroadcast } from '../core/sync.js';
 import { renderTeacherContent, updateModeUI, renderStudentContent, renderEmptyState } from '../ui/renderer.js';
 import { renderNavigation } from '../ui/navigation.js';
 import { toast, generateCode, calculateStudentProgress } from '../ui/utils.js';
@@ -26,16 +26,46 @@ function renderStatTile(label, count, icon, color) {
 }
 
 /**
+ * Resets all class focus, access controls, and guided mode to default state.
+ */
+export async function resetClassSession() {
+    if (confirm('Reset all focus, access controls, and active presentations for the whole class?')) {
+        App.teacherSettings.forceModule = null;
+        App.teacherSettings.guidedMode = false;
+        App.teacherSettings.showFeedbackToStudents = true;
+        
+        // Reset module access to all open
+        Object.keys(App.teacherSettings.moduleAccess).forEach(k => {
+            App.teacherSettings.moduleAccess[k] = true;
+        });
+        
+        // Clear presentations
+        App.sharedData.currentPresentation = null;
+        
+        await saveToStorage();
+        await saveAndBroadcast('debatePosts', App.sharedData.debatePosts); // Triggers full broadcast
+        
+        renderTeacherContent();
+        toast('Class session reset to defaults', 'success');
+    }
+}
+
+/**
+ * Stops the current class presentation.
+ */
+export async function stopPresentation() {
+    App.sharedData.currentPresentation = null;
+    await saveToStorage();
+    renderTeacherContent();
+    toast('Presentation stopped', 'info');
+}
+
+/**
  * Renders the primary teacher dashboard overview.
  */
-export function renderTeacherOverview() {
+export async function renderTeacherOverview() {
     const phenomenon = App.teacherSettings?.phenomenon || { title: '', description: '', tags: [], ngssStandards: [] };
-    const counts = {
-        notices: App.work?.notices?.length || 0,
-        wonders: App.work?.wonders?.length || 0,
-        nodes: App.work?.modelNodes?.length || 0,
-        posts: App.sharedData?.debatePosts?.length || 0
-    };
+    const stats = App.classStats || { notices: 0, wonders: 0, nodes: 0, posts: 0 };
 
     return `
         <div class="max-w-5xl mx-auto space-y-6">
@@ -96,10 +126,10 @@ export function renderTeacherOverview() {
             </div>
             
             <div class="grid md:grid-cols-4 gap-4">
-                ${renderStatTile('Notices', counts.notices, 'mdi:eye', 'blue')}
-                ${renderStatTile('Wonders', counts.wonders, 'mdi:lightbulb', 'yellow')}
-                ${renderStatTile('Model Nodes', counts.nodes, 'mdi:cube-outline', 'green')}
-                ${renderStatTile('Posts', counts.posts, 'mdi:forum', 'purple')}
+                ${renderStatTile('Total Notices', stats.notices, 'mdi:eye', 'blue')}
+                ${renderStatTile('Total Wonders', stats.wonders, 'mdi:lightbulb', 'yellow')}
+                ${renderStatTile('Class Concepts', stats.nodes, 'mdi:cube-outline', 'green')}
+                ${renderStatTile('Forum Posts', stats.posts, 'mdi:forum', 'purple')}
             </div>
 
             <div class="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-10">
@@ -288,14 +318,19 @@ export async function renderTeacherLessons() {
                                 <span class="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-[9px] font-black uppercase tracking-widest">${t.domain}</span>
                             </div>
                             <h4 class="text-xl font-black text-gray-900 mb-3">${t.name}</h4>
-                            <p class="text-xs text-gray-500 leading-relaxed mb-8 flex-1 italic">"${t.settings.phenomenon.description}"</p>
-                            <div class="grid grid-cols-2 gap-3">
-                                <button onclick="window.launchTemplate('${t.id}')" class="py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-lg shadow-gray-200">
-                                    Launch New
+                            <p class="text-xs text-gray-500 leading-relaxed mb-8 flex-1 italic line-clamp-2">"${t.settings.phenomenon.description}"</p>
+                            <div class="grid grid-cols-1 gap-2">
+                                <button onclick="window.previewTemplate('${t.id}')" class="w-full py-3 bg-blue-50 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 mb-2">
+                                    Preview Blueprint
                                 </button>
-                                <button onclick="window.applyTemplate('${t.id}')" class="py-3 bg-white border-2 border-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary">
-                                    Apply Here
-                                </button>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button onclick="window.launchTemplate('${t.id}')" class="py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-lg shadow-gray-200">
+                                        Launch New
+                                    </button>
+                                    <button onclick="window.applyTemplate('${t.id}')" class="py-3 bg-white border-2 border-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary">
+                                        Apply Here
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `).join('')}
@@ -316,9 +351,14 @@ export async function renderTeacherLessons() {
                                 <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-primary shadow-inner">
                                     <span class="iconify text-2xl" data-icon="mdi:lightbulb-variant"></span>
                                 </div>
-                                <button onclick="window.deleteLesson('${l.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors">
-                                    <span class="iconify text-xl" data-icon="mdi:delete-outline"></span>
-                                </button>
+                                <div class="flex gap-2">
+                                    <button onclick="window.previewPreset('${l.id}')" class="text-gray-400 hover:text-primary p-2 transition-colors">
+                                        <span class="iconify text-xl" data-icon="mdi:eye-outline"></span>
+                                    </button>
+                                    <button onclick="window.deleteLesson('${l.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors">
+                                        <span class="iconify text-xl" data-icon="mdi:delete-outline"></span>
+                                    </button>
+                                </div>
                             </div>
                             <h3 class="text-xl font-black text-gray-900 mb-2">${l.name}</h3>
                             <p class="text-[11px] text-gray-500 mb-8 line-clamp-3 leading-relaxed flex-1 italic">"${l.settings.phenomenon.description}"</p>
@@ -356,6 +396,86 @@ export async function launchTemplate(templateId) {
         App.work = getInitialWorkState();
         App.sharedData = { debatePosts: [] };
         await saveToStorage(); await registerUser(); updateModeUI(); toast('Template Launched!', 'success');
+    }
+}
+
+export async function previewTemplate(templateId) {
+    const templates = getNGSSTemplates();
+    const t = templates.find(x => x.id === templateId);
+    if (!t) return;
+    renderPreviewModal(t.name, t.icon, t.color, t.settings, () => launchTemplate(t.id), () => applyTemplate(t.id));
+}
+
+export async function previewPreset(lessonId) {
+    const l = await dbGet(STORE_LESSONS, lessonId);
+    if (!l) return;
+    renderPreviewModal(l.name, 'mdi:lightbulb-variant', 'blue', l.settings, () => launchLesson(l.id), () => applyLessonToCurrent(l.id));
+}
+
+function renderPreviewModal(name, icon, color, settings, onLaunch, onApply) {
+    const modal = document.getElementById('lessonPreviewModal');
+    if (!modal) return;
+
+    const iconEl = document.getElementById('previewIcon');
+    const titleEl = document.getElementById('previewTitle');
+    const contentEl = document.getElementById('previewContent');
+    const actionsEl = document.getElementById('previewActions');
+
+    iconEl.className = `w-14 h-14 rounded-2xl bg-${color}-50 text-${color}-600 flex items-center justify-center text-3xl shadow-sm border border-white`;
+    iconEl.innerHTML = `<span class="iconify" data-icon="${icon}"></span>`;
+    titleEl.textContent = name;
+
+    const p = settings.phenomenon || {};
+    const modules = settings.moduleAccess || {};
+
+    contentEl.innerHTML = `
+        <div class="space-y-6">
+            <div class="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3">Phenomenon Overview</label>
+                <h4 class="text-lg font-black text-gray-900 mb-2">${p.title || 'Untitled'}</h4>
+                <p class="text-sm text-gray-600 leading-relaxed italic">"${p.description || 'No description provided.'}"</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="p-6 bg-blue-50/50 rounded-3xl border border-blue-100">
+                    <label class="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-3">Linked Standards</label>
+                    <div class="flex flex-wrap gap-2">
+                        ${p.ngssStandards?.map(s => `<span class="px-2 py-1 bg-white text-blue-600 rounded-lg text-[9px] font-black border border-blue-100">${s}</span>`).join('') || '<span class="text-xs text-gray-400">None</span>'}
+                    </div>
+                </div>
+                <div class="p-6 bg-purple-50/50 rounded-3xl border border-purple-100">
+                    <label class="text-[10px] font-black text-purple-400 uppercase tracking-widest block mb-3">Module Permissions</label>
+                    <div class="grid grid-cols-2 gap-y-1">
+                        ${Object.keys(modules).map(m => `
+                            <div class="flex items-center gap-2 text-[10px] font-bold ${modules[m] ? 'text-purple-700' : 'text-gray-300'}">
+                                <span class="iconify" data-icon="${modules[m] ? 'mdi:check-circle' : 'mdi:minus-circle-outline'}"></span>
+                                <span class="capitalize">${m}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button onclick="window.closeLessonPreview()" class="px-6 py-3 text-gray-500 font-black text-xs uppercase tracking-widest hover:bg-gray-100 rounded-xl transition-all">Cancel</button>
+        <button id="previewLaunchBtn" class="px-8 py-3 bg-gray-900 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-black transition-all">Launch New Session</button>
+        <button id="previewApplyBtn" class="px-8 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:opacity-90 transition-all">Apply to Current</button>
+    `;
+
+    document.getElementById('previewLaunchBtn').onclick = () => { window.closeLessonPreview(); onLaunch(); };
+    document.getElementById('previewApplyBtn').onclick = () => { window.closeLessonPreview(); onApply(); };
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+export function closeLessonPreview() {
+    const modal = document.getElementById('lessonPreviewModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
     }
 }
 
@@ -442,7 +562,7 @@ window.kickStudent = (id) => {
 /**
  * Renders Access Control.
  */
-export function renderTeacherAccess() {
+export async function renderTeacherAccess() {
     const modules = [
         { id: 'questions', label: '1. Questions', icon: 'mdi:help-circle' },
         { id: 'models', label: '2. Models', icon: 'mdi:cube-outline' },
@@ -454,6 +574,14 @@ export function renderTeacherAccess() {
         { id: 'communication', label: '8. Communication', icon: 'mdi:share-variant' }
     ];
     
+    const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
+    const students = allUsers.filter(u => u.mode === 'student');
+    const studentWorks = [];
+    for (const s of students) {
+        const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + s.visitorId);
+        if (saved) studentWorks.push(saved.work);
+    }
+
     return `
         <div class="max-w-5xl mx-auto space-y-6">
             <div class="flex items-center justify-between mb-4">
@@ -469,7 +597,7 @@ export function renderTeacherAccess() {
                     <div class="bg-white rounded-[2.5rem] shadow-sm border p-8">
                         <h3 class="font-black text-gray-900 mb-6 flex items-center gap-3 uppercase tracking-tight">
                             <span class="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
-                                <span class="iconify text-xl" data-icon="mdi:map-marker-path"></span>
+                                <span class="iconify" data-icon="mdi:map-marker-path"></span>
                             </span>
                             Guided Experience
                         </h3>
@@ -552,29 +680,49 @@ export function renderTeacherAccess() {
                     </div>
                     
                     <div class="grid grid-cols-1 gap-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                        ${modules.map(m => `
-                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100 group">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center ${App.teacherSettings.moduleAccess[m.id] ? 'text-primary shadow-sm border border-blue-50' : 'text-gray-300'}">
-                                        <span class="iconify text-xl" data-icon="${m.icon}"></span>
+                        ${modules.map(m => {
+                            const isLocked = !App.teacherSettings.moduleAccess[m.id];
+                            // Simple activity heuristic
+                            const activeCount = studentWorks.filter(w => {
+                                if (m.id === 'questions') return w.notices?.length > 0 || w.wonders?.length > 0;
+                                if (m.id === 'models') return w.modelNodes?.length > 0;
+                                if (m.id === 'analysis') return w.dataTable?.rows?.some(r => Object.values(r).some(v => v));
+                                return false;
+                            }).length;
+
+                            return `
+                                <div class="flex flex-col p-3 bg-gray-50 rounded-2xl border border-gray-100 group">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center ${!isLocked ? 'text-primary shadow-sm border border-blue-50' : 'text-gray-300'}">
+                                                <span class="iconify text-xl" data-icon="${m.icon}"></span>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-gray-800 text-sm">${m.label}</p>
+                                                <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">${activeCount} Students Active</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <button onclick="window.forceAllToModule('${m.id}')" 
+                                                class="px-3 py-1 text-[9px] font-black rounded-lg border-2 uppercase tracking-tighter transition-all ${App.teacherSettings.forceModule === m.id ? 'bg-teacher text-white border-teacher shadow-lg shadow-red-100' : 'text-teacher border-red-100 hover:bg-red-50'}">
+                                                ${App.teacherSettings.forceModule === m.id ? 'Forced' : 'Focus'}
+                                            </button>
+                                            <label class="relative inline-flex items-center cursor-pointer scale-90">
+                                                <input type="checkbox" ${!isLocked ? 'checked' : ''} 
+                                                    onchange="window.toggleAccess('${m.id}')" class="sr-only peer">
+                                                <div class="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                            </label>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="font-bold text-gray-800 text-sm">${m.label}</p>
-                                    </div>
+                                    ${App.teacherSettings.exemplars?.[m.id] ? `
+                                        <div class="mt-2 flex items-center gap-2 px-2 py-1 bg-purple-50 rounded-lg border border-purple-100">
+                                            <span class="iconify text-[10px] text-purple-500" data-icon="mdi:lightbulb-on"></span>
+                                            <span class="text-[9px] font-bold text-purple-600 uppercase">Exemplar Ready</span>
+                                        </div>
+                                    ` : ''}
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    <button onclick="window.forceAllToModule('${m.id}')" 
-                                        class="px-3 py-1 text-[9px] font-black rounded-lg border-2 uppercase tracking-tighter transition-all ${App.teacherSettings.forceModule === m.id ? 'bg-teacher text-white border-teacher shadow-lg shadow-red-100' : 'text-teacher border-red-100 hover:bg-red-50'}">
-                                        ${App.teacherSettings.forceModule === m.id ? 'Forced' : 'Focus'}
-                                    </button>
-                                    <label class="relative inline-flex items-center cursor-pointer scale-90">
-                                        <input type="checkbox" ${App.teacherSettings.moduleAccess[m.id] ? 'checked' : ''} 
-                                            onchange="window.toggleAccess('${m.id}')" class="sr-only peer">
-                                        <div class="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                                    </label>
-                                </div>
-                            </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                     
                     <button onclick="window.forceAllToModule(null)" class="w-full mt-6 py-3 bg-gray-100 text-gray-600 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-gray-200 transition-all">
@@ -837,15 +985,31 @@ export async function guidedMove(dir) {
     const modules = ['questions', 'models', 'investigation', 'analysis', 'math', 'explanations', 'argument', 'communication'];
     let idx = modules.indexOf(App.teacherSettings.forceModule || 'questions');
     let next = Math.max(0, Math.min(modules.length - 1, idx + dir));
-    if (App.isExemplarMode && !App.viewerState.isMonitoring) App.teacherSettings.exemplars[App.currentModule] = JSON.parse(JSON.stringify(App.work));
-    App.teacherSettings.forceModule = App.currentModule = modules[next];
+    
+    const targetModule = modules[next];
+    if (App.teacherSettings.forceModule === targetModule) return;
+
+    if (App.isExemplarMode && !App.viewerState.isMonitoring) {
+        App.teacherSettings.exemplars[App.currentModule] = JSON.parse(JSON.stringify(App.work));
+    }
+    
+    App.teacherSettings.forceModule = App.currentModule = targetModule;
+    
     if (App.isExemplarMode) {
         if (!App.viewerState.isMonitoring) {
-            if (!App.teacherSettings.exemplars[App.currentModule]) App.teacherSettings.exemplars[App.currentModule] = getInitialWorkState();
+            if (!App.teacherSettings.exemplars[App.currentModule]) {
+                App.teacherSettings.exemplars[App.currentModule] = getInitialWorkState();
+            }
             App.work = App.teacherSettings.exemplars[App.currentModule];
-        } else await loadFromStorage();
+        } else {
+            await loadFromStorage();
+        }
     }
-    await saveToStorage(); renderTeacherContent();
+    
+    await saveToStorage();
+    renderNavigation();
+    renderTeacherContent();
+    toast(`Guided Class moved to ${targetModule.toUpperCase()}`, 'info');
 }
 
 export const forceAllToModule = async (moduleId) => {

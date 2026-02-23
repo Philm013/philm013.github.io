@@ -191,8 +191,16 @@ function renderDataTable() {
                                 </div>
                             </td>
                             ${showFeedback ? `
-                                <td class="border p-2 text-center text-xl bg-blue-50/20">
-                                    ${dt.feedback?.[ri] || ''}
+                                <td class="border p-2 text-center bg-blue-50/20 min-w-[60px]">
+                                    <div class="relative group/feedback inline-block">
+                                        <span class="text-2xl">${dt.feedback?.[ri]?.sticker || ''}</span>
+                                        ${dt.feedback?.[ri]?.text ? `
+                                            <div class="absolute right-full mr-3 top-1/2 -translate-y-1/2 w-64 p-4 bg-blue-600 text-white text-xs rounded-2xl shadow-2xl opacity-0 group-hover/feedback:opacity-100 pointer-events-none transition-all z-50 border border-blue-400 scale-95 group-hover/feedback:scale-100">
+                                                <p class="font-black text-blue-200 uppercase tracking-widest mb-2 border-b border-blue-500 pb-1">Teacher Comment</p>
+                                                ${dt.feedback[ri].text}
+                                            </div>
+                                        ` : ''}
+                                    </div>
                                 </td>
                             ` : ''}
                             <td class="border p-2 text-center">

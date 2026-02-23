@@ -138,7 +138,7 @@ export function renderNoticesList() {
     `;
     return App.work.notices.filter(n => !n.hidden).map(n => `
         <div class="group p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-blue-200 transition-all relative">
-            <p class="text-sm text-gray-700 leading-relaxed">${n.text}</p>
+            <p class="text-sm text-gray-700 leading-relaxed cursor-pointer" onclick="window.editInquiryItem('${n.id}', 'notices')">${n.text}</p>
             <button onclick="window.deleteNotice('${n.id}')" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-all">
                 <span class="iconify" data-icon="mdi:close-circle"></span>
             </button>
@@ -155,7 +155,7 @@ export function renderWondersList() {
     `;
     return App.work.wonders.filter(w => !w.hidden).map(w => `
         <div class="group p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-yellow-200 transition-all relative">
-            <p class="text-sm text-gray-700 leading-relaxed">${w.text}</p>
+            <p class="text-sm text-gray-700 leading-relaxed cursor-pointer" onclick="window.editInquiryItem('${w.id}', 'wonders')">${w.text}</p>
             <div class="flex gap-2 mt-2 pt-2 border-t border-gray-50">
                 <button onclick="window.promoteToQuestion('${w.id}')" class="text-[9px] font-black text-purple-500 uppercase tracking-widest hover:underline">Focus</button>
                 <button onclick="window.promoteWonderToTestable('${w.id}')" class="text-[9px] font-black text-green-500 uppercase tracking-widest hover:underline">Testable</button>
@@ -176,7 +176,7 @@ export function renderIdeasList() {
     `;
     return App.work.ideas.map(i => `
         <div class="group p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-purple-200 transition-all relative">
-            <p class="text-sm text-gray-700 leading-relaxed">${i.text}</p>
+            <p class="text-sm text-gray-700 leading-relaxed cursor-pointer" onclick="window.editInquiryItem('${i.id}', 'ideas')">${i.text}</p>
             <button onclick="window.deleteIdea('${i.id}')" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-all">
                 <span class="iconify" data-icon="mdi:close-circle"></span>
             </button>
@@ -193,7 +193,7 @@ export function renderTestableQuestionsList() {
     `;
     return App.work.testableQuestions.map(q => `
         <div class="group p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-green-200 transition-all relative">
-            <p class="text-sm text-gray-700 leading-relaxed">${q.text}</p>
+            <p class="text-sm text-gray-700 leading-relaxed cursor-pointer" onclick="window.editInquiryItem('${q.id}', 'testableQuestions')">${q.text}</p>
             <button onclick="window.deleteTestableQuestion('${q.id}')" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-all">
                 <span class="iconify" data-icon="mdi:close-circle"></span>
             </button>
@@ -236,6 +236,27 @@ export async function deleteNotice(id) { App.work.notices = App.work.notices.fil
 export async function deleteWonder(id) { App.work.wonders = App.work.wonders.filter(w => w.id !== id); await saveAndBroadcast('wonders', App.work.wonders); renderStudentContent(); }
 export async function deleteIdea(id) { App.work.ideas = App.work.ideas.filter(i => i.id !== id); await saveAndBroadcast('ideas', App.work.ideas); renderStudentContent(); }
 export async function deleteTestableQuestion(id) { App.work.testableQuestions = App.work.testableQuestions.filter(q => q.id !== id); await saveAndBroadcast('testableQuestions', App.work.testableQuestions); renderStudentContent(); }
+
+/**
+ * UI: Allows students to edit their existing inquiry contributions.
+ */
+export async function editInquiryItem(id, category) {
+    const list = App.work[category];
+    const item = list.find(i => i.id === id);
+    if (!item) return;
+
+    window.openGenericInput('Edit Item', 'Update your contribution...', item.text, async (newText) => {
+        if (newText === null || newText === undefined) return;
+        if (!newText.trim()) {
+            // If empty, delete
+            App.work[category] = list.filter(i => i.id !== id);
+        } else {
+            item.text = newText.trim();
+        }
+        await saveAndBroadcast(category, App.work[category]);
+        renderStudentContent();
+    });
+}
 
 export async function promoteToQuestion(id) {
     const wonder = App.work.wonders.find(w => w.id === id);

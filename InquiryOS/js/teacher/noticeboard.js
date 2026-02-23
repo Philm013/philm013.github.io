@@ -256,42 +256,86 @@ export async function clearAllPosts() {
 }
 
 export function renderCategoryManager() {
+    const categories = App.teacherSettings.categories || [];
+    
     return `
-        <div class="max-w-3xl mx-auto">
-            <div class="mb-8">
-                <h2 class="text-3xl font-black text-gray-900">Contribution Categories</h2>
-                <p class="text-gray-500 mt-1">Customize the columns and tags used on the collaborative board.</p>
+        <div class="max-w-4xl mx-auto space-y-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tighter">Category Architect</h2>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Organize student contributions by scientific themes</p>
+                </div>
             </div>
             
-            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                <div class="space-y-4 mb-10" id="categoryList">
-                    ${App.teacherSettings.categories.map(cat => `
-                        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl group border-2 border-transparent hover:border-primary/10 transition-all">
-                            <input type="color" value="${cat.color}" onchange="window.updateCategoryColor('${cat.id}', this.value)" 
-                                class="w-10 h-10 rounded-xl cursor-pointer border-none shadow-sm">
-                            <div class="flex-1">
-                                <input type="text" value="${cat.name}" onchange="window.updateCategoryName('${cat.id}', this.value)" 
-                                    class="w-full bg-white border-2 border-gray-100 rounded-xl px-4 py-2 font-bold text-gray-700 focus:border-primary focus:outline-none transition-all">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Current Categories -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
+                        <h3 class="text-lg font-black text-gray-900 mb-6 flex items-center gap-3">
+                            <span class="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
+                                <span class="iconify" data-icon="mdi:view-column"></span>
+                            </span>
+                            Active Categories
+                        </h3>
+                        
+                        <div class="space-y-3" id="categoryList">
+                            ${categories.map(cat => `
+                                <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-[1.5rem] group border-2 border-transparent hover:border-primary/10 transition-all shadow-sm">
+                                    <div class="relative">
+                                        <input type="color" value="${cat.color}" onchange="window.updateCategoryColor('${cat.id}', this.value)" 
+                                            class="w-12 h-12 rounded-xl cursor-pointer border-none shadow-inner bg-transparent">
+                                        <div class="absolute inset-0 rounded-xl pointer-events-none border-2 border-white/20"></div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="text" value="${cat.name}" onchange="window.updateCategoryName('${cat.id}', this.value)" 
+                                            class="w-full bg-white border-2 border-gray-100 rounded-xl px-5 py-3 font-bold text-gray-700 focus:border-primary focus:outline-none transition-all shadow-sm">
+                                    </div>
+                                    <button onclick="window.deleteCategory('${cat.id}')" 
+                                        class="p-3 bg-white text-gray-300 hover:text-red-500 rounded-xl border border-gray-100 hover:border-red-100 opacity-0 group-hover:opacity-100 transition-all shadow-sm">
+                                        <span class="iconify text-xl" data-icon="mdi:trash-can-outline"></span>
+                                    </button>
+                                </div>
+                            `).join('')}
+                            
+                            ${categories.length === 0 ? `
+                                <div class="py-12 text-center border-2 border-dashed border-gray-100 rounded-3xl opacity-30">
+                                    <p class="font-black uppercase tracking-widest text-xs">No custom categories defined</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create New -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 sticky top-6">
+                        <h3 class="text-lg font-black text-gray-900 mb-6">Create New</h3>
+                        <div class="space-y-6">
+                            <div>
+                                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Category Name</label>
+                                <input type="text" id="newCategoryName" placeholder="e.g. Observations..." 
+                                    class="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-sm font-bold focus:border-primary focus:bg-white focus:outline-none transition-all"
+                                    onkeypress="if(event.key==='Enter')window.addCategory()">
                             </div>
-                            <button onclick="window.deleteCategory('${cat.id}')" 
-                                class="p-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-                                <span class="iconify text-xl" data-icon="mdi:trash-can-outline"></span>
+                            <div>
+                                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Theme Color</label>
+                                <div class="flex gap-2">
+                                    <input type="color" id="newCategoryColor" value="#3b82f6" class="w-14 h-14 rounded-2xl cursor-pointer border-none shadow-sm bg-transparent">
+                                    <div class="flex-1 grid grid-cols-4 gap-2">
+                                        ${['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b', '#06b6d4'].map(c => `
+                                            <button onclick="document.getElementById('newCategoryColor').value='${c}'" 
+                                                class="w-full aspect-square rounded-lg border-2 border-white shadow-sm transition-transform hover:scale-110" 
+                                                style="background:${c}"></button>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                            <button onclick="window.addCategory()" 
+                                class="w-full py-5 bg-primary text-white rounded-[2rem] font-black shadow-xl shadow-blue-100 hover:opacity-90 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3">
+                                <span class="iconify text-xl" data-icon="mdi:plus-circle"></span>
+                                Add Category
                             </button>
                         </div>
-                    `).join('')}
-                </div>
-                
-                <div class="p-6 bg-blue-50/50 rounded-3xl border-2 border-dashed border-blue-100">
-                    <h4 class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4 ml-1">Create New Category</h4>
-                    <div class="flex gap-3">
-                        <input type="text" id="newCategoryName" placeholder="e.g. My Observations..." 
-                            class="flex-1 px-5 py-3 bg-white border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-primary focus:outline-none transition-all"
-                            onkeypress="if(event.key==='Enter')window.addCategory()">
-                        <input type="color" id="newCategoryColor" value="#3b82f6" class="w-12 h-12 rounded-2xl cursor-pointer border-none shadow-sm">
-                        <button onclick="window.addCategory()" 
-                            class="px-8 py-3 bg-primary text-white rounded-2xl font-black shadow-lg shadow-blue-100 hover:-translate-y-0.5 transition-all">
-                            Add Category
-                        </button>
                     </div>
                 </div>
             </div>

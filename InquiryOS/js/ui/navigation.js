@@ -10,13 +10,28 @@ import { renderStudentContent, renderTeacherContent, renderEvidenceBank } from '
 /**
  * Toggles the visibility of the sidebar on mobile devices.
  */
-export function toggleSidebar() {
+export function toggleSidebar(forceState) {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     if (sidebar && overlay) {
-        sidebar.classList.toggle('open');
-        overlay.classList.toggle('open');
+        if (forceState === true) {
+            sidebar.classList.add('open');
+            overlay.classList.add('open');
+        } else if (forceState === false) {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('open');
+        } else {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
     }
+}
+
+/**
+ * Ensures the sidebar is closed on mobile devices.
+ */
+export function closeSidebar() {
+    toggleSidebar(false);
 }
 
 /**
@@ -29,6 +44,10 @@ export async function showStudentModule(moduleId) {
         return;
     }
 
+    if (window.innerWidth < 768) {
+        closeSidebar();
+    }
+
     // If student is currently viewing an exemplar, restore their work before switching
     if (App.isViewingExemplar && App.studentWorkCache) {
         App.work = App.studentWorkCache;
@@ -39,10 +58,6 @@ export async function showStudentModule(moduleId) {
     App.currentModule = moduleId;
     renderNavigation();
     renderStudentContent();
-    
-    if (window.innerWidth < 768) {
-        toggleSidebar();
-    }
 }
 
 /**
@@ -50,13 +65,13 @@ export async function showStudentModule(moduleId) {
  * @param {string} moduleId - ID of the teacher module to show.
  */
 export function showTeacherModule(moduleId) {
+    if (window.innerWidth < 768) {
+        closeSidebar();
+    }
+    
     App.teacherModule = moduleId;
     renderNavigation();
     renderTeacherContent();
-    
-    if (window.innerWidth < 768) {
-        toggleSidebar();
-    }
 }
 
 /**
@@ -96,15 +111,15 @@ export function renderNavigation() {
                 </ul>
                 
                 <div class="mt-6 p-4 bg-gray-50 rounded-xl">
-                    <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3">Quick Stats</h4>
+                    <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3">Class Stats</h4>
                     <div class="grid grid-cols-2 gap-2 text-center">
                         <div class="p-2 bg-blue-100 rounded-lg">
-                            <p class="text-lg font-bold text-blue-700">${App.work.notices?.length || 0}</p>
-                            <p class="text-xs text-blue-600">Notices</p>
+                            <p class="text-lg font-bold text-blue-700">${App.classStats?.notices || 0}</p>
+                            <p class="text-[9px] text-blue-600 font-black uppercase">Notices</p>
                         </div>
                         <div class="p-2 bg-yellow-100 rounded-lg">
-                            <p class="text-lg font-bold text-yellow-700">${App.work.wonders?.length || 0}</p>
-                            <p class="text-xs text-yellow-600">Wonders</p>
+                            <p class="text-lg font-bold text-yellow-700">${App.classStats?.wonders || 0}</p>
+                            <p class="text-[9px] text-yellow-600 font-black uppercase">Wonders</p>
                         </div>
                     </div>
                 </div>

@@ -63,6 +63,19 @@ export function updateModeUI() {
         const subtitleEl = document.getElementById('headerSubtitle');
         if (subtitleEl) subtitleEl.textContent = subtitle;
         
+        const teacherGlobalEl = document.getElementById('teacherGlobalNav');
+        if (teacherGlobalEl) {
+            teacherGlobalEl.classList.toggle('hidden', !isTeacher);
+            teacherGlobalEl.classList.toggle('flex', isTeacher);
+        }
+
+        const presentationEl = document.getElementById('presentationStatus');
+        if (presentationEl) {
+            const isPresenting = !!App.sharedData.currentPresentation;
+            presentationEl.classList.toggle('hidden', !isPresenting);
+            presentationEl.classList.toggle('flex', isPresenting);
+        }
+        
         const studentNavEl = document.getElementById('teacherStudentNav');
         const viewingNameEl = document.getElementById('viewingName');
         const viewingAvatarEl = document.getElementById('viewingAvatar');
@@ -167,6 +180,12 @@ export function updateModeUI() {
 export function renderStudentContent() {
     if (App.mode === 'teacher' && (App.isExemplarMode || App.viewingStudentId)) {
         renderTeacherContent();
+        return;
+    }
+
+    // Check for active presentation
+    if (App.mode === 'student' && App.sharedData.currentPresentation) {
+        renderPresentationLayer();
         return;
     }
 
@@ -284,6 +303,7 @@ export async function renderTeacherContent() {
 export function renderModuleHeader(title, icon, sep, customButtons = '') {
     const isFullscreen = !!document.fullscreenElement;
     const sepData = ngssData.elements3D?.dimensions?.find(d => d.code === 'SEP')?.elements?.find(el => el.id === sep);
+    const hasExemplar = !!App.teacherSettings.exemplars?.[App.currentModule];
     
     return `
         <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -308,6 +328,12 @@ export function renderModuleHeader(title, icon, sep, customButtons = '') {
                 ` : ''}
             </div>
             <div class="flex items-center gap-2">
+                ${hasExemplar && App.mode === 'student' ? `
+                    <button onclick="window.toggleExemplarView()" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm font-bold flex items-center gap-2 transition-all">
+                        <span class="iconify" data-icon="mdi:lightbulb-on"></span>
+                        <span class="hidden sm:inline">${App.isViewingExemplar ? 'Back to My Work' : 'View Example'}</span>
+                    </button>
+                ` : ''}
                 ${customButtons}
                 <button onclick="window.toggleModuleFullscreen()" class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
                     <span class="iconify" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span>
@@ -388,6 +414,94 @@ export function renderEvidenceBank() {
                 </div>
             </div>
         `).join('');
+    }
+}
+
+/**
+ * Renders the presentation overlay when a teacher is presenting work to the class.
+ */
+export async function renderPresentationLayer() {
+    const content = document.getElementById('mainContent');
+    const pres = App.sharedData.currentPresentation;
+    if (!content || !pres) return;
+
+    content.innerHTML = `
+        <div class="h-full flex flex-col -m-6 relative overflow-hidden bg-gray-900">
+            <div class="absolute inset-0 z-0 opacity-20">
+                <div class="w-full h-full bg-[radial-gradient(#ffffff_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+            </div>
+            
+            <div class="relative z-10 p-6 flex items-center justify-between bg-black/40 backdrop-blur-md border-b border-white/10">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <span class="iconify text-2xl" data-icon="mdi:presentation"></span>
+                    </div>
+                    <div>
+                        <h2 class="text-white font-black text-xl uppercase tracking-tighter">Class Presentation</h2>
+                        <p class="text-blue-400 text-xs font-bold uppercase tracking-widest mt-0.5">
+                            ${pres.type === 'exemplar' ? 'Teacher Exemplar' : `Viewing Work: ${pres.studentName || 'Peer'}`}
+                        </p>
+                    </div>
+                </div>
+                <div class="px-4 py-2 bg-white/10 rounded-xl text-white text-[10px] font-black uppercase tracking-[0.2em]">
+                    Focus Mode Active
+                </div>
+            </div>
+
+            <div class="flex-1 relative overflow-hidden" id="presentationContainer">
+                <div id="presentationContent" class="w-full h-full p-8 flex items-center justify-center text-white/50 italic">
+                    Loading presented content...
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Load the specific content
+    if (pres.type === 'exemplar') {
+        const exemplar = App.teacherSettings.exemplars[pres.moduleId];
+        if (exemplar) {
+            // Temporarily swap work state to render the exemplar
+            const originalWork = JSON.parse(JSON.stringify(App.work));
+            App.work = JSON.parse(JSON.stringify(exemplar));
+            const container = document.getElementById('presentationContent');
+            if (container) {
+                const renderers = {
+                    questions: renderQuestionsModule,
+                    models: renderModelsModule,
+                    analysis: renderAnalysisModule,
+                    explanations: renderExplanationsModule
+                };
+                const html = renderers[pres.moduleId]?.() || '<p>Content not available</p>';
+                container.innerHTML = `<div class="w-full h-full overflow-auto p-8 bg-white rounded-[3rem] shadow-2xl relative">${html}<div class="readonly-overlay pointer-events-auto"></div></div>`;
+                
+                if (pres.moduleId === 'models') setTimeout(() => initModelCanvas(), 50);
+                if (pres.moduleId === 'analysis') setTimeout(() => initChart(), 50);
+            }
+            App.work = originalWork;
+        }
+    } else {
+        // Fetch student work
+        const { dbGet, STORE_SESSIONS } = await import('../core/storage.js');
+        const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + pres.visitorId);
+        if (saved && saved.work) {
+            const originalWork = JSON.parse(JSON.stringify(App.work));
+            App.work = saved.work;
+            const container = document.getElementById('presentationContent');
+            if (container) {
+                if (pres.type === 'model') {
+                    const { renderLiveModels, initViewerCanvas } = await import('../teacher/viewer.js');
+                    container.innerHTML = `<div class="w-full h-full relative">${await renderLiveModels()}</div>`;
+                    setTimeout(() => initViewerCanvas(), 50);
+                    // Hide the sub-header back button
+                    container.querySelector('button[onclick*="stopViewingStudent"]')?.classList.add('hidden');
+                } else if (pres.type === 'data') {
+                    const { renderLiveData } = await import('../teacher/viewer.js');
+                    container.innerHTML = `<div class="w-full h-full overflow-auto bg-gray-50 rounded-[3rem] p-8">${await renderLiveData()}</div>`;
+                    container.querySelector('button[onclick*="stopViewingStudent"]')?.classList.add('hidden');
+                }
+            }
+            App.work = originalWork;
+        }
     }
 }
 

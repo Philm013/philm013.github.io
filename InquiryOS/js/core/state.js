@@ -28,7 +28,8 @@ export const App = {
     studentWorkCache: null,
     
     sharedData: {
-        debatePosts: []
+        debatePosts: [],
+        currentPresentation: null // { type: 'model'|'data'|'exemplar', visitorId: string, moduleId: string }
     },
     
     /**
@@ -39,6 +40,8 @@ export const App = {
         guidedMode: false,
         showFeedbackToStudents: true,
         exemplars: {}, // Maps moduleId -> work state
+        activeDomains: ['general'], // ['life', 'physical', 'earth', 'chemistry', 'engineering']
+        studentStatus: {}, // Maps visitorId -> { currentModule, status: 'not-started'|'in-progress'|'complete' }
         moduleAccess: {
             questions: true, 
             models: true, 
@@ -55,6 +58,14 @@ export const App = {
             tags: ['Ecosystems', 'Energy'], 
             ngssStandards: [] 
         },
+        emojiSets: {
+            general: ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '⚙️', '⚖️', '🔬', '🧬', '🌍', '🔭', '🏗️', '🌉', '🔨', '📏'],
+            life: ['🌲', '🌻', '🐟', '🐦', '🦋', '🐝', '🍎', '🥩', '🧠', '💀', '🦠', '🧬', '🔬', '🌿', '🍄', '🐾'],
+            physical: ['🔋', '⚡', '💡', '🧲', '⚙️', '⚖️', '🔨', '📏', '🔧', '🧪', '🌡️', '🔥', '💨', '🌈', '📡', '🔋'],
+            earth: ['🌍', '🌎', '🌏', '☀️', '🌙', '☁️', '⛈️', '🌪️', '🌋', '🏔️', '🌊', '🏜️', '💎', '☄️', '🛰️', '🔭'],
+            engineering: ['🏗️', '🏢', '🏭', '🏠', '🌉', '⛓️', '🔗', '⚙️', '🔩', '🔧', '🔨', '🛠️', '📐', '📏', '💻', '🤖']
+        },
+        activeEmojiSets: ['general'],
         categories: [
             { id: 'cat_patterns', name: 'Patterns', color: '#3b82f6' },
             { id: 'cat_causes', name: 'Cause & Effect', color: '#22c55e' },
@@ -123,6 +134,13 @@ export const App = {
         commentPosition: null,
         selectedSticker: null,
         isMonitoring: false
+    },
+    
+    classStats: {
+        notices: 0,
+        wonders: 0,
+        nodes: 0,
+        posts: 0
     },
     
     editingCard: null,

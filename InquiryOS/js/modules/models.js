@@ -21,9 +21,17 @@ export function renderModelsModule() {
     const customIcons = App.teacherSettings.lessonIcons || [];
     const availableIcons = [...new Set([...defaultIcons, ...customIcons])];
     
-    const defaultEmojis = ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '⚙️', '⚖️', '🔬', '🧬', '🌍', '🔭', '🏗️', '🌉', '🔨', '📏', '🌲', '🌻', '🐟', '🐦', '🦋', '🐝', '☁️', '⛈️', '🔥', '🌋', '🍎', '🥩', '🧠', '💀', '👾', '📡', '🛸', '🧭', '📐'];
+    // Merge domain sets with custom teacher selections
+    let emojis = [];
+    const activeSets = App.teacherSettings.activeEmojiSets || ['general'];
+    activeSets.forEach(set => {
+        if (App.teacherSettings.emojiSets[set]) {
+            emojis = [...emojis, ...App.teacherSettings.emojiSets[set]];
+        }
+    });
+    
     const customEmojis = App.teacherSettings.lessonEmojis || [];
-    const emojis = [...new Set([...defaultEmojis, ...customEmojis])];
+    emojis = [...new Set([...emojis, ...customEmojis])];
 
     const isFullscreen = App.modelState.isFullscreen;
 
@@ -416,17 +424,23 @@ function renderModelStickers() {
     layer.innerHTML = (App.work.modelStickers || []).map(s => {
         const isSelected = App.modelState.selectedItems.some(i => i.id === s.id);
         const isIcon = s.emoji?.includes(':');
-        const size = s.width || 40; // Use width for size, defaulting to 40
+        const w = s.width || 60;
+        const h = s.height || 60;
         
         return `
-        <div class="absolute pointer-events-auto select-none group/sticker ${isSelected ? 'selected ring-2 ring-purple-500 rounded-lg' : ''}" 
-            style="left:${s.x}px; top:${s.y}px; width:${size}px; height:${size}px; cursor: move; display:flex; align-items:center; justify-content:center; transform: rotate(${s.rotation || 0}deg)" 
+        <div class="absolute pointer-events-auto select-none group/sticker ${isSelected ? 'selected ring-2 ring-primary ring-offset-4 rounded-xl' : ''}" 
+            style="left:${s.x}px; top:${s.y}px; width:${w}px; height:${h}px; cursor: move; display:flex; align-items:center; justify-content:center; transform: rotate(${s.rotation || 0}deg)" 
             onclick="window.selectItem(event, 'stamp', '${s.id}')"
-            onpointerdown="window.startStampDrag(event, '${s.id}')">
-            ${isIcon ? `<span class="iconify" style="font-size: ${size}px;" data-icon="${s.emoji}"></span>` : `<span style="font-size: ${size * 0.8}px;">${s.emoji}</span>`}
+            onpointerdown="window.startStampDrag(event, '${s.id}')"
+            data-id="${s.id}">
+            <div class="w-full h-full flex items-center justify-center p-1">
+                ${isIcon ? `<span class="iconify" style="width: 100%; height: 100%;" data-icon="${s.emoji}"></span>` : `<span style="font-size: ${Math.min(w, h) * 0.8}px; line-height: 1;">${s.emoji}</span>`}
+            </div>
             <button onclick="window.deleteModelElement('modelStickers', '${s.id}')" 
-                class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/sticker:opacity-100 transition-opacity z-20 shadow-sm pointer-events-auto"
-                onpointerdown="event.stopPropagation()">×</button>
+                class="absolute -top-3 -right-3 w-7 h-7 bg-white border border-red-100 text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover/sticker:opacity-100 transition-all z-20 shadow-xl pointer-events-auto hover:bg-red-500 hover:text-white"
+                onpointerdown="event.stopPropagation()">
+                <span class="iconify text-xs" data-icon="mdi:close"></span>
+            </button>
         </div>
         `;
     }).join('');
@@ -472,7 +486,7 @@ function renderExplanationPoints() {
     if (!layer) return;
     layer.innerHTML = (App.work.modelExplanations || []).map((p, i) => `
         <div class="absolute pointer-events-auto w-8 h-8 bg-primary text-white font-bold rounded-full flex items-center justify-center shadow-lg border-2 border-white transform -translate-x-1/2 -translate-y-1/2"
-            style="left:${p.x}px; top:${p.y}px;" onpointerdown="window.startExplainDrag(event, '${p.id}')">${i + 1}</div>
+            style="left:${p.x}px; top:${p.y}px;" onpointerdown="window.startExplainDrag(event, '${p.id}')" data-id="${p.id}">${i + 1}</div>
     `).join('');
 }
 
@@ -493,8 +507,8 @@ function renderSelectionOverlay() {
         else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
         
         if (el && item.type !== 'path') {
-            const w = el.width || (item.type === 'stamp' ? 40 : 120);
-            const h = el.height || (item.type === 'stamp' ? 40 : 80);
+            const w = el.width || (item.type === 'stamp' ? 60 : 120);
+            const h = el.height || (item.type === 'stamp' ? 60 : 80);
             
             const overlay = document.createElement('div');
             overlay.className = 'selection-handles pointer-events-none';
@@ -504,8 +518,8 @@ function renderSelectionOverlay() {
             overlay.style.height = (h + 8) + 'px';
             overlay.style.transform = `rotate(${el.rotation || 0}deg)`;
             
-            // Resize handles (simplified)
-            const handles = ['nw', 'ne', 'sw', 'se'];
+            // Resize handles
+            const handles = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
             handles.forEach(hType => {
                 const handle = document.createElement('div');
                 handle.className = `handle ${hType} pointer-events-auto`;
@@ -540,18 +554,18 @@ export function startResize(event, id, type, handle) {
                  App.work.modelNotes).find(i => i.id === id);
     if (!item) return;
     
-    const initW = item.width || (type === 'stamp' ? 40 : 120);
-    const initH = item.height || (type === 'stamp' ? 40 : 80);
+    const initW = item.width || (type === 'stamp' ? 60 : 120);
+    const initH = item.height || (type === 'stamp' ? 60 : 80);
     const initX = item.x, initY = item.y;
     
     document.onpointermove = (e) => {
         const dx = (e.clientX - startX) / App.modelState.zoom;
         const dy = (e.clientY - startY) / App.modelState.zoom;
         
-        if (handle.includes('e')) item.width = Math.max(40, initW + dx);
-        if (handle.includes('s')) item.height = Math.max(40, initH + dy);
-        if (handle.includes('w')) { item.width = Math.max(40, initW - dx); item.x = initX + dx; }
-        if (handle.includes('n')) { item.height = Math.max(40, initH - dy); item.y = initY + dy; }
+        if (handle.includes('e')) item.width = Math.max(20, initW + dx);
+        if (handle.includes('s')) item.height = Math.max(20, initH + dy);
+        if (handle.includes('w')) { item.width = Math.max(20, initW - dx); item.x = initX + dx; }
+        if (handle.includes('n')) { item.height = Math.max(20, initH - dy); item.y = initY + dy; }
         
         renderModelElements();
     };
@@ -594,8 +608,7 @@ function renderConnections() {
         ...App.work.modelNodes,
         ...App.work.modelShapes,
         ...App.work.modelNotes,
-        ...App.work.modelStickers,
-        ...App.work.modelPaths
+        ...App.work.modelStickers
     ];
 
     App.work.modelConnections.forEach((conn) => {
@@ -607,10 +620,10 @@ function renderConnections() {
             const start = getHandlePosition(fromObj, conn.fromHandle);
             const end = getHandlePosition(toObj, conn.toHandle);
             const midX = (start.x + end.x) / 2;
-            const midY = (start.y + end.y) / 2;
             
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', `M ${start.x} ${start.y} Q ${midX} ${start.y}, ${midX} ${midY} T ${end.x} ${end.y}`);
+            // Improved path drawing with better curvature
+            path.setAttribute('d', `M ${start.x} ${start.y} C ${midX} ${start.y}, ${midX} ${end.y}, ${end.x} ${end.y}`);
             path.setAttribute('stroke', isSelected ? '#7c3aed' : '#64748b'); 
             path.setAttribute('stroke-width', isSelected ? '4' : '2');
             path.setAttribute('fill', 'none'); 
@@ -630,15 +643,8 @@ function renderConnections() {
 
 export function getHandlePosition(node, handle) {
     if (!node) return { x: 0, y: 0 };
-    const w = node.width || (node.points ? 0 : 120), h = node.height || (node.points ? 0 : 50);
+    const w = node.width || 120, h = node.height || (node.label ? 80 : 60);
     
-    // For paths, we use the average of points as center
-    if (node.points) {
-        const avgX = node.points.reduce((a, b) => a + b.x, 0) / node.points.length;
-        const avgY = node.points.reduce((a, b) => a + b.y, 0) / node.points.length;
-        return { x: avgX, y: avgY };
-    }
-
     switch (handle) {
         case 'top': return { x: node.x + w / 2, y: node.y };
         case 'bottom': return { x: node.x + w / 2, y: node.y + h };
@@ -720,9 +726,7 @@ export async function deleteSelectedItems() {
         else if (item.type === 'connection') App.work.modelConnections = App.work.modelConnections.filter(i => i.id !== item.id);
     });
 
-    // Cleanup orphaned connections if nodes were deleted
-    const nodeIds = new Set(App.work.modelNodes.map(n => n.id));
-    // For other objects too
+    // Cleanup orphaned connections
     const allObjIds = new Set([
         ...App.work.modelNodes.map(n => n.id),
         ...App.work.modelShapes.map(n => n.id),
@@ -741,7 +745,7 @@ export async function deleteSelectedItems() {
 }
 
 export async function createNode(x, y, icon) {
-    const node = { id: 'node_' + Date.now(), icon, label: 'Concept', x, y, width: 120, height: 50, color: '#3b82f6' };
+    const node = { id: 'node_' + Date.now(), icon, label: 'Concept', x, y, width: 140, height: 90, color: '#3b82f6' };
     App.work.modelNodes.push(node);
     await saveAndBroadcast('modelNodes', App.work.modelNodes);
     App.modelState.selectedItems = [{ type: 'node', id: node.id }];
@@ -822,34 +826,46 @@ export function startExplainDrag(event, id) {
 
 function createNodeElement(node) {
     const el = document.createElement('div');
-    el.className = 'model-node group/node'; el.dataset.id = node.id;
+    el.className = 'model-node group/node transition-all'; el.dataset.id = node.id;
     el.style.boxSizing = 'border-box';
     
     el.innerHTML = `
-        <div class="node-content flex flex-col items-center justify-center gap-1 h-full w-full pointer-events-none select-none">
-            <div class="node-icon-container w-10 h-10 flex items-center justify-center bg-gray-50 rounded-lg shadow-inner group-hover/node:bg-white transition-colors overflow-hidden">
-                <span class="node-icon text-2xl"></span>
+        <div class="node-content flex flex-col items-center justify-center gap-3 h-full w-full pointer-events-none select-none">
+            <div class="node-icon-container w-14 h-14 flex items-center justify-center bg-slate-50 rounded-2xl shadow-inner group-hover/node:bg-white transition-all group-hover/node:scale-110 overflow-hidden border border-slate-100">
+                <span class="node-icon text-4xl"></span>
             </div>
-            <input type="text" class="node-label-input text-center text-[10px] font-bold text-gray-700 bg-transparent border-none focus:ring-0 p-0 w-full pointer-events-auto" 
-                value="${node.label}" onchange="window.updateNodeLabel('${node.id}', this.value)" 
-                onpointerdown="event.stopPropagation()" onclick="event.stopPropagation()">
+            <div class="w-full px-2">
+                <input type="text" class="node-label-input text-center text-[11px] font-black uppercase tracking-tight text-slate-800 bg-transparent border-none focus:ring-0 p-0 w-full pointer-events-auto" 
+                    value="${node.label}" onchange="window.updateNodeLabel('${node.id}', this.value)" 
+                    onpointerdown="event.stopPropagation()" onclick="event.stopPropagation()">
+            </div>
         </div>
-        <div class="node-handle top pointer-events-auto" onpointerdown="window.startConnection(event, '${node.id}', 'top')"></div>
-        <div class="node-handle bottom pointer-events-auto" onpointerdown="window.startConnection(event, '${node.id}', 'bottom')"></div>
-        <div class="node-handle left pointer-events-auto" onpointerdown="window.startConnection(event, '${node.id}', 'left')"></div>
-        <div class="node-handle right pointer-events-auto" onpointerdown="window.startConnection(event, '${node.id}', 'right')"></div>
+        
+        <!-- Interactive Handles -->
+        <div class="node-handle top pointer-events-auto shadow-sm" onpointerdown="window.startConnection(event, '${node.id}', 'top')"></div>
+        <div class="node-handle bottom pointer-events-auto shadow-sm" onpointerdown="window.startConnection(event, '${node.id}', 'bottom')"></div>
+        <div class="node-handle left pointer-events-auto shadow-sm" onpointerdown="window.startConnection(event, '${node.id}', 'left')"></div>
+        <div class="node-handle right pointer-events-auto shadow-sm" onpointerdown="window.startConnection(event, '${node.id}', 'right')"></div>
+        
         <button onclick="window.deleteModelElement('modelNodes', '${node.id}')" 
-            class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/node:opacity-100 transition-opacity z-30 shadow-sm pointer-events-auto cursor-pointer"
-            onpointerdown="event.stopPropagation()">×</button>
+            class="absolute -top-4 -right-4 w-8 h-8 bg-white border border-red-100 text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover/node:opacity-100 transition-all z-30 shadow-xl pointer-events-auto hover:bg-red-500 hover:text-white"
+            onpointerdown="event.stopPropagation()">
+            <span class="iconify" data-icon="mdi:close"></span>
+        </button>
     `;
+    
+    // Improved Dragging Detection
     el.onpointerdown = (e) => { 
         if (e.target.classList.contains('node-label-input') || e.target.closest('button') || e.target.classList.contains('node-handle')) return; 
+        e.preventDefault();
         window.startNodeDrag(e, node.id); 
     };
+    
     el.onclick = (e) => { 
         if (e.target.classList.contains('node-label-input') || e.target.closest('button')) return; 
         window.selectItem(e, 'node', node.id); 
     };
+    
     return el;
 }
 
@@ -879,8 +895,7 @@ export function startConnection(event, nodeId, handle) {
         ...App.work.modelNodes,
         ...App.work.modelShapes,
         ...App.work.modelNotes,
-        ...App.work.modelStickers,
-        ...App.work.modelPaths
+        ...App.work.modelStickers
     ];
 
     document.onpointermove = (e) => {
@@ -889,15 +904,16 @@ export function startConnection(event, nodeId, handle) {
         const start = getHandlePosition(fromObj, handle);
         const tempSvg = document.getElementById('tempConnectionSvg');
         if (tempSvg) {
-            tempSvg.innerHTML = `<line x1="${start.x}" y1="${start.y}" x2="${coords.x}" y2="${coords.y}" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4" />`;
+            tempSvg.innerHTML = `<line x1="${start.x}" y1="${start.y}" x2="${coords.x}" y2="${coords.y}" stroke="#3b82f6" stroke-width="3" stroke-dasharray="6" />`;
         }
     };
     document.onpointerup = (e) => {
         // Find target object
-        const targetEl = e.target.closest('.model-node, .model-shape, .note-shape, .sticker, .path-group');
-        if (targetEl) {
-            const toId = targetEl.dataset.id || (targetEl.closest('.model-node')?.dataset.id); // Fallback for inner elements
+        const targetEl = e.target.closest('.model-node, .model-shape, .note-shape, [group/sticker]');
+        if (targetEl || e.target.closest('.node-handle')) {
             const handleEl = e.target.closest('.node-handle');
+            const targetParent = targetEl || handleEl?.closest('.model-node, .model-shape, .note-shape, [group/sticker]');
+            const toId = targetParent?.dataset.id;
             const toHandle = handleEl ? Array.from(handleEl.classList).find(c => ['top', 'bottom', 'left', 'right'].includes(c)) : 'center';
             
             if (toId && toId !== nodeId) {
@@ -915,11 +931,11 @@ export function startConnection(event, nodeId, handle) {
 export function canvasDblClick(event) {
     const coords = getCanvasCoords(event);
     if (App.modelState.currentTool === 'node') {
-        createNode(coords.x - 60, coords.y - 25, App.modelState.selectedIcon || 'mdi:plus-circle');
+        createNode(coords.x - 70, coords.y - 45, App.modelState.selectedIcon || 'mdi:plus-circle');
     } else if (App.modelState.currentTool === 'note') {
         window.openGenericInput('Add Note', 'Type your note here...', '', (text) => {
             if (text) {
-                const note = { id: 'note_' + Date.now(), text, x: coords.x - 50, y: coords.y - 30, width: 100, height: 60, color: '#fef3c7' };
+                const note = { id: 'note_' + Date.now(), text, x: coords.x - 60, y: coords.y - 40, width: 120, height: 80, color: '#fef3c7' };
                 App.work.modelNotes.push(note);
                 saveAndBroadcast('modelNotes', App.work.modelNotes);
                 renderModelElements();
@@ -935,10 +951,10 @@ export async function modelCanvasMouseDown(event) {
     App.modelState.shapeStart = { x, y };
 
     if (App.modelState.currentTool === 'node') {
-        createNode(x - 60, y - 25, App.modelState.selectedIcon || 'mdi:atom');
+        createNode(x - 70, y - 45, App.modelState.selectedIcon || 'mdi:atom');
     } else if (App.modelState.currentTool === 'stamp' && App.modelState.selectedIcon) {
         // Center sticker on click
-        const size = 40;
+        const size = 60;
         const sticker = { 
             id: 's_' + Date.now(), 
             emoji: App.modelState.selectedIcon, 
@@ -963,7 +979,7 @@ export async function modelCanvasMouseDown(event) {
         App.modelState.currentPath = [{ x, y }];
     } else if (App.modelState.currentTool === 'shape') {
         // Shape preview logic would go here
-    } else if (App.modelState.currentTool === 'select' && !event.target.closest('.model-node, .model-shape, .note-shape, .sticker')) {
+    } else if (App.modelState.currentTool === 'select' && !event.target.closest('.model-node, .model-shape, .note-shape, .group/sticker')) {
         if (!event.shiftKey) App.modelState.selectedItems = [];
         renderModelElements();
     }
@@ -1111,7 +1127,7 @@ export async function searchIcons() {
     let searchUrl = query;
     const lowerQuery = query.toLowerCase();
     for (const [topic, expansion] of Object.entries(topicExpansion)) {
-        if (lowerQuery.includes(topic)) { searchUrl += ',' + expansion; break; }
+        if (lowerQuery.includes(topic)) { searchUrl += ' ' + expansion.replace(/,/g, ' '); break; }
     }
 
     try {
@@ -1129,7 +1145,7 @@ export async function searchIcons() {
         status?.classList.add('hidden');
 
         grid.innerHTML = icons.map(icon => `
-            <button onclick="window.selectIcon('${icon}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-primary hover:bg-blue-50 transition-all flex items-center justify-center group">
+            <button onclick="window.selectIcon('${icon}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-primary hover:bg-blue-50 transition-all flex items-center justify-center group" title="${icon}">
                 <span class="iconify text-2xl text-gray-600 group-hover:text-primary group-hover:scale-110 transition-all" data-icon="${icon}"></span>
             </button>
         `).join('');

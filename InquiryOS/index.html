@@ -50,7 +50,7 @@
                 left: -100%;
                 top: 0;
                 bottom: 0;
-                z-index: 100;
+                z-index: 300;
                 width: 85%;
                 transition: left 0.3s ease;
                 box-shadow: 4px 0 15px rgb(0,0,0,0.1);
@@ -61,10 +61,10 @@
                 position: fixed;
                 inset: 0;
                 background: rgb(0,0,0,0.5);
-                z-index: 90;
+                z-index: 290;
             }
             #sidebarOverlay.open { display: block; }
-            #mainContent { padding: 1rem; }
+            #mainContent { padding: 0.75rem; }
             #appHeader .hidden-mobile { display: none; }
             .mobile-nav-toggle { display: block !important; }
             
@@ -77,6 +77,24 @@
             #displayClassCode { font-size: 0.75rem; }
             
             #bottomNav { display: flex !important; }
+            
+            .rounded-3xl { border-radius: 1.5rem; }
+            .p-8 { padding: 1.5rem; }
+            .p-10 { padding: 1.75rem; }
+        }
+        
+        #mainContent { scroll-behavior: smooth; }
+        
+        .practice-card {
+            background: white;
+            border-radius: 1.5rem;
+            border: 1px solid #f1f5f9;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+        .practice-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
         }
         
         .view-fullscreen #bottomNav { display: none !important; }
@@ -102,45 +120,53 @@
             position: absolute;
             background: white;
             border: 2px solid #3b82f6;
-            border-radius: 12px;
+            border-radius: 16px;
             cursor: move;
             user-select: none;
-            box-shadow: 0 2px 8px rgb(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             z-index: 10;
             touch-action: none;
             box-sizing: border-box;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 8px;
+            padding: 10px;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
         }
         .node-icon-container {
             flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
+            background: #f8fafc;
+            border-radius: 12px;
+            transition: all 0.2s;
         }
         .node-label-input {
             text-align: center;
-            font-size: 10px;
-            font-weight: bold;
-            color: #374151;
+            font-size: 11px;
+            font-weight: 800;
+            color: #1e293b;
             background: transparent;
             border: none;
             outline: none;
             width: 100%;
             cursor: text;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
         }
         .node-label-input:focus {
-            background: rgba(59, 130, 246, 0.05);
-            border-radius: 4px;
+            background: rgba(37, 99, 235, 0.05);
+            border-radius: 6px;
         }
         .model-node.selected {
             border-color: #7c3aed;
-            box-shadow: 0 0 0 3px rgb(124, 58, 237, 0.3);
+            box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2), 0 8px 20px rgba(124, 58, 237, 0.15);
+            transform: scale(1.02);
         }
         .model-node:hover {
-            box-shadow: 0 4px 12px rgb(0,0,0,0.15);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            border-color: #2563eb;
         }
         .model-node.grouped {
             border-style: dashed;
@@ -154,23 +180,25 @@
             touch-action: none;
         }
         .model-shape.selected {
-            outline: 2px dashed #7c3aed;
+            outline: 3px solid #7c3aed;
             outline-offset: 4px;
+            border-radius: 4px;
         }
         
         .note-shape {
             position: absolute;
             background: #fef3c7;
             border: 2px solid #f59e0b;
-            border-radius: 4px;
-            padding: 8px;
-            min-width: 100px;
-            min-height: 60px;
+            border-radius: 12px;
+            padding: 12px;
+            min-width: 120px;
+            min-height: 80px;
             cursor: move;
             user-select: none;
-            box-shadow: 2px 2px 8px rgb(0,0,0,0.1);
+            box-shadow: 4px 4px 0 rgba(245, 158, 11, 0.1);
             z-index: 9;
             touch-action: none;
+            transition: all 0.2s;
         }
         
         /* Ensure delete buttons are visible on touch devices */
@@ -182,7 +210,7 @@
         
         .note-shape.selected {
             border-color: #7c3aed;
-            box-shadow: 0 0 0 3px rgb(124, 58, 237, 0.3);
+            box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2), 4px 4px 0 rgba(124, 58, 237, 0.1);
         }
         
         .pen-path {
@@ -192,43 +220,56 @@
             pointer-events: stroke;
         }
         .pen-path.selected {
-            filter: drop-shadow(0 0 4px rgb(124, 58, 237, 0.5));
+            filter: drop-shadow(0 0 4px rgba(124, 58, 237, 0.5));
         }
         
         .resize-handle {
             position: absolute;
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             background: white;
             border: 2px solid #7c3aed;
-            border-radius: 2px;
+            border-radius: 4px;
             cursor: nwse-resize;
             z-index: 30;
         }
-        .resize-handle.nw { top: -5px; left: -5px; cursor: nwse-resize; }
-        .resize-handle.ne { top: -5px; right: -5px; cursor: nesw-resize; }
-        .resize-handle.sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
-        .resize-handle.se { bottom: -5px; right: -5px; cursor: nwse-resize; }
         
         .node-handle {
             position: absolute;
-            width: 14px;
-            height: 14px;
-            background: #3b82f6;
-            border: 2px solid white;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 3px solid #3b82f6;
             border-radius: 50%;
             cursor: crosshair;
             z-index: 20;
-            transition: transform 0.15s, background 0.15s;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .node-handle::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #3b82f6;
+            border-radius: 50%;
+            transition: all 0.2s;
         }
         .node-handle:hover {
-            transform: scale(1.3);
+            transform: scale(1.4);
+            border-color: #7c3aed;
             background: #7c3aed;
+            box-shadow: 0 0 10px rgba(124, 58, 237, 0.4);
         }
-        .node-handle.top { top: -7px; left: 50%; margin-left: -7px; }
-        .node-handle.bottom { bottom: -7px; left: 50%; margin-left: -7px; }
-        .node-handle.left { left: -7px; top: 50%; margin-top: -7px; }
-        .node-handle.right { right: -7px; top: 50%; margin-top: -7px; }
+        .node-handle:hover::after {
+            background: white;
+            transform: scale(0.5);
+        }
+        .node-handle.top { top: -10px; left: 50%; margin-left: -10px; }
+        .node-handle.bottom { bottom: -10px; left: 50%; margin-left: -10px; }
+        .node-handle.left { left: -10px; top: 50%; margin-top: -10px; }
+        .node-handle.right { right: -10px; top: 50%; margin-top: -10px; }
         
         .connection-line {
             pointer-events: none;
@@ -518,7 +559,7 @@
                 position: absolute;
                 left: 12px;
                 top: 70px; /* Moved down to avoid context bar */
-                z-index: 150;
+                z-index: 50; /* Lowered from 150 to stay under modals/sidebars */
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
@@ -532,6 +573,7 @@
                 flex-direction: column;
                 gap: 4px;
                 border: 1px solid #e2e8f0;
+                z-index: 51;
             }
             /* Pinned Horizontal Toolbar */
             .toolbar-pinned {
@@ -546,6 +588,7 @@
                 box-shadow: none !important;
                 overflow-x: auto !important;
                 scrollbar-width: none !important;
+                z-index: 40;
             }
             .toolbar-pinned .tool-drawer {
                 display: flex !important;
@@ -709,6 +752,10 @@
                     <span class="iconify" data-icon="mdi:sync"></span>
                     Sync Class
                 </button>
+                <button onclick="window.resetClassSession()" class="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-xs font-bold flex items-center gap-1 border border-gray-200" title="Reset all focus and access controls">
+                    <span class="iconify" data-icon="mdi:restore"></span>
+                    Reset Class
+                </button>
                 <div class="h-8 w-px bg-gray-200"></div>
                 <div class="flex items-center gap-2">
                     <div id="viewingAvatar" class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">?</div>
@@ -716,6 +763,22 @@
                 </div>
             </div>
             
+            <div id="teacherGlobalNav" class="hidden items-center gap-2">
+                <button onclick="window.resetClassSession()" class="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-600 text-xs font-bold flex items-center gap-1 transition-all" title="Reset focus and access">
+                    <span class="iconify" data-icon="mdi:restore"></span>
+                    Reset Class
+                </button>
+                <button onclick="window.forceAllToModule(null)" class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-xs font-bold flex items-center gap-1 border border-blue-100" title="Return control to students">
+                    <span class="iconify" data-icon="mdi:account-lock-open"></span>
+                    Release Control
+                </button>
+                <div id="presentationStatus" class="hidden px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold flex items-center gap-2 animate-pulse">
+                    <span class="iconify" data-icon="mdi:presentation"></span>
+                    Presenting
+                    <button onclick="window.stopPresentation()" class="ml-1 bg-white/20 hover:bg-white/40 rounded p-0.5"><span class="iconify" data-icon="mdi:close"></span></button>
+                </div>
+            </div>
+
             <div class="flex items-center gap-2 bg-gray-100 rounded-lg p-1 hidden-mobile">
                 <button onclick="switchMode('student')" id="studentModeBtn" class="mode-btn px-4 py-2 rounded-lg text-sm font-medium bg-white shadow text-primary">
                     <span class="iconify mr-1" data-icon="mdi:account-school"></span> Student
@@ -902,6 +965,33 @@
                 <button onclick="closeEditModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
                 <button onclick="saveEditingCard()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600">Save</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lesson Preview Modal -->
+<div id="lessonPreviewModal" class="fixed inset-0 z-[100] hidden items-center justify-center">
+    <div class="modal-overlay absolute inset-0" onclick="window.closeLessonPreview()"></div>
+    <div class="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in duration-300">
+        <div class="p-8 border-b bg-gray-50/50 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div id="previewIcon" class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-sm border border-white"></div>
+                <div>
+                    <h3 class="text-2xl font-black text-gray-900 tracking-tight" id="previewTitle">Lesson Preview</h3>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1" id="previewSubtitle">Blueprint Details</p>
+                </div>
+            </div>
+            <button onclick="window.closeLessonPreview()" class="p-3 hover:bg-gray-100 rounded-2xl transition-all">
+                <span class="iconify text-2xl" data-icon="mdi:close"></span>
+            </button>
+        </div>
+        
+        <div id="previewContent" class="p-8 flex-1 overflow-y-auto space-y-8">
+            <!-- Content populated via previewTemplate() -->
+        </div>
+        
+        <div class="p-8 border-t bg-gray-50/50 flex justify-end gap-4" id="previewActions">
+            <!-- Buttons populated via previewTemplate() -->
         </div>
     </div>
 </div>
