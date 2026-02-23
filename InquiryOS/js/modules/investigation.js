@@ -41,26 +41,47 @@ export function renderInvestigationModule() {
                     </div>
                 </div>
                 ${renderDataTable()}
+                
+                <div class="mt-8 pt-6 border-t border-gray-100">
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Table Analysis & Notes</label>
+                    <textarea onchange="window.saveTableComment(this.value)" 
+                        placeholder="Document any observations about your data collection process or unusual results here..."
+                        class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-sm font-medium text-gray-700 focus:border-primary focus:bg-white focus:outline-none transition-all placeholder:text-gray-300"
+                        rows="3">${App.work.dataTable?.comment || ''}</textarea>
+                </div>
             </div>
         </div>
     `;
 }
+
+export async function saveTableComment(val) {
+    if (!App.work.dataTable) App.work.dataTable = {};
+    App.work.dataTable.comment = val;
+    await saveAndBroadcast('dataTable.comment', val);
+}
+
 
 function renderVariableDropZone(type) {
     const colors = { independent: 'blue', dependent: 'green', controlled: 'gray' };
     const labels = { independent: 'Independent (Change)', dependent: 'Dependent (Measure)', controlled: 'Controlled (Keep Same)' };
     const vars = (App.work.variables || []).filter(v => v.type === type);
     return `
-        <div class="p-4 bg-${colors[type]}-50 rounded-lg border-2 border-${colors[type]}-200 drop-zone min-h-24 transition-colors"
+        <div class="p-5 bg-${colors[type]}-50/50 rounded-2xl border-2 border-dashed border-${colors[type]}-200 drop-zone min-h-32 transition-all"
             data-type="${type}" ondragover="window.dragOver(event)" ondragleave="window.dragLeave(event)" ondrop="window.dropVar(event)">
-            <h4 class="font-medium text-${colors[type]}-700 text-sm mb-2">${labels[type]}</h4>
+            <h4 class="font-black text-${colors[type]}-700 text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-${colors[type]}-500"></span>
+                ${labels[type]}
+            </h4>
             <div class="space-y-2">
                 ${vars.map(v => `
-                    <div class="p-2 bg-white rounded border text-sm flex justify-between items-center group shadow-sm">
+                    <div class="p-3 bg-white rounded-xl border border-${colors[type]}-100 text-sm font-bold text-gray-700 flex justify-between items-center group shadow-sm animate-in zoom-in-95 duration-200">
                         <span>${v.name}</span>
-                        <button onclick="window.removeVariable('${v.id}')" class="opacity-0 group-hover:opacity-100 text-red-400">×</button>
+                        <button onclick="window.removeVariable('${v.id}')" class="text-gray-300 hover:text-red-500 transition-colors">
+                            <span class="iconify" data-icon="mdi:close-circle"></span>
+                        </button>
                     </div>
                 `).join('')}
+                ${vars.length === 0 ? `<p class="text-[10px] text-${colors[type]}-300 italic text-center py-4">Drag from bank...</p>` : ''}
             </div>
         </div>
     `;
@@ -69,28 +90,31 @@ function renderVariableDropZone(type) {
 function renderVariableBank() {
     const unassigned = (App.work.variables || []).filter(v => !v.type);
     return `
-        <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-            <h4 class="font-medium text-yellow-700 text-sm mb-2">Variable Bank</h4>
-            <div class="flex flex-wrap gap-2 mb-3">
+        <div class="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+            <h4 class="font-black text-gray-400 text-[10px] uppercase tracking-widest mb-4">Variable Inventory</h4>
+            <div class="flex flex-wrap gap-2 mb-6 min-h-[40px]">
                 ${unassigned.map(v => `
                     <div draggable="true" ondragstart="window.dragVarStart(event, '${v.id}')"
-                        class="px-3 py-1 bg-white rounded-full border border-yellow-300 text-sm cursor-grab hover:shadow-md transition-shadow active:cursor-grabbing">
+                        class="px-4 py-2 bg-white rounded-xl border-2 border-gray-100 text-sm font-bold text-gray-600 cursor-grab hover:border-primary hover:text-primary hover:shadow-md transition-all active:cursor-grabbing">
                         ${v.name}
                     </div>
-                `).join('') || '<span class="text-yellow-600 text-sm italic">Add variables below</span>'}
+                `).join('') || '<p class="text-xs text-gray-400 italic py-2">Add your experimental variables below</p>'}
             </div>
             <div class="flex gap-2">
-                <input type="text" id="newVarInput" placeholder="Add variable name..." 
-                    class="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" 
+                <input type="text" id="newVarInput" placeholder="e.g. Temperature, Time, Growth..." 
+                    class="flex-1 px-5 py-3 bg-white border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-primary focus:outline-none transition-all" 
                     onkeypress="if(event.key==='Enter')window.addVariable()">
-                <button onclick="window.addVariable()" class="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-bold hover:bg-yellow-600 transition-colors">Add</button>
+                <button onclick="window.addVariable()" class="px-6 py-3 bg-gray-900 text-white rounded-2xl text-sm font-black hover:bg-black transition-all shadow-lg">Add to Bank</button>
             </div>
         </div>
     `;
 }
 
+
 function renderDataTable() {
     const dt = App.work.dataTable || { columns: [], rows: [] };
+    const showFeedback = App.teacherSettings.showCommentsToStudents || App.mode === 'teacher';
+    
     return `
         <div class="overflow-x-auto">
             <table class="w-full border-collapse">
@@ -115,6 +139,7 @@ function renderDataTable() {
                                 </div>
                             </th>
                         `).join('')}
+                        ${showFeedback ? '<th class="border p-2 w-16 text-center text-[10px] font-black uppercase text-gray-400 tracking-widest">Feedback</th>' : ''}
                         <th class="border p-2 w-10"></th>
                     </tr>
                 </thead>
@@ -131,6 +156,11 @@ function renderDataTable() {
                                         step="${col.type === 'number' ? '0.01' : ''}">
                                 </td>
                             `).join('')}
+                            ${showFeedback ? `
+                                <td class="border p-2 text-center text-xl">
+                                    ${dt.feedback?.[ri] || ''}
+                                </td>
+                            ` : ''}
                             <td class="border p-2 text-center">
                                 <button onclick="window.deleteDataRow(${ri})" class="text-red-400">×</button>
                             </td>
@@ -141,6 +171,7 @@ function renderDataTable() {
         </div>
     `;
 }
+
 
 export async function addVariable() {
     const input = document.getElementById('newVarInput'); if (!input?.value.trim()) return;

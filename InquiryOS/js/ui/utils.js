@@ -4,11 +4,10 @@
  */
 
 import { App } from '../core/state.js';
+import { saveToStorage } from '../core/sync.js';
 
 /**
  * Displays a temporary toast notification.
- * @param {string} message - Message to display.
- * @param {string} [type='info'] - Type of toast: 'success' | 'error' | 'info' | 'warning'.
  */
 export function toast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
@@ -28,11 +27,106 @@ export function toast(message, type = 'info') {
     };
     
     const el = document.createElement('div');
-    el.className = `toast ${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3`;
-    el.innerHTML = `<span class="iconify" data-icon="${icons[type]}"></span><span class="text-sm">${message}</span>`;
+    el.className = `toast ${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-in slide-in-from-right duration-300`;
+    el.innerHTML = `<span class="iconify" data-icon="${icons[type]}"></span><span class="text-sm font-bold">${message}</span>`;
     container.appendChild(el);
     
-    setTimeout(() => el.remove(), 3000);
+    setTimeout(() => {
+        el.classList.add('animate-out', 'fade-out', 'slide-out-to-right');
+        setTimeout(() => el.remove(), 3000);
+    }, 3000);
+}
+
+/**
+ * Opens the session menu modal.
+ */
+export function openSessionMenu() {
+    const modal = document.getElementById('sessionMenuModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+/**
+ * Closes the session menu modal.
+ */
+export function closeSessionMenu() {
+    const modal = document.getElementById('sessionMenuModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+/**
+ * Saves the current state explicitly.
+ */
+export async function saveCurrentSession() {
+    const ok = await saveToStorage();
+    if (ok) toast('Session saved to local storage', 'success');
+    closeSessionMenu();
+}
+
+/**
+ * Exports the current work and settings as a JSON file.
+ */
+export function exportSession() {
+    const data = JSON.stringify({ 
+        work: App.work, 
+        teacherSettings: App.teacherSettings,
+        classCode: App.classCode,
+        sharedData: App.sharedData
+    }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inquiryos_${App.classCode}_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    closeSessionMenu();
+    toast('Session exported as JSON', 'success');
+}
+
+/**
+ * Triggers the file input for importing a session.
+ */
+export function importSession() {
+    document.getElementById('importFileInput')?.click();
+    closeSessionMenu();
+}
+
+/**
+ * Handles the selected file for session import.
+ */
+export async function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data.work) App.work = data.work;
+            if (data.teacherSettings) App.teacherSettings = data.teacherSettings;
+            if (data.sharedData) App.sharedData = data.sharedData;
+            if (data.classCode) App.classCode = data.classCode;
+            
+            await saveToStorage();
+            window.updateModeUI();
+            toast('Session imported successfully!', 'success');
+        } catch (err) {
+            toast('Invalid session file format', 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+/**
+ * Returns the user to the login screen.
+ */
+export function leaveSession() {
+    if (confirm('Are you sure you want to leave? Your progress is saved locally.')) {
+        if (App.syncState.syncInterval) clearInterval(App.syncState.syncInterval);
+        window.location.reload(); // Hard reset for safety
+    }
+    closeSessionMenu();
 }
 
 /**

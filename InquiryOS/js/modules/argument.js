@@ -18,25 +18,42 @@ let currentPostType = 'claim';
 export function renderArgumentModule() {
     const colors = { claim: 'blue', support: 'green', challenge: 'red', question: 'amber' };
     return `
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-5xl mx-auto">
             ${renderModuleHeader('Engaging in Argument', 'mdi:forum', 'SEP7')}
             
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="font-semibold text-gray-900 mb-4">Class Discussion</h3>
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
+                <div class="p-6 md:p-8 border-b border-gray-50 bg-gray-50/30">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-black text-gray-900">Class Evidence Board</h3>
+                            <p class="text-sm text-gray-500 mt-1">Share and critique scientific claims based on gathered evidence.</p>
+                        </div>
+                        <div class="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-100">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            Collaborative
+                        </div>
+                    </div>
+                </div>
                 
-                <div class="space-y-3 max-h-96 overflow-y-auto mb-6 custom-scrollbar" id="discussionThread">
+                <div class="flex-1 p-6 md:p-8 space-y-4 min-h-[400px] max-h-[600px] overflow-y-auto custom-scrollbar bg-white" id="discussionThread">
                     ${renderDiscussionPosts(colors)}
                 </div>
                 
-                <div class="border-t pt-4">
-                    <div class="flex gap-2 mb-3">
-                        ${renderPostTypeButtons(colors)}
+                <div class="p-6 md:p-8 bg-gray-50 border-t border-gray-100">
+                    <div class="mb-4">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Argument Type</label>
+                        <div class="flex flex-wrap gap-2">
+                            ${renderPostTypeButtons(colors)}
+                        </div>
                     </div>
-                    <div class="flex gap-2">
-                        <input type="text" id="postInput" placeholder="Share your argument..." 
-                            class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                            onkeypress="if(event.key==='Enter')window.addPost()">
-                        <button onclick="window.addPost()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors">
+                    <div class="flex gap-3">
+                        <div class="relative flex-1">
+                            <input type="text" id="postInput" placeholder="Share your ${currentPostType}..." 
+                                class="w-full pl-6 pr-12 py-4 bg-white border-2 border-gray-100 rounded-2xl text-lg font-medium text-gray-700 focus:border-primary focus:outline-none transition-all placeholder:text-gray-300"
+                                onkeypress="if(event.key==='Enter')window.addPost()">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 iconify text-2xl text-gray-200" data-icon="mdi:send-variant"></span>
+                        </div>
+                        <button onclick="window.addPost()" class="px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-lg shadow-blue-100 hover:-translate-y-0.5 transition-all">
                             Post
                         </button>
                     </div>
@@ -46,45 +63,47 @@ export function renderArgumentModule() {
     `;
 }
 
-/**
- * Renders the list of discussion posts.
- * @param {Object} colors - Map of post types to Tailwind color names.
- * @returns {string} HTML content.
- */
 function renderDiscussionPosts(colors) {
     const posts = App.sharedData.debatePosts || [];
-    if (posts.length === 0) return '<p class="text-gray-400 text-center py-8">Start the discussion!</p>';
+    if (posts.length === 0) return `
+        <div class="h-full flex flex-col items-center justify-center text-center opacity-30 grayscale py-20">
+            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                <span class="iconify text-5xl" data-icon="mdi:forum-outline"></span>
+            </div>
+            <h3 class="text-lg font-bold text-gray-400">Discussion is Empty</h3>
+            <p class="text-sm text-gray-400 mt-1 max-w-xs">Be the first to share a claim or ask a question about the phenomenon!</p>
+        </div>
+    `;
     
     return posts.map(p => `
-        <div class="p-4 bg-${colors[p.type]}-50 rounded-lg border-l-4 border-${colors[p.type]}-500">
-            <div class="flex items-center gap-2 mb-2">
-                <span class="px-2 py-0.5 bg-${colors[p.type]}-200 text-${colors[p.type]}-700 rounded text-xs font-medium uppercase">${p.type}</span>
-                <span class="text-sm font-medium text-gray-700">${p.author}</span>
-                <span class="text-xs text-gray-400">${new Date(p.time).toLocaleTimeString()}</span>
+        <div class="p-5 bg-${colors[p.type]}-50/50 rounded-2xl border-l-4 border-${colors[p.type]}-500 shadow-sm animate-in slide-in-from-bottom-2">
+            <div class="flex flex-wrap items-center gap-3 mb-3">
+                <span class="px-3 py-1 bg-${colors[p.type]}-100 text-${colors[p.type]}-700 rounded-full text-[9px] font-black uppercase tracking-widest border border-${colors[p.type]}-200">${p.type}</span>
+                <span class="text-sm font-bold text-gray-700 flex items-center gap-1">
+                    <span class="iconify" data-icon="mdi:account-circle"></span>
+                    ${p.author}
+                </span>
+                <span class="text-[10px] text-gray-400 font-medium ml-auto uppercase tracking-tighter">${new Date(p.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
             </div>
-            <p class="text-gray-700">${p.text}</p>
+            <p class="text-gray-700 leading-relaxed font-medium">${p.text}</p>
         </div>
     `).join('');
 }
 
-/**
- * Renders buttons to select the type of post to create.
- * @param {Object} colors - Map of post types to Tailwind color names.
- * @returns {string} HTML content.
- */
 function renderPostTypeButtons(colors) {
     return Object.keys(colors).map(type => {
         const color = colors[type];
         const isActive = currentPostType === type;
         return `
             <button onclick="window.setPostType('${type}')" 
-                class="post-type-btn px-3 py-1 rounded-full text-sm border-2 transition-all ${isActive ? `border-${color}-500 bg-${color}-50 text-${color}-700` : 'border-gray-200 text-gray-600'}" 
+                class="post-type-btn px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border-2 transition-all ${isActive ? `border-${color}-500 bg-${color}-500 text-white shadow-md shadow-${color}-100` : `border-gray-100 bg-white text-gray-400 hover:border-${color}-200 hover:text-${color}-500`}" 
                 data-type="${type}">
-                ${type.charAt(0).toUpperCase() + type.slice(1)}
+                ${type}
             </button>
         `;
     }).join('');
 }
+
 
 /**
  * Sets the type of the next post to be published.

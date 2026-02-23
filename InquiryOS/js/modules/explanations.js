@@ -14,29 +14,41 @@ import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
  */
 export function renderExplanationsModule() {
     return `
-        <div class="max-w-5xl mx-auto">
-            ${renderModuleHeader('Constructing Explanations (CER)', 'mdi:lightbulb-on', 'SEP6')}
+        <div class="max-w-6xl mx-auto">
+            ${renderModuleHeader('Constructing Explanations', 'mdi:lightbulb-on', 'SEP6')}
             
-            <div class="grid md:grid-cols-3 gap-6">
-                <div class="bg-white rounded-xl shadow-sm border p-4">
-                    <h3 class="font-semibold text-gray-900 mb-4">Select Evidence</h3>
-                    <div class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar" id="evidenceSelectionBank">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col overflow-hidden h-full lg:sticky lg:top-4">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xs font-black text-gray-900 uppercase tracking-widest">Evidence Bank</h3>
+                        <span class="px-2 py-0.5 bg-purple-100 text-purple-600 rounded text-[9px] font-black uppercase tracking-widest">${(App.work.evidence || []).length} Items</span>
+                    </div>
+                    <div class="space-y-3 flex-1 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar" id="evidenceSelectionBank">
                         ${renderEvidenceSelectionBank()}
                     </div>
+                    <p class="text-[10px] text-gray-400 mt-6 leading-relaxed italic border-t border-gray-50 pt-4">Select items to link them to your explanation. Save work from other modules to build your bank.</p>
                 </div>
                 
-                <div class="md:col-span-2 space-y-6">
-                    ${renderCerField('Claim', 'C', 'red', 'My claim is...', App.work.claim, 'window.saveClaim')}
-                    ${renderCerField('Evidence', 'E', 'blue', 'According to my data...', App.work.evidenceText, 'window.saveEvidenceText')}
-                    ${renderCerField('Reasoning', 'R', 'green', 'This evidence supports my claim because...', App.work.reasoning, 'window.saveReasoning')}
+                <div class="lg:col-span-2 space-y-8">
+                    ${renderCerField('Scientific Claim', 'C', 'red', 'Based on your inquiry, what is the answer to your driving question?', App.work.claim, 'window.saveClaim', 'A clear, concise statement that answers the investigation question.')}
+                    ${renderCerField('Evidence Description', 'E', 'blue', 'According to my data and observations...', App.work.evidenceText, 'window.saveEvidenceText', 'Specific data and observations that support your claim.')}
+                    ${renderCerField('Reasoning & Justification', 'R', 'green', 'This evidence supports my claim because...', App.work.reasoning, 'window.saveReasoning', 'Explain how the evidence logically supports the claim using scientific principles.')}
                     
-                    <div class="bg-white rounded-xl shadow-sm border p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center gap-3">
-                                <span class="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold text-lg">M</span>
-                                <h3 class="font-semibold text-gray-900">Model Explanations</h3>
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                        <div class="flex items-center justify-between mb-8">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center shadow-sm">
+                                    <span class="iconify text-2xl" data-icon="mdi:vector-difference-ba"></span>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-black text-gray-900">Model Integration</h3>
+                                    <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Cross-Practice Synthesis</p>
+                                </div>
                             </div>
-                            <button onclick="window.showStudentModule('models')" class="text-xs text-primary font-bold hover:underline">View Model →</button>
+                            <button onclick="window.showStudentModule('models')" class="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-purple-100 transition-all flex items-center gap-2">
+                                Open Model
+                                <span class="iconify" data-icon="mdi:arrow-right"></span>
+                            </button>
                         </div>
                         <div class="space-y-4">
                             ${renderModelExplanationSummary()}
@@ -48,57 +60,58 @@ export function renderExplanationsModule() {
     `;
 }
 
-/**
- * Renders the bank of evidence artifacts available for selection.
- * @returns {string} HTML content.
- */
+function renderCerField(label, initial, color, placeholder, value, onchange, tooltip = '') {
+    return `
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 hover:border-${color}-200 transition-colors group">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 bg-${color}-50 text-${color}-600 rounded-2xl flex items-center justify-center font-black text-2xl shadow-sm border border-${color}-100">
+                        ${initial}
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-gray-900">${label}</h3>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">${tooltip}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 bg-gray-50 text-gray-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-gray-100 opacity-60 group-focus-within:opacity-100 transition-opacity">
+                    <span class="w-2 h-2 bg-${color}-500 rounded-full"></span>
+                    Autosaving
+                </div>
+            </div>
+            <textarea rows="4" 
+                class="w-full px-6 py-5 bg-gray-50/50 border-2 border-gray-100 rounded-2xl text-lg font-medium text-gray-700 focus:border-${color}-500 focus:bg-white focus:outline-none transition-all placeholder:text-gray-300"
+                placeholder="${placeholder}"
+                onchange="${onchange}(this.value)">${value || ''}</textarea>
+        </div>
+    `;
+}
+
 function renderEvidenceSelectionBank() {
     const evidence = App.work.evidence || [];
     if (evidence.length === 0) {
         return `
-            <div class="text-center py-8 text-gray-400">
-                <span class="iconify text-3xl" data-icon="mdi:folder-open"></span>
-                <p class="mt-2 text-sm">No evidence yet</p>
+            <div class="py-16 text-center flex flex-col items-center opacity-30 grayscale">
+                <span class="iconify text-5xl mb-4" data-icon="mdi:folder-open-outline"></span>
+                <p class="text-[10px] font-black uppercase tracking-widest">No evidence collected</p>
             </div>
         `;
     }
     
     return evidence.map(e => `
         <div onclick="window.toggleEvidenceSelection('${e.id}')" 
-            class="evidence-card p-3 rounded-lg border-2 cursor-pointer transition-all ${App.work.selectedEvidence?.includes(e.id) ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'}">
-            <div class="flex items-center gap-2">
-                <span class="iconify text-lg text-purple-600" data-icon="${e.icon || 'mdi:file-document'}"></span>
-                <span class="font-medium text-sm text-gray-900">${e.title}</span>
+            class="evidence-card p-4 rounded-2xl border-2 cursor-pointer transition-all ${App.work.selectedEvidence?.includes(e.id) ? 'border-purple-500 bg-purple-50 shadow-md' : 'border-gray-50 bg-white hover:border-purple-200 hover:shadow-sm'}">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-purple-600 shadow-inner">
+                    <span class="iconify" data-icon="${e.icon || 'mdi:file-document'}"></span>
+                </div>
+                <span class="font-bold text-sm text-gray-800 flex-1 truncate">${e.title}</span>
+                ${App.work.selectedEvidence?.includes(e.id) ? '<span class="iconify text-purple-600" data-icon="mdi:check-circle"></span>' : ''}
             </div>
-            <p class="text-[10px] text-gray-500 mt-1 line-clamp-1">${e.description}</p>
+            <p class="text-[10px] text-gray-400 mt-2 line-clamp-2 leading-relaxed">${e.description}</p>
         </div>
     `).join('');
 }
 
-/**
- * Renders a specific CER field (Claim, Evidence, or Reasoning).
- * @param {string} label - Field label.
- * @param {string} initial - Initial letter (C, E, or R).
- * @param {string} color - Color theme (red, blue, or green).
- * @param {string} placeholder - Textarea placeholder.
- * @param {string} value - Current value.
- * @param {string} onchange - Global function name to call on change.
- * @returns {string} HTML content.
- */
-function renderCerField(label, initial, color, placeholder, value, onchange) {
-    return `
-        <div class="bg-white rounded-xl shadow-sm border p-6">
-            <div class="flex items-center gap-3 mb-4">
-                <span class="w-10 h-10 bg-${color}-100 text-${color}-600 rounded-full flex items-center justify-center font-bold text-lg">${initial}</span>
-                <h3 class="font-semibold text-gray-900">${label}</h3>
-            </div>
-            <textarea rows="3" 
-                class="w-full px-4 py-3 border-2 border-${color}-200 rounded-lg focus:border-${color}-500 focus:outline-none transition-colors"
-                placeholder="${placeholder}"
-                onchange="${onchange}(this.value)">${value || ''}</textarea>
-        </div>
-    `;
-}
 
 /**
  * Renders a summary of explanations provided in the Models module.

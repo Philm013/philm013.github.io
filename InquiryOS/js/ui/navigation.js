@@ -4,7 +4,7 @@
  */
 
 import { App } from '../core/state.js';
-import { toast } from './utils.js';
+import { toast, calculateStudentProgress } from './utils.js';
 import { renderStudentContent, renderTeacherContent, renderEvidenceBank } from './renderer.js';
 
 /**
@@ -86,6 +86,20 @@ export function renderNavigation() {
                         </li>
                     `).join('')}
                 </ul>
+                
+                <div class="mt-6 p-4 bg-gray-50 rounded-xl">
+                    <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3">Quick Stats</h4>
+                    <div class="grid grid-cols-2 gap-2 text-center">
+                        <div class="p-2 bg-blue-100 rounded-lg">
+                            <p class="text-lg font-bold text-blue-700">${App.work.notices?.length || 0}</p>
+                            <p class="text-xs text-blue-600">Notices</p>
+                        </div>
+                        <div class="p-2 bg-yellow-100 rounded-lg">
+                            <p class="text-lg font-bold text-yellow-700">${App.work.wonders?.length || 0}</p>
+                            <p class="text-xs text-yellow-600">Wonders</p>
+                        </div>
+                    </div>
+                </div>
             `;
         } else {
             const modules = [
@@ -98,6 +112,8 @@ export function renderNavigation() {
                 { id: 'argument', icon: 'mdi:forum', label: '7. Argument' },
                 { id: 'communication', icon: 'mdi:share-variant', label: '8. Communication' }
             ];
+            
+            const progress = calculateStudentProgress(App.work);
             
             nav.innerHTML = `
                 <h3 class="text-xs font-semibold text-gray-400 uppercase mb-3">Science Practices</h3>
@@ -116,6 +132,14 @@ export function renderNavigation() {
                         `;
                     }).join('')}
                 </ul>
+                
+                <div class="mt-6 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Progress</h4>
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-primary to-secondary transition-all" style="width:${progress}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">${progress}% Complete</p>
+                </div>
             `;
             
             renderEvidenceBank();

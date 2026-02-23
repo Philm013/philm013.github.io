@@ -12,128 +12,194 @@ import { toast } from '../ui/utils.js';
 export function renderQuestionsModule() {
     const p = App.teacherSettings.phenomenon;
     return `
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-6xl mx-auto">
             ${renderModuleHeader('Asking Questions', 'mdi:help-circle', 'SEP1')}
             
-            <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 mb-6">
-                <div class="flex gap-4">
-                    <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <span class="iconify text-amber-600 text-2xl" data-icon="mdi:eye"></span>
+            <div class="bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-100 rounded-3xl p-6 md:p-8 mb-8 shadow-sm">
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm border border-amber-100">
+                        <span class="iconify text-amber-500 text-3xl" data-icon="mdi:eye"></span>
                     </div>
-                    <div>
-                        <h3 class="font-semibold text-gray-900">${p.title || 'Phenomenon'}</h3>
-                        <p class="text-gray-700 mt-1">${p.description || 'Your teacher will set up the phenomenon.'}</p>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-2">
+                            <h3 class="text-xl font-black text-gray-900">${p.title || 'Scientific Phenomenon'}</h3>
+                            <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-black uppercase tracking-widest">Observe</span>
+                        </div>
+                        <p class="text-gray-600 leading-relaxed">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts below.'}</p>
                         ${p.tags?.length || p.ngssStandards?.length ? `
-                            <div class="flex gap-2 mt-3 flex-wrap">
-                                ${p.tags?.map(t => `<span class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold uppercase tracking-wider border border-amber-200">${t}</span>`).join('') || ''}
-                                ${p.ngssStandards?.map(s => `<span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-[10px] font-bold uppercase tracking-wider border border-purple-200">${s}</span>`).join('') || ''}
+                            <div class="flex gap-2 mt-4 flex-wrap">
+                                ${p.tags?.map(t => `<span class="px-3 py-1 bg-white text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-100 shadow-sm">${t}</span>`).join('') || ''}
+                                ${p.ngssStandards?.map(s => `<span class="px-3 py-1 bg-white text-purple-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-purple-100 shadow-sm">${s}</span>`).join('') || ''}
                             </div>
                         ` : ''}
                     </div>
                 </div>
             </div>
             
-            <div class="grid md:grid-cols-2 gap-6 mb-6">
-                ${renderInputCard('I Notice...', 'mdi:eye', 'blue', 'noticeInput', 'window.addNotice()', renderNoticesList())}
-                ${renderInputCard('I Wonder...', 'mdi:lightbulb', 'yellow', 'wonderInput', 'window.addWonder()', renderWondersList())}
-                ${renderInputCard('Initial Ideas', 'mdi:thought-bubble', 'purple', 'ideaInput', 'window.addIdea()', renderIdeasList())}
-                ${renderInputCard('Testable Questions', 'mdi:comment-question', 'green', 'testableQuestionInput', 'window.addTestableQuestion()', renderTestableQuestionsList())}
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+                ${renderInputCard('I Notice...', 'mdi:eye', 'blue', 'noticeInput', 'window.addNotice()', renderNoticesList(), 'Physical observations')}
+                ${renderInputCard('I Wonder...', 'mdi:lightbulb', 'yellow', 'wonderInput', 'window.addWonder()', renderWondersList(), 'Curious questions')}
+                ${renderInputCard('Initial Ideas', 'mdi:thought-bubble', 'purple', 'ideaInput', 'window.addIdea()', renderIdeasList(), 'Early hypotheses')}
+                ${renderInputCard('Testable Questions', 'mdi:comment-question', 'green', 'testableQuestionInput', 'window.addTestableQuestion()', renderTestableQuestionsList(), 'Investigatable')}
             </div>
             
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span class="iconify text-purple-500" data-icon="mdi:compass"></span>
-                    Driving Questions
-                </h3>
-                <div class="mb-4">
-                    <label class="text-sm text-gray-600 block mb-2">Main Investigation Question</label>
-                    <input type="text" value="${App.work.mainQuestion || ''}" 
-                        onchange="window.saveMainQuestion(this.value)"
-                        placeholder="What is your main question?"
-                        class="w-full px-4 py-3 border-2 border-purple-200 bg-purple-50 rounded-lg text-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-black text-gray-900 flex items-center gap-3">
+                        <span class="w-10 h-10 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center">
+                            <span class="iconify text-xl" data-icon="mdi:compass"></span>
+                        </span>
+                        Driving Questions
+                    </h3>
+                    <span class="px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-[10px] font-black uppercase tracking-widest">Focus</span>
                 </div>
-                <div class="grid md:grid-cols-2 gap-4">
-                    ${(App.work.subQuestions || []).map((q, i) => `
-                        <div class="p-3 bg-gray-50 rounded-lg border group">
-                            <div class="flex justify-between items-start">
-                                <input type="text" value="${q.text}" 
-                                    onchange="window.updateSubQuestion('${q.id}', this.value)"
-                                    placeholder="Sub-question ${i + 1}"
-                                    class="flex-1 bg-transparent border-none text-sm focus:outline-none">
-                                <button onclick="window.deleteSubQuestion('${q.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600">
-                                    <span class="iconify" data-icon="mdi:close"></span>
-                                </button>
-                            </div>
+                
+                <div class="grid md:grid-cols-1 gap-8">
+                    <div class="space-y-4">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Main Investigation Question</label>
+                        <div class="relative group">
+                            <input type="text" value="${App.work.mainQuestion || ''}" 
+                                onchange="window.saveMainQuestion(this.value)"
+                                placeholder="What is the core mystery we are trying to solve?"
+                                class="w-full px-6 py-5 border-2 border-purple-100 bg-purple-50/30 rounded-2xl text-xl font-bold text-gray-800 focus:border-purple-500 focus:bg-white focus:outline-none transition-all placeholder:text-purple-200">
+                            <span class="absolute right-6 top-1/2 -translate-y-1/2 iconify text-2xl text-purple-200 group-focus-within:text-purple-500" data-icon="mdi:target"></span>
                         </div>
-                    `).join('')}
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Sub-Questions & Supporting Inquiries</label>
+                            <button onclick="window.addSubQuestion()" class="text-[10px] font-black text-purple-600 uppercase tracking-widest hover:underline flex items-center gap-1">
+                                <span class="iconify" data-icon="mdi:plus-circle"></span> Add New
+                            </button>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            ${(App.work.subQuestions || []).map((q, i) => `
+                                <div class="p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-purple-200 group transition-all flex items-center gap-3">
+                                    <span class="text-xs font-black text-purple-300">${i + 1}</span>
+                                    <input type="text" value="${q.text}" 
+                                        onchange="window.updateSubQuestion('${q.id}', this.value)"
+                                        placeholder="Specific aspect to investigate..."
+                                        class="flex-1 bg-transparent border-none text-sm font-medium focus:outline-none text-gray-700">
+                                    <button onclick="window.deleteSubQuestion('${q.id}')" class="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-opacity">
+                                        <span class="iconify" data-icon="mdi:close-circle"></span>
+                                    </button>
+                                </div>
+                            `).join('')}
+                            ${App.work.subQuestions?.length === 0 ? `
+                                <div class="md:col-span-2 py-8 text-center bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-100">
+                                    <p class="text-xs text-gray-400 font-medium">Break down your main question into smaller, manageable parts.</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
                 </div>
-                <button onclick="window.addSubQuestion()" class="mt-4 text-sm text-purple-600 hover:underline flex items-center gap-1">
-                    <span class="iconify" data-icon="mdi:plus"></span> Add Sub-Question
-                </button>
             </div>
         </div>
     `;
 }
 
-function renderInputCard(title, icon, color, inputId, onAction, content) {
+function renderInputCard(title, icon, color, inputId, onAction, content, subtitle = '') {
     return `
-        <div class="bg-white rounded-xl shadow-sm border p-6">
-            <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span class="iconify text-${color}-500" data-icon="${icon}"></span>
-                ${title}
-            </h3>
-            <div class="space-y-2 mb-4 max-h-64 overflow-y-auto custom-scrollbar">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-full">
+            <div class="p-5 border-b border-gray-50 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-${color}-50 text-${color}-500 flex items-center justify-center">
+                    <span class="iconify text-xl" data-icon="${icon}"></span>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-900">${title}</h3>
+                    <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest">${subtitle}</p>
+                </div>
+            </div>
+            <div class="flex-1 p-4 space-y-3 overflow-y-auto min-h-[250px] max-h-[400px] custom-scrollbar bg-gray-50/30">
                 ${content}
             </div>
-            <div class="flex gap-2">
-                <input type="text" id="${inputId}" placeholder="${title}..." 
-                    class="flex-1 px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-${color}-500 focus:outline-none"
-                    onkeypress="if(event.key==='Enter')${onAction}">
-                <button onclick="${onAction}" class="px-4 py-2 bg-${color}-500 text-white rounded-lg hover:bg-${color}-600">
-                    <span class="iconify" data-icon="mdi:plus"></span>
-                </button>
+            <div class="p-4 bg-white border-t border-gray-50">
+                <div class="flex gap-2">
+                    <input type="text" id="${inputId}" placeholder="Add..." 
+                        class="flex-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-${color}-500 focus:bg-white focus:outline-none transition-all"
+                        onkeypress="if(event.key==='Enter')${onAction}">
+                    <button onclick="${onAction}" class="w-10 h-10 flex items-center justify-center bg-${color}-500 text-white rounded-xl hover:opacity-90 transition-all shadow-sm shadow-${color}-100">
+                        <span class="iconify" data-icon="mdi:plus"></span>
+                    </button>
+                </div>
             </div>
         </div>
     `;
 }
 
 export function renderNoticesList() {
-    if (!App.work.notices?.length) return '<p class="text-gray-400 text-sm italic">What do you observe?</p>';
+    if (!App.work.notices?.length) return `
+        <div class="h-full flex flex-col items-center justify-center text-center opacity-30 grayscale py-10">
+            <span class="iconify text-4xl mb-2" data-icon="mdi:eye-outline"></span>
+            <p class="text-[10px] font-black uppercase tracking-widest">No notices yet</p>
+        </div>
+    `;
     return App.work.notices.filter(n => !n.hidden).map(n => `
-        <div class="group p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-            <div class="flex justify-between items-start">
-                <p class="text-sm text-gray-700">${n.text}</p>
-                <button onclick="window.deleteNotice('${n.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 ml-2">×</button>
-            </div>
+        <div class="group p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-blue-200 transition-all relative">
+            <p class="text-sm text-gray-700 leading-relaxed">${n.text}</p>
+            <button onclick="window.deleteNotice('${n.id}')" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-all">
+                <span class="iconify" data-icon="mdi:close-circle"></span>
+            </button>
         </div>
     `).join('');
 }
 
 export function renderWondersList() {
-    if (!App.work.wonders?.length) return '<p class="text-gray-400 text-sm italic">What questions do you have?</p>';
+    if (!App.work.wonders?.length) return `
+        <div class="h-full flex flex-col items-center justify-center text-center opacity-30 grayscale py-10">
+            <span class="iconify text-4xl mb-2" data-icon="mdi:lightbulb-outline"></span>
+            <p class="text-[10px] font-black uppercase tracking-widest">No wonders yet</p>
+        </div>
+    `;
     return App.work.wonders.filter(w => !w.hidden).map(w => `
-        <div class="group p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-500">
-            <div class="flex justify-between items-start">
-                <p class="text-sm text-gray-700">${w.text}</p>
-                <button onclick="window.deleteWonder('${w.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 ml-2">×</button>
+        <div class="group p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-yellow-200 transition-all relative">
+            <p class="text-sm text-gray-700 leading-relaxed">${w.text}</p>
+            <div class="flex gap-2 mt-2 pt-2 border-t border-gray-50">
+                <button onclick="window.promoteToQuestion('${w.id}')" class="text-[9px] font-black text-purple-500 uppercase tracking-widest hover:underline">Focus</button>
+                <button onclick="window.promoteWonderToTestable('${w.id}')" class="text-[9px] font-black text-green-500 uppercase tracking-widest hover:underline">Testable</button>
             </div>
-            <div class="flex gap-3 mt-2">
-                <button onclick="window.promoteToQuestion('${w.id}')" class="text-[10px] font-bold text-purple-600 hover:underline">→ Driving Question</button>
-                <button onclick="window.promoteWonderToTestable('${w.id}')" class="text-[10px] font-bold text-green-600 hover:underline">→ Make Testable</button>
-            </div>
+            <button onclick="window.deleteWonder('${w.id}')" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-all">
+                <span class="iconify" data-icon="mdi:close-circle"></span>
+            </button>
         </div>
     `).join('');
 }
 
 export function renderIdeasList() {
-    if (!App.work.ideas?.length) return '<p class="text-gray-400 text-sm italic">Initial thoughts?</p>';
-    return App.work.ideas.map(i => `<div class="p-3 bg-purple-50 rounded-lg border-l-4 border-purple-500 flex justify-between"><p class="text-sm text-gray-700">${i.text}</p><button onclick="window.deleteIdea('${i.id}')" class="text-red-400">×</button></div>`).join('');
+    if (!App.work.ideas?.length) return `
+        <div class="h-full flex flex-col items-center justify-center text-center opacity-30 grayscale py-10">
+            <span class="iconify text-4xl mb-2" data-icon="mdi:thought-bubble-outline"></span>
+            <p class="text-[10px] font-black uppercase tracking-widest">No ideas yet</p>
+        </div>
+    `;
+    return App.work.ideas.map(i => `
+        <div class="group p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-purple-200 transition-all relative">
+            <p class="text-sm text-gray-700 leading-relaxed">${i.text}</p>
+            <button onclick="window.deleteIdea('${i.id}')" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-all">
+                <span class="iconify" data-icon="mdi:close-circle"></span>
+            </button>
+        </div>
+    `).join('');
 }
 
 export function renderTestableQuestionsList() {
-    if (!App.work.testableQuestions?.length) return '<p class="text-gray-400 text-sm italic">Investigatable?</p>';
-    return App.work.testableQuestions.map(q => `<div class="p-3 bg-green-50 rounded-lg border-l-4 border-green-500 flex justify-between"><p class="text-sm text-gray-700">${q.text}</p><button onclick="window.deleteTestableQuestion('${q.id}')" class="text-red-400">×</button></div>`).join('');
+    if (!App.work.testableQuestions?.length) return `
+        <div class="h-full flex flex-col items-center justify-center text-center opacity-30 grayscale py-10">
+            <span class="iconify text-4xl mb-2" data-icon="mdi:comment-question-outline"></span>
+            <p class="text-[10px] font-black uppercase tracking-widest">No questions yet</p>
+        </div>
+    `;
+    return App.work.testableQuestions.map(q => `
+        <div class="group p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-green-200 transition-all relative">
+            <p class="text-sm text-gray-700 leading-relaxed">${q.text}</p>
+            <button onclick="window.deleteTestableQuestion('${q.id}')" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-all">
+                <span class="iconify" data-icon="mdi:close-circle"></span>
+            </button>
+        </div>
+    `).join('');
 }
+
 
 export async function addNotice() {
     const input = document.getElementById('noticeInput');

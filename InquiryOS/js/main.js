@@ -6,9 +6,12 @@
 import { App } from './core/state.js';
 import { initDB } from './core/storage.js';
 import { loadNGSSData } from './core/ngss.js';
-import { updateModeUI, switchMode } from './ui/renderer.js';
+import * as renderer from './ui/renderer.js';
+import * as sync from './core/sync.js';
+import * as utils from './ui/utils.js';
+import * as ngss from './core/ngss.js';
 import { renderNavigation, toggleSidebar, showStudentModule, showTeacherModule } from './ui/navigation.js';
-import { toast, copyCode, copyJoinLink, showJoinQR, closeQRCode } from './ui/utils.js';
+import { toast, copyCode, copyJoinLink, showJoinQR, closeQRCode, openSessionMenu, closeSessionMenu, leaveSession, exportSession, importSession, handleImportFile, saveCurrentSession } from './ui/utils.js';
 
 // Auth / Login
 import * as auth from './core/auth.js';
@@ -31,8 +34,6 @@ import * as noticeboard from './teacher/noticeboard.js';
 // IMMEDIATE: Expose functions to global window object
 // This MUST happen at the top level of the module so it is synchronous during script load.
 window.App = App;
-window.switchMode = switchMode;
-window.updateModeUI = updateModeUI;
 window.renderNavigation = renderNavigation;
 window.toggleSidebar = toggleSidebar;
 window.showStudentModule = showStudentModule;
@@ -42,9 +43,20 @@ window.copyCode = copyCode;
 window.copyJoinLink = copyJoinLink;
 window.showJoinQR = showJoinQR;
 window.closeQRCode = closeQRCode;
+window.openSessionMenu = openSessionMenu;
+window.closeSessionMenu = closeSessionMenu;
+window.leaveSession = leaveSession;
+window.exportSession = exportSession;
+window.importSession = importSession;
+window.handleImportFile = handleImportFile;
+window.saveCurrentSession = saveCurrentSession;
 
 // Expose all exported functions from modules
 Object.assign(window, auth);
+Object.assign(window, renderer);
+Object.assign(window, sync);
+Object.assign(window, utils);
+Object.assign(window, ngss);
 Object.assign(window, questions);
 Object.assign(window, models);
 Object.assign(window, investigation);
@@ -56,6 +68,8 @@ Object.assign(window, communication);
 Object.assign(window, dashboard);
 Object.assign(window, viewer);
 Object.assign(window, noticeboard);
+
+
 
 /**
  * Initializes the application.

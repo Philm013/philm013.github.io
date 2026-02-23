@@ -3,11 +3,13 @@
  * @description Main UI rendering engine for InquiryOS. Handles view switching between student and teacher modes and individual practice modules.
  */
 
-import { App } from '../core/state.js';
+import { App, getInitialWorkState } from '../core/state.js';
 import { dbGetByIndex, STORE_USERS } from '../core/storage.js';
 import { renderNavigation } from './navigation.js';
 import { saveToStorage } from '../core/sync.js';
 import { ngssData } from '../core/state.js';
+import { toast } from './utils.js';
+
 
 // Import Student Module Renderers
 import { renderQuestionsModule } from '../modules/questions.js';
@@ -381,6 +383,26 @@ export function renderEvidenceBank() {
             </div>
         `).join('');
     }
+}
+
+/**
+ * Toggles the student's view between their own work and the teacher's exemplar.
+ */
+export async function toggleExemplarView() {
+    App.isViewingExemplar = !App.isViewingExemplar;
+    if (App.isViewingExemplar) {
+        // Cache current work
+        App.studentWorkCache = JSON.parse(JSON.stringify(App.work));
+        // Show exemplar
+        App.work = App.teacherSettings.exemplars[App.currentModule] || getInitialWorkState();
+        toast('Viewing Teacher Example', 'info');
+    } else {
+        // Restore work
+        if (App.studentWorkCache) App.work = App.studentWorkCache;
+        App.studentWorkCache = null;
+    }
+    renderNavigation();
+    renderStudentContent();
 }
 
 /**

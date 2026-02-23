@@ -23,18 +23,28 @@ export function renderAnalysisModule() {
     const hasData = dt.rows.some(r => Object.values(r).some(v => v));
     
     return `
-        <div class="max-w-5xl mx-auto">
+        <div class="max-w-6xl mx-auto">
             ${renderModuleHeader('Analyzing & Interpreting Data', 'mdi:chart-line', 'SEP4')}
             
             ${!hasData ? renderNoDataAlert() : renderChartWorkspace(dt)}
             
-            <div class="bg-white rounded-xl shadow-sm border p-6 mt-6">
-                <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    Statistics
-                    <span class="ngss-tag ngss-ccc">CCC3</span>
-                </h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    ${renderStatisticsSummary(dt)}
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mt-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-black text-gray-900 flex items-center gap-3">
+                        <span class="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+                            <span class="iconify" data-icon="mdi:calculator"></span>
+                        </span>
+                        Statistical Summary
+                    </h3>
+                    <span class="ngss-tag ngss-ccc">CCC3: Scale, Proportion, and Quantity</span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    ${renderStatisticsSummary(dt) || `
+                        <div class="col-span-full py-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                            <p class="text-sm text-gray-400 font-medium">Add numeric data to see statistical analysis.</p>
+                        </div>
+                    `}
                 </div>
             </div>
         </div>
@@ -47,15 +57,20 @@ export function renderAnalysisModule() {
  */
 function renderNoDataAlert() {
     return `
-        <div class="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
-            <span class="iconify text-amber-500 text-4xl" data-icon="mdi:alert"></span>
-            <p class="mt-2 text-amber-700">Collect data in the Investigation module first.</p>
-            <button onclick="window.showStudentModule('investigation')" class="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg">
-                Go to Investigation
+        <div class="bg-white rounded-3xl border-2 border-dashed border-gray-200 p-16 text-center flex flex-col items-center">
+            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                <span class="iconify text-5xl text-gray-300" data-icon="mdi:table-search"></span>
+            </div>
+            <h3 class="text-xl font-bold text-gray-400 mb-2">No Data Collected Yet</h3>
+            <p class="text-gray-400 max-w-md mx-auto mb-8">You need to collect scientific data in your investigation before you can analyze and visualize it.</p>
+            <button onclick="window.showStudentModule('investigation')" class="px-8 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-blue-100 hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                <span class="iconify text-xl" data-icon="mdi:arrow-right"></span>
+                Go to Investigation Practice
             </button>
         </div>
     `;
 }
+
 
 /**
  * Renders the chart settings and visualization workspace.
@@ -64,47 +79,66 @@ function renderNoDataAlert() {
  */
 function renderChartWorkspace(dt) {
     return `
-        <div class="grid md:grid-cols-3 gap-6 mb-6">
-            <div class="bg-white rounded-xl shadow-sm border p-4">
-                <h3 class="font-semibold text-gray-900 mb-4">Chart Settings</h3>
-                <div class="space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col h-full">
+                <div class="flex items-center gap-2 mb-6">
+                    <h3 class="font-black text-gray-900 uppercase tracking-widest text-xs">Configuration</h3>
+                </div>
+                
+                <div class="space-y-6 flex-1">
                     <div>
-                        <label class="text-sm text-gray-600 block mb-1">X-Axis</label>
-                        <select id="xAxisSelect" class="w-full px-3 py-2 border rounded-lg" onchange="window.updateChart()">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">X-Axis Variable</label>
+                        <select id="xAxisSelect" class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-primary focus:bg-white focus:outline-none transition-all" onchange="window.updateChart()">
                             ${dt.columns.map(c => `<option value="${c.id}">${c.name}${c.unit ? ' (' + c.unit + ')' : ''}</option>`).join('')}
                         </select>
                     </div>
                     <div>
-                        <label class="text-sm text-gray-600 block mb-1">Y-Axis</label>
-                        <select id="yAxisSelect" class="w-full px-3 py-2 border rounded-lg" onchange="window.updateChart()">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Y-Axis Variable</label>
+                        <select id="yAxisSelect" class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-primary focus:bg-white focus:outline-none transition-all" onchange="window.updateChart()">
                             ${dt.columns.map((c, i) => `<option value="${c.id}" ${i === 1 ? 'selected' : ''}>${c.name}${c.unit ? ' (' + c.unit + ')' : ''}</option>`).join('')}
                         </select>
                     </div>
                     <div>
-                        <label class="text-sm text-gray-600 block mb-2">Chart Type</label>
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-3 block">Visualization Type</label>
                         <div class="grid grid-cols-3 gap-2">
-                            <button onclick="window.setChartType('scatter')" class="chart-type-btn px-3 py-2 rounded text-sm ${chartType === 'scatter' ? 'bg-primary text-white' : 'bg-gray-200'}" data-type="scatter">Scatter</button>
-                            <button onclick="window.setChartType('line')" class="chart-type-btn px-3 py-2 rounded text-sm ${chartType === 'line' ? 'bg-primary text-white' : 'bg-gray-200'}" data-type="line">Line</button>
-                            <button onclick="window.setChartType('bar')" class="chart-type-btn px-3 py-2 rounded text-sm ${chartType === 'bar' ? 'bg-primary text-white' : 'bg-gray-200'}" data-type="bar">Bar</button>
+                            ${['scatter', 'line', 'bar'].map(type => `
+                                <button onclick="window.setChartType('${type}')" 
+                                    class="chart-type-btn p-3 rounded-xl border-2 transition-all flex items-center justify-center ${chartType === type ? 'border-primary bg-blue-50 text-primary' : 'border-gray-50 bg-white text-gray-400 hover:bg-gray-50'}" 
+                                    data-type="${type}" title="${type.charAt(0).toUpperCase() + type.slice(1)}">
+                                    <span class="iconify text-xl" data-icon="mdi:chart-${type === 'bar' ? 'bar' : (type === 'line' ? 'line-variant' : 'scatter-plot')}"></span>
+                                </button>
+                            `).join('')}
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="md:col-span-2 bg-white rounded-xl shadow-sm border p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-semibold text-gray-900">Graph</h3>
-                    <button onclick="window.saveChartAsEvidence()" class="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200">
-                        <span class="iconify mr-1" data-icon="mdi:bookmark"></span> Save as Evidence
+                
+                <div class="mt-8 pt-6 border-t border-gray-50">
+                    <button onclick="window.saveChartAsEvidence()" class="w-full py-4 bg-purple-50 text-purple-600 rounded-2xl font-bold hover:bg-purple-100 transition-all flex items-center justify-center gap-2">
+                        <span class="iconify text-xl" data-icon="mdi:bookmark-plus"></span>
+                        Save to Evidence
                     </button>
                 </div>
-                <div class="h-64">
+            </div>
+            
+            <div class="lg:col-span-3 bg-white rounded-3xl shadow-sm border border-gray-100 p-8 flex flex-col h-full min-h-[500px]">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h3 class="text-xl font-black text-gray-900">Data Visualization</h3>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Interactive Graphical Representation</p>
+                    </div>
+                    <div class="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-100">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        Live
+                    </div>
+                </div>
+                <div class="flex-1 relative">
                     <canvas id="analysisChart"></canvas>
                 </div>
             </div>
         </div>
     `;
 }
+
 
 /**
  * Renders a summary of statistical values for numeric columns.

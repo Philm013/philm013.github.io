@@ -114,47 +114,99 @@ export async function loadNGSSData() {
 export function renderNGSSBrowser() {
     return `
         <div class="max-w-6xl mx-auto">
-            <div class="mb-6 flex items-center justify-between">
+            <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 class="text-3xl font-black text-gray-900">NGSS Navigator</h2>
-                    <p class="text-gray-500">Explore Standards, Practices, and Concepts</p>
+                    <p class="text-gray-500 mt-1">Explore Standards, Practices, and Concepts to link with your lesson.</p>
                 </div>
-                <div id="ngssSearch" class="relative max-w-xs w-full">
-                    <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="mdi:magnify"></span>
-                    <input type="text" placeholder="Search standards..." 
+                <div id="ngssSearch" class="relative max-w-sm w-full">
+                    <span class="iconify absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl" data-icon="mdi:magnify"></span>
+                    <input type="text" placeholder="Search standards, IDs, or topics..." 
                         oninput="window.filterNGSS(this.value)"
-                        class="w-full pl-10 pr-4 py-2 bg-white border-2 border-gray-100 rounded-xl focus:border-primary focus:outline-none transition-all">
+                        class="w-full pl-12 pr-6 py-4 bg-white border-2 border-gray-100 rounded-2xl text-lg font-medium focus:border-primary focus:outline-none transition-all shadow-sm">
                 </div>
             </div>
             
-            <div class="flex flex-col lg:flex-row gap-6">
+            <div class="flex flex-col lg:flex-row gap-8">
                 <!-- Sidebar: Dimensions -->
-                <div class="lg:w-1/4 space-y-2">
-                    <button onclick="window.showNGSSSection('sep')" class="ngss-dim-btn w-full p-4 rounded-2xl text-left transition-all bg-blue-50 border-2 border-blue-100 text-blue-700" data-section="sep">
-                        <div class="flex items-center gap-3">
-                            <span class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">SEP</span>
+                <div class="lg:w-1/4 space-y-3">
+                    <button onclick="window.showNGSSSection('sep')" class="ngss-dim-btn w-full p-5 rounded-3xl text-left transition-all bg-blue-50 border-2 border-blue-100 text-blue-700 shadow-sm" data-section="sep">
+                        <div class="flex items-center gap-4">
+                            <span class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-lg">SEP</span>
                             <div>
-                                <p class="font-bold leading-tight">Practices</p>
-                                <p class="text-[10px] opacity-70 uppercase tracking-wider">8 Elements</p>
+                                <p class="font-black leading-tight">Practices</p>
+                                <p class="text-[10px] opacity-70 uppercase font-black tracking-widest mt-0.5">Scientific Actions</p>
                             </div>
                         </div>
                     </button>
-                    <!-- ... other buttons ... -->
-                    <div class="pt-4 border-t border-gray-100 mt-4">
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 ml-2">Performance Expectations</p>
-                        <button onclick="window.showNGSSSection('K-5')" class="ngss-dim-btn w-full px-4 py-3 rounded-xl text-left text-sm font-bold text-gray-600 hover:bg-gray-50 mb-1" data-section="K-5">Grades K-5</button>
-                        <!-- ... other grade levels ... -->
+                    <button onclick="window.showNGSSSection('ccc')" class="ngss-dim-btn w-full p-5 rounded-3xl text-left transition-all bg-white border-2 border-transparent text-gray-500 hover:bg-gray-50 shadow-sm" data-section="ccc">
+                        <div class="flex items-center gap-4">
+                            <span class="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black text-lg">CCC</span>
+                            <div>
+                                <p class="font-black leading-tight">Crosscutting</p>
+                                <p class="text-[10px] opacity-70 uppercase font-black tracking-widest mt-0.5">Big Concepts</p>
+                            </div>
+                        </div>
+                    </button>
+                    <button onclick="window.showNGSSSection('dci')" class="ngss-dim-btn w-full p-5 rounded-3xl text-left transition-all bg-white border-2 border-transparent text-gray-500 hover:bg-gray-50 shadow-sm" data-section="dci">
+                        <div class="flex items-center gap-4">
+                            <span class="w-12 h-12 rounded-2xl bg-green-600 text-white flex items-center justify-center font-black text-lg">DCI</span>
+                            <div>
+                                <p class="font-black leading-tight">Core Ideas</p>
+                                <p class="text-[10px] opacity-70 uppercase font-black tracking-widest mt-0.5">Content Knowledge</p>
+                            </div>
+                        </div>
+                    </button>
+                    
+                    <div class="pt-6 border-t border-gray-100 mt-6 space-y-2">
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Performance Expectations</p>
+                        ${['K-5', '6-8', '9-12'].map(lvl => `
+                            <button onclick="window.showNGSSSection('${lvl}')" class="ngss-dim-btn w-full px-6 py-4 rounded-2xl text-left text-sm font-black text-gray-600 border-2 border-transparent hover:bg-gray-50 transition-all flex items-center justify-between group" data-section="${lvl}">
+                                <span>Grades ${lvl}</span>
+                                <span class="iconify opacity-0 group-hover:opacity-100 transition-opacity" data-icon="mdi:chevron-right"></span>
+                            </button>
+                        `).join('')}
                     </div>
                 </div>
                 
-                <div class="lg:w-3/4 bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8 min-h-[600px]">
-                    <div id="ngssContent" class="animate-in fade-in duration-300">
+                <div class="lg:w-3/4 bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 md:p-10 min-h-[700px]">
+                    <div id="ngssContent" class="animate-in fade-in duration-500">
                         ${renderNGSSSection('sep')}
                     </div>
                 </div>
             </div>
         </div>
     `;
+}
+
+/**
+ * UI: Switches the active NGSS section and updates styles.
+ */
+export function showNGSSSection(section) {
+    document.querySelectorAll('.ngss-dim-btn').forEach(btn => {
+        const isSelected = btn.dataset.section === section;
+        const colorMap = { sep: 'blue', ccc: 'amber', dci: 'green' };
+        const colorClass = colorMap[section] || 'primary';
+        
+        if (isSelected) {
+            btn.className = `ngss-dim-btn w-full p-5 rounded-3xl text-left transition-all bg-${colorClass === 'primary' ? 'primary' : colorClass + '-50'} border-2 border-${colorClass === 'primary' ? 'primary' : colorClass + '-100'} ${colorClass === 'primary' ? 'text-white' : 'text-' + colorClass + '-700'} shadow-md`;
+        } else {
+            btn.className = 'ngss-dim-btn w-full p-5 rounded-3xl text-left transition-all bg-white border-2 border-transparent text-gray-500 hover:bg-gray-50 shadow-sm';
+        }
+    });
+    
+    const content = document.getElementById('ngssContent');
+    if (content) content.innerHTML = renderNGSSSection(section);
+}
+
+/**
+ * UI: Filters the currently active NGSS section.
+ */
+export function filterNGSS(query) {
+    const activeBtn = document.querySelector('.ngss-dim-btn[class*="bg-"][class*="-50"], .ngss-dim-btn[class*="bg-primary"]');
+    const activeSection = activeBtn?.dataset.section || 'sep';
+    const content = document.getElementById('ngssContent');
+    if (content) content.innerHTML = renderNGSSSection(activeSection, query);
 }
 
 /**

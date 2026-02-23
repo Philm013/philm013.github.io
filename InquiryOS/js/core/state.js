@@ -145,6 +145,7 @@ export function getInitialWorkState() {
         testableQuestions: [], 
         mainQuestion: '', 
         subQuestions: [],
+        debatePosts: [],
         modelNodes: [], 
         modelConnections: [], 
         modelShapes: [], 
@@ -161,7 +162,8 @@ export function getInitialWorkState() {
                 { id: 'c2', name: 'Variable 1', type: 'number', unit: '', variableId: '' }, 
                 { id: 'c3', name: 'Variable 2', type: 'number', unit: '', variableId: '' }
             ], 
-            rows: [{}, {}, {}] 
+            rows: [{}, {}, {}],
+            feedback: {} // Maps rowIndex -> sticker emoji
         },
         mathExpressions: [], 
         evidence: [], 
