@@ -5,7 +5,7 @@
  */
 
 import { VisualEngine } from './VisualEngine.js';
-import { uid } from '../utils.js';
+import { uid, debounce } from '../utils.js';
 
 /**
  * Service managing the canvas-based annotation environment.
@@ -60,6 +60,10 @@ export class CaptureService {
 
         this.setupListeners();
         this.syncUI();
+        
+        window.addEventListener('resize', debounce(() => {
+            if (window.Nexus?.state.view === 'markup') this.recenter();
+        }, 200));
     }
 
     /**
@@ -219,19 +223,32 @@ export class CaptureService {
         const zoomEl = document.getElementById('markup-zoom-level');
         if (zoomEl) zoomEl.textContent = `${Math.round(this.scale * 100)}%`;
 
-        // Center initially
-        this.offset = {
-            x: (this.container.clientWidth - s.width * this.scale) / 2,
-            y: (this.container.clientHeight - s.height * this.scale) / 2
-        };
-
-        this.redraw();
+        this.recenter();
         this.refreshLibraryUI();
 
         if (window.innerWidth < 768) {
             const aside = document.querySelector('#view-markup aside');
             if (aside) aside.classList.toggle('active');
         }
+    }
+
+    /**
+     * Centers the canvas within its container based on current scale.
+     */
+    recenter() {
+        if (!this.activeSession) return;
+        
+        let containerWidth = this.container.clientWidth;
+        let containerHeight = this.container.clientHeight;
+
+        if (containerWidth === 0) containerWidth = window.innerWidth;
+        if (containerHeight === 0) containerHeight = window.innerHeight - 100;
+
+        this.offset = {
+            x: (containerWidth - this.activeSession.width * this.scale) / 2,
+            y: (containerHeight - this.activeSession.height * this.scale) / 2
+        };
+        this.redraw();
     }
 
     /**
@@ -596,9 +613,13 @@ export class CaptureService {
             return;
         }
 
-        if (this.currentTool === 'pan' || e.button === 1) {
+        if (this.currentTool === 'pan' || e.button === 1 || e.button === 2) {
             this.isPanning = true;
             this.lastScreenPos = { x: e.clientX, y: e.clientY };
+            if (e.button === 2) {
+                e.preventDefault();
+                this.canvas.oncontextmenu = (ce) => { ce.preventDefault(); this.canvas.oncontextmenu = null; };
+            }
             return;
         }
 

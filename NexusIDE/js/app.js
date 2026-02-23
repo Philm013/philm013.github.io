@@ -163,6 +163,13 @@ const Nexus = {
             this.applyTheme(this.state.theme);
             this.setupListeners();
             
+            // Preview Interaction
+            window.addEventListener('message', (e) => {
+                if (e.data && e.data.type === 'preview-click') {
+                    this.handlePreviewClick(e.data);
+                }
+            });
+            
             const files = await this.fs.listFiles();
             console.log(`VFS Ready. ${files.length} files found.`);
             
@@ -248,10 +255,11 @@ const Nexus = {
                     drawer.style.height = 'auto';
                     drawer.style.top = '0';
                     drawer.style.bottom = 'calc(64px + var(--safe-bottom))';
-                    if (mobileNav) mobileNav.style.display = 'flex';
+                    if (mobileNav && window.innerWidth < 768) mobileNav.style.display = 'flex';
                 }
             } else if (!Nexus.state.aiOpen && mobileNav) {
-                mobileNav.style.display = 'flex';
+                if (window.innerWidth < 768) mobileNav.style.display = 'flex';
+                else mobileNav.style.display = '';
             }
         });
     },
@@ -293,7 +301,7 @@ const Nexus = {
                 if (action === 'explain') this.prepareChat(`/explain ${selection}`);
                 else if (action === 'fix') this.prepareChat(`/fix ${selection}`);
                 else if (action === 'select-component') {
-                    if (this.modals) this.modals.alert("Coming Soon", "Component selection from preview is being developed.");
+                    this.selectCurrentComponent();
                 }
                 
                 menu.classList.add('hidden');
@@ -318,6 +326,175 @@ const Nexus = {
     removeFromContext(index) {
         this.state.context.splice(index, 1);
         this.renderContextStaging();
+    },
+
+    /**
+     * Handles clicks from the preview iframe by searching for the corresponding 
+     * code in the editor and selecting it.
+     * @param {Object} data - { selector, outerHTML, innerText }
+     */
+    handlePreviewClick(data) {
+        if (!this.editor || !this.editor.cm) return;
+        const cm = this.editor.cm;
+        const content = cm.getValue();
+        
+        // Try to find exact outerHTML match
+        let index = content.indexOf(data.outerHTML);
+        
+        // If no exact match, try fuzzy match (some attributes might be different or reordered)
+        if (index === -1) {
+            // Try to find by innerText if unique enough
+            if (data.innerText && data.innerText.length > 5) {
+                index = content.indexOf(data.innerText);
+            }
+        }
+        
+        if (index > -1) {
+            const from = cm.posFromIndex(index);
+            const to = cm.posFromIndex(index + data.outerHTML.length);
+            cm.setSelection(from, to);
+            cm.scrollIntoView(from, 200);
+            
+            // If on mobile, switch to editor view
+            if (window.innerWidth < 768) this.setView('editor');
+        }
+    },
+
+    /**
+     * Intelligently finds the start and end of the component at the current cursor
+     * or selection, expanding to the full outer element (HTML tag, CSS block, or JS function).
+     */
+    selectCurrentComponent() {
+        if (!this.editor || !this.editor.cm) return;
+        const cm = this.editor.cm;
+        const cursor = cm.getCursor();
+        const mode = cm.getModeAt(cursor).name;
+        
+        if (mode === 'xml' || mode === 'htmlmixed') {
+            // Use CodeMirror's tag matching if possible, or a manual walk
+            const range = this.findEnclosingTag(cm, cursor);
+            if (range) {
+                cm.setSelection(range.from, range.to);
+            }
+        } else if (mode === 'markdown' || mode === 'gfm') {
+            const range = this.findMarkdownBlock(cm, cursor);
+            if (range) cm.setSelection(range.from, range.to);
+        } else {
+            // Find surrounding braces { }
+            const range = this.findEnclosingBraces(cm, cursor);
+            if (range) {
+                cm.setSelection(range.from, range.to);
+            }
+        }
+    },
+
+    /** @private */
+    findMarkdownBlock(cm, pos) {
+        let start = pos.line, end = pos.line;
+        const lineCount = cm.lineCount();
+        
+        // Find start: blank line or header
+        while (start > 0) {
+            const line = cm.getLine(start - 1).trim();
+            if (line === '' || line.startsWith('#')) break;
+            start--;
+        }
+        
+        // Find end: blank line or header
+        while (end < lineCount - 1) {
+            const line = cm.getLine(end + 1).trim();
+            if (line === '' || line.startsWith('#')) break;
+            end++;
+        }
+        
+        return { from: { line: start, ch: 0 }, to: { line: end, ch: cm.getLine(end).length } };
+    },
+
+    /** @private */
+    findEnclosingTag(cm, pos) {
+        // Simple walk back/forward for tags
+        let from = pos, to = pos;
+        const lineCount = cm.lineCount();
+        
+        // This is a naive implementation; CM has better tools but this is a start
+        // In a real app, we might use cm.getTokenAt or a proper parser
+        const token = cm.getTokenAt(pos);
+        if (token.type === 'tag') {
+            // Already on a tag, try to find the other end
+            // (Wait, let's use a more robust approach)
+        }
+        
+        // Better approach: use CodeMirror.findMatchingTag if available, or just use the current selection if it looks like a tag
+        // For now, let's use a regex-based block finder for simplicity
+        const content = cm.getValue();
+        const index = cm.indexFromPos(pos);
+        
+        // Find nearest < and >
+        const before = content.lastIndexOf('<', index);
+        const after = content.indexOf('>', index);
+        
+        if (before > -1 && after > -1) {
+            // We are inside a tag or between tags. 
+            // Finding the FULL outer element is harder without a real parser.
+            // Let's try to find the matching closing tag.
+            // For now, we'll just select the current tag.
+            return { from: cm.posFromIndex(before), to: cm.posFromIndex(after + 1) };
+        }
+        return null;
+    },
+
+    /** @private */
+    findEnclosingBraces(cm, pos) {
+        const line = pos.line;
+        const ch = pos.ch;
+        let openCount = 0;
+        let start = null, end = null;
+
+        // Walk backwards for {
+        for (let l = line; l >= 0; l--) {
+            const text = cm.getLine(l);
+            for (let c = (l === line ? ch : text.length - 1); c >= 0; c--) {
+                if (text[c] === '}') openCount--;
+                if (text[c] === '{') {
+                    openCount++;
+                    if (openCount === 1) {
+                        start = { line: l, ch: c };
+                        break;
+                    }
+                }
+            }
+            if (start) break;
+        }
+
+        if (!start) return null;
+
+        // Walk forwards for }
+        openCount = 1;
+        const lineCount = cm.lineCount();
+        for (let l = start.line; l < lineCount; l++) {
+            const text = cm.getLine(l);
+            for (let c = (l === start.line ? start.ch + 1 : 0); c < text.length; c++) {
+                if (text[c] === '{') openCount++;
+                if (text[c] === '}') {
+                    openCount--;
+                    if (openCount === 0) {
+                        end = { line: l, ch: c + 1 };
+                        break;
+                    }
+                }
+            }
+            if (end) break;
+        }
+
+        if (start && end) {
+            // Try to include the header (e.g., "function name() {")
+            let startLine = start.line;
+            let startText = cm.getLine(startLine);
+            // Walk back words on the same line
+            // This is still naive but better than nothing
+            return { from: { line: start.line, ch: 0 }, to: end };
+        }
+        return null;
     },
 
     /**
@@ -568,8 +745,12 @@ const Nexus = {
         ['explorer', 'assets', 'markup', 'pad', 'symbols', 'search'].forEach(id => {
             const el = document.getElementById(`nav-${id}`);
             if (el) el.onclick = () => {
-                if (id !== 'markup' && id !== 'assets') Nexus.state.assetTarget = 'editor';
-                if (id === 'assets') Nexus.state.assetTarget = 'editor';
+                if (id === 'assets') {
+                    Nexus.state.assetTarget = Nexus.state.lastMainView || 'editor';
+                    Nexus.refreshAssetsUI();
+                } else if (id !== 'markup') {
+                    Nexus.state.assetTarget = 'editor';
+                }
                 Nexus.setView(id);
             };
         });
@@ -579,8 +760,13 @@ const Nexus = {
         ['explorer', 'search', 'symbols', 'editor', 'assets', 'ai', 'markup', 'pad', 'settings'].forEach(id => {
             const el = document.getElementById(`mobile-nav-${id}`);
             if (el) el.onclick = () => {
-                if (id !== 'markup' && id !== 'assets' && id !== 'ai') Nexus.state.assetTarget = 'editor';
-                if (id === 'assets') Nexus.state.assetTarget = 'editor';
+                if (id === 'assets') {
+                    Nexus.state.assetTarget = Nexus.state.lastMainView || 'editor';
+                    Nexus.refreshAssetsUI();
+                } else if (id !== 'markup' && id !== 'ai') {
+                    Nexus.state.assetTarget = 'editor';
+                }
+                
                 if (id === 'ai') Nexus.toggleAI();
                 else if (id === 'settings') Nexus.openSettings();
                 else {
@@ -822,6 +1008,22 @@ const Nexus = {
         this.bind('btn-library-import-files', () => document.getElementById('input-import-files').click());
         this.bind('btn-library-import-folder', () => document.getElementById('input-import-folder').click());
         
+        // Mobile Selection Toolbar
+        document.querySelectorAll('#mobile-selection-toolbar .ctx-item').forEach(btn => {
+            btn.onclick = () => {
+                const action = btn.dataset.action;
+                const selection = Nexus.editor.cm.getSelection();
+                if (action === 'select-component') Nexus.selectCurrentComponent();
+                else if (action === 'explain') Nexus.prepareChat(`/explain ${selection}`);
+                else if (action === 'fix') Nexus.prepareChat(`/fix ${selection}`);
+                else if (action === 'refactor') Nexus.prepareChat(`/refactor ${selection}`);
+                else if (action === 'save-block') {
+                    if (selection) Nexus.blocks.saveBlock("New Block", selection).then(() => Nexus.setView('assets'));
+                }
+                else if (action === 'format') Nexus.formatCode();
+            };
+        });
+        
         this.bind('wizard-opt-template', () => Nexus.showTemplatePicker());
         this.bind('wizard-opt-ai', () => Nexus.showAIScaffolder());
         this.bind('wizard-opt-import', () => Nexus.showImportPicker());
@@ -997,6 +1199,10 @@ const Nexus = {
         if (view === 'editor' && Nexus.editor && Nexus.editor.cm) {
             setTimeout(() => { Nexus.editor.cm.refresh(); Nexus.editor.cm.focus(); }, 150);
         }
+
+        if (view === 'markup' && Nexus.capture) {
+            setTimeout(() => Nexus.capture.recenter(), 100);
+        }
     },
 
     /** Updates active/inactive styles for navigation buttons. @private */
@@ -1159,7 +1365,29 @@ const Nexus = {
         if (frame && render) {
             if (path.endsWith('.html')) {
                 frame.classList.remove('hidden'); render.classList.add('hidden');
-                const shim = '<script>var module = { exports: {} }; var exports = module.exports;</script>';
+                const shim = `
+                    <script>
+                        var module = { exports: {} }; 
+                        var exports = module.exports;
+                        
+                        document.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            // Try to identify the element
+                            const target = e.target;
+                            const tag = target.tagName.toLowerCase();
+                            const id = target.id ? '#' + target.id : '';
+                            const cls = target.className ? '.' + target.className.split(' ').join('.') : '';
+                            
+                            window.parent.postMessage({
+                                type: 'preview-click',
+                                selector: tag + id + cls,
+                                outerHTML: target.outerHTML,
+                                innerText: target.innerText
+                            }, '*');
+                        }, true);
+                    <\/script>`;
                 let content = val.includes('<head>') ? val.replace('<head>', '<head>' + shim) : shim + val;
                 if (!content.includes('tailwindcss.com')) content = content.replace('</head>', '<script src="https://cdn.tailwindcss.com?plugins=typography"></script></head>');
                 if (!content.includes('code.iconify.design')) content = content.replace('</head>', '<script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script></head>');
@@ -1526,7 +1754,7 @@ const Nexus = {
     /** Renders a single photo asset tile. @private */
     renderSingleAsset(container, img) {
         const id = img.id; const isFav = this.isFavorite('photo', id); const div = document.createElement('div'); div.className = `group relative aspect-square rounded-2xl overflow-hidden border border-slate-800 cursor-pointer asset-item transition-all hover:scale-[1.02]`;
-        div.innerHTML = `<img src="${img.thumb}" class="w-full h-full object-cover" loading="lazy"><div class="asset-overlay absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 flex items-center justify-center p-2"><button class="btn-toggle-fav absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star"></i></button><div class="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center"><i class="fa-solid fa-robot text-[10px]"></i></button><button class="btn-to-code w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center"><i class="fa-solid fa-code text-[10px]"></i></button></div></div>`;
+        div.innerHTML = `<img src="${img.thumb}" class="w-full h-full object-cover" loading="lazy"><div class="asset-overlay absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 flex items-center justify-center p-2"><button class="btn-toggle-fav absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star"></i></button><div class="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[10px]"></i></button><button class="btn-to-markup w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[10px]"></i></button><button class="btn-to-code w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[10px]"></i></button></div></div>`;
         this.attachAssetHandlers(div, container, 'photo', id, img);
     },
 
@@ -1536,7 +1764,7 @@ const Nexus = {
     renderSingleIcon(container, icon) {
         const id = icon.fullName || icon.name; const isFav = this.isFavorite('icon', id); const div = document.createElement('div'); div.className = `group relative aspect-square rounded-2xl bg-slate-800/50 border border-slate-700 flex flex-col items-center justify-center p-2 cursor-pointer asset-item hover:border-indigo-500`;
         let iconHtml = icon.type === 'iconify' ? `<img src="https://api.iconify.design/${icon.fullName}.svg?color=%236366f1" class="w-10 h-10 mb-1" loading="lazy">` : `<div class="w-10 h-10 text-indigo-500 mb-1 flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">${icon.svg}</svg></div>`;
-        div.innerHTML = `${iconHtml}<div class="text-[8px] text-slate-500 truncate w-full text-center font-bold uppercase tracking-tighter">${icon.name}</div><div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 flex items-center justify-center p-2"><button class="btn-toggle-fav absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[10px]"></i></button><div class="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center"><i class="fa-solid fa-robot text-[10px]"></i></button><button class="btn-to-code w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center"><i class="fa-solid fa-code text-[10px]"></i></button></div></div>`;
+        div.innerHTML = `${iconHtml}<div class="text-[8px] text-slate-500 truncate w-full text-center font-bold uppercase tracking-tighter">${icon.name}</div><div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 flex items-center justify-center p-2"><button class="btn-toggle-fav absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[10px]"></i></button><div class="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[10px]"></i></button><button class="btn-to-markup w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[10px]"></i></button><button class="btn-to-code w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[10px]"></i></button></div></div>`;
         this.attachAssetHandlers(div, container, 'icon', id, icon);
     },
 
@@ -1545,17 +1773,41 @@ const Nexus = {
     /** Renders a single emoji asset tile. @private */
     renderSingleEmoji(container, emoji) {
         const id = emoji; const isFav = this.isFavorite('emoji', id); const div = document.createElement('div'); div.className = `group relative aspect-square rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-3xl cursor-pointer asset-item hover:bg-slate-700`;
-        div.innerHTML = `<div class="emoji-display pointer-events-none">${emoji}</div><div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 flex items-center justify-center p-1 rounded-2xl"><button class="btn-toggle-fav absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[10px]"></i></button><div class="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center"><i class="fa-solid fa-robot text-[10px]"></i></button><button class="btn-to-code w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center"><i class="fa-solid fa-code text-[10px]"></i></button></div></div>`;
+        div.innerHTML = `<div class="emoji-display pointer-events-none">${emoji}</div><div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 flex items-center justify-center p-1 rounded-2xl"><button class="btn-toggle-fav absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[10px]"></i></button><div class="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[10px]"></i></button><button class="btn-to-markup w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[10px]"></i></button><button class="btn-to-code w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[10px]"></i></button></div></div>`;
         this.attachAssetHandlers(div, container, 'emoji', id, emoji);
     },
 
     /** Attaches action handlers to asset buttons. @private */
     attachAssetHandlers(div, container, type, id, data) {
-        const btnAi = div.querySelector('.btn-to-ai'); const btnCode = div.querySelector('.btn-to-code'); const btnFav = div.querySelector('.btn-toggle-fav');
+        const btnAi = div.querySelector('.btn-to-ai'); 
+        const btnCode = div.querySelector('.btn-to-code'); 
+        const btnMarkup = div.querySelector('.btn-to-markup');
+        const btnFav = div.querySelector('.btn-toggle-fav');
+        
+        div.onclick = async (e) => {
+            if (e.target.closest('button')) return;
+            if (Nexus.state.assetTarget === 'markup') await this.insertAssetToMarkup(type, data);
+            else await this.insertAssetToCode(type, data);
+        };
+
         if (btnFav) btnFav.onclick = (e) => { e.stopPropagation(); this.toggleFavorite(type, id, data); };
         if (btnAi) btnAi.onclick = async (e) => { e.stopPropagation(); if (type === 'photo') { const b64 = await Nexus.assets.getBase64(data.full); Nexus.addToContext({ type: 'image', content: b64, thumb: data.thumb }); } else if (type === 'icon') { const img = await Nexus.assets.getIconImage(data, '#6366f1'); let final = img.src; if (data.type === 'iconify') final = await Nexus.assets.getBase64(img.src); Nexus.addToContext({ type: 'image', content: final, thumb: final }); } else if (type === 'emoji') Nexus.addToContext({ type: 'code', content: `EMOJI: ${data}` }); };
+        if (btnMarkup) btnMarkup.onclick = async (e) => { e.stopPropagation(); await this.insertAssetToMarkup(type, data); };
         if (btnCode) btnCode.onclick = async (e) => { e.stopPropagation(); await this.insertAssetToCode(type, data); };
         container.appendChild(div);
+    },
+
+    /** Handles sending an asset to the markup workbench. @private */
+    async insertAssetToMarkup(type, data) {
+        if (type === 'photo') {
+            const b64 = await Nexus.assets.getBase64(data.full);
+            await Nexus.capture.addAsset({ type: 'image', data: b64 });
+        } else if (type === 'icon') {
+            await Nexus.capture.addAsset({ type: 'icon', data: data });
+        } else if (type === 'emoji') {
+            await Nexus.capture.addAsset({ type: 'emoji', data: data });
+        }
+        Nexus.setView('markup');
     },
 
     /** Handles insertion of an asset into the editor as code. @private */
