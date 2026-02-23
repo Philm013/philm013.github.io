@@ -6,7 +6,7 @@
 
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
-import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
+import { renderStudentContent, renderModuleHeader, renderSectionHeader } from '../ui/renderer.js';
 import { toast } from '../ui/utils.js';
 
 let currentPostType = 'claim';
@@ -21,14 +21,14 @@ export function renderArgumentModule() {
         <div class="max-w-5xl mx-auto">
             ${renderModuleHeader('Engaging in Argument', 'mdi:forum', 'SEP7')}
             
-            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
-                <div class="p-6 md:p-8 border-b border-gray-50 bg-gray-50/30">
+            <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 flex flex-col overflow-hidden">
+                <div class="p-8 md:p-10 border-b border-gray-50 bg-gray-50/30">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h3 class="text-xl font-black text-gray-900">Class Evidence Board</h3>
-                            <p class="text-sm text-gray-500 mt-1">Share and critique scientific claims based on gathered evidence.</p>
+                            ${renderSectionHeader('Class Evidence Board', 'mdi:forum', 'blue')}
+                            <p class="text-sm text-gray-500 -mt-4 ml-14">Share and critique scientific claims based on gathered evidence.</p>
                         </div>
-                        <div class="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-100">
+                        <div class="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-100 mb-6">
                             <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                             Collaborative
                         </div>

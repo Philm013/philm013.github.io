@@ -6,7 +6,7 @@
 import { App } from '../core/state.js';
 import { dbGet, dbPut, dbGetByIndex, STORE_USERS, STORE_SESSIONS } from '../core/storage.js';
 import { saveToStorage } from '../core/sync.js';
-import { renderTeacherContent } from '../ui/renderer.js';
+import { renderTeacherContent, renderModuleHeader, renderSectionHeader } from '../ui/renderer.js';
 import { toast } from '../ui/utils.js';
 
 /**
@@ -54,25 +54,15 @@ export async function renderTeacherNoticeBoard() {
 
     return `
         <div class="max-w-full mx-auto pb-4 px-2 md:px-4">
-            <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Inquiry Board</h2>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">${studentList.length} Students contributing</p>
-                </div>
-            </div>
+            ${renderModuleHeader('Inquiry Board', 'mdi:bulletin-board', null)}
 
             <!-- Snappable Categories -->
-            ${activeCategories.map(cat => `
-                <div class="flex flex-col h-full" data-card-title="${cat.label}">
-                    <div class="flex items-center gap-3 mb-4 shrink-0">
-                        <div class="w-10 h-10 bg-${cat.color === 'primary' ? 'blue' : cat.color}-50 text-${cat.color === 'primary' ? 'blue' : cat.color}-600 rounded-xl flex items-center justify-center border border-${cat.color === 'primary' ? 'blue' : cat.color}-100">
-                            <span class="iconify text-xl" data-icon="${cat.icon}"></span>
-                        </div>
-                        <h3 class="text-lg font-black text-gray-900">${cat.label}</h3>
-                        <span class="ml-auto px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[9px] font-black">${items[cat.id]?.length || 0}</span>
-                    </div>
-                    
-                    <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+                ${activeCategories.map(cat => `
+                    <div class="flex flex-col h-full bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100" data-card-title="${cat.label}">
+                        ${renderSectionHeader(cat.label, cat.icon, cat.color === 'primary' ? 'blue' : cat.color)}
+                        
+                        <div class="flex-1 overflow-y-auto space-y-3 pr-1">
                         ${items[cat.id]?.map(item => `
                             <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm relative group">
                                 <p class="text-sm font-bold text-gray-800 leading-snug mb-3">"${item.text}"</p>

@@ -197,12 +197,12 @@ function wrapInSnapCards(html) {
         section.removeAttribute('data-card-title');
         return `
             <div class="snap-card" id="card-${i}">
-                <div class="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="p-3 border-b bg-gray-50 flex items-center justify-between shrink-0">
-                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${title}</h3>
-                        <span class="text-[9px] font-bold text-gray-300">${i + 1}/${sections.length}</span>
+                <div class="flex flex-col h-full bg-white overflow-hidden border-none shadow-none">
+                    <div class="px-3 py-2 border-b bg-gray-50 flex items-center justify-between shrink-0">
+                        <h3 class="text-[9px] font-black text-gray-400 uppercase tracking-widest">${title}</h3>
+                        <span class="text-[8px] font-bold text-gray-300">${i + 1}/${sections.length}</span>
                     </div>
-                    <div class="flex-1 overflow-y-auto p-3" data-card-content>
+                    <div class="flex-1 overflow-y-auto p-2" data-card-content>
                         ${section.outerHTML}
                     </div>
                 </div>
@@ -465,37 +465,43 @@ export function renderModuleHeader(title, icon, sep, customButtons = '') {
     const hasExemplar = !!App.teacherSettings.exemplars?.[App.currentModule];
     
     return `
-        <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <h2 class="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
-                        <span class="iconify text-white text-xl" data-icon="${icon}"></span>
-                    </span>
-                    ${title}
-                </h2>
-                ${sep ? `
-                    <div class="relative group">
-                        <span class="ngss-tag ngss-sep cursor-help">${sep}</span>
-                        ${sepData ? `
-                            <div class="absolute left-0 top-full mt-2 w-64 p-4 bg-white rounded-xl shadow-2xl border border-blue-100 z-[1000] hidden group-hover:block animate-in fade-in slide-in-from-top-2">
-                                <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Practice: ${sep}</p>
-                                <p class="text-xs font-bold text-gray-900 mb-2">${sepData.name}</p>
-                                <p class="text-[11px] text-gray-600 leading-relaxed">${sepData.description || ''}</p>
+        <div class="panel-header">
+            <div class="panel-title-group">
+                <div class="panel-icon-box">
+                    <span class="iconify text-3xl" data-icon="${icon}"></span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-3">
+                        <h2 class="panel-title">${title}</h2>
+                        ${sep ? `
+                            <div class="relative group">
+                                <span class="ngss-tag ngss-sep cursor-help transition-all hover:scale-110">${sep}</span>
+                                ${sepData ? `
+                                    <div class="absolute left-0 top-full mt-3 w-72 p-5 bg-white rounded-2xl shadow-2xl border border-blue-50 z-[1000] hidden group-hover:block animate-in fade-in zoom-in duration-200">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                            <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Scientific Practice</p>
+                                        </div>
+                                        <p class="text-sm font-black text-gray-900 mb-2 leading-tight">${sepData.name}</p>
+                                        <p class="text-[11px] text-gray-500 leading-relaxed font-medium">${sepData.description || ''}</p>
+                                    </div>
+                                ` : ''}
                             </div>
                         ` : ''}
                     </div>
-                ` : ''}
+                    <p class="panel-subtitle">${sepData ? sepData.name : 'Scientific Practice'}</p>
+                </div>
             </div>
             <div class="flex items-center gap-2">
                 ${hasExemplar && App.mode === 'student' ? `
-                    <button onclick="window.toggleExemplarView()" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm font-bold flex items-center gap-2 transition-all">
-                        <span class="iconify" data-icon="mdi:lightbulb-on"></span>
-                        <span class="hidden sm:inline">${App.isViewingExemplar ? 'Back to My Work' : 'View Example'}</span>
+                    <button onclick="window.toggleExemplarView()" class="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-purple-100/50 shadow-sm">
+                        <span class="iconify text-lg" data-icon="mdi:lightbulb-on"></span>
+                        <span class="hidden sm:inline">${App.isViewingExemplar ? 'Back to My Work' : 'Teacher Example'}</span>
                     </button>
                 ` : ''}
                 ${customButtons}
-                <button onclick="window.toggleModuleFullscreen()" class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
-                    <span class="iconify" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span>
+                <button onclick="window.toggleModuleFullscreen()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-primary hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
+                    <span class="iconify text-2xl" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span>
                 </button>
             </div>
         </div>
@@ -662,6 +668,25 @@ export async function renderPresentationLayer() {
             App.work = originalWork;
         }
     }
+}
+
+/**
+ * Renders a consistent sub-section header.
+ * @param {string} title - Section title.
+ * @param {string} icon - Iconify icon ID.
+ * @param {string} [color='blue'] - Accent color.
+ * @returns {string} HTML content.
+ */
+export function renderSectionHeader(title, icon, color = 'blue') {
+    return `
+        <div class="flex items-center gap-4 mb-6 group">
+            <div class="w-10 h-10 bg-${color}-50 text-${color}-500 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 group-hover:bg-${color}-100">
+                <span class="iconify text-xl" data-icon="${icon}"></span>
+            </div>
+            <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase">${title}</h3>
+            <div class="flex-1 h-px bg-gradient-to-r from-gray-100 to-transparent ml-2"></div>
+        </div>
+    `;
 }
 
 /**

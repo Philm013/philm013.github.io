@@ -7,7 +7,7 @@
 
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
-import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
+import { renderStudentContent, renderModuleHeader, renderSectionHeader } from '../ui/renderer.js';
 import { toast } from '../ui/utils.js';
 
 export function renderInvestigationModule() {
@@ -16,21 +16,18 @@ export function renderInvestigationModule() {
         <div class="max-w-5xl mx-auto">
             ${renderModuleHeader('Planning & Carrying Out Investigations', 'mdi:microscope', 'SEP3')}
             
-            <div class="bg-white rounded-xl shadow-sm border p-6 mb-6" data-card-title="Experimental Variables">
-                <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    Experimental Variables
-                    <span class="ngss-tag ngss-ccc">CCC2</span>
-                </h3>
-                <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 mb-8" data-card-title="Experimental Variables">
+                ${renderSectionHeader('Experimental Variables', 'mdi:microscope', 'blue')}
+                <div class="grid md:grid-cols-3 gap-6 mb-8">
                     ${['independent', 'dependent', 'controlled'].map(type => renderVariableDropZone(type)).join('')}
                 </div>
                 ${renderVariableBank()}
             </div>
             
-            <div class="bg-white rounded-xl shadow-sm border p-6" data-card-title="Data Collection Table">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-semibold text-gray-900">Data Collection Table</h3>
-                    <div class="flex gap-2">
+            <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8" data-card-title="Data Collection Table">
+                <div class="flex items-center justify-between mb-8">
+                    ${renderSectionHeader('Data Collection Table', 'mdi:table', 'green')}
+                    <div class="flex gap-2 mb-6">
                         <button onclick="window.addDataColumn()" class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition-colors">
                             <span class="iconify mr-1" data-icon="mdi:table-column-plus-after"></span> Add Column
                         </button>

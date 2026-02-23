@@ -101,23 +101,25 @@ export async function renderLiveModels() {
 
     return `
         <div class="h-full flex flex-col -m-6">
-            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
+            <div class="bg-gray-900 text-white p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
                 <div class="flex items-center gap-6">
-                    <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                    <button onclick="window.stopViewingStudent()" class="w-14 h-14 bg-white/10 hover:bg-white/20 rounded-[1.25rem] flex items-center justify-center transition-all shadow-lg border border-white/5">
                         <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
                     </button>
                     <div>
-                        <div class="flex items-center gap-2">
-                            <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
-                            <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Model Viewer</span>
+                        <div class="flex items-center gap-4">
+                            <h2 class="font-black text-3xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
+                            <span class="px-3 py-1 bg-primary text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20">Model Viewer</span>
                         </div>
-                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">${!App.teacherSettings.showFeedbackToStudents ? 'Grading: Hidden' : 'Grading: Live'}</p>
+                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.3em] mt-2">${!App.teacherSettings.showFeedbackToStudents ? 'Grading: Hidden' : 'Grading: Live Focus'}</p>
                     </div>
                 </div>
-                ${renderViewerModuleTabs()}
+                <div class="bg-white/5 p-1 rounded-2xl border border-white/10">
+                    ${renderViewerModuleTabs()}
+                </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="window.presentToClass('model')" class="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2">
-                        <span class="iconify text-lg" data-icon="mdi:presentation"></span>
+                    <button onclick="window.presentToClass('model')" class="px-8 py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-3 shadow-xl shadow-primary/20">
+                        <span class="iconify text-xl" data-icon="mdi:presentation"></span>
                         Present
                     </button>
                 </div>
@@ -150,23 +152,25 @@ export async function renderLiveGeneric() {
 
     return `
         <div class="h-full flex flex-col -m-6">
-            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
+            <div class="bg-gray-900 text-white p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
                 <div class="flex items-center gap-6">
-                    <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                    <button onclick="window.stopViewingStudent()" class="w-14 h-14 bg-white/10 hover:bg-white/20 rounded-[1.25rem] flex items-center justify-center transition-all shadow-lg border border-white/5">
                         <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
                     </button>
                     <div>
-                        <div class="flex items-center gap-2">
-                            <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
-                            <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Monitoring</span>
+                        <div class="flex items-center gap-4">
+                            <h2 class="font-black text-3xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
+                            <span class="px-3 py-1 bg-primary text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20">Monitoring</span>
                         </div>
-                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Practice: ${App.currentModule.toUpperCase()}</p>
+                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.3em] mt-2">Practice: ${App.currentModule.toUpperCase()}</p>
                     </div>
                 </div>
-                ${renderViewerModuleTabs()}
+                <div class="bg-white/5 p-1 rounded-2xl border border-white/10">
+                    ${renderViewerModuleTabs()}
+                </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="window.presentToClass('${App.currentModule}')" class="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2">
-                        <span class="iconify text-lg" data-icon="mdi:presentation"></span>
+                    <button onclick="window.presentToClass('${App.currentModule}')" class="px-8 py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-3 shadow-xl shadow-primary/20">
+                        <span class="iconify text-xl" data-icon="mdi:presentation"></span>
                         Present
                     </button>
                 </div>
