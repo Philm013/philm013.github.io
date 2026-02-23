@@ -23,11 +23,19 @@ export function toggleSidebar() {
  * Switches the current student module view.
  * @param {string} moduleId - ID of the module to show.
  */
-export function showStudentModule(moduleId) {
+export async function showStudentModule(moduleId) {
     if (!App.teacherSettings.moduleAccess[moduleId]) {
         toast('This module is locked by your teacher', 'warning');
         return;
     }
+
+    // If student is currently viewing an exemplar, restore their work before switching
+    if (App.isViewingExemplar && App.studentWorkCache) {
+        App.work = App.studentWorkCache;
+        App.studentWorkCache = null;
+        App.isViewingExemplar = false;
+    }
+
     App.currentModule = moduleId;
     renderNavigation();
     renderStudentContent();

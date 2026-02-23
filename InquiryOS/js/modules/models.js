@@ -341,22 +341,25 @@ export function renderModelNodes() {
 
 function updateNodeElement(el, node, isSelected) {
     el.style.left = node.x + 'px'; el.style.top = node.y + 'px';
-    el.style.width = (node.width || 120) + 'px'; el.style.minHeight = (node.height || 50) + 'px';
+    el.style.width = (node.width || 120) + 'px'; el.style.height = (node.height || 80) + 'px';
     el.style.borderColor = node.color; el.style.transform = `rotate(${node.rotation || 0}deg)`;
     el.classList.toggle('selected', isSelected);
     const iconEl = el.querySelector('.node-icon');
-    const labelEl = el.querySelector('.node-label');
-    if (labelEl.textContent !== node.label) labelEl.textContent = node.label;
+    const labelInput = el.querySelector('.node-label-input');
+    if (labelInput.value !== node.label) labelInput.value = node.label;
     const isEmoji = !node.icon?.includes(':');
     if (isEmoji) {
-        if (iconEl.textContent !== node.icon) { iconEl.innerHTML = node.icon; iconEl.style.color = 'inherit'; }
+        iconEl.innerHTML = node.icon || '❓';
+        iconEl.style.color = 'inherit';
     } else {
-        if (iconEl.dataset.icon !== node.icon) {
-            iconEl.dataset.icon = node.icon;
-            iconEl.innerHTML = `<span class="iconify" data-icon="${node.icon}"></span>`;
-        }
+        iconEl.innerHTML = `<span class="iconify" data-icon="${node.icon}"></span>`;
         iconEl.style.color = node.color;
     }
+}
+
+export async function updateNodeLabel(id, label) {
+    const node = App.work.modelNodes.find(n => n.id === id);
+    if (node) { node.label = label; await saveAndBroadcast('modelNodes', App.work.modelNodes); }
 }
 
 function renderModelShapes() {
@@ -388,11 +391,10 @@ function renderModelNotes() {
         return `
         <div class="note-shape absolute pointer-events-auto shadow-md p-2 border rounded flex flex-col group ${isSelected ? 'selected' : ''}" 
             style="left:${n.x}px; top:${n.y}px; width:${n.width}px; min-height:${n.height}px; transform: rotate(${n.rotation || 0}deg); background:${n.color || '#fef3c7'}; border-color:${n.borderColor || '#f59e0b'}"
+            onclick="window.selectItem(event, 'note', '${n.id}')"
             onpointerdown="window.startNoteDrag(event, '${n.id}')">
             <div class="flex-1 text-sm text-gray-800 overflow-hidden break-words pointer-events-none">${n.text}</div>
-            <button onclick="window.deleteModelElement('modelNotes', '${n.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 group-hover:opacity-100 shadow-sm" style="z-index:20; border:1px solid #fee2e2;">
-                <span class="iconify" data-icon="mdi:close"></span>
-            </button>
+            <button onclick="window.deleteModelElement('modelNotes', '${n.id}')" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 shadow-sm transition-opacity z-20">×</button>
         </div>
         `;
     }).join('');
@@ -405,14 +407,12 @@ function renderModelStickers() {
         const isSelected = App.modelState.selectedItems.some(i => i.id === s.id);
         const isIcon = s.emoji?.includes(':');
         return `
-        <div class="absolute pointer-events-auto text-3xl select-none group ${isSelected ? 'selected' : ''}" 
+        <div class="absolute pointer-events-auto text-3xl select-none group/sticker ${isSelected ? 'selected' : ''}" 
             style="left:${s.x}px; top:${s.y}px; cursor: move; width:40px; height:40px; display:flex; align-items:center; justify-content:center; transform: rotate(${s.rotation || 0}deg)" 
             onclick="window.selectItem(event, 'stamp', '${s.id}')"
             onpointerdown="window.startStampDrag(event, '${s.id}')">
             ${isIcon ? `<span class="iconify" data-icon="${s.emoji}"></span>` : s.emoji}
-            <button onclick="window.deleteModelElement('modelStickers', '${s.id}')" class="absolute -top-2 -right-2 text-red-500 hover:text-red-700 bg-white rounded-full p-1 opacity-0 group-hover:opacity-100 shadow-sm" style="z-index:20; border:1px solid #fee2e2;">
-                <span class="iconify" data-icon="mdi:close"></span>
-            </button>
+            <button onclick="window.deleteModelElement('modelStickers', '${s.id}')" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/sticker:opacity-100 transition-opacity z-20 shadow-sm">×</button>
         </div>
         `;
     }).join('');
@@ -426,12 +426,29 @@ function renderModelPaths() {
     App.work.modelPaths.forEach(path => {
         const isSelected = App.modelState.selectedItems.some(i => i.id === path.id);
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('class', `path-group ${isSelected ? 'selected' : ''}`);
+        g.setAttribute('class', `path-group pointer-events-auto ${isSelected ? 'selected' : ''}`);
+        g.setAttribute('data-id', path.id);
+        
         const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const d = path.points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
-        p.setAttribute('d', d); p.setAttribute('stroke', path.color); p.setAttribute('stroke-width', path.width); p.setAttribute('fill', 'none');
+        p.setAttribute('d', d); 
+        p.setAttribute('stroke', path.color); 
+        p.setAttribute('stroke-width', path.width); 
+        p.setAttribute('fill', 'none');
+        p.setAttribute('stroke-linecap', 'round');
+        p.setAttribute('stroke-linejoin', 'round');
+        
         g.appendChild(p);
-        g.onpointerdown = (e) => { e.stopPropagation(); window.startPathDrag(e, path.id); };
+        
+        g.onpointerdown = (e) => { 
+            e.stopPropagation(); 
+            window.startPathDrag(e, path.id); 
+        };
+        g.onclick = (e) => {
+            e.stopPropagation();
+            window.selectItem(e, 'path', path.id);
+        };
+        
         svg.appendChild(g);
     });
 }
@@ -449,31 +466,160 @@ function renderSelectionOverlay() {
     const layer = document.getElementById('transformLayer');
     if (!layer) return;
     layer.innerHTML = '';
+    
+    if (App.modelState.selectedItems.length === 0) return;
+
+    // We only show handles for single selection for now to keep it simple and intuitive
+    if (App.modelState.selectedItems.length === 1) {
+        const item = App.modelState.selectedItems[0];
+        let el;
+        if (item.type === 'node') el = App.work.modelNodes.find(i => i.id === item.id);
+        else if (item.type === 'shape') el = App.work.modelShapes.find(i => i.id === item.id);
+        else if (item.type === 'note') el = App.work.modelNotes.find(i => i.id === item.id);
+        else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
+        
+        if (el && item.type !== 'path') {
+            const w = el.width || 120, h = el.height || 80;
+            const overlay = document.createElement('div');
+            overlay.className = 'selection-handles pointer-events-none';
+            overlay.style.left = (el.x - 4) + 'px';
+            overlay.style.top = (el.y - 4) + 'px';
+            overlay.style.width = (w + 8) + 'px';
+            overlay.style.height = (h + 8) + 'px';
+            overlay.style.transform = `rotate(${el.rotation || 0}deg)`;
+            
+            // Resize handles (simplified)
+            const handles = ['nw', 'ne', 'sw', 'se'];
+            handles.forEach(hType => {
+                const handle = document.createElement('div');
+                handle.className = `handle ${hType} pointer-events-auto`;
+                handle.onpointerdown = (e) => {
+                    e.stopPropagation();
+                    window.startResize(e, item.id, item.type, hType);
+                };
+                overlay.appendChild(handle);
+            });
+            
+            // Rotation handle
+            const rot = document.createElement('div');
+            rot.className = 'handle rot pointer-events-auto';
+            rot.innerHTML = '<span class="iconify" data-icon="mdi:rotate-right"></span>';
+            rot.onpointerdown = (e) => {
+                e.stopPropagation();
+                window.startRotate(e, item.id, item.type);
+            };
+            overlay.appendChild(rot);
+            
+            layer.appendChild(overlay);
+        }
+    }
+}
+
+export function startResize(event, id, type, handle) {
+    event.stopPropagation();
+    const startX = event.clientX, startY = event.clientY;
+    const item = (type === 'node' ? App.work.modelNodes : 
+                 type === 'shape' ? App.work.modelShapes : 
+                 App.work.modelNotes).find(i => i.id === id);
+    if (!item) return;
+    
+    const initW = item.width, initH = item.height, initX = item.x, initY = item.y;
+    
+    document.onpointermove = (e) => {
+        const dx = (e.clientX - startX) / App.modelState.zoom;
+        const dy = (e.clientY - startY) / App.modelState.zoom;
+        
+        if (handle.includes('e')) item.width = Math.max(40, initW + dx);
+        if (handle.includes('s')) item.height = Math.max(40, initH + dy);
+        if (handle.includes('w')) { item.width = Math.max(40, initW - dx); item.x = initX + dx; }
+        if (handle.includes('n')) { item.height = Math.max(40, initH - dy); item.y = initY + dy; }
+        
+        renderModelElements();
+    };
+    document.onpointerup = async () => {
+        document.onpointermove = document.onpointerup = null;
+        await saveToStorage();
+    };
+}
+
+export function startRotate(event, id, type) {
+    event.stopPropagation();
+    const item = (type === 'node' ? App.work.modelNodes : 
+                 type === 'shape' ? App.work.modelShapes : 
+                 type === 'stamp' ? App.work.modelStickers :
+                 App.work.modelNotes).find(i => i.id === id);
+    if (!item) return;
+    
+    const rect = document.querySelector(`[data-id="${id}"]`)?.getBoundingClientRect();
+    if (!rect) return;
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    document.onpointermove = (e) => {
+        const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+        item.rotation = angle + 90; // Offset for top-handle
+        renderModelElements();
+    };
+    document.onpointerup = async () => {
+        document.onpointermove = document.onpointerup = null;
+        await saveToStorage();
+    };
 }
 
 function renderConnections() {
     const svg = document.getElementById('connectionsSvg');
     if (!svg) return;
     svg.querySelectorAll('path').forEach(l => l.remove());
-    App.work.modelConnections.forEach(conn => {
-        const fromNode = App.work.modelNodes.find(n => n.id === conn.from);
-        const toNode = App.work.modelNodes.find(n => n.id === conn.to);
-        if (fromNode && toNode) {
-            const start = getHandlePosition(fromNode, conn.fromHandle);
-            const end = getHandlePosition(toNode, conn.toHandle);
+    
+    const allObjects = [
+        ...App.work.modelNodes,
+        ...App.work.modelShapes,
+        ...App.work.modelNotes,
+        ...App.work.modelStickers,
+        ...App.work.modelPaths
+    ];
+
+    App.work.modelConnections.forEach((conn) => {
+        const fromObj = allObjects.find(n => n.id === conn.from);
+        const toObj = allObjects.find(n => n.id === conn.to);
+        
+        if (fromObj && toObj) {
+            const isSelected = App.modelState.selectedItems.some(i => i.id === conn.id);
+            const start = getHandlePosition(fromObj, conn.fromHandle);
+            const end = getHandlePosition(toObj, conn.toHandle);
             const midX = (start.x + end.x) / 2;
             const midY = (start.y + end.y) / 2;
+            
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', `M ${start.x} ${start.y} Q ${midX} ${start.y}, ${midX} ${midY} T ${end.x} ${end.y}`);
-            path.setAttribute('stroke', '#64748b'); path.setAttribute('stroke-width', '2');
-            path.setAttribute('fill', 'none'); path.setAttribute('marker-end', 'url(#arrowhead)');
+            path.setAttribute('stroke', isSelected ? '#7c3aed' : '#64748b'); 
+            path.setAttribute('stroke-width', isSelected ? '4' : '2');
+            path.setAttribute('fill', 'none'); 
+            path.setAttribute('marker-end', 'url(#arrowhead)');
+            path.setAttribute('class', isSelected ? 'selected' : '');
+            path.setAttribute('data-id', conn.id);
+            
+            path.onclick = (e) => {
+                e.stopPropagation();
+                window.selectItem(e, 'connection', conn.id);
+            };
+            
             svg.appendChild(path);
         }
     });
 }
 
 export function getHandlePosition(node, handle) {
-    const w = node.width || 120, h = node.height || 50;
+    if (!node) return { x: 0, y: 0 };
+    const w = node.width || (node.points ? 0 : 120), h = node.height || (node.points ? 0 : 50);
+    
+    // For paths, we use the average of points as center
+    if (node.points) {
+        const avgX = node.points.reduce((a, b) => a + b.x, 0) / node.points.length;
+        const avgY = node.points.reduce((a, b) => a + b.y, 0) / node.points.length;
+        return { x: avgX, y: avgY };
+    }
+
     switch (handle) {
         case 'top': return { x: node.x + w / 2, y: node.y };
         case 'bottom': return { x: node.x + w / 2, y: node.y + h };
@@ -506,18 +652,73 @@ export function getShapeSvgContent(s) {
 }
 
 export function setModelTool(tool) {
-    App.modelState.currentTool = tool;
+    if (App.modelState.currentTool === tool) {
+        App.modelState.toolSticky = !App.modelState.toolSticky;
+    } else {
+        App.modelState.currentTool = tool;
+        App.modelState.toolSticky = false;
+    }
     renderStudentContent();
 }
 
+export function groupSelectedItems() {
+    toast('Grouping functionality coming soon!', 'info');
+}
+
+export function ungroupSelectedItems() {
+    toast('Ungrouping functionality coming soon!', 'info');
+}
+
 export function selectItem(event, type, id) {
-    event.stopPropagation();
-    if (event.shiftKey || event.ctrlKey || App.modelState.isMultiSelectMode) {
+    if (event) event.stopPropagation();
+    
+    const isMulti = App.modelState.isMultiSelectMode || (event && (event.shiftKey || event.ctrlKey));
+    
+    if (!isMulti) {
+        // If already selected, do nothing (keep selection)
+        if (App.modelState.selectedItems.length === 1 && App.modelState.selectedItems[0].id === id) return;
+        App.modelState.selectedItems = [{ type, id }];
+    } else {
         const idx = App.modelState.selectedItems.findIndex(i => i.id === id);
         if (idx > -1) App.modelState.selectedItems.splice(idx, 1);
         else App.modelState.selectedItems.push({ type, id });
-    } else { App.modelState.selectedItems = [{ type, id }]; }
+    }
+    
     renderModelElements();
+}
+
+export async function deleteSelectedItems() {
+    if (App.modelState.selectedItems.length === 0) return;
+    
+    if (!confirm(`Delete ${App.modelState.selectedItems.length} item(s)?`)) return;
+
+    App.modelState.selectedItems.forEach(item => {
+        if (item.type === 'node') App.work.modelNodes = App.work.modelNodes.filter(i => i.id !== item.id);
+        else if (item.type === 'shape') App.work.modelShapes = App.work.modelShapes.filter(i => i.id !== item.id);
+        else if (item.type === 'note') App.work.modelNotes = App.work.modelNotes.filter(i => i.id !== item.id);
+        else if (item.type === 'stamp') App.work.modelStickers = App.work.modelStickers.filter(i => i.id !== item.id);
+        else if (item.type === 'path') App.work.modelPaths = App.work.modelPaths.filter(i => i.id !== item.id);
+        else if (item.type === 'connection') App.work.modelConnections = App.work.modelConnections.filter(i => i.id !== item.id);
+    });
+
+    // Cleanup orphaned connections if nodes were deleted
+    const nodeIds = new Set(App.work.modelNodes.map(n => n.id));
+    // For other objects too
+    const allObjIds = new Set([
+        ...App.work.modelNodes.map(n => n.id),
+        ...App.work.modelShapes.map(n => n.id),
+        ...App.work.modelNotes.map(n => n.id),
+        ...App.work.modelStickers.map(n => n.id),
+        ...App.work.modelPaths.map(n => n.id)
+    ]);
+
+    App.work.modelConnections = App.work.modelConnections.filter(c => 
+        allObjIds.has(c.from) && allObjIds.has(c.to)
+    );
+
+    App.modelState.selectedItems = [];
+    await saveToStorage();
+    renderStudentContent();
 }
 
 export async function createNode(x, y, icon) {
@@ -531,25 +732,52 @@ export async function createNode(x, y, icon) {
 export function startNodeDrag(event, nodeId) {
     if (event.target.classList.contains('node-handle')) return;
     event.stopPropagation();
-    if (!App.modelState.selectedItems.some(i => i.id === nodeId)) selectItem(event, 'node', nodeId);
+    
+    // Auto-detect type if needed
+    let type = 'node';
+    if (App.work.modelShapes.some(i => i.id === nodeId)) type = 'shape';
+    else if (App.work.modelNotes.some(i => i.id === nodeId)) type = 'note';
+    else if (App.work.modelStickers.some(i => i.id === nodeId)) type = 'stamp';
+    else if (App.work.modelPaths.some(i => i.id === nodeId)) type = 'path';
+
+    if (!App.modelState.selectedItems.some(i => i.id === nodeId)) selectItem(event, type, nodeId);
+    
     const startX = event.clientX, startY = event.clientY;
-    const initialPos = App.modelState.selectedItems.map(item => {
+    const initialStates = App.modelState.selectedItems.map(item => {
         let el;
         if (item.type === 'node') el = App.work.modelNodes.find(i => i.id === item.id);
         else if (item.type === 'shape') el = App.work.modelShapes.find(i => i.id === item.id);
         else if (item.type === 'note') el = App.work.modelNotes.find(i => i.id === item.id);
         else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
-        return el ? { ...item, x: el.x, y: el.y } : null;
+        else if (item.type === 'path') el = App.work.modelPaths.find(i => i.id === item.id);
+        
+        if (el) {
+            if (item.type === 'path') return { ...item, points: JSON.parse(JSON.stringify(el.points)) };
+            return { ...item, x: el.x, y: el.y };
+        }
+        return null;
     }).filter(i => i);
+
     document.onpointermove = (e) => {
-        const dx = (e.clientX - startX) / App.modelState.zoom, dy = (e.clientY - startY) / App.modelState.zoom;
-        initialPos.forEach(p => {
+        const dx = (e.clientX - startX) / App.modelState.zoom;
+        const dy = (e.clientY - startY) / App.modelState.zoom;
+        
+        initialStates.forEach(p => {
             let el;
             if (p.type === 'node') el = App.work.modelNodes.find(i => i.id === p.id);
             else if (p.type === 'shape') el = App.work.modelShapes.find(i => i.id === p.id);
             else if (p.type === 'note') el = App.work.modelNotes.find(i => i.id === p.id);
             else if (p.type === 'stamp') el = App.work.modelStickers.find(i => i.id === p.id);
-            if (el) { el.x = p.x + dx; el.y = p.y + dy; }
+            else if (p.type === 'path') el = App.work.modelPaths.find(i => i.id === p.id);
+            
+            if (el) {
+                if (p.type === 'path') {
+                    el.points = p.points.map(pt => ({ x: pt.x + dx, y: pt.y + dy }));
+                } else {
+                    el.x = p.x + dx; 
+                    el.y = p.y + dy; 
+                }
+            }
         });
         renderModelElements();
     };
@@ -562,7 +790,7 @@ export function startNodeDrag(event, nodeId) {
 export function startShapeDrag(event, id) { startNodeDrag(event, id); }
 export function startNoteDrag(event, id) { startNodeDrag(event, id); }
 export function startStampDrag(event, id) { startNodeDrag(event, id); }
-export function startPathDrag(event, id) { /* Implementation ... */ }
+export function startPathDrag(event, id) { startNodeDrag(event, id); }
 export function startExplainDrag(event, id) {
     const p = App.work.modelExplanations.find(x => x.id === id); if (!p) return;
     const startX = event.clientX, startY = event.clientY, initX = p.x, initY = p.y;
@@ -575,9 +803,25 @@ export function startExplainDrag(event, id) {
 
 function createNodeElement(node) {
     const el = document.createElement('div');
-    el.className = 'model-node'; el.dataset.id = node.id;
-    el.innerHTML = `<div class="node-content flex items-center gap-2 pointer-events-none"><span class="node-icon text-2xl"></span><span class="node-label text-sm font-medium text-gray-700"></span></div><div class="node-handle top" onpointerdown="window.startConnection(event, '${node.id}', 'top')"></div><div class="node-handle bottom" onpointerdown="window.startConnection(event, '${node.id}', 'bottom')"></div><div class="node-handle left" onpointerdown="window.startConnection(event, '${node.id}', 'left')"></div><div class="node-handle right" onpointerdown="window.startConnection(event, '${node.id}', 'right')"></div>`;
-    el.onpointerdown = (e) => window.startNodeDrag(e, node.id); el.onclick = (e) => window.selectItem(e, 'node', node.id);
+    el.className = 'model-node group/node'; el.dataset.id = node.id;
+    el.style.boxSizing = 'border-box';
+    
+    el.innerHTML = `
+        <div class="node-content flex flex-col items-center justify-center gap-1 h-full w-full pointer-events-none">
+            <div class="node-icon-container w-10 h-10 flex items-center justify-center bg-gray-50 rounded-lg shadow-inner group-hover/node:bg-white transition-colors overflow-hidden">
+                <span class="node-icon text-2xl"></span>
+            </div>
+            <input type="text" class="node-label-input text-center text-[10px] font-bold text-gray-700 bg-transparent border-none focus:ring-0 p-0 w-full pointer-events-auto" 
+                value="${node.label}" onchange="window.updateNodeLabel('${node.id}', this.value)" onclick="event.stopPropagation()">
+        </div>
+        <div class="node-handle top" onpointerdown="window.startConnection(event, '${node.id}', 'top')"></div>
+        <div class="node-handle bottom" onpointerdown="window.startConnection(event, '${node.id}', 'bottom')"></div>
+        <div class="node-handle left" onpointerdown="window.startConnection(event, '${node.id}', 'left')"></div>
+        <div class="node-handle right" onpointerdown="window.startConnection(event, '${node.id}', 'right')"></div>
+        <button onclick="window.deleteModelElement('modelNodes', '${node.id}')" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/node:opacity-100 transition-opacity z-30 shadow-sm">×</button>
+    `;
+    el.onpointerdown = (e) => { if (e.target.classList.contains('node-label-input')) return; window.startNodeDrag(e, node.id); };
+    el.onclick = (e) => { if (e.target.classList.contains('node-label-input')) return; window.selectItem(e, 'node', node.id); };
     return el;
 }
 
@@ -602,23 +846,34 @@ export async function saveModelAsEvidence() {
 export function startConnection(event, nodeId, handle) {
     event.stopPropagation();
     App.modelState.connecting = { from: nodeId, fromHandle: handle };
-    const canvas = document.getElementById('modelCanvas');
+    
+    const allObjects = [
+        ...App.work.modelNodes,
+        ...App.work.modelShapes,
+        ...App.work.modelNotes,
+        ...App.work.modelStickers,
+        ...App.work.modelPaths
+    ];
+
     document.onpointermove = (e) => {
         const coords = getCanvasCoords(e);
-        const fromNode = App.work.modelNodes.find(n => n.id === nodeId);
-        const start = getHandlePosition(fromNode, handle);
+        const fromObj = allObjects.find(n => n.id === nodeId);
+        const start = getHandlePosition(fromObj, handle);
         const tempSvg = document.getElementById('tempConnectionSvg');
         if (tempSvg) {
             tempSvg.innerHTML = `<line x1="${start.x}" y1="${start.y}" x2="${coords.x}" y2="${coords.y}" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4" />`;
         }
     };
     document.onpointerup = (e) => {
-        const target = e.target.closest('.node-handle');
-        if (target) {
-            const toNodeId = target.closest('.model-node').dataset.id;
-            const toHandle = Array.from(target.classList).find(c => ['top', 'bottom', 'left', 'right'].includes(c));
-            if (toNodeId !== nodeId) {
-                App.work.modelConnections.push({ from: nodeId, fromHandle: handle, to: toNodeId, toHandle: toHandle });
+        // Find target object
+        const targetEl = e.target.closest('.model-node, .model-shape, .note-shape, .sticker, .path-group');
+        if (targetEl) {
+            const toId = targetEl.dataset.id || (targetEl.closest('.model-node')?.dataset.id); // Fallback for inner elements
+            const handleEl = e.target.closest('.node-handle');
+            const toHandle = handleEl ? Array.from(handleEl.classList).find(c => ['top', 'bottom', 'left', 'right'].includes(c)) : 'center';
+            
+            if (toId && toId !== nodeId) {
+                App.work.modelConnections.push({ id: 'conn_' + Date.now(), from: nodeId, fromHandle: handle, to: toId, toHandle: toHandle });
                 saveAndBroadcast('modelConnections', App.work.modelConnections);
             }
         }
@@ -744,5 +999,21 @@ export function toggleToolDrawer() { App.modelState.drawerOpen = !App.modelState
 export function toggleToolbarPin() { App.modelState.isToolbarPinned = !App.modelState.isToolbarPinned; renderStudentContent(); }
 export function toggleMultiSelect() { App.modelState.isMultiSelectMode = !App.modelState.isMultiSelectMode; renderStudentContent(); }
 export function toggleMobileExplanations() { document.getElementById('mobileExplanationPanel')?.classList.toggle('translate-y-full'); }
-export async function deleteModelElement(type, id) { App.work[type] = App.work[type].filter(i => i.id !== id); await saveAndBroadcast(type, App.work[type]); renderStudentContent(); }
+export async function deleteModelElement(type, id) { 
+    if (confirm('Delete this element?')) {
+        App.work[type] = App.work[type].filter(i => i.id !== id);
+        
+        // Cleanup orphaned connections
+        if (type === 'modelNodes' || type === 'modelShapes' || type === 'modelNotes' || type === 'modelStickers') {
+            const targetId = id;
+            App.work.modelConnections = App.work.modelConnections.filter(c => 
+                c.from !== targetId && c.to !== targetId
+            );
+            await saveAndBroadcast('modelConnections', App.work.modelConnections);
+        }
+        
+        await saveAndBroadcast(type, App.work[type]); 
+        renderStudentContent(); 
+    }
+}
 export async function deleteExplanationPoint(id) { App.work.modelExplanations = App.work.modelExplanations.filter(i => i.id !== id); await saveAndBroadcast('modelExplanations', App.work.modelExplanations); renderStudentContent(); }

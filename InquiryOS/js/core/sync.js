@@ -23,6 +23,11 @@ export async function saveToStorage() {
         
         // 1. Save Teacher Settings (only if teacher)
         if (App.mode === 'teacher') {
+            // If in exemplar mode, sync current work to the exemplar slot first
+            if (App.isExemplarMode && !App.viewerState.isMonitoring) {
+                App.teacherSettings.exemplars[App.currentModule] = JSON.parse(JSON.stringify(App.work));
+            }
+            
             const settingsData = {
                 code: App.classCode + ':settings',
                 teacherSettings: JSON.parse(JSON.stringify(App.teacherSettings)),
