@@ -16,13 +16,14 @@ import { toast } from '../ui/utils.js';
  * Renders the Models Practice module.
  */
 export function renderModelsModule() {
-    const availableIcons = App.teacherSettings.lessonIcons?.length > 0 
-        ? App.teacherSettings.lessonIcons 
-        : ['mdi:atom', 'mdi:leaf', 'mdi:water', 'mdi:fire', 'mdi:weather-sunny', 'mdi:flower', 'mdi:bacteria', 'mdi:flask-outline', 'mdi:microscope', 'mdi:dna', 'mdi:earth', 'mdi:mountain', 'mdi:magnet', 'mdi:battery-high', 'mdi:cog', 'mdi:human', 'mdi:heart', 'mdi:brain', 'mdi:lungs', 'mdi:skeleton', 'mdi:home', 'mdi:factory', 'mdi:car', 'mdi:bicycle', 'mdi:bus', 'mdi:train', 'mdi:airplane'];
+    // Merge defaults with custom teacher selections
+    const defaultIcons = ['mdi:atom', 'mdi:leaf', 'mdi:water', 'mdi:fire', 'mdi:weather-sunny', 'mdi:flower', 'mdi:bacteria', 'mdi:flask-outline', 'mdi:microscope', 'mdi:dna', 'mdi:earth', 'mdi:mountain', 'mdi:magnet', 'mdi:battery-high', 'mdi:cog', 'mdi:human', 'mdi:heart', 'mdi:brain', 'mdi:lungs', 'mdi:skeleton', 'mdi:home', 'mdi:factory', 'mdi:car', 'mdi:bicycle', 'mdi:bus', 'mdi:train', 'mdi:airplane'];
+    const customIcons = App.teacherSettings.lessonIcons || [];
+    const availableIcons = [...new Set([...defaultIcons, ...customIcons])];
     
-    const emojis = App.teacherSettings.lessonEmojis?.length > 0 
-        ? App.teacherSettings.lessonEmojis 
-        : ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '⚙️', '⚖️', '🔬', '🧬', '🌍', '🔭', '🏗️', '🌉', '🔨', '📏', '🌲', '🌻', '🐟', '🐦', '🦋', '🐝', '☁️', '⛈️', '🔥', '🌋', '🍎', '🥩', '🧠', '💀', '👾', '📡', '🛸', '🧭', '📐'];
+    const defaultEmojis = ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '⚙️', '⚖️', '🔬', '🧬', '🌍', '🔭', '🏗️', '🌉', '🔨', '📏', '🌲', '🌻', '🐟', '🐦', '🦋', '🐝', '☁️', '⛈️', '🔥', '🌋', '🍎', '🥩', '🧠', '💀', '👾', '📡', '🛸', '🧭', '📐'];
+    const customEmojis = App.teacherSettings.lessonEmojis || [];
+    const emojis = [...new Set([...defaultEmojis, ...customEmojis])];
 
     const isFullscreen = App.modelState.isFullscreen;
 
@@ -415,13 +416,17 @@ function renderModelStickers() {
     layer.innerHTML = (App.work.modelStickers || []).map(s => {
         const isSelected = App.modelState.selectedItems.some(i => i.id === s.id);
         const isIcon = s.emoji?.includes(':');
+        const size = s.width || 40; // Use width for size, defaulting to 40
+        
         return `
-        <div class="absolute pointer-events-auto text-3xl select-none group/sticker ${isSelected ? 'selected' : ''}" 
-            style="left:${s.x}px; top:${s.y}px; cursor: move; width:40px; height:40px; display:flex; align-items:center; justify-content:center; transform: rotate(${s.rotation || 0}deg)" 
+        <div class="absolute pointer-events-auto select-none group/sticker ${isSelected ? 'selected ring-2 ring-purple-500 rounded-lg' : ''}" 
+            style="left:${s.x}px; top:${s.y}px; width:${size}px; height:${size}px; cursor: move; display:flex; align-items:center; justify-content:center; transform: rotate(${s.rotation || 0}deg)" 
             onclick="window.selectItem(event, 'stamp', '${s.id}')"
             onpointerdown="window.startStampDrag(event, '${s.id}')">
-            ${isIcon ? `<span class="iconify" data-icon="${s.emoji}"></span>` : s.emoji}
-            <button onclick="window.deleteModelElement('modelStickers', '${s.id}')" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/sticker:opacity-100 transition-opacity z-20 shadow-sm">×</button>
+            ${isIcon ? `<span class="iconify" style="font-size: ${size}px;" data-icon="${s.emoji}"></span>` : `<span style="font-size: ${size * 0.8}px;">${s.emoji}</span>`}
+            <button onclick="window.deleteModelElement('modelStickers', '${s.id}')" 
+                class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/sticker:opacity-100 transition-opacity z-20 shadow-sm pointer-events-auto"
+                onpointerdown="event.stopPropagation()">×</button>
         </div>
         `;
     }).join('');
@@ -488,7 +493,9 @@ function renderSelectionOverlay() {
         else if (item.type === 'stamp') el = App.work.modelStickers.find(i => i.id === item.id);
         
         if (el && item.type !== 'path') {
-            const w = el.width || 120, h = el.height || 80;
+            const w = el.width || (item.type === 'stamp' ? 40 : 120);
+            const h = el.height || (item.type === 'stamp' ? 40 : 80);
+            
             const overlay = document.createElement('div');
             overlay.className = 'selection-handles pointer-events-none';
             overlay.style.left = (el.x - 4) + 'px';
@@ -529,10 +536,13 @@ export function startResize(event, id, type, handle) {
     const startX = event.clientX, startY = event.clientY;
     const item = (type === 'node' ? App.work.modelNodes : 
                  type === 'shape' ? App.work.modelShapes : 
+                 type === 'stamp' ? App.work.modelStickers :
                  App.work.modelNotes).find(i => i.id === id);
     if (!item) return;
     
-    const initW = item.width, initH = item.height, initX = item.x, initY = item.y;
+    const initW = item.width || (type === 'stamp' ? 40 : 120);
+    const initH = item.height || (type === 'stamp' ? 40 : 80);
+    const initX = item.x, initY = item.y;
     
     document.onpointermove = (e) => {
         const dx = (e.clientX - startX) / App.modelState.zoom;
@@ -816,21 +826,30 @@ function createNodeElement(node) {
     el.style.boxSizing = 'border-box';
     
     el.innerHTML = `
-        <div class="node-content flex flex-col items-center justify-center gap-1 h-full w-full pointer-events-none">
+        <div class="node-content flex flex-col items-center justify-center gap-1 h-full w-full pointer-events-none select-none">
             <div class="node-icon-container w-10 h-10 flex items-center justify-center bg-gray-50 rounded-lg shadow-inner group-hover/node:bg-white transition-colors overflow-hidden">
                 <span class="node-icon text-2xl"></span>
             </div>
             <input type="text" class="node-label-input text-center text-[10px] font-bold text-gray-700 bg-transparent border-none focus:ring-0 p-0 w-full pointer-events-auto" 
-                value="${node.label}" onchange="window.updateNodeLabel('${node.id}', this.value)" onclick="event.stopPropagation()">
+                value="${node.label}" onchange="window.updateNodeLabel('${node.id}', this.value)" 
+                onpointerdown="event.stopPropagation()" onclick="event.stopPropagation()">
         </div>
-        <div class="node-handle top" onpointerdown="window.startConnection(event, '${node.id}', 'top')"></div>
-        <div class="node-handle bottom" onpointerdown="window.startConnection(event, '${node.id}', 'bottom')"></div>
-        <div class="node-handle left" onpointerdown="window.startConnection(event, '${node.id}', 'left')"></div>
-        <div class="node-handle right" onpointerdown="window.startConnection(event, '${node.id}', 'right')"></div>
-        <button onclick="window.deleteModelElement('modelNodes', '${node.id}')" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/node:opacity-100 transition-opacity z-30 shadow-sm">×</button>
+        <div class="node-handle top pointer-events-auto" onpointerdown="window.startConnection(event, '${node.id}', 'top')"></div>
+        <div class="node-handle bottom pointer-events-auto" onpointerdown="window.startConnection(event, '${node.id}', 'bottom')"></div>
+        <div class="node-handle left pointer-events-auto" onpointerdown="window.startConnection(event, '${node.id}', 'left')"></div>
+        <div class="node-handle right pointer-events-auto" onpointerdown="window.startConnection(event, '${node.id}', 'right')"></div>
+        <button onclick="window.deleteModelElement('modelNodes', '${node.id}')" 
+            class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/node:opacity-100 transition-opacity z-30 shadow-sm pointer-events-auto cursor-pointer"
+            onpointerdown="event.stopPropagation()">×</button>
     `;
-    el.onpointerdown = (e) => { if (e.target.classList.contains('node-label-input')) return; window.startNodeDrag(e, node.id); };
-    el.onclick = (e) => { if (e.target.classList.contains('node-label-input')) return; window.selectItem(e, 'node', node.id); };
+    el.onpointerdown = (e) => { 
+        if (e.target.classList.contains('node-label-input') || e.target.closest('button') || e.target.classList.contains('node-handle')) return; 
+        window.startNodeDrag(e, node.id); 
+    };
+    el.onclick = (e) => { 
+        if (e.target.classList.contains('node-label-input') || e.target.closest('button')) return; 
+        window.selectItem(e, 'node', node.id); 
+    };
     return el;
 }
 
@@ -918,10 +937,23 @@ export async function modelCanvasMouseDown(event) {
     if (App.modelState.currentTool === 'node') {
         createNode(x - 60, y - 25, App.modelState.selectedIcon || 'mdi:atom');
     } else if (App.modelState.currentTool === 'stamp' && App.modelState.selectedIcon) {
-        const sticker = { id: 's_' + Date.now(), emoji: App.modelState.selectedIcon, x: x - 20, y: y - 20, rotation: 0 };
+        // Center sticker on click
+        const size = 40;
+        const sticker = { 
+            id: 's_' + Date.now(), 
+            emoji: App.modelState.selectedIcon, 
+            x: x - size / 2, 
+            y: y - size / 2, 
+            width: size, 
+            height: size, 
+            rotation: 0 
+        };
         App.work.modelStickers.push(sticker);
         await saveAndBroadcast('modelStickers', App.work.modelStickers);
         renderModelElements();
+        // Auto-select the newly created sticker to allow immediate resizing/moving
+        App.modelState.selectedItems = [{ type: 'stamp', id: sticker.id }];
+        renderSelectionOverlay();
     } else if (App.modelState.currentTool === 'explain') {
         const point = { id: 'ex_' + Date.now(), x, y, text: '' };
         App.work.modelExplanations.push(point);
