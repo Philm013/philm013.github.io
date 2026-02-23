@@ -99,6 +99,35 @@ export async function renderTeacherOverview() {
                                 placeholder="Describe the phenomenon or observation that drives this lesson..."
                                 class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-lg font-medium focus:border-primary focus:bg-white focus:outline-none transition-all resize-none placeholder:text-gray-300">${phenomenon.description || ''}</textarea>
                         </div>
+
+                        <!-- Phenomenon Media Gallery -->
+                        <div class="space-y-4 pt-4 border-t border-gray-100">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Media Assets</h4>
+                                <button onclick="window.openMediaPicker()" class="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">+ Add Media</button>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+                                ${(phenomenon.media || []).map(m => `
+                                    <div class="group relative aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                                        <img src="${m.thumb}" class="w-full h-full object-cover">
+                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <button onclick="window.removeMediaFromPhenomenon('${m.id}')" class="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                                                <span class="iconify" data-icon="mdi:trash-can-outline"></span>
+                                            </button>
+                                        </div>
+                                        <div class="absolute bottom-1 left-1 px-1.5 py-0.5 bg-white/90 rounded text-[8px] font-black uppercase tracking-tighter">
+                                            ${m.type}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                                ${(phenomenon.media || []).length === 0 ? `
+                                    <div onclick="window.openMediaPicker()" class="aspect-square rounded-xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 hover:text-primary hover:border-primary transition-all cursor-pointer">
+                                        <span class="iconify text-2xl mb-1" data-icon="mdi:image-plus"></span>
+                                        <span class="text-[8px] font-black uppercase">Add Media</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
                     </div>
 
                     <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex flex-col">
@@ -1019,10 +1048,103 @@ export const forceAllToModule = async (moduleId) => {
 };
 
 export const toggleAccess = async (id) => { 
-    App.teacherSettings.moduleAccess[id] = !App.teacherSettings.moduleAccess[id]; 
-    await saveToStorage(); 
-    renderTeacherContent(); 
+    App.teacherSettings.moduleAccess[id] = !App.teacherSettings.moduleAccess[id];
+    await saveToStorage(); renderTeacherContent();
 };
+
+export async function renderSessionSettings() {
+    return `
+        <div class="max-w-4xl mx-auto space-y-12">
+            <div>
+                <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tighter">Session Settings</h2>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Platform Configuration & API Keys</p>
+            </div>
+
+            <section class="bg-white rounded-[2.5rem] shadow-sm border p-10" data-card-title="API Configurations">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+                        <span class="iconify text-2xl" data-icon="mdi:api"></span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-gray-900">Third-Party Services</h3>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Enrich your phenomenon with live media</p>
+                    </div>
+                </div>
+
+                <div class="space-y-8">
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="space-y-4">
+                            <label class="block">
+                                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Unsplash API Key (Images)</span>
+                                <div class="mt-2 flex gap-2">
+                                    <input type="password" id="unsplashKey" value="${App.teacherSettings.keys?.unsplash || ''}" 
+                                        class="flex-1 px-5 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-primary focus:outline-none transition-all font-mono text-sm">
+                                    <button onclick="window.saveApiKey('unsplash')" class="px-4 bg-gray-900 text-white rounded-xl hover:bg-black transition-all">Save</button>
+                                </div>
+                            </label>
+                            <p class="text-[10px] text-gray-400 leading-relaxed italic">Get a free key at <a href="https://unsplash.com/developers" target="_blank" class="text-primary underline">unsplash.com/developers</a></p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <label class="block">
+                                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pexels API Key (Videos)</span>
+                                <div class="mt-2 flex gap-2">
+                                    <input type="password" id="pexelsKey" value="${App.teacherSettings.keys?.pexels || ''}" 
+                                        class="flex-1 px-5 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-primary focus:outline-none transition-all font-mono text-sm">
+                                    <button onclick="window.saveApiKey('pexels')" class="px-4 bg-gray-900 text-white rounded-xl hover:bg-black transition-all">Save</button>
+                                </div>
+                            </label>
+                            <p class="text-[10px] text-gray-400 leading-relaxed italic">Get a free key at <a href="https://www.pexels.com/api/" target="_blank" class="text-primary underline">pexels.com/api</a></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bg-white rounded-[2.5rem] shadow-sm border p-10" data-card-title="Preferences">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
+                        <span class="iconify text-2xl" data-icon="mdi:cog"></span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-gray-900">Classroom Preferences</h3>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Global toggle controls</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    ${[
+                        { id: 'anonymousMode', label: 'Anonymous Collaboration', desc: 'Hide student names on the board' },
+                        { id: 'allowStudentReplies', label: 'Student Replies', desc: 'Allow students to comment on posts' },
+                        { id: 'showAllIcons', label: 'Full Icon Library', desc: 'Allow access to all 200k+ icons' },
+                        { id: 'defaultCategoriesEnabled', label: 'Standard SEP Categories', desc: 'Show Notice, Wonder, Ideas categories' }
+                    ].map(pref => `
+                        <div class="flex items-center justify-between p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                            <div>
+                                <p class="text-sm font-black text-gray-800">${pref.label}</p>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">${pref.desc}</p>
+                            </div>
+                            <div class="relative inline-block w-12 h-7 transition duration-200 ease-in-out bg-gray-200 rounded-full">
+                                <input type="checkbox" onchange="window.toggleTeacherSetting('${pref.id}')" 
+                                    ${App.teacherSettings[pref.id] ? 'checked' : ''}
+                                    class="absolute w-7 h-7 transition duration-200 ease-in-out bg-white border-2 border-gray-200 rounded-full appearance-none cursor-pointer checked:translate-x-5 checked:bg-primary checked:border-primary">
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </section>
+        </div>
+    `;
+}
+
+export async function saveApiKey(provider) {
+    const input = document.getElementById(`${provider}Key`);
+    if (!input) return;
+    if (!App.teacherSettings.keys) App.teacherSettings.keys = {};
+    App.teacherSettings.keys[provider] = input.value.trim();
+    await saveToStorage();
+    toast(`${provider.charAt(0).toUpperCase() + provider.slice(1)} Key Saved`, 'success');
+}
+
 
 export const toggleTeacherSetting = async (k) => { 
     App.teacherSettings[k] = !App.teacherSettings[k]; 

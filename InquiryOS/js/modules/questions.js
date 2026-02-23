@@ -54,6 +54,21 @@ export function renderQuestionsModule() {
                             <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest">Focus</span>
                         </div>
                         <p class="text-sm text-gray-600 leading-relaxed max-w-4xl line-clamp-2 md:line-clamp-none">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts below.'}</p>
+                        
+                        ${p.media?.length > 0 ? `
+                            <div class="mt-6 flex flex-wrap gap-3">
+                                ${p.media.map(m => `
+                                    <button onclick="window.viewMediaDetail('${m.id}')" 
+                                        class="group relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-white shadow-md hover:ring-4 hover:ring-amber-400 transition-all flex-shrink-0">
+                                        <img src="${m.thumb}" class="w-full h-full object-cover">
+                                        <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+                                        <div class="absolute bottom-1 right-1">
+                                            <span class="iconify text-white text-xs" data-icon="${m.type === 'video' ? 'mdi:play-circle' : (m.type === 'sim' ? 'mdi:application-brackets' : 'mdi:image')}"></span>
+                                        </div>
+                                    </button>
+                                `).join('')}
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             </div>

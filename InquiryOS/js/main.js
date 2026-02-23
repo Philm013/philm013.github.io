@@ -109,6 +109,9 @@ window.saveArgumentFeedback = saveArgumentFeedback;
 window.flagPost = flagPost;
 window.deletePost = deletePost;
 
+import * as media from './ui/media.js';
+Object.assign(window, media);
+
 // Expose all exported functions from modules
 Object.assign(window, auth);
 Object.assign(window, renderer);

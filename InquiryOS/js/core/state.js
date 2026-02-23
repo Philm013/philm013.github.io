@@ -56,7 +56,12 @@ export const App = {
             title: 'Ecosystems & Energy Flow', 
             description: 'A lake has experienced a sudden algae bloom, turning the water green.', 
             tags: ['Ecosystems', 'Energy'], 
-            ngssStandards: [] 
+            ngssStandards: [],
+            media: [] // Array of { type: 'image'|'video'|'sim', url: string, thumb: string, provider: string, id: string }
+        },
+        keys: {
+            unsplash: '',
+            pexels: ''
         },
         emojiSets: {
             general: ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '⚙️', '⚖️', '🔬', '🧬', '🌍', '🔭', '🏗️', '🌉', '🔨', '📏'],
