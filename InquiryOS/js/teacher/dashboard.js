@@ -301,22 +301,6 @@ export async function renderTeacherSnapshots() {
         </div>
     `;
 }
-                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Current Claim</p>
-                                    <p class="text-gray-700 line-clamp-2">${w.claim || '<span class="text-gray-300">No claim yet</span>'}</p>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-                ${students.length === 0 ? `
-                    <div class="col-span-full">
-                        ${renderEmptyState('Classroom is Empty', 'Students will appear here in real-time as they join the class session with your code.', 'mdi:account-search-outline', true)}
-                    </div>
-                ` : ''}
-            </div>
-        </div>
-    `;
-}
 
 /**
  * Renders the Lesson Designer.
