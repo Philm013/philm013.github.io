@@ -54,11 +54,39 @@ export async function searchMedia() {
             await searchUnsplash(query);
         } else if (currentMediaType === 'video') {
             await searchPexels(query);
+        } else if (currentMediaType === 'sim') {
+            await searchSims(query);
         }
     } catch (e) {
         console.error(e);
-        resultsContainer.innerHTML = '<div class="col-span-full py-20 text-center text-red-500"><p class="font-black">API Key Required</p><p class="text-xs">Check your Teacher Settings</p></div>';
+        resultsContainer.innerHTML = `<div class="col-span-full py-20 text-center text-red-500"><p class="font-black">API Error</p><p class="text-xs">${e.message}</p></div>`;
     }
+}
+
+async function searchSims(query) {
+    // PhET doesn't have a CORS-friendly search API, so we use a curated list of popular sims
+    const phetSims = [
+        { id: 'phet_energy', title: 'Energy Skate Park', url: 'https://phet.colorado.edu/sims/html/energy-skate-park/latest/energy-skate-park_all.html', thumb: 'https://phet.colorado.edu/sims/html/energy-skate-park/latest/energy-skate-park-600.png' },
+        { id: 'phet_natural_sel', title: 'Natural Selection', url: 'https://phet.colorado.edu/sims/html/natural-selection/latest/natural-selection_all.html', thumb: 'https://phet.colorado.edu/sims/html/natural-selection/latest/natural-selection-600.png' },
+        { id: 'phet_forces', title: 'Forces and Motion', url: 'https://phet.colorado.edu/sims/html/forces-and-motion-basics/latest/forces-and-motion-basics_all.html', thumb: 'https://phet.colorado.edu/sims/html/forces-and-motion-basics/latest/forces-and-motion-basics-600.png' },
+        { id: 'phet_ph', title: 'pH Scale', url: 'https://phet.colorado.edu/sims/html/ph-scale/latest/ph-scale_all.html', thumb: 'https://phet.colorado.edu/sims/html/ph-scale/latest/ph-scale-600.png' },
+        { id: 'phet_circuit', title: 'Circuit Construction', url: 'https://phet.colorado.edu/sims/html/circuit-construction-kit-dc/latest/circuit-construction-kit-dc_all.html', thumb: 'https://phet.colorado.edu/sims/html/circuit-construction-kit-dc/latest/circuit-construction-kit-dc-600.png' },
+        { id: 'phet_states', title: 'States of Matter', url: 'https://phet.colorado.edu/sims/html/states-of-matter/latest/states-of-matter_all.html', thumb: 'https://phet.colorado.edu/sims/html/states-of-matter/latest/states-of-matter-600.png' },
+        { id: 'phet_gene', title: 'Gene Expression', url: 'https://phet.colorado.edu/sims/html/gene-expression-essentials/latest/gene-expression-essentials_all.html', thumb: 'https://phet.colorado.edu/sims/html/gene-expression-essentials/latest/gene-expression-essentials-600.png' },
+        { id: 'phet_gravity', title: 'Gravity and Orbits', url: 'https://phet.colorado.edu/sims/html/gravity-and-orbits/latest/gravity-and-orbits_all.html', thumb: 'https://phet.colorado.edu/sims/html/gravity-and-orbits/latest/gravity-and-orbits-600.png' }
+    ];
+
+    const results = phetSims.filter(s => !query || s.title.toLowerCase().includes(query.toLowerCase())).map(s => ({
+        id: s.id,
+        type: 'sim',
+        thumb: s.thumb,
+        url: s.url,
+        provider: 'PhET Interactive Simulations',
+        author: 'University of Colorado Boulder',
+        title: s.title
+    }));
+
+    renderMediaResults(results);
 }
 
 async function searchUnsplash(query) {
@@ -108,10 +136,12 @@ function renderMediaResults(items) {
         <div onclick="window.addMediaToPhenomenon(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
             class="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden cursor-pointer hover:ring-4 hover:ring-primary transition-all shadow-sm">
             <img src="${item.thumb}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                <p class="text-[10px] font-bold text-white uppercase tracking-widest">${item.provider} / ${item.author}</p>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+                <p class="text-[10px] font-bold text-white uppercase tracking-widest">${item.provider}</p>
+                ${item.title ? `<p class="text-xs font-black text-white mt-1 line-clamp-1">${item.title}</p>` : ''}
             </div>
             ${item.type === 'video' ? '<div class="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-lg"><span class="iconify" data-icon="mdi:play-circle"></span></div>' : ''}
+            ${item.type === 'sim' ? '<div class="absolute top-2 right-2 bg-primary text-white p-1 rounded-lg shadow-lg"><span class="iconify" data-icon="mdi:application-brackets"></span></div>' : ''}
         </div>
     `).join('');
 }

@@ -53,98 +53,49 @@ export async function renderTeacherNoticeBoard() {
     Object.keys(items).forEach(k => items[k].sort((a, b) => b.time - a.time));
 
     return `
-        <div class="max-w-full mx-auto pb-20">
-            <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
+        <div class="max-w-full mx-auto pb-4 px-2 md:px-4">
+            <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 class="text-3xl font-black text-gray-900">Inquiry Collaboration Board</h2>
-                    <p class="text-gray-500 mt-1">Live collaborative view of contributions from ${studentList.length} student scientists.</p>
-                </div>
-                <div class="flex flex-wrap gap-3 items-center">
-                    <button onclick="window.renderTeacherContent()" class="p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 shadow-sm transition-all flex items-center gap-2 font-bold active:scale-95">
-                        <span class="iconify text-xl" data-icon="mdi:refresh"></span>
-                        Refresh Board
-                    </button>
+                    <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Inquiry Board</h2>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">${studentList.length} Students contributing</p>
                 </div>
             </div>
 
-            <!-- Dark Mode Phenomenon & standards section -->
-            <div class="mx-4 mb-8 p-8 bg-gradient-to-br from-gray-900 via-blue-950 to-indigo-950 rounded-[2.5rem] text-white shadow-2xl border border-white/5 relative overflow-hidden">
-                <div class="absolute top-0 right-0 p-8 opacity-10">
-                    <span class="iconify text-9xl" data-icon="mdi:microscope"></span>
-                </div>
-                
-                <div class="flex flex-col lg:flex-row gap-10 relative z-10">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-4 mb-6">
-                            <span class="p-3 bg-blue-500/20 rounded-2xl border border-blue-500/30">
-                                <span class="iconify text-3xl text-blue-300" data-icon="mdi:flask-outline"></span>
-                            </span>
-                            <div>
-                                <h3 class="text-2xl font-black tracking-tight">Active Phenomenon: ${phenomenon.title || 'Inquiry Project'}</h3>
-                            </div>
+            <!-- Snappable Categories -->
+            ${activeCategories.map(cat => `
+                <div class="flex flex-col h-full" data-card-title="${cat.label}">
+                    <div class="flex items-center gap-3 mb-4 shrink-0">
+                        <div class="w-10 h-10 bg-${cat.color === 'primary' ? 'blue' : cat.color}-50 text-${cat.color === 'primary' ? 'blue' : cat.color}-600 rounded-xl flex items-center justify-center border border-${cat.color === 'primary' ? 'blue' : cat.color}-100">
+                            <span class="iconify text-xl" data-icon="${cat.icon}"></span>
                         </div>
-                        <p class="text-blue-100/70 text-lg leading-relaxed mb-6 font-medium line-clamp-3">"${phenomenon.description || 'Observe and investigate the scientific mystery.'}"</p>
+                        <h3 class="text-lg font-black text-gray-900">${cat.label}</h3>
+                        <span class="ml-auto px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[9px] font-black">${items[cat.id]?.length || 0}</span>
                     </div>
                     
-                    <div class="w-full lg:w-80 p-6 bg-white/5 rounded-3xl backdrop-blur-xl border border-white/10 flex flex-col">
-                        <h4 class="text-xs font-black uppercase tracking-widest text-blue-300 mb-4 flex items-center gap-2">
-                            <span class="iconify" data-icon="mdi:medal"></span>
-                            Linked Standards
-                        </h4>
-                        <div class="space-y-2 flex-1 overflow-y-auto max-h-32">
-                            ${(phenomenon.ngssStandards || []).map(s => `
-                                <div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg border border-white/5">
-                                    <div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-                                    <span class="text-[10px] font-bold text-white">${s}</span>
-                                </div>
-                            `).join('') || '<p class="text-[10px] text-gray-500 italic">No standards linked</p>'}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex flex-nowrap overflow-x-auto gap-6 px-4 no-scrollbar items-start min-h-[600px]">
-                ${activeCategories.map(cat => `
-                    <div class="w-80 shrink-0 bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col max-h-[80vh] overflow-hidden">
-                        <div class="p-5 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3" ${cat.hex ? `style="border-top: 4px solid ${cat.hex}"` : ''}>
-                            <div class="w-10 h-10 rounded-xl bg-${cat.color}-100 text-${cat.color}-600 flex items-center justify-center shadow-sm" ${cat.hex ? `style="background: ${cat.hex}20; color: ${cat.hex}"` : ''}>
-                                <span class="iconify text-2xl" data-icon="${cat.icon}"></span>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="font-bold text-gray-900 leading-tight text-sm">${cat.label}</h3>
-                                <p class="text-[9px] text-gray-400 uppercase font-black tracking-widest">${items[cat.id]?.length || 0} Contributions</p>
-                            </div>
-                        </div>
-                        <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-50/10">
-                            ${items[cat.id]?.map(item => `
-                                <div class="group p-4 bg-white border-2 border-gray-50 rounded-2xl hover:border-${cat.color}-200 hover:shadow-md transition-all relative">
-                                    <p class="text-gray-800 text-sm leading-relaxed mb-4">${item.text}</p>
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-2">
-                                            <div class="w-6 h-6 bg-${cat.color}-50 rounded-full flex items-center justify-center text-[10px] font-bold text-${cat.color}-600 border border-${cat.color}-100" ${cat.hex ? `style="background: ${cat.hex}10; color: ${cat.hex}; border-color: ${cat.hex}30"` : ''}>
-                                                ${item.studentName.charAt(0).toUpperCase()}
-                                            </div>
-                                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${item.studentName}</span>
+                    <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+                        ${items[cat.id]?.map(item => `
+                            <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm relative group">
+                                <p class="text-sm font-bold text-gray-800 leading-snug mb-3">"${item.text}"</p>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center text-[8px] font-bold text-gray-500">
+                                            ${item.studentName.charAt(0)}
                                         </div>
-                                        <div class="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
-                                            <select onchange="window.moveBoardItem('${item.studentId}', '${item.id}', '${item.originalCategory}', this.value)" 
-                                                class="text-[9px] font-black uppercase bg-gray-50 border-gray-200 rounded-lg px-2 py-1 focus:ring-0 cursor-pointer">
-                                                <option value="" disabled selected>Move...</option>
-                                                ${activeCategories.map(c => `<option value="${c.id}">${c.label}</option>`).join('')}
-                                            </select>
-                                        </div>
+                                        <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${item.studentName}</span>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        <select onchange="window.moveBoardItem('${item.studentId}', '${item.id}', '${item.originalCategory}', this.value)" 
+                                            class="text-[9px] font-black uppercase bg-gray-50 border-gray-200 rounded-lg px-2 py-1 focus:ring-0">
+                                            <option value="" disabled selected>Move</option>
+                                            ${activeCategories.map(c => `<option value="${c.id}">${c.label}</option>`).join('')}
+                                        </select>
                                     </div>
                                 </div>
-                            `).join('') || `
-                                <div class="h-full flex flex-col items-center justify-center text-center opacity-20 grayscale py-20">
-                                    <span class="iconify text-6xl mb-4" data-icon="${cat.icon}"></span>
-                                    <p class="text-xs font-black uppercase tracking-widest">Empty</p>
-                                </div>
-                            `}
-                        </div>
+                            </div>
+                        `).join('') || '<div class="py-20 text-center opacity-30 text-xs font-black uppercase tracking-widest border-2 border-dashed rounded-3xl">No entries</div>'}
                     </div>
-                `).join('')}
-            </div>
+                </div>
+            `).join('')}
         </div>
     `;
 }

@@ -56,73 +56,74 @@ export function renderMathModule() {
                                         </div>
                                     </div>
             
-                                    <!-- Variables Tab -->
-                                    <div id="math_vars_content" class="space-y-4">
-                                        <div class="flex flex-wrap gap-2">
-                                            ${vars.map(v => `
-                                                <div class="relative group/var">
-                                                    <button 
-                                                        draggable="true"
-                                                        ondragstart="window.varDragStart(event, '${v.name}')"
-                                                        onclick="window.toggleVarMenu(event, '${v.name}')"
-                                                        class="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold border-2 border-blue-100 hover:bg-blue-100 transition-all flex items-center gap-2 group cursor-grab active:cursor-grabbing">
-                                                        <span class="iconify group-hover:rotate-12 transition-transform" data-icon="mdi:variable"></span>
-                                                        ${v.name}
-                                                    </button>
-                                                    
-                                                    <!-- Send to Menu -->
-                                                    <div id="varMenu_${v.name.replace(/\s+/g, '_')}" class="var-menu hidden absolute bottom-full left-0 mb-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] animate-in slide-in-from-bottom-2 duration-200">
-                                                        <div class="p-3 bg-gray-50 border-b">
-                                                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Send Variable To:</p>
-                                                        </div>
-                                                        <div class="p-1">
-                                                            <button onclick="window.injectVariableToCalc('${v.name}'); window.hideAllVarMenus();" class="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all">
-                                                                <span class="iconify text-lg" data-icon="mdi:calculator"></span>
-                                                                Calculator
-                                                            </button>
-                                                            <button onclick="window.injectVariableToFormula('${v.name}'); window.hideAllVarMenus();" class="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-xl transition-all">
-                                                                <span class="iconify text-lg" data-icon="mdi:function-variant"></span>
-                                                                Formula Field
-                                                            </button>
-                                                            <button onclick="window.hideAllVarMenus()" class="md:hidden w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all border-t mt-1">
-                                                                <span class="iconify text-lg" data-icon="mdi:close"></span>
-                                                                Cancel
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            `).join('')}
-                                            ${vars.length === 0 ? `
-                                                <div class="w-full py-6 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                                                    <p class="text-xs text-gray-400 font-medium px-4">Define variables in the Investigation module to use them here.</p>
-                                                </div>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-            
-                                    <!-- Constants Tab -->
-                                    <div id="math_constants_content" class="hidden space-y-4">
-                                        <div class="grid grid-cols-2 gap-2">
-                                            ${[
-                                                { name: 'π', val: '3.14159', label: 'Pi' },
-                                                { name: 'g', val: '9.81', label: 'Gravity' },
-                                                { name: 'c', val: '299792458', label: 'Light Speed' },
-                                                { name: 'G', val: '6.67e-11', label: 'Gravitational' },
-                                                { name: 'e', val: '2.71828', label: 'Euler' },
-                                                { name: 'NA', val: '6.022e23', label: 'Avogadro' }
-                                            ].map(c => `
-                                                <button onclick="window.injectVariableToCalc('${c.val}')" 
-                                                    draggable="true" ondragstart="window.varDragStart(event, '${c.val}')"
-                                                    class="p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-left hover:border-primary transition-all group">
-                                                    <div class="flex justify-between items-center mb-1">
-                                                        <span class="font-mono font-black text-primary text-lg">${c.name}</span>
-                                                        <span class="iconify text-gray-300 group-hover:text-primary" data-icon="mdi:plus-circle"></span>
-                                                    </div>
-                                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">${c.label}</p>
-                                                </button>
-                                            `).join('')}
-                                        </div>
-                                    </div>
+                                                            <!-- Variables Tab -->
+                                                            <div id="math_vars_content" class="space-y-4 mobile-library-panel md:bg-transparent md:p-0 md:border-0">
+                                                                <div class="flex flex-wrap gap-2">
+                                                                    ${vars.map(v => `
+                                                                        <div class="relative group/var">
+                                                                            <button 
+                                                                                draggable="true"
+                                                                                ondragstart="window.varDragStart(event, '${v.name}')"
+                                                                                onclick="window.toggleVarMenu(event, '${v.name}')"
+                                                                                class="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold border-2 border-blue-100 hover:bg-blue-100 transition-all flex items-center gap-2 group cursor-grab active:cursor-grabbing">
+                                                                                <span class="iconify group-hover:rotate-12 transition-transform" data-icon="mdi:variable"></span>
+                                                                                ${v.name}
+                                                                            </button>
+                                                                            
+                                                                            <!-- Send to Menu -->
+                                                                            <div id="varMenu_${v.name.replace(/\s+/g, '_')}" class="var-menu hidden absolute bottom-full left-0 mb-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] animate-in slide-in-from-bottom-2 duration-200">
+                                                                                <div class="p-3 bg-gray-50 border-b">
+                                                                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Send Variable To:</p>
+                                                                                </div>
+                                                                                <div class="p-1">
+                                                                                    <button onclick="window.injectVariableToCalc('${v.name}'); window.hideAllVarMenus();" class="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all">
+                                                                                        <span class="iconify text-lg" data-icon="mdi:calculator"></span>
+                                                                                        Calculator
+                                                                                    </button>
+                                                                                    <button onclick="window.injectVariableToFormula('${v.name}'); window.hideAllVarMenus();" class="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-xl transition-all">
+                                                                                        <span class="iconify text-lg" data-icon="mdi:function-variant"></span>
+                                                                                        Formula Field
+                                                                                    </button>
+                                                                                    <button onclick="window.hideAllVarMenus()" class="md:hidden w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all border-t mt-1">
+                                                                                        <span class="iconify text-lg" data-icon="mdi:close"></span>
+                                                                                        Cancel
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    `).join('')}
+                                                                    ${vars.length === 0 ? `
+                                                                        <div class="w-full py-6 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                                                                            <p class="text-xs text-gray-400 font-medium px-4">Define variables in the Investigation module to use them here.</p>
+                                                                        </div>
+                                                                    ` : ''}
+                                                                </div>
+                                                            </div>
+                                    
+                                                            <!-- Constants Tab -->
+                                                            <div id="math_constants_content" class="hidden space-y-4 mobile-library-panel md:bg-transparent md:p-0 md:border-0">
+                                                                <div class="grid grid-cols-2 gap-2">
+                                                                    ${[
+                                                                        { name: 'π', val: '3.14159', label: 'Pi' },
+                                                                        { name: 'g', val: '9.81', label: 'Gravity' },
+                                                                        { name: 'c', val: '299792458', label: 'Light Speed' },
+                                                                        { name: 'G', val: '6.67e-11', label: 'Gravitational' },
+                                                                        { name: 'e', val: '2.71828', label: 'Euler' },
+                                                                        { name: 'NA', val: '6.022e23', label: 'Avogadro' }
+                                                                    ].map(c => `
+                                                                        <button onclick="window.injectVariableToCalc('${c.val}')" 
+                                                                            draggable="true" ondragstart="window.varDragStart(event, '${c.val}')"
+                                                                            class="p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-left hover:border-primary transition-all group">
+                                                                            <div class="flex justify-between items-center mb-1">
+                                                                                <span class="font-mono font-black text-primary text-lg">${c.name}</span>
+                                                                                <span class="iconify text-gray-300 group-hover:text-primary" data-icon="mdi:plus-circle"></span>
+                                                                            </div>
+                                                                            <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">${c.label}</p>
+                                                                        </button>
+                                                                    `).join('')}
+                                                                </div>
+                                                            </div>
+                                    
                                 </div>
                             </div>
             

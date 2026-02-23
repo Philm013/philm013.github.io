@@ -186,31 +186,33 @@ function wrapInSnapCards(html) {
     
     if (sections.length === 0) return html;
 
+    const isVertical = App.teacherModule === 'lessons';
+
     const cards = Array.from(sections).map((section, i) => `
         <div class="snap-card" id="card-${i}">
-            <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">${section.getAttribute('data-card-title')}</h3>
-                <span class="text-[10px] font-bold text-gray-300">Section ${i + 1}/${sections.length}</span>
+            <div class="mb-3 flex items-center justify-between shrink-0">
+                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${section.getAttribute('data-card-title')}</h3>
+                <span class="text-[9px] font-bold text-gray-300">${i + 1}/${sections.length}</span>
             </div>
-            <div class="flex-1">${section.outerHTML}</div>
+            <div class="flex-1 overflow-y-auto">${section.outerHTML}</div>
         </div>
     `).join('');
 
     const dots = Array.from(sections).map((_, i) => `<div class="dot ${i === 0 ? 'active' : ''}" data-index="${i}"></div>`).join('');
 
     return `
-        <div class="snap-container" id="snapContainer">
+        <div class="snap-container ${isVertical ? 'snap-vertical' : ''}" id="snapContainer">
             ${cards}
         </div>
-        <div class="pagination-dots">
+        <div class="pagination-dots ${isVertical ? 'hidden' : ''}">
             ${dots}
         </div>
         <div class="mobile-snap-nav">
             <button onclick="window.scrollSnap('prev')" class="nav-snap-btn" aria-label="Previous">
-                <span class="iconify text-2xl" data-icon="mdi:chevron-left"></span>
+                <span class="iconify text-xl" data-icon="mdi:chevron-left"></span>
             </button>
             <button onclick="window.scrollSnap('next')" class="nav-snap-btn" aria-label="Next">
-                <span class="iconify text-2xl" data-icon="mdi:chevron-right"></span>
+                <span class="iconify text-xl" data-icon="mdi:chevron-right"></span>
             </button>
         </div>
     `;
@@ -223,22 +225,97 @@ function initSnapNavigation() {
     const container = document.getElementById('snapContainer');
     if (!container) return;
 
-    container.addEventListener('scroll', () => {
-        const index = Math.round(container.scrollLeft / container.offsetWidth);
-        const dots = document.querySelectorAll('.pagination-dots .dot');
-        dots.forEach((dot, i) => {
-            dot.classList.toggle('active', i === index);
-        });
+    let startX = 0;
+    let startY = 0;
+    let isMoving = false;
+
+    // Reset switch lock
+    window.isModuleSwitching = false;
+
+    container.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isMoving = true;
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+        if (!isMoving || window.isModuleSwitching) return;
+        
+        const diffX = startX - e.touches[0].clientX;
+        const diffY = startY - e.touches[0].clientY;
+        
+        // Only trigger if horizontal movement is dominant
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            const isVertical = container.classList.contains('snap-vertical');
+            if (isVertical) return;
+
+            const scroll = container.scrollLeft;
+            const maxScroll = container.scrollWidth - container.offsetWidth;
+
+            if (diffX > 50 && scroll >= maxScroll - 5) {
+                window.isModuleSwitching = true;
+                isMoving = false;
+                navigateModule(1);
+            } else if (diffX < -50 && scroll <= 5) {
+                window.isModuleSwitching = true;
+                isMoving = false;
+                navigateModule(-1);
+            }
+        }
+    }, { passive: true });
+
+    container.addEventListener('touchend', () => {
+        isMoving = false;
     });
 
+    container.addEventListener('scroll', () => {
+        const isVertical = container.classList.contains('snap-vertical');
+        const scroll = isVertical ? container.scrollTop : container.scrollLeft;
+        const size = isVertical ? container.offsetHeight : container.offsetWidth;
+        const index = Math.round(scroll / size);
+        
+        const dots = document.querySelectorAll('.pagination-dots .dot');
+        dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+    }, { passive: true });
+
     window.scrollSnap = (dir) => {
-        const step = container.offsetWidth;
-        const current = container.scrollLeft;
-        container.scrollTo({
-            left: dir === 'next' ? current + step : current - step,
-            behavior: 'smooth'
-        });
+        const isVertical = container.classList.contains('snap-vertical');
+        const step = isVertical ? container.offsetHeight : container.offsetWidth;
+        const current = isVertical ? container.scrollTop : container.scrollLeft;
+        const maxScroll = (container.children.length - 1) * step;
+
+        if (dir === 'next' && current >= maxScroll - 5) {
+            navigateModule(1);
+        } else if (dir === 'prev' && current <= 5) {
+            navigateModule(-1);
+        } else {
+            container.scrollTo({
+                [isVertical ? 'top' : 'left']: dir === 'next' ? current + step : current - step,
+                behavior: 'smooth'
+            });
+        }
     };
+}
+
+/**
+ * Gracefully navigates to the next or previous module.
+ */
+function navigateModule(dir) {
+    const modules = App.mode === 'teacher' ? 
+        ['overview', 'lessons', 'snapshots', 'students', 'noticeboard', 'access', 'settings'] :
+        ['questions', 'models', 'investigation', 'analysis', 'math', 'explanations', 'argument', 'communication'];
+    
+    const current = App.mode === 'teacher' ? App.teacherModule : App.currentModule;
+    let idx = modules.indexOf(current);
+    let nextIdx = idx + dir;
+
+    if (nextIdx >= 0 && nextIdx < modules.length) {
+        if (App.mode === 'teacher') {
+            window.showTeacherModule(modules[nextIdx]);
+        } else {
+            window.showStudentModule(modules[nextIdx]);
+        }
+    }
 }
 
 /**

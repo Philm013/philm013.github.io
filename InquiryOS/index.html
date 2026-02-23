@@ -19,7 +19,21 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker registered', reg))
+                    .then(reg => {
+                        console.log('Service Worker registered', reg);
+                        reg.onupdatefound = () => {
+                            const installingWorker = reg.installing;
+                            installingWorker.onstatechange = () => {
+                                if (installingWorker.state === 'installed') {
+                                    if (navigator.serviceWorker.controller) {
+                                        console.log('New content available; please refresh.');
+                                    } else {
+                                        console.log('Content is cached for offline use.');
+                                    }
+                                }
+                            };
+                        };
+                    })
                     .catch(err => console.error('Service Worker registration failed', err));
             });
         }
@@ -573,6 +587,12 @@
             height: 100%;
             width: 100%;
         }
+        .snap-container.snap-vertical {
+            flex-direction: column;
+            scroll-snap-type: y mandatory;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
         .snap-container::-webkit-scrollbar { display: none; }
         .snap-card {
             flex: 0 0 100%;
@@ -585,6 +605,7 @@
             flex-direction: column;
             padding: 1.5rem;
             box-sizing: border-box;
+            position: relative;
         }
 
         /* Mobile Overrides for Full Screen Panels */
@@ -592,58 +613,57 @@
             #mainContent { 
                 padding: 0 !important; 
                 overflow: hidden !important;
+                height: calc(100dvh - 64px - 64px) !important;
             }
-            .snap-card { padding: 1rem; }
-            
-            /* Modal Overhaul */
-            .relative.bg-white.rounded-2xl, 
-            .relative.bg-white.rounded-3xl, 
-            .relative.bg-white.rounded-\[2\.5rem\] {
-                width: 100% !important;
-                height: 100% !important;
-                max-width: 100% !important;
-                max-height: 100% !important;
-                margin: 0 !important;
-                border-radius: 0 !important;
-                display: flex;
-                flex-direction: column;
-            }
-            
-            .modal-overlay { display: none !important; }
-            
-            #sessionMenuModal .absolute.right-4.top-16 {
+            #bottomNav { 
+                display: flex !important; 
                 position: fixed !important;
-                inset: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                margin: 0 !important;
-                border-radius: 0 !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                height: 56px !important;
+                z-index: 300 !important;
+                background: white !important;
+                box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
             }
-
-            /* Floating Navigation Buttons */
+            .snap-card { 
+                padding: 0.75rem; 
+                padding-bottom: 4rem; 
+                max-height: 100%;
+            }
+            
+            /* High Density Text for Mobile */
+            .text-3xl { font-size: 1.5rem !important; }
+            .text-2xl { font-size: 1.25rem !important; }
+            .text-xl { font-size: 1.1rem !important; }
+            .p-8, .p-10 { padding: 1rem !important; }
+            .rounded-\[2\.5rem\], .rounded-3xl { border-radius: 1.25rem !important; }
+            
+            /* Floating Navigation Buttons - Ultra Sleek */
             .mobile-snap-nav {
                 position: fixed;
-                bottom: 80px;
-                right: 16px;
+                bottom: 64px;
+                left: 0;
+                right: 0;
+                pointer-events: none;
                 display: flex;
-                flex-direction: column;
-                gap: 12px;
-                z-index: 100;
+                justify-content: space-between;
+                padding: 0 8px;
+                z-index: 400;
             }
             .nav-snap-btn {
-                width: 48px;
-                height: 48px;
-                background: white;
-                color: #2563eb;
-                border-radius: 50%;
+                pointer-events: auto;
+                width: 36px;
+                height: 36px;
+                background: rgba(37, 99, 235, 0.9);
+                color: white;
+                border-radius: 10px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                border: 1px solid #e2e8f0;
-                transition: all 0.2s;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                border: none;
             }
-            .nav-snap-btn:active { transform: scale(0.9); background: #f8fafc; }
 
             .pagination-dots {
                 position: fixed;
@@ -651,25 +671,36 @@
                 left: 50%;
                 transform: translateX(-50%);
                 display: flex;
-                gap: 6px;
-                padding: 8px 12px;
-                background: rgba(255,255,255,0.8);
-                backdrop-filter: blur(8px);
-                border-radius: 20px;
-                z-index: 99;
-                border: 1px solid rgba(226, 232, 240, 0.5);
+                gap: 3px;
+                z-index: 390;
             }
-            .dot {
-                width: 6px;
-                height: 6px;
-                border-radius: 50%;
-                background: #cbd5e1;
-                transition: all 0.3s;
+            
+            /* Force children to fit */
+            .snap-card > div { max-height: 100%; display: flex; flex-direction: column; width: 100% !important; margin: 0 !important; }
+            .overflow-y-auto { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+            .overflow-y-auto::-webkit-scrollbar { display: none; }
+
+            /* Mobile Horizontal Scroll fix for internal components */
+            .mobile-h-scroll {
+                display: flex;
+                overflow-x: auto;
+                scroll-snap-type: none !important;
+                scrollbar-width: none;
+                gap: 12px;
+                padding: 4px;
+                -webkit-overflow-scrolling: touch;
             }
-            .dot.active {
-                width: 18px;
-                background: #2563eb;
-                border-radius: 4px;
+            .mobile-h-scroll::-webkit-scrollbar { display: none; }
+            
+            /* Library Panel Style */
+            .mobile-library-panel {
+                background: #f8fafc;
+                border-radius: 1rem;
+                border: 1px solid #e2e8f0;
+                padding: 0.75rem;
+                margin-top: 0.5rem;
+                max-height: 250px;
+                overflow-y: auto;
             }
         }
 
@@ -927,32 +958,20 @@
                 </button>
             </div>
             
-            <div class="flex items-center gap-3">
-                <div id="healthStatus" class="flex items-center gap-3 px-3 py-1 bg-gray-100 rounded-full hidden-mobile">
-                    <div class="flex items-center gap-1">
-                        <span class="health-indicator health-good" id="syncIndicator"></span>
-                        <span class="text-xs text-gray-600">Sync</span>
-                    </div>
-                    <span class="text-xs text-gray-500" id="lastSyncTime">Just now</span>
-                </div>
-                
+            <div class="flex items-center gap-2">
                 <div class="flex items-center gap-2 px-3 py-1 bg-purple-100 rounded-full cursor-pointer hover:bg-purple-200 transition-colors" onclick="window.showJoinQR()" title="Click to show QR Code">
                     <span class="iconify text-purple-600" data-icon="mdi:qrcode"></span>
-                    <span class="text-xs text-purple-700 hidden-mobile">Class:</span>
                     <code class="text-sm font-mono font-bold text-purple-700" id="displayClassCode">------</code>
-                    <button onclick="event.stopPropagation(); window.copyCode()" class="text-purple-600 hover:text-purple-800 p-0.5" title="Copy Code">
-                        <span class="iconify" data-icon="mdi:content-copy"></span>
-                    </button>
                 </div>
                 
-                <div class="flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full">
+                <div class="flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full hidden-mobile">
                     <span class="iconify text-green-600" data-icon="mdi:account-group"></span>
                     <span class="text-sm font-medium text-green-700" id="connectedCount">1</span>
                 </div>
                 
-                <div class="flex items-center gap-2 hidden-mobile">
+                <div class="flex items-center gap-2">
                     <div id="userAvatar" class="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white text-sm font-medium">?</div>
-                    <span class="text-sm font-medium text-gray-700" id="userName">User</span>
+                    <span class="text-sm font-medium text-gray-700 hidden-mobile" id="userName">User</span>
                 </div>
                 
                 <button onclick="openSessionMenu()" class="p-2 hover:bg-gray-100 rounded-lg" title="Session menu">

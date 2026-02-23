@@ -72,96 +72,102 @@ export async function renderTeacherOverview() {
             <div class="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-10 relative overflow-hidden group" data-card-title="Phenomenon">
                 <div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-110"></div>
                 
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 relative">
-                    <div class="flex items-center gap-5">
-                        <div class="w-14 h-14 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
-                            <span class="iconify text-3xl" data-icon="mdi:flask-outline"></span>
-                        </div>
-                        <div>
-                            <h3 class="text-2xl font-black text-gray-900">Class Phenomenon</h3>
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Driving Inquiry Focus</p>
-                        </div>
+                <div class="flex items-center gap-5 mb-8 relative">
+                    <div class="w-14 h-14 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg">
+                        <span class="iconify text-3xl" data-icon="mdi:flask-outline"></span>
                     </div>
-                    <button onclick="window.showTeacherModule('ngss')" class="px-6 py-2.5 bg-gray-50 text-primary rounded-xl text-sm font-black hover:bg-primary hover:text-white transition-all border border-primary/10">
-                        Browse Standards
-                    </button>
+                    <div>
+                        <h3 class="text-2xl font-black text-gray-900">Phenomenon</h3>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Classroom Focus</p>
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
-                    <div class="lg:col-span-2 space-y-6">
-                        <div class="relative">
-                            <input type="text" id="phenomTitle" value="${phenomenon.title || ''}" onchange="window.updatePhenomenon()"
-                                placeholder="Enter Phenomenon Title..."
-                                class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xl font-bold focus:border-primary focus:bg-white focus:outline-none transition-all placeholder:text-gray-300">
-                        </div>
-                        <div class="relative">
-                            <textarea id="phenomDesc" rows="3" onchange="window.updatePhenomenon()"
-                                placeholder="Describe the phenomenon or observation that drives this lesson..."
-                                class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-lg font-medium focus:border-primary focus:bg-white focus:outline-none transition-all resize-none placeholder:text-gray-300">${phenomenon.description || ''}</textarea>
-                        </div>
+                <div class="space-y-6 relative">
+                    <input type="text" id="phenomTitle" value="${phenomenon.title || ''}" onchange="window.updatePhenomenon()"
+                        placeholder="Title..." class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xl font-bold focus:border-primary focus:bg-white focus:outline-none transition-all">
+                    
+                    <textarea id="phenomDesc" rows="3" onchange="window.updatePhenomenon()"
+                        placeholder="Description..." class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-lg font-medium focus:border-primary focus:bg-white focus:outline-none transition-all resize-none">${phenomenon.description || ''}</textarea>
 
-                        <!-- Phenomenon Media Gallery -->
-                        <div class="space-y-4 pt-4 border-t border-gray-100">
-                            <div class="flex items-center justify-between">
-                                <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Media Assets</h4>
-                                <button onclick="window.openMediaPicker()" class="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">+ Add Media</button>
-                            </div>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
-                                ${(phenomenon.media || []).map(m => `
-                                    <div class="group relative aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
-                                        <img src="${m.thumb}" class="w-full h-full object-cover">
-                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button onclick="window.removeMediaFromPhenomenon('${m.id}')" class="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
-                                                <span class="iconify" data-icon="mdi:trash-can-outline"></span>
-                                            </button>
-                                        </div>
-                                        <div class="absolute bottom-1 left-1 px-1.5 py-0.5 bg-white/90 rounded text-[8px] font-black uppercase tracking-tighter">
-                                            ${m.type}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                                ${(phenomenon.media || []).length === 0 ? `
-                                    <div onclick="window.openMediaPicker()" class="aspect-square rounded-xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 hover:text-primary hover:border-primary transition-all cursor-pointer">
-                                        <span class="iconify text-2xl mb-1" data-icon="mdi:image-plus"></span>
-                                        <span class="text-[8px] font-black uppercase">Add Media</span>
-                                    </div>
-                                ` : ''}
-                            </div>
+                    <div class="space-y-4 pt-4 border-t border-gray-100">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Media Gallery</h4>
+                            <button onclick="window.openMediaPicker()" class="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">+ Add</button>
                         </div>
-                    </div>
-
-                    <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex flex-col">
-                        <div class="flex items-center justify-between mb-4">
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Linked Standards</p>
-                            <span class="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[9px] font-black uppercase tracking-widest">${phenomenon.ngssStandards?.length || 0} PE</span>
-                        </div>
-                        <div class="space-y-2 flex-1 overflow-y-auto max-h-[160px] pr-2 custom-scrollbar">
-                            ${phenomenon.ngssStandards?.length > 0 ? phenomenon.ngssStandards.map(peId => `
-                                <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 group/item shadow-sm">
-                                    <span class="text-xs font-black text-gray-700 font-mono tracking-tighter">${peId}</span>
-                                    <button onclick="window.removeFromPhenomenon('${peId}')" class="text-gray-300 hover:text-red-500 transition-colors">
-                                        <span class="iconify" data-icon="mdi:close-circle"></span>
+                        <div class="grid grid-cols-3 gap-3">
+                            ${(phenomenon.media || []).map(m => `
+                                <div class="group relative aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                                    <img src="${m.thumb}" class="w-full h-full object-cover">
+                                    <button onclick="window.removeMediaFromPhenomenon('${m.id}')" class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <span class="iconify text-xl" data-icon="mdi:trash-can-outline"></span>
                                     </button>
                                 </div>
-                            `).join('') : `
-                                <div class="h-full flex flex-col items-center justify-center opacity-30 py-4">
-                                    <span class="iconify text-3xl mb-2" data-icon="mdi:link-variant-off"></span>
-                                    <p class="text-[10px] font-black uppercase">No Standards Linked</p>
+                            `).join('')}
+                            ${(phenomenon.media || []).length < 6 ? `
+                                <div onclick="window.openMediaPicker()" class="aspect-square rounded-xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 hover:text-primary transition-all cursor-pointer">
+                                    <span class="iconify text-xl" data-icon="mdi:image-plus"></span>
                                 </div>
-                            `}
+                            ` : ''}
                         </div>
                     </div>
                 </div>
             </div>
+
+            <div class="bg-gray-50 rounded-[2.5rem] p-8 border border-gray-100 flex flex-col" data-card-title="Standards">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-black text-gray-900 uppercase tracking-tight">Standards</h3>
+                    <span class="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest">${phenomenon.ngssStandards?.length || 0} PE</span>
+                </div>
+                <div class="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
+                    ${phenomenon.ngssStandards?.length > 0 ? phenomenon.ngssStandards.map(peId => `
+                        <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 group/item shadow-sm">
+                            <span class="text-sm font-black text-gray-700 font-mono tracking-tighter">${peId}</span>
+                            <button onclick="window.removeFromPhenomenon('${peId}')" class="text-gray-300 hover:text-red-500 transition-colors">
+                                <span class="iconify" data-icon="mdi:close-circle"></span>
+                            </button>
+                        </div>
+                    `).join('') : '<div class="py-12 text-center opacity-30 text-xs font-black uppercase tracking-widest">No Standards Linked</div>'}
+                </div>
+                <button onclick="window.showTeacherModule('ngss')" class="mt-6 w-full py-4 bg-white border-2 border-dashed border-gray-200 rounded-2xl text-xs font-black text-gray-400 hover:border-primary hover:text-primary transition-all uppercase tracking-widest">
+                    Link standards
+                </button>
+            </div>
             
-            <div class="grid md:grid-cols-4 gap-4" data-card-title="Class Stats">
-                ${renderStatTile('Total Notices', stats.notices, 'mdi:eye', 'blue')}
-                ${renderStatTile('Total Wonders', stats.wonders, 'mdi:lightbulb', 'yellow')}
-                ${renderStatTile('Class Concepts', stats.nodes, 'mdi:cube-outline', 'green')}
+            <div class="flex flex-col gap-3" data-card-title="Class Stats">
+                ${renderStatTile('Observations', stats.notices, 'mdi:eye', 'blue')}
+                ${renderStatTile('Questions', stats.wonders, 'mdi:lightbulb', 'yellow')}
+                ${renderStatTile('Concepts', stats.nodes, 'mdi:cube-outline', 'green')}
                 ${renderStatTile('Forum Posts', stats.posts, 'mdi:forum', 'purple')}
             </div>
 
-            <div class="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-10" data-card-title="Access Management">
+            <div class="bg-white rounded-[2.5rem] shadow-sm border p-8" data-card-title="Access">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-secondary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-purple-100">
+                        <span class="iconify text-2xl" data-icon="mdi:account-plus"></span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-gray-900 uppercase">Entry</h3>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="bg-gray-50 p-6 rounded-3xl border-2 border-gray-100">
+                        <p class="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-3 text-center">Join Code</p>
+                        <div class="text-6xl font-black text-primary tracking-tighter text-center">${App.classCode}</div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="window.showJoinQR()" class="py-4 bg-gray-900 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2">
+                            <span class="iconify text-lg" data-icon="mdi:qrcode"></span>
+                            QR Code
+                        </button>
+                        <button onclick="window.copyJoinLink()" class="py-4 bg-primary text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2">
+                            <span class="iconify text-lg" data-icon="mdi:content-copy"></span>
+                            Copy Link
+                        </button>
+                    </div>
+                </div>
+            </div>
                 <div class="flex items-center gap-5 mb-8">
                     <div class="w-14 h-14 bg-secondary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-purple-100">
                         <span class="iconify text-3xl" data-icon="mdi:account-plus"></span>
@@ -250,48 +256,51 @@ export async function renderTeacherSnapshots() {
     }
 
     return `
-        <div class="max-w-7xl mx-auto">
-            <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="max-w-7xl mx-auto px-2 md:px-0">
+            <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 class="text-3xl font-bold text-gray-900">Student Snapshots</h2>
-                    <p class="text-gray-500 mt-1">Monitoring the progress of ${students.length} students.</p>
+                    <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Snapshots</h2>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Monitoring ${students.length} students</p>
                 </div>
-                <button onclick="window.exportToPDF()" class="px-5 py-3 bg-red-600 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-red-700 transition-all">
-                    <span class="iconify text-xl" data-icon="mdi:file-pdf-box"></span> 
-                    Export Class Report
-                </button>
             </div>
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4" data-card-title="Student Activity">
                 ${studentData.map(data => {
                     const w = data.work || {};
                     const progress = calculateStudentProgress(w);
                     return `
-                        <div class="bg-white rounded-2xl shadow-sm border p-6 hover:shadow-md transition-shadow">
-                            <div class="flex items-center justify-between mb-6">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                        <div class="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm flex flex-col">
+                            <div class="p-3 border-b bg-gray-50 flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-[10px] font-bold">
                                         ${data.student.avatar || data.student.name.charAt(0).toUpperCase()}
                                     </div>
-                                    <div>
-                                        <h3 class="font-bold text-gray-900 text-lg">${data.student.name}</h3>
-                                        <div class="flex items-center gap-2 mt-1">
-                                            <div class="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                <div class="h-full bg-primary" style="width:${progress}%"></div>
-                                            </div>
-                                            <span class="text-xs font-bold text-primary">${progress}%</span>
-                                        </div>
-                                    </div>
+                                    <span class="text-sm font-black text-gray-700">${data.student.name}</span>
                                 </div>
-                                <button onclick="window.viewStudentWork('${data.student.visitorId}')" class="px-4 py-2 bg-blue-50 text-primary rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">
-                                    View Board →
-                                </button>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-[9px] font-bold text-gray-400 uppercase">${w.currentModule || 'Start'}</span>
+                                    <span class="text-[10px] font-black text-primary">${progress}%</span>
+                                </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                                <div>
-                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Driving Question</p>
-                                    <p class="italic text-gray-700 line-clamp-2">${w.mainQuestion || '<span class="text-gray-300">Not set</span>'}</p>
+                            <div class="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="bg-gray-50 rounded-lg p-2.5 border border-gray-100">
+                                    <p class="text-[8px] font-black text-gray-400 uppercase mb-1">Question</p>
+                                    <p class="text-[11px] font-bold text-gray-800 line-clamp-1 italic">"${w.mainQuestion || '...'}"</p>
                                 </div>
-                                <div>
+                                <div class="bg-blue-50/50 rounded-lg p-2.5 border border-blue-100">
+                                    <p class="text-[8px] font-black text-blue-400 uppercase mb-1">Claim</p>
+                                    <p class="text-[11px] font-bold text-blue-900 line-clamp-1">${w.claim || '...'}</p>
+                                </div>
+                            </div>
+                            <button onclick="window.viewStudentWork('${data.student.visitorId}')" class="w-full py-2.5 bg-white border-t text-primary font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 transition-all">
+                                Inspect Board
+                            </button>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
                                     <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Current Claim</p>
                                     <p class="text-gray-700 line-clamp-2">${w.claim || '<span class="text-gray-300">No claim yet</span>'}</p>
                                 </div>
@@ -522,56 +531,50 @@ export async function applyTemplate(templateId) {
 /**
  * Renders Student Management view.
  */
+/**
+ * Renders the Teacher Student List / Management view.
+ */
 export async function renderTeacherStudents() {
     const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
     const students = allUsers.filter(u => u.mode === 'student');
     const now = Date.now();
 
     return `
-        <div class="max-w-6xl mx-auto">
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-gray-900">Student Manager</h2>
-                <p class="text-gray-500 mt-1">Manage and monitor students in class: <span class="font-mono font-black text-primary">${App.classCode}</span></p>
+        <div class="max-w-5xl mx-auto px-2 md:px-0">
+            <div class="mb-4">
+                <h2 class="text-xl font-black text-gray-900 uppercase tracking-tighter">Student Management</h2>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">${students.length} Students Active</p>
             </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            <div class="space-y-1.5" data-card-title="Students">
                 ${students.map(s => {
                     const isOnline = now - s.lastSeen < 15000;
                     return `
-                        <div class="bg-white rounded-2xl border p-6 shadow-sm hover:shadow-md transition-all group">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-white">
+                        <div class="bg-white p-2.5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                                <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
                                     ${s.avatar || s.name.charAt(0).toUpperCase()}
                                 </div>
-                                <div class="flex flex-col items-end">
-                                    <span class="px-3 py-1 ${isOnline ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'} rounded-full text-[10px] font-black uppercase tracking-wider border">
-                                        ${isOnline ? 'ONLINE' : 'OFFLINE'}
-                                    </span>
-                                    ${!isOnline ? `<p class="text-[10px] text-gray-400 mt-1 font-bold uppercase">${new Date(s.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>` : ''}
+                                <div class="min-w-0">
+                                    <p class="font-black text-gray-900 text-xs truncate">${s.name}</p>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-300'}"></span>
+                                        <span class="text-[8px] font-bold text-gray-400 uppercase">${isOnline ? 'Active' : 'Away'}</span>
+                                    </div>
                                 </div>
                             </div>
-                            <h3 class="font-bold text-gray-900 text-xl mb-1">${s.name}</h3>
-                            <p class="text-xs text-gray-400 mb-6 uppercase font-black tracking-widest flex items-center gap-1">
-                                <span class="iconify" data-icon="mdi:identifier"></span>
-                                ID: ${s.visitorId.split('_').pop()}
-                            </p>
-                            <div class="flex gap-2">
-                                <button onclick="window.viewStudentWork('${s.visitorId}')" class="flex-1 py-3 bg-blue-50 text-primary rounded-xl text-sm font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2">
-                                    <span class="iconify" data-icon="mdi:television-guide"></span>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="window.viewStudentWork('${s.visitorId}')" class="px-3 py-1.5 bg-blue-50 text-primary rounded-lg text-[9px] font-black uppercase tracking-widest">
                                     Monitor
                                 </button>
-                                <button onclick="window.kickStudent('${s.visitorId}')" class="p-3 bg-red-50 text-red-400 rounded-xl hover:bg-red-100 hover:text-red-600 transition-colors" title="Kick Student">
-                                    <span class="iconify" data-icon="mdi:account-remove"></span>
+                                <button onclick="window.kickStudent('${s.visitorId}')" class="p-1.5 bg-red-50 text-red-400 rounded-lg hover:text-red-600 transition-colors">
+                                    <span class="iconify text-sm" data-icon="mdi:account-remove"></span>
                                 </button>
                             </div>
                         </div>
                     `;
                 }).join('')}
-                ${students.length === 0 ? `
-                    <div class="col-span-full">
-                        ${renderEmptyState('Classroom is Empty', 'Students will appear here as they join the active session.', 'mdi:account-group-outline', true)}
-                    </div>
-                ` : ''}
+                ${students.length === 0 ? renderEmptyState('No Students', 'Invite your class to start.', 'mdi:account-group', true) : ''}
             </div>
         </div>
     `;
@@ -582,7 +585,6 @@ export async function renderTeacherStudents() {
  */
 window.kickStudent = (id) => {
     if (confirm('Are you sure you want to remove this student from the session?')) {
-        // Implementation would involve marking the student as kicked in the database
         toast('Student removed (Simulated)', 'info');
     }
 };
@@ -762,76 +764,6 @@ export async function renderTeacherAccess() {
         </div>
     `;
 }
-
-export function renderSessionSettings() {
-    return `
-        <div class="max-w-2xl mx-auto">
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-gray-900">Session Settings</h2>
-                <p class="text-gray-500 mt-1">Configure global class behavior and storage options.</p>
-            </div>
-            
-            <div class="bg-white rounded-[40px] shadow-sm border border-gray-100 p-10 space-y-10">
-                <div class="space-y-6">
-                    <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Student Interaction</h4>
-                    <div class="grid gap-4">
-                        <label class="flex items-center justify-between p-6 bg-gray-50 rounded-3xl cursor-pointer hover:bg-gray-100 transition-all group border-2 border-transparent hover:border-primary/10">
-                            <div>
-                                <p class="font-bold text-gray-800 text-lg">Show Feedback & Grades</p>
-                                <p class="text-xs text-gray-500 mt-1">Allow students to see your comments and stickers on their practice boards.</p>
-                            </div>
-                            <input type="checkbox" ${App.teacherSettings.showFeedbackToStudents ? 'checked' : ''} onchange="window.toggleFeedbackVisibility()" class="w-7 h-7 rounded-xl text-primary focus:ring-offset-0 focus:ring-primary transition-all">
-                        </label>
-                        <label class="flex items-center justify-between p-6 bg-gray-50 rounded-3xl cursor-pointer hover:bg-gray-100 transition-all group border-2 border-transparent hover:border-primary/10">
-                            <div>
-                                <p class="font-bold text-gray-800 text-lg">Allow Peer Discussions</p>
-                                <p class="text-xs text-gray-500 mt-1">Students can reply to each other on the shared Argument board.</p>
-                            </div>
-                            <input type="checkbox" ${App.teacherSettings.allowStudentReplies ? 'checked' : ''} onchange="window.toggleTeacherSetting('allowStudentReplies')" class="w-7 h-7 rounded-xl text-primary focus:ring-offset-0 focus:ring-primary transition-all">
-                        </label>
-                    </div>
-                </div>
-
-                <div class="border-t border-gray-100 pt-10">
-                    <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-6">Data & Infrastructure</h4>
-                    <div class="grid gap-6">
-                        <div class="p-6 bg-green-50 rounded-3xl border-2 border-green-100 flex items-start gap-5">
-                            <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 flex-shrink-0 shadow-inner">
-                                <span class="iconify text-3xl" data-icon="mdi:database-check"></span>
-                            </div>
-                            <div>
-                                <p class="text-lg font-bold text-green-800">Local Persistence Active</p>
-                                <p class="text-sm text-green-600 mt-1 leading-relaxed">InquiryOS uses **IndexedDB** technology to save your work directly in your browser. No account is needed, and data remains private to this device.</p>
-                                <div class="mt-4 flex items-center gap-2">
-                                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                    <span class="text-[10px] font-black uppercase text-green-700 tracking-widest">Database Ready</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="p-6 bg-blue-50 rounded-3xl border-2 border-blue-100 flex items-start gap-5">
-                            <div class="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 flex-shrink-0 shadow-inner">
-                                <span class="iconify text-3xl" data-icon="mdi:sync"></span>
-                            </div>
-                            <div>
-                                <p class="text-lg font-bold text-blue-800">Real-time Synchronization</p>
-                                <p class="text-sm text-blue-600 mt-1 leading-relaxed">State is broadcasted across the local database every 2 seconds, ensuring teachers see student progress as it happens.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="pt-6 flex justify-center">
-                    <button onclick="window.leaveSession()" class="px-8 py-4 bg-red-50 text-red-600 rounded-2xl font-black hover:bg-red-100 transition-all flex items-center gap-2">
-                        <span class="iconify text-xl" data-icon="mdi:logout"></span>
-                        Leave Session & Reset App
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
 
 /**
  * Renders the guided activity dashboard.

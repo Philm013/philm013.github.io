@@ -74,7 +74,7 @@ export function renderQuestionsModule() {
             </div>
             
             <div class="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar pb-4" data-card-title="Notice & Wonder">
-                <div class="flex flex-nowrap gap-4 px-2 h-full items-stretch">
+                <div class="mobile-h-scroll flex flex-nowrap gap-4 px-2 h-full items-stretch">
                     ${allCategories.map(cat => `
                         <div class="w-80 shrink-0 h-full">
                             ${renderInputCard(cat.label, cat.icon, cat.color, cat.inputId, cat.action, cat.listRenderer(), cat.subtitle, cat.hex)}
