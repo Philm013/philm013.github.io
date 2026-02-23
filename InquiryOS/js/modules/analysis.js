@@ -256,6 +256,13 @@ function renderStatisticsSummary(dt) {
 }
 
 /**
+ * Initializes the Chart.js instance for data visualization.
+ */
+export function initChart() {
+    window.updateChart();
+}
+
+/**
  * Refreshes the graph based on selected X/Y axes and table data.
  */
 export function updateChart() {
