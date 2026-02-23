@@ -636,6 +636,52 @@
         
         .layers-panel.open { display: flex; }
         
+        .history-panel {
+            position: absolute;
+            right: 16px;
+            bottom: 60px;
+            width: 220px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            display: none;
+            max-height: 300px;
+            overflow: hidden;
+            flex-direction: column;
+            z-index: 101;
+        }
+        
+        .history-panel.open { display: flex; }
+        
+        .history-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .history-list { flex: 1; overflow-y: auto; padding: 4px; }
+        
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 2px;
+            border: 1px solid transparent;
+            font-size: 12px;
+        }
+        
+        .history-item:hover { background: var(--bg-hover); }
+        .history-item.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+        .history-item.future { opacity: 0.5; }
+        
+        .history-time { font-size: 10px; color: var(--text-dim); margin-left: auto; }
+        
         .layers-header {
             padding: 12px 16px;
             border-bottom: 1px solid var(--border);
@@ -944,6 +990,10 @@
             
             <button class="btn btn-primary btn-sm" id="startNewBtn" title="Start New Session">＋ New</button>
             
+            <div class="session-manager" id="sessionManager" style="display:flex; align-items:center; gap:8px; margin-left:10px; border-left:1px solid var(--border); padding-left:10px;">
+                <select id="sessionSwitcher" class="btn btn-default btn-sm" style="max-width:150px; padding:6px 10px;"></select>
+            </div>
+
             <div class="url-bar" id="browserBar">
                 <input type="text" class="url-input" id="urlInput" value="https://wikipedia.org" placeholder="Enter URL...">
                 <button class="btn btn-default" id="goBtn">Go</button>
@@ -976,6 +1026,7 @@
                 
                 <div class="tool-group">
                     <button class="tool-btn" id="undoBtn" title="Undo (Ctrl+Z)">↺</button>
+                    <button class="tool-btn" id="historyBtn" title="History">📜</button>
                     <button class="tool-btn" id="redoBtn" title="Redo (Ctrl+Y)">↻</button>
                 </div>
                 
@@ -1014,6 +1065,14 @@
                         <span id="layerCount">0</span>
                     </div>
                     <div class="layers-list" id="layersList"></div>
+                </div>
+
+                <div class="history-panel" id="historyPanel">
+                    <div class="history-header">
+                        <span>History</span>
+                        <span id="historyStepCount">0</span>
+                    </div>
+                    <div class="history-list" id="historyList"></div>
                 </div>
             </div>
         </div>
@@ -1223,8 +1282,11 @@ const Settings = {
 const DB = {
     db: null,
     NAME: 'DevMarkupPro',
-    VERSION: 4,
-    STORE: 'sessions',
+    VERSION: 5,
+    STORES: {
+        SESSIONS: 'sessions_v2',
+        CAPTURES: 'captures_v2'
+    },
 
     async init() {
         return new Promise((resolve, reject) => {
@@ -1233,56 +1295,58 @@ const DB = {
             req.onsuccess = () => { this.db = req.result; resolve(); };
             req.onupgradeneeded = e => {
                 const db = e.target.result;
-                if (!db.objectStoreNames.contains(this.STORE)) {
-                    db.createObjectStore(this.STORE, { keyPath: 'id' });
+                if (!db.objectStoreNames.contains(this.STORES.SESSIONS)) {
+                    db.createObjectStore(this.STORES.SESSIONS, { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains(this.STORES.CAPTURES)) {
+                    const store = db.createObjectStore(this.STORES.CAPTURES, { keyPath: 'id' });
+                    store.createIndex('sessionId', 'sessionId', { unique: false });
                 }
             };
         });
     },
 
-    async getAll() {
+    async getAll(storeName) {
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction(this.STORE, 'readonly');
-            const req = tx.objectStore(this.STORE).getAll();
+            const tx = this.db.transaction(storeName, 'readonly');
+            const req = tx.objectStore(storeName).getAll();
             req.onsuccess = () => resolve(req.result || []);
             req.onerror = () => reject(req.error);
         });
     },
 
-    async save(session) {
+    async getCapturesForSession(sessionId) {
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction(this.STORE, 'readwrite');
-            const data = {
-                id: session.id,
-                title: session.title,
-                imageData: session.imageData,
-                thumbData: session.thumbData,
-                pdfData: session.pdfData || null, // Add PDF base64
-                width: session.width,
-                height: session.height,
-                shapes: session.shapes.map(s => ({ ...s })),
-                viewport: session.viewport,
-                createdAt: session.createdAt
-            };
-            const req = tx.objectStore(this.STORE).put(data);
+            const tx = this.db.transaction(this.STORES.CAPTURES, 'readonly');
+            const index = tx.objectStore(this.STORES.CAPTURES).index('sessionId');
+            const req = index.getAll(sessionId);
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+    },
+
+    async save(storeName, data) {
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(storeName, 'readwrite');
+            const req = tx.objectStore(storeName).put(data);
             req.onsuccess = () => resolve();
             req.onerror = () => reject(req.error);
         });
     },
 
-    async delete(id) {
+    async delete(storeName, id) {
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction(this.STORE, 'readwrite');
-            const req = tx.objectStore(this.STORE).delete(id);
+            const tx = this.db.transaction(storeName, 'readwrite');
+            const req = tx.objectStore(storeName).delete(id);
             req.onsuccess = () => resolve();
             req.onerror = () => reject(req.error);
         });
     },
 
-    async clear() {
+    async clear(storeName) {
         return new Promise((resolve, reject) => {
-            const tx = this.db.transaction(this.STORE, 'readwrite');
-            const req = tx.objectStore(this.STORE).clear();
+            const tx = this.db.transaction(storeName, 'readwrite');
+            const req = tx.objectStore(storeName).clear();
             req.onsuccess = () => resolve();
             req.onerror = () => reject(req.error);
         });
@@ -1882,62 +1946,128 @@ const Stock = {
 // LIBRARY - FIXED VERSION
 // =============================================
 const Library = {
-    sessions: [],
-    activeId: null,
+    sessions: [], // This will now store Session containers
+    activeSessionId: null,
+    captures: [], // This will store Captures for the active session
+    activeCaptureId: null,
     currentTab: 'captures',
-    loadingSessionId: null,
+    loadingCaptureId: null,
 
     async init() {
         await DB.init();
-        await this.loadFromDB();
+        await this.loadSessions();
         this.setupTabs();
         this.setupSearch();
+        this.setupSessionSwitcher();
         this.render();
         Icons.init();
         Emojis.init();
         Stock.load(true);
     },
 
-    async loadFromDB() {
+    async loadSessions() {
         try {
-            const stored = await DB.getAll();
-            for (const data of stored) {
-                // Store the raw data - we'll load images on demand
-                this.sessions.push({
-                    id: data.id,
-                    title: data.title,
-                    imageData: data.imageData,
-                    thumbData: data.thumbData,
-                    pdfData: data.pdfData || null,
-                    width: data.width,
-                    height: data.height,
-                    shapes: data.shapes || [],
-                    viewport: data.viewport || { x: 0, y: 0, scale: 1 },
-                    selected: false,
-                    createdAt: data.createdAt,
-                    img: null, // Will be loaded on demand
-                    loaded: false
-                });
-            }
+            this.sessions = await DB.getAll(DB.STORES.SESSIONS);
             this.sessions.sort((a, b) => b.createdAt - a.createdAt);
+            
+            if (this.sessions.length === 0) {
+                await this.createNewSession('Default Session');
+            } else {
+                this.activeSessionId = this.sessions[0].id;
+                await this.loadCaptures(this.activeSessionId);
+            }
         } catch (e) {
-            console.error('Failed to load sessions from DB:', e);
+            console.error('Failed to load sessions:', e);
         }
     },
 
-    // Ensure session image is loaded
-    async ensureSessionLoaded(session) {
-        if (session.loaded && session.img) {
-            return true;
-        }
-        
+    async createNewSession(name = 'New Session') {
+        const session = {
+            id: Utils.uid(),
+            name: name,
+            createdAt: Date.now()
+        };
+        this.sessions.unshift(session);
+        await DB.save(DB.STORES.SESSIONS, session);
+        this.activeSessionId = session.id;
+        this.captures = [];
+        this.activeCaptureId = null;
+        this.updateSessionSwitcher();
+        this.render();
+        return session;
+    },
+
+    async loadCaptures(sessionId) {
         try {
-            const img = await Utils.loadImage(session.imageData);
-            session.img = img;
-            session.loaded = true;
+            const stored = await DB.getCapturesForSession(sessionId);
+            this.captures = stored.map(data => ({
+                ...data,
+                img: null,
+                loaded: false,
+                selected: false
+            }));
+            this.captures.sort((a, b) => b.createdAt - a.createdAt);
+            this.render();
+        } catch (e) {
+            console.error('Failed to load captures:', e);
+        }
+    },
+
+    async switchSession(sessionId) {
+        if (this.activeCaptureId && Editor.session) {
+            await this.saveCurrentCapture();
+        }
+        this.activeSessionId = sessionId;
+        this.activeCaptureId = null;
+        Editor.session = null;
+        await this.loadCaptures(sessionId);
+        this.updateSessionSwitcher();
+        App.setView('browse');
+    },
+
+    setupSessionSwitcher() {
+        const switcher = document.getElementById('sessionSwitcher');
+        switcher.addEventListener('change', (e) => {
+            if (e.target.value === 'NEW_SESSION') {
+                const name = prompt('Enter session name:', 'Session ' + (this.sessions.length + 1));
+                if (name) this.createNewSession(name);
+                else this.updateSessionSwitcher();
+            } else {
+                this.switchSession(e.target.value);
+            }
+        });
+        this.updateSessionSwitcher();
+    },
+
+    updateSessionSwitcher() {
+        const switcher = document.getElementById('sessionSwitcher');
+        switcher.innerHTML = '';
+        this.sessions.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            opt.selected = s.id === this.activeSessionId;
+            switcher.appendChild(opt);
+        });
+        const divider = document.createElement('option');
+        divider.disabled = true;
+        divider.textContent = '──────────';
+        switcher.appendChild(divider);
+        const newOpt = document.createElement('option');
+        newOpt.value = 'NEW_SESSION';
+        newOpt.textContent = '＋ New Session...';
+        switcher.appendChild(newOpt);
+    },
+
+    // Ensure capture image is loaded
+    async ensureCaptureLoaded(capture) {
+        if (capture.loaded && capture.img) return true;
+        try {
+            capture.img = await Utils.loadImage(capture.imageData);
+            capture.loaded = true;
             return true;
         } catch (e) {
-            console.error('Failed to load session image:', session.id, e);
+            console.error('Failed to load capture image:', capture.id, e);
             return false;
         }
     },
@@ -1978,10 +2108,7 @@ const Library = {
 
     setTab(tab) {
         this.currentTab = tab;
-        
-        document.querySelectorAll('.tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.tab === tab);
-        });
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
         
         document.getElementById('capturesGrid').style.display = tab === 'captures' ? 'grid' : 'none';
         document.getElementById('iconsGrid').style.display = tab === 'icons' ? 'grid' : 'none';
@@ -1991,22 +2118,11 @@ const Library = {
         document.getElementById('categoryChips').style.display = tab === 'emojis' ? 'flex' : 'none';
         
         const apiStatus = document.getElementById('apiStatus');
-        if (tab === 'icons') {
-            apiStatus.style.display = 'flex';
-            Icons.updateApiStatus();
-        } else if (tab === 'stock') {
-            apiStatus.style.display = 'flex';
-            Stock.updateApiStatus();
-        } else {
-            apiStatus.style.display = 'none';
-        }
+        if (tab === 'icons') { apiStatus.style.display = 'flex'; Icons.updateApiStatus(); }
+        else if (tab === 'stock') { apiStatus.style.display = 'flex'; Stock.updateApiStatus(); }
+        else apiStatus.style.display = 'none';
         
-        const placeholders = {
-            captures: 'Search captures...',
-            icons: 'Search icons...',
-            emojis: 'Search emojis...',
-            stock: 'Search photos...'
-        };
+        const placeholders = { captures: 'Search captures...', icons: 'Search icons...', emojis: 'Search emojis...', stock: 'Search photos...' };
         document.getElementById('searchInput').placeholder = placeholders[tab];
     },
 
@@ -2027,9 +2143,15 @@ const Library = {
         fullCanvas.height = img.height;
         fullCanvas.getContext('2d').drawImage(img, 0, 0);
         
-        const session = {
+        const sourceUrl = document.getElementById('urlInput').value;
+        let host = 'Local';
+        try { host = new URL(sourceUrl).hostname; } catch(e) {}
+        
+        const capture = {
             id: Utils.uid(),
-            title: title + ' - ' + new Date().toLocaleTimeString(),
+            sessionId: this.activeSessionId,
+            title: title + ' (' + host + ')',
+            sourceUrl: sourceUrl,
             img,
             imageData: fullCanvas.toDataURL('image/png'),
             thumbData: thumbCanvas.toDataURL('image/jpeg', 0.8),
@@ -2040,74 +2162,63 @@ const Library = {
             viewport: { x: 0, y: 0, scale: 1 },
             selected: false,
             createdAt: Date.now(),
-            loaded: true // Already loaded since we just created it
+            loaded: true
         };
         
-        this.sessions.unshift(session);
-        await DB.save(session);
+        this.captures.unshift(capture);
+        await DB.save(DB.STORES.CAPTURES, capture);
         
         this.render();
-        this.loadSession(session.id);
+        this.loadCapture(capture.id);
         Toast.show('Capture added!');
     },
 
-    // Save current session to DB
-    async saveCurrentSession() {
-        if (this.activeId && Editor.session) {
-            const current = this.sessions.find(s => s.id === this.activeId);
+    async saveCurrentCapture() {
+        if (this.activeCaptureId && Editor.session) {
+            const current = this.captures.find(c => c.id === this.activeCaptureId);
             if (current) {
                 current.shapes = [...Editor.session.shapes];
                 current.viewport = { ...Editor.viewport };
-                
-                // Update thumbnail to reflect markups
                 const thumbData = await Editor.generateThumbnail();
                 if (thumbData) current.thumbData = thumbData;
-                
-                await DB.save(current);
+                await DB.save(DB.STORES.CAPTURES, current);
                 this.render();
             }
         }
     },
 
-    async loadSession(id) {
-        // Prevent double-loading
-        if (this.loadingSessionId === id) return;
+    async loadCapture(id) {
+        if (this.loadingCaptureId === id) return;
+        const capture = this.captures.find(c => c.id === id);
+        if (!capture) return;
         
-        const session = this.sessions.find(s => s.id === id);
-        if (!session) return;
+        await this.saveCurrentCapture();
         
-        // Save current session first
-        await this.saveCurrentSession();
+        this.loadingCaptureId = id;
+        this.render();
         
-        this.loadingSessionId = id;
-        this.render(); // Show loading state
-        
-        // Ensure the session image is loaded
-        const loaded = await this.ensureSessionLoaded(session);
-        
+        const loaded = await this.ensureCaptureLoaded(capture);
         if (!loaded) {
             Toast.show('Failed to load capture', 'error');
-            this.loadingSessionId = null;
+            this.loadingCaptureId = null;
             this.render();
             return;
         }
         
-        this.activeId = id;
-        this.loadingSessionId = null;
-        
+        this.activeCaptureId = id;
+        this.loadingCaptureId = null;
         App.setView('markup');
-        Editor.load(session);
-        
+        Editor.load(capture);
         this.render();
     },
 
-    async deleteSession(id) {
-        const idx = this.sessions.findIndex(s => s.id === id);
+    async deleteCapture(id) {
+        const idx = this.captures.findIndex(c => c.id === id);
         if (idx > -1) {
-            this.sessions.splice(idx, 1);
-            await DB.delete(id);
-            if (this.activeId === id) {
-                this.activeId = null;
+            this.captures.splice(idx, 1);
+            await DB.delete(DB.STORES.CAPTURES, id);
+            if (this.activeCaptureId === id) {
+                this.activeCaptureId = null;
                 Editor.session = null;
                 Editor.draw();
             }
@@ -2117,16 +2228,19 @@ const Library = {
     },
 
     selectAll() {
-        const allSelected = this.sessions.every(s => s.selected);
-        this.sessions.forEach(s => s.selected = !allSelected);
+        const allSelected = this.captures.every(c => c.selected);
+        this.captures.forEach(c => c.selected = !allSelected);
         this.render();
     },
 
     async clearAll() {
-        Modal.confirm('Clear All', 'Delete all captures?', async () => {
-            await DB.clear();
-            this.sessions = [];
-            this.activeId = null;
+        Modal.confirm('Clear All', 'Delete all captures in this session?', async () => {
+            const toDelete = [...this.captures];
+            for (const c of toDelete) {
+                await DB.delete(DB.STORES.CAPTURES, c.id);
+            }
+            this.captures = [];
+            this.activeCaptureId = null;
             Editor.session = null;
             App.setView('browse');
             this.render();
@@ -2138,105 +2252,66 @@ const Library = {
         const grid = document.getElementById('capturesGrid');
         grid.innerHTML = '';
         
-        // Add "New Session" card at the top
-        const newCard = document.createElement('div');
-        newCard.className = 'session-card new-session-card';
-        newCard.innerHTML = `
-            <div class="new-session-plus">＋</div>
-            <div class="session-info">
-                <div class="session-title">New Session</div>
-                <div class="session-meta">Start a new capture workflow</div>
-            </div>
-        `;
-        newCard.addEventListener('click', () => App.startNew());
-        grid.appendChild(newCard);
+        if (this.captures.length === 0) {
+            grid.innerHTML = `<div style="text-align:center; padding:60px 20px; color:var(--text-muted);"><div style="font-size:48px; margin-bottom:16px; opacity:0.3;">📷</div><div>No captures in this session</div><div style="font-size:12px; margin-top:8px; opacity:0.7;">Browse a page and click Capture</div></div>`;
+            return;
+        }
         
-        this.sessions.forEach(s => {
+        this.captures.forEach(c => {
             const card = document.createElement('div');
-            const isLoading = this.loadingSessionId === s.id;
-            card.className = 'session-card' + 
-                (s.id === this.activeId ? ' active' : '') +
-                (s.selected ? ' selected' : '') +
-                (isLoading ? ' loading' : '');
+            const isLoading = this.loadingCaptureId === c.id;
+            card.className = 'session-card' + (c.id === this.activeCaptureId ? ' active' : '') + (c.selected ? ' selected' : '') + (isLoading ? ' loading' : '');
             
             const thumbContainer = document.createElement('div');
             thumbContainer.className = 'session-thumb-container';
-            
             const selectDot = document.createElement('div');
             selectDot.className = 'session-select';
-            selectDot.addEventListener('click', (e) => {
-                e.stopPropagation();
-                s.selected = !s.selected;
-                this.render();
-            });
-
+            selectDot.addEventListener('click', (e) => { e.stopPropagation(); c.selected = !c.selected; this.render(); });
             const thumb = document.createElement('img');
             thumb.className = 'session-thumb';
-            thumb.src = s.thumbData;
-            
+            thumb.src = c.thumbData;
             thumbContainer.appendChild(thumb);
             thumbContainer.appendChild(selectDot);
             
             const info = document.createElement('div');
             info.className = 'session-info';
-            info.innerHTML = `
-                <div class="session-title">${s.title}</div>
-                <div class="session-meta">${s.width} × ${s.height} • ${s.shapes.length} layers${isLoading ? ' • Loading...' : ''}</div>
-            `;
+            info.innerHTML = `<div class="session-title" title="${c.sourceUrl}">${c.title}</div><div class="session-meta">${c.width} × ${c.height} • ${c.shapes.length} layers${isLoading ? ' • Loading...' : ''}</div>`;
             
             const actions = document.createElement('div');
             actions.className = 'session-card-actions';
-            
             const renameBtn = document.createElement('button');
             renameBtn.className = 'session-btn';
             renameBtn.innerHTML = '✏️';
-            renameBtn.title = 'Rename';
-            renameBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.renameSession(s.id);
-            });
-            
+            renameBtn.addEventListener('click', (e) => { e.stopPropagation(); this.renameCapture(c.id); });
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'session-btn session-delete';
             deleteBtn.innerHTML = '×';
-            deleteBtn.title = 'Delete';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.deleteSession(s.id);
-            });
-            
+            deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); this.deleteCapture(c.id); });
             actions.appendChild(renameBtn);
             actions.appendChild(deleteBtn);
             
             card.appendChild(thumbContainer);
             card.appendChild(info);
             card.appendChild(actions);
-            
-            const sessionId = s.id;
-            card.addEventListener('click', (e) => {
-                if (!isLoading) {
-                    this.loadSession(sessionId);
-                }
-            });
-            
+            card.addEventListener('click', () => { if (!isLoading) this.loadCapture(c.id); });
             grid.appendChild(card);
         });
     },
 
-    async renameSession(id) {
-        const session = this.sessions.find(s => s.id === id);
-        if (!session) return;
-        const newTitle = prompt('Enter new title:', session.title);
+    async renameCapture(id) {
+        const capture = this.captures.find(c => c.id === id);
+        if (!capture) return;
+        const newTitle = prompt('Enter new title:', capture.title);
         if (newTitle && newTitle.trim()) {
-            session.title = newTitle.trim();
-            await DB.save(session);
+            capture.title = newTitle.trim();
+            await DB.save(DB.STORES.CAPTURES, capture);
             this.render();
             Toast.show('Renamed');
         }
     },
 
     getSelected() {
-        return this.sessions.filter(s => s.selected);
+        return this.captures.filter(c => c.selected);
     }
 };
 
@@ -2387,6 +2462,7 @@ const Editor = {
     pendingAsset: null,
     loadedImages: new Map(),
     showLayersPanel: false,
+    showHistoryPanel: false,
     editingText: null,
     textOverlay: null,
     
@@ -2425,16 +2501,22 @@ const Editor = {
         document.getElementById('strokeColor').addEventListener('change', (e) => {
             this.style.stroke = e.target.value;
             this.applyStyleToSelected('stroke', e.target.value);
+            this.saveHistory('Change Stroke Color');
         });
         
         document.getElementById('fillColor').addEventListener('change', (e) => {
             this.style.fill = e.target.value;
             this.applyStyleToSelected('fill', e.target.value);
+            this.saveHistory('Change Fill Color');
         });
         
         document.getElementById('strokeSlider').addEventListener('input', (e) => {
             this.style.strokeWidth = parseInt(e.target.value);
             this.applyStyleToSelected('strokeWidth', parseInt(e.target.value));
+        });
+
+        document.getElementById('strokeSlider').addEventListener('change', (e) => {
+            this.saveHistory('Change Stroke Width');
         });
     },
 
@@ -2481,7 +2563,7 @@ const Editor = {
         // Reset history
         this.history = [];
         this.historyIndex = -1;
-        this.saveHistory();
+        this.saveHistory('Open Capture');
 
         // Load stock images
         session.shapes.forEach(async (shape) => {
@@ -2542,36 +2624,84 @@ const Editor = {
         document.getElementById('zoomLevel').textContent = Math.round(this.viewport.scale * 100) + '%';
     },
 
-    saveHistory() {
+    saveHistory(description = 'Action') {
         if (!this.session) return;
         const state = JSON.stringify(this.session.shapes);
+        
+        // If state hasn't changed from last history point, don't save
+        if (this.historyIndex >= 0 && this.history[this.historyIndex].state === state) return;
+
         if (this.historyIndex < this.history.length - 1) {
             this.history = this.history.slice(0, this.historyIndex + 1);
         }
-        this.history.push(state);
+        
+        this.history.push({
+            state: state,
+            description: description,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        });
+        
         this.historyIndex++;
         if (this.history.length > 50) {
             this.history.shift();
             this.historyIndex--;
         }
+        
+        this.updateHistoryUI();
     },
 
     undo() {
         if (this.historyIndex > 0) {
-            this.historyIndex--;
-            this.session.shapes = JSON.parse(this.history[this.historyIndex]);
-            this.draw();
-            this.updateLayers();
+            this.gotoHistoryStep(this.historyIndex - 1);
         }
     },
 
     redo() {
         if (this.historyIndex < this.history.length - 1) {
-            this.historyIndex++;
-            this.session.shapes = JSON.parse(this.history[this.historyIndex]);
-            this.draw();
-            this.updateLayers();
+            this.gotoHistoryStep(this.historyIndex + 1);
         }
+    },
+
+    gotoHistoryStep(index) {
+        if (index < 0 || index >= this.history.length) return;
+        this.historyIndex = index;
+        this.session.shapes = JSON.parse(this.history[this.historyIndex].state);
+        this.draw();
+        this.updateLayers();
+        this.updateHistoryUI();
+    },
+
+    toggleHistory() {
+        this.showHistoryPanel = !this.showHistoryPanel;
+        document.getElementById('historyPanel').classList.toggle('open', this.showHistoryPanel);
+        if (this.showHistoryPanel) this.updateHistoryUI();
+    },
+
+    updateHistoryUI() {
+        const list = document.getElementById('historyList');
+        if (!list) return;
+        
+        document.getElementById('historyStepCount').textContent = this.history.length;
+        list.innerHTML = '';
+        
+        this.history.forEach((step, i) => {
+            const el = document.createElement('div');
+            el.className = 'history-item';
+            if (i === this.historyIndex) el.classList.add('active');
+            if (i > this.historyIndex) el.classList.add('future');
+            
+            el.innerHTML = `
+                <span>${step.description}</span>
+                <span class="history-time">${step.time}</span>
+            `;
+            
+            el.onclick = () => this.gotoHistoryStep(i);
+            list.appendChild(el);
+            
+            if (i === this.historyIndex) {
+                setTimeout(() => el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 10);
+            }
+        });
     },
 
     toWorld(x, y) {
@@ -3021,11 +3151,15 @@ const Editor = {
         this.container.classList.remove('pan-mode', 'resize-nw', 'resize-ne', 'resize-sw', 'resize-se');
         
         if (wasDrawing || wasModifying) {
-            this.saveHistory();
+            let desc = 'Action';
+            if (wasDrawing) desc = `Draw ${this.tool}`;
+            else if (this.isResize) desc = `Resize ${this.activeShape?.type || 'Shape'}`;
+            else if (this.activeShape) desc = `Move ${this.activeShape.type}`;
+            this.saveHistory(desc);
         }
 
         if (this.session) {
-            const stored = Library.sessions.find(s => s.id === this.session.id);
+            const stored = Library.captures.find(c => c.id === this.session.id);
             if (stored) {
                 stored.shapes = [...this.session.shapes];
                 stored.viewport = { ...this.viewport };
@@ -3034,7 +3168,7 @@ const Editor = {
                 const thumbData = await this.generateThumbnail();
                 if (thumbData) stored.thumbData = thumbData;
                 
-                await DB.save(stored);
+                await DB.save(DB.STORES.CAPTURES, stored);
             }
         }
         
@@ -3348,7 +3482,7 @@ const Editor = {
     deleteSelected() {
         if (!this.session) return;
         this.session.shapes = this.session.shapes.filter(s => !s.selected);
-        this.saveHistory();
+        this.saveHistory('Delete Selection');
         this.draw();
         this.updateLayers();
         Toast.show('Deleted');
@@ -3461,7 +3595,7 @@ const Exporter = {
         try {
             // Ensure all selected sessions are loaded
             for (const session of selected) {
-                await Library.ensureSessionLoaded(session);
+                await Library.ensureCaptureLoaded(session);
             }
             
             if (format === 'zip') {
@@ -3668,9 +3802,9 @@ const App = {
         Browser.go();
         this.setupEventListeners();
         
-        // Auto-load most recent session if exists
-        if (Library.sessions.length > 0) {
-            setTimeout(() => Library.loadSession(Library.sessions[0].id), 500);
+        // Auto-load most recent capture if exists
+        if (Library.captures.length > 0) {
+            setTimeout(() => Library.loadCapture(Library.captures[0].id), 500);
         }
         
         window.addEventListener('paste', async e => {
@@ -3711,9 +3845,10 @@ const App = {
         });
         
         document.getElementById('layersBtn').addEventListener('click', () => Editor.toggleLayers());
+        document.getElementById('historyBtn').addEventListener('click', () => Editor.toggleHistory());
         document.getElementById('saveBtn').addEventListener('click', async () => {
-            await Library.saveCurrentSession();
-            Toast.show('Session saved');
+            await Library.saveCurrentCapture();
+            Toast.show('Capture saved');
         });
         document.getElementById('deleteBtn').addEventListener('click', () => Editor.deleteSelected());
         document.getElementById('undoBtn').addEventListener('click', () => Editor.undo());
@@ -3763,12 +3898,12 @@ const App = {
     },
 
     async startNew() {
-        await Library.saveCurrentSession();
-        Library.activeId = null;
-        Editor.session = null;
-        Library.render();
-        this.setView('browse');
-        Toast.show('Starting new session');
+        const name = prompt('Enter new session name:', 'Session ' + (Library.sessions.length + 1));
+        if (name) {
+            await Library.createNewSession(name);
+            this.setView('browse');
+            Toast.show('Started new session: ' + name);
+        }
     }
 };
 
