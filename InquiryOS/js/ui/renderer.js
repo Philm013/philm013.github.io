@@ -32,7 +32,7 @@ import {
     renderSessionSettings
 } from '../teacher/dashboard.js';
 import { renderTeacherNoticeBoard, renderModeration, renderCategoryManager } from '../teacher/noticeboard.js';
-import { renderLiveModels, renderLiveData, initViewerCanvas, renderIconManager } from '../teacher/viewer.js';
+import { renderLiveModels, renderLiveData, renderLiveGeneric, initViewerCanvas, renderIconManager } from '../teacher/viewer.js';
 import { renderNGSSBrowser } from '../core/ngss.js';
 
 /**
@@ -165,6 +165,11 @@ export function updateModeUI() {
  * Renders the content for the currently active student module.
  */
 export function renderStudentContent() {
+    if (App.mode === 'teacher' && App.isExemplarMode) {
+        renderTeacherContent();
+        return;
+    }
+
     renderStatusBanner();
     
     // Force module if set by teacher
@@ -247,6 +252,7 @@ export async function renderTeacherContent() {
         noticeboard: renderTeacherNoticeBoard,
         livemodels: renderLiveModels,
         livedata: renderLiveData,
+        livegeneric: renderLiveGeneric,
         moderation: renderModeration,
         categories: renderCategoryManager,
         icons: renderIconManager,
@@ -411,6 +417,41 @@ export async function toggleExemplarView() {
     }
     renderNavigation();
     renderStudentContent();
+}
+
+/**
+ * Switches the teacher to view a specific student's work.
+ */
+export async function viewStudentWork(visitorId) {
+    // This is now handled in viewer.js but keeping proxy for safety
+    const viewer = await import('../teacher/viewer.js');
+    return viewer.viewStudentWork(visitorId);
+}
+
+/**
+ * Renders a consistent empty state placeholder with optional QR code support.
+ */
+export function renderEmptyState(title, message, icon = 'mdi:folder-open-outline', showQR = false) {
+    return `
+        <div class="flex-1 flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in duration-500">
+            <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6 shadow-inner border border-white">
+                <span class="iconify text-6xl text-gray-200" data-icon="${icon}"></span>
+            </div>
+            <h3 class="text-2xl font-black text-gray-400 uppercase tracking-tighter">${title}</h3>
+            <p class="text-gray-400 mt-2 max-w-md mx-auto leading-relaxed font-medium">${message}</p>
+            ${showQR ? `
+                <div class="mt-10 flex flex-col items-center gap-4">
+                    <button onclick="window.showJoinQR()" class="px-8 py-4 bg-primary text-white rounded-[2rem] font-black shadow-xl shadow-blue-100 hover:opacity-90 flex items-center gap-3 transition-all hover:-translate-y-1">
+                        <span class="iconify text-2xl" data-icon="mdi:qrcode"></span>
+                        Show Class QR Code
+                    </button>
+                    <div class="px-6 py-2 bg-purple-50 text-purple-600 rounded-xl border border-purple-100 font-mono font-black text-lg tracking-widest">
+                        ${App.classCode}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
 }
 
 /**

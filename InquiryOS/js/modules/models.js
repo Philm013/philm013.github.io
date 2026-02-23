@@ -5,6 +5,8 @@
  * shape manipulation, and teacher feedback integration.
  */
 
+/* global Fuse */
+
 import { App } from '../core/state.js';
 import { saveAndBroadcast, saveToStorage } from '../core/sync.js';
 import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
@@ -212,10 +214,10 @@ function renderModelContextBar(availableIcons, emojis) {
     const tool = App.modelState.currentTool;
     const showMore = App.teacherSettings.showAllIcons;
 
-    if (tool === 'node') {
+    if (tool === 'node' || tool === 'stamp') {
         return `
-            <span class="text-xs font-bold text-gray-400 uppercase ml-2">Icons:</span>
-            <div class="flex gap-1">
+            <span class="text-xs font-bold text-gray-400 uppercase ml-2">${tool === 'node' ? 'Icons' : 'Stamps'}:</span>
+            <div class="flex gap-1 items-center">
                 ${(emojis || []).map(e => `
                     <button onclick="window.selectIconForNode('${e}')" 
                         class="p-1.5 rounded-lg hover:bg-blue-100 border-2 text-xl ${App.modelState.selectedIcon === e ? 'border-primary bg-blue-50' : 'border-transparent'}">
@@ -228,6 +230,13 @@ function renderModelContextBar(availableIcons, emojis) {
                         <span class="iconify text-lg" data-icon="${icon}"></span>
                     </button>
                 `).join('')}
+                ${showMore ? `
+                    <div class="h-6 w-px bg-gray-200 mx-2"></div>
+                    <button onclick="window.openIconPicker()" class="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest">
+                        <span class="iconify" data-icon="mdi:magnify"></span>
+                        Search All
+                    </button>
+                ` : ''}
             </div>
         `;
     } else if (tool === 'shape') {
@@ -1017,3 +1026,97 @@ export async function deleteModelElement(type, id) {
     }
 }
 export async function deleteExplanationPoint(id) { App.work.modelExplanations = App.work.modelExplanations.filter(i => i.id !== id); await saveAndBroadcast('modelExplanations', App.work.modelExplanations); renderStudentContent(); }
+
+/**
+ * UI: Opens the global icon picker modal.
+ */
+export function openIconPicker() {
+    const modal = document.getElementById('iconPickerModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.getElementById('iconSearchInput')?.focus();
+    }
+}
+
+/**
+ * UI: Closes the global icon picker modal.
+ */
+export function closeIconPicker() {
+    const modal = document.getElementById('iconPickerModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+/**
+ * UI: Searches for icons via Iconify with fuzzy matching.
+ */
+export async function searchIcons() {
+    const input = document.getElementById('iconSearchInput');
+    const grid = document.getElementById('iconGrid');
+    const status = document.getElementById('iconPickerStatus');
+    const countDisplay = document.getElementById('iconResultCount');
+    
+    if (!input || !grid) return;
+    const query = input.value.trim();
+    if (query.length < 2) return;
+
+    status?.classList.remove('hidden');
+    grid.innerHTML = '';
+
+    const topicExpansion = {
+        'biology': 'cell,nature,life,dna,organism,evolution,plant,animal,ecology',
+        'chemistry': 'molecule,atom,reaction,lab,beaker,substance,periodic',
+        'physics': 'energy,force,motion,electricity,magnet,wave,particle,gravity',
+        'space': 'planet,galaxy,star,telescope,rocket,astronaut,cosmos,moon,orbit',
+        'earth': 'weather,climate,geology,volcano,ocean,river,mountain,rock',
+        'engineering': 'design,structure,machine,robot,tools,construction,blueprint'
+    };
+    
+    let searchUrl = query;
+    const lowerQuery = query.toLowerCase();
+    for (const [topic, expansion] of Object.entries(topicExpansion)) {
+        if (lowerQuery.includes(topic)) { searchUrl += ',' + expansion; break; }
+    }
+
+    try {
+        const response = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(searchUrl)}&limit=100`);
+        const data = await response.json();
+        let icons = data.icons || [];
+
+        if (typeof Fuse !== 'undefined' && icons.length > 0) {
+            const fuse = new Fuse(icons, { threshold: 0.4 });
+            const result = fuse.search(query);
+            if (result.length > 0) icons = result.map(r => r.item);
+        }
+
+        if (countDisplay) countDisplay.textContent = `${icons.length} icons found`;
+        status?.classList.add('hidden');
+
+        grid.innerHTML = icons.map(icon => `
+            <button onclick="window.selectIcon('${icon}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-primary hover:bg-blue-50 transition-all flex items-center justify-center group">
+                <span class="iconify text-2xl text-gray-600 group-hover:text-primary group-hover:scale-110 transition-all" data-icon="${icon}"></span>
+            </button>
+        `).join('');
+    } catch (e) {
+        status?.classList.add('hidden');
+        toast('Search unavailable', 'error');
+    }
+}
+
+/**
+ * UI: Selects an icon from the picker.
+ */
+export function selectIcon(icon) {
+    App.modelState.selectedIcon = icon;
+    closeIconPicker();
+    renderStudentContent();
+    toast(`Icon selected: ${icon.split(':').pop()}`, 'success');
+}
+
+export function selectIconForNode(icon) {
+    App.modelState.selectedIcon = icon;
+    renderStudentContent();
+}

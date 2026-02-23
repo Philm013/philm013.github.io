@@ -15,32 +15,33 @@ export function renderQuestionsModule() {
         <div class="max-w-6xl mx-auto">
             ${renderModuleHeader('Asking Questions', 'mdi:help-circle', 'SEP1')}
             
-            <div class="bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-100 rounded-3xl p-6 md:p-8 mb-8 shadow-sm">
-                <div class="flex flex-col md:flex-row gap-6">
-                    <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm border border-amber-100">
-                        <span class="iconify text-amber-500 text-3xl" data-icon="mdi:eye"></span>
+            <div class="bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-100 rounded-3xl p-6 mb-8 shadow-sm relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
+                <div class="flex flex-col md:flex-row gap-5 relative">
+                    <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-amber-100 text-amber-500">
+                        <span class="iconify text-2xl" data-icon="mdi:eye"></span>
                     </div>
                     <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
-                            <h3 class="text-xl font-black text-gray-900">${p.title || 'Scientific Phenomenon'}</h3>
-                            <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-black uppercase tracking-widest">Observe</span>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-lg font-black text-gray-900">${p.title || 'Scientific Phenomenon'}</h3>
+                            <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest">Focus</span>
                         </div>
-                        <p class="text-gray-600 leading-relaxed">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts below.'}</p>
+                        <p class="text-sm text-gray-600 leading-relaxed max-w-4xl">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts below.'}</p>
                         ${p.tags?.length || p.ngssStandards?.length ? `
-                            <div class="flex gap-2 mt-4 flex-wrap">
-                                ${p.tags?.map(t => `<span class="px-3 py-1 bg-white text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-100 shadow-sm">${t}</span>`).join('') || ''}
-                                ${p.ngssStandards?.map(s => `<span class="px-3 py-1 bg-white text-purple-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-purple-100 shadow-sm">${s}</span>`).join('') || ''}
+                            <div class="flex gap-2 mt-3 flex-wrap">
+                                ${p.tags?.map(t => `<span class="px-2 py-1 bg-white text-amber-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-amber-100 shadow-sm">${t}</span>`).join('') || ''}
+                                ${p.ngssStandards?.map(s => `<span class="px-2 py-1 bg-white text-purple-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-purple-100 shadow-sm">${s}</span>`).join('') || ''}
                             </div>
                         ` : ''}
                     </div>
                 </div>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-                ${renderInputCard('I Notice...', 'mdi:eye', 'blue', 'noticeInput', 'window.addNotice()', renderNoticesList(), 'Physical observations')}
-                ${renderInputCard('I Wonder...', 'mdi:lightbulb', 'yellow', 'wonderInput', 'window.addWonder()', renderWondersList(), 'Curious questions')}
-                ${renderInputCard('Initial Ideas', 'mdi:thought-bubble', 'purple', 'ideaInput', 'window.addIdea()', renderIdeasList(), 'Early hypotheses')}
-                ${renderInputCard('Testable Questions', 'mdi:comment-question', 'green', 'testableQuestionInput', 'window.addTestableQuestion()', renderTestableQuestionsList(), 'Investigatable')}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+                ${renderInputCard('I Notice...', 'mdi:eye', 'blue', 'noticeInput', 'window.addNotice()', renderNoticesList(), 'Observations')}
+                ${renderInputCard('I Wonder...', 'mdi:lightbulb', 'yellow', 'wonderInput', 'window.addWonder()', renderWondersList(), 'Questions')}
+                ${renderInputCard('Initial Ideas', 'mdi:thought-bubble', 'purple', 'ideaInput', 'window.addIdea()', renderIdeasList(), 'Hypotheses')}
+                ${renderInputCard('Testable Questions', 'mdi:comment-question', 'green', 'testableQuestionInput', 'window.addTestableQuestion()', renderTestableQuestionsList(), 'Inquiries')}
             </div>
             
             <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
@@ -102,24 +103,24 @@ export function renderQuestionsModule() {
 function renderInputCard(title, icon, color, inputId, onAction, content, subtitle = '') {
     return `
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-full">
-            <div class="p-5 border-b border-gray-50 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-${color}-50 text-${color}-500 flex items-center justify-center">
+            <div class="p-4 border-b border-gray-50 flex items-center gap-3 shrink-0">
+                <div class="w-9 h-9 rounded-xl bg-${color}-50 text-${color}-500 flex items-center justify-center">
                     <span class="iconify text-xl" data-icon="${icon}"></span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-gray-900">${title}</h3>
-                    <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest">${subtitle}</p>
+                    <h3 class="font-bold text-gray-900 text-sm">${title}</h3>
+                    <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest">${subtitle}</p>
                 </div>
             </div>
-            <div class="flex-1 p-4 space-y-3 overflow-y-auto min-h-[250px] max-h-[400px] custom-scrollbar bg-gray-50/30">
+            <div class="flex-1 p-3 space-y-2 overflow-y-auto min-h-[200px] max-h-[350px] custom-scrollbar bg-gray-50/20">
                 ${content}
             </div>
-            <div class="p-4 bg-white border-t border-gray-50">
+            <div class="p-3 bg-white border-t border-gray-50 shrink-0">
                 <div class="flex gap-2">
                     <input type="text" id="${inputId}" placeholder="Add..." 
-                        class="flex-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-${color}-500 focus:bg-white focus:outline-none transition-all"
+                        class="flex-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-${color}-500 focus:bg-white focus:outline-none transition-all"
                         onkeypress="if(event.key==='Enter')${onAction}">
-                    <button onclick="${onAction}" class="w-10 h-10 flex items-center justify-center bg-${color}-500 text-white rounded-xl hover:opacity-90 transition-all shadow-sm shadow-${color}-100">
+                    <button onclick="${onAction}" class="w-8 h-8 flex items-center justify-center bg-${color}-500 text-white rounded-xl hover:opacity-90 transition-all shadow-sm">
                         <span class="iconify" data-icon="mdi:plus"></span>
                     </button>
                 </div>

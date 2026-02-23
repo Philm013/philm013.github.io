@@ -293,3 +293,96 @@ export function addToPhenomenon(peId) {
         toast('Already linked', 'info');
     }
 }
+
+/**
+ * Returns a set of curated lesson templates for different science domains.
+ */
+export function getNGSSTemplates() {
+    return [
+        {
+            id: 'tpl_life',
+            name: 'Life Science: Ecosystem Dynamics',
+            domain: 'Life Science',
+            icon: 'mdi:leaf',
+            color: 'green',
+            settings: {
+                phenomenon: {
+                    title: 'The Disappearing Wolves of Yellowstone',
+                    description: 'How does the reintroduction of a single predator species change an entire ecosystem? Observe the ripples through the food web.',
+                    ngssStandards: ['MS-LS2-1', 'MS-LS2-3']
+                },
+                moduleAccess: {
+                    questions: true, models: true, investigation: true, analysis: true, math: false, explanations: true, argument: true, communication: true
+                }
+            }
+        },
+        {
+            id: 'tpl_physical',
+            name: 'Physical Science: Energy Transfer',
+            domain: 'Physical Science',
+            icon: 'mdi:flash',
+            color: 'blue',
+            settings: {
+                phenomenon: {
+                    title: 'The Hot Cocoa Cooling Mystery',
+                    description: 'Why does a ceramic mug keep cocoa warm longer than a plastic cup? Investigate thermal energy and material properties.',
+                    ngssStandards: ['MS-PS3-3', 'MS-PS3-4']
+                },
+                moduleAccess: {
+                    questions: true, models: true, investigation: true, analysis: true, math: true, explanations: true, argument: true, communication: true
+                }
+            }
+        },
+        {
+            id: 'tpl_earth',
+            name: 'Earth & Space: Plate Tectonics',
+            domain: 'Earth Science',
+            icon: 'mdi:earth',
+            color: 'amber',
+            settings: {
+                phenomenon: {
+                    title: 'Fossils on Mountain Tops',
+                    description: 'How did seashells end up on the summit of Mt. Everest? Explore the movement of Earth\'s crust over millions of years.',
+                    ngssStandards: ['MS-ESS2-1', 'MS-ESS2-2']
+                },
+                moduleAccess: {
+                    questions: true, models: true, investigation: true, analysis: true, math: false, explanations: true, argument: true, communication: true
+                }
+            }
+        },
+        {
+            id: 'tpl_chemistry',
+            name: 'Chemistry: Chemical Reactions',
+            domain: 'Chemistry',
+            icon: 'mdi:flask-round-bottom',
+            color: 'purple',
+            settings: {
+                phenomenon: {
+                    title: 'The Self-Inflating Balloon',
+                    description: 'When we mix baking soda and vinegar, the balloon inflates on its own. What is creating the gas, and where did it come from?',
+                    ngssStandards: ['MS-PS1-2', 'MS-PS1-5']
+                },
+                moduleAccess: {
+                    questions: true, models: true, investigation: true, analysis: true, math: true, explanations: true, argument: true, communication: true
+                }
+            }
+        },
+        {
+            id: 'tpl_engineering',
+            name: 'Engineering: Design & Optimization',
+            domain: 'Engineering',
+            icon: 'mdi:cog',
+            color: 'gray',
+            settings: {
+                phenomenon: {
+                    title: 'The Egg Drop Challenge',
+                    description: 'Design a structure that prevents an egg from breaking when dropped from 5 meters. Optimize for weight and cost.',
+                    ngssStandards: ['MS-ETS1-1', 'MS-ETS1-4']
+                },
+                moduleAccess: {
+                    questions: true, models: true, investigation: true, analysis: true, math: true, explanations: true, argument: true, communication: true
+                }
+            }
+        }
+    ];
+}

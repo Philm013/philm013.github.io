@@ -6,7 +6,7 @@
 
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
-import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
+import { renderStudentContent, renderModuleHeader, renderEmptyState } from '../ui/renderer.js';
 
 /**
  * Renders the Explanations Practice module (CER workspace).
@@ -98,12 +98,7 @@ function renderEvidenceSelectionBank() {
     }).join('');
 
     if (!html) {
-        return `
-            <div class="py-16 text-center flex flex-col items-center opacity-30 grayscale">
-                <span class="iconify text-5xl mb-4" data-icon="mdi:folder-open-outline"></span>
-                <p class="text-[10px] font-black uppercase tracking-widest">No evidence collected</p>
-            </div>
-        `;
+        return renderEmptyState('No Evidence Bank', 'Save work from other modules to build your bank.', 'mdi:folder-open-outline');
     }
     
     return html;

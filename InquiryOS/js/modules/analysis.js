@@ -8,7 +8,7 @@
 
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
-import { renderModuleHeader } from '../ui/renderer.js';
+import { renderModuleHeader, renderEmptyState } from '../ui/renderer.js';
 import { toast } from '../ui/utils.js';
 
 let chartInstance = null;
@@ -56,14 +56,13 @@ export function renderAnalysisModule() {
  * @returns {string} HTML content.
  */
 function renderNoDataAlert() {
-    return `
-        <div class="bg-white rounded-3xl border-2 border-dashed border-gray-200 p-16 text-center flex flex-col items-center">
-            <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                <span class="iconify text-5xl text-gray-300" data-icon="mdi:table-search"></span>
-            </div>
-            <h3 class="text-xl font-bold text-gray-400 mb-2">No Data Collected Yet</h3>
-            <p class="text-gray-400 max-w-md mx-auto mb-8">You need to collect scientific data in your investigation before you can analyze and visualize it.</p>
-            <button onclick="window.showStudentModule('investigation')" class="px-8 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-blue-100 hover:-translate-y-0.5 transition-all flex items-center gap-2">
+    return renderEmptyState(
+        'No Data Collected Yet',
+        'You need to collect scientific data in your investigation before you can analyze and visualize it.',
+        'mdi:table-search'
+    ) + `
+        <div class="mt-4 text-center">
+            <button onclick="window.showStudentModule('investigation')" class="px-8 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-blue-100 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 mx-auto">
                 <span class="iconify text-xl" data-icon="mdi:arrow-right"></span>
                 Go to Investigation Practice
             </button>

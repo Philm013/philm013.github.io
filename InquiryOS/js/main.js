@@ -51,6 +51,21 @@ window.importSession = importSession;
 window.handleImportFile = handleImportFile;
 window.saveCurrentSession = saveCurrentSession;
 
+// Explicitly expose new functions
+import { openIconPicker, closeIconPicker, searchIcons, selectIcon, selectIconForNode } from './modules/models.js';
+import { switchViewerModule, stopViewingStudent } from './teacher/viewer.js';
+import { launchTemplate, applyTemplate } from './teacher/dashboard.js';
+
+window.openIconPicker = openIconPicker;
+window.closeIconPicker = closeIconPicker;
+window.searchIcons = searchIcons;
+window.selectIcon = selectIcon;
+window.selectIconForNode = selectIconForNode;
+window.switchViewerModule = switchViewerModule;
+window.stopViewingStudent = stopViewingStudent;
+window.launchTemplate = launchTemplate;
+window.applyTemplate = applyTemplate;
+
 // Expose all exported functions from modules
 Object.assign(window, auth);
 Object.assign(window, renderer);

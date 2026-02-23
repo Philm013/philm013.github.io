@@ -3,11 +3,56 @@
  * @description specialized logic for real-time monitoring and feedback on student models and data. 
  */
 
+/* global Fuse */
+
 import { App } from '../core/state.js';
 import { dbGet, dbGetByIndex, STORE_USERS, STORE_SESSIONS } from '../core/storage.js';
 import { saveAndBroadcast, loadFromStorage, saveToStorage } from '../core/sync.js';
-import { renderTeacherContent, updateModeUI } from '../ui/renderer.js';
+import { renderTeacherContent, updateModeUI, renderEmptyState } from '../ui/renderer.js';
 import { toast, calculateStudentProgress } from '../ui/utils.js';
+
+/**
+ * Renders the module navigation tabs for the student viewer.
+ */
+function renderViewerModuleTabs() {
+    const modules = [
+        { id: 'questions', label: '1. Questions', icon: 'mdi:help-circle' },
+        { id: 'models', label: '2. Models', icon: 'mdi:cube-outline' },
+        { id: 'investigation', label: '3. Investigation', icon: 'mdi:microscope' },
+        { id: 'analysis', label: '4. Analysis', icon: 'mdi:chart-line' },
+        { id: 'math', label: '5. Math', icon: 'mdi:calculator' },
+        { id: 'explanations', label: '6. Explanations', icon: 'mdi:lightbulb-on' },
+        { id: 'argument', label: '7. Argument', icon: 'mdi:forum' },
+        { id: 'communication', label: '8. Communication', icon: 'mdi:share-variant' }
+    ];
+
+    return `
+        <div class="flex items-center gap-1 bg-gray-50 p-1.5 rounded-2xl border border-gray-100 overflow-x-auto no-scrollbar max-w-full">
+            ${modules.map(m => `
+                <button onclick="window.switchViewerModule('${m.id}')" 
+                    class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${App.currentModule === m.id ? 'bg-white text-primary shadow-md ring-1 ring-black/5' : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'}">
+                    <span class="iconify" data-icon="${m.icon}"></span>
+                    <span class="hidden md:inline">${m.label.split('. ')[1]}</span>
+                    <span class="md:hidden">${m.label.split('. ')[0]}</span>
+                </button>
+            `).join('')}
+        </div>
+    `;
+}
+
+/**
+ * Switches the active module while viewing a student's work.
+ */
+export async function switchViewerModule(moduleId) {
+    App.currentModule = moduleId;
+    
+    // Update the teacherModule to match if applicable for direct rendering
+    if (moduleId === 'models') App.teacherModule = 'livemodels';
+    else if (moduleId === 'analysis') App.teacherModule = 'livedata';
+    else App.teacherModule = 'livegeneric'; // Generic renderer for other modules
+    
+    renderTeacherContent();
+}
 
 /**
  * Switches the teacher to view a specific student's work.
@@ -15,6 +60,12 @@ import { toast, calculateStudentProgress } from '../ui/utils.js';
 export async function viewStudentWork(visitorId) {
     App.viewingStudentId = visitorId;
     App.viewerState.isMonitoring = true;
+    
+    // Default to models or current module
+    if (!['models', 'analysis'].includes(App.currentModule)) {
+        App.currentModule = 'models';
+    }
+    App.teacherModule = App.currentModule === 'models' ? 'livemodels' : 'livedata';
     
     // Load student work into App.work
     const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + visitorId);
@@ -50,17 +101,23 @@ export async function renderLiveModels() {
 
     return `
         <div class="h-full flex flex-col -m-6">
-            <div class="bg-white border-b p-4 flex items-center justify-between shadow-sm shrink-0">
-                <div class="flex items-center gap-3">
-                    <button onclick="window.stopViewingStudent()" class="p-2 hover:bg-gray-100 rounded-lg"><span class="iconify" data-icon="mdi:arrow-left"></span></button>
+            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
+                <div class="flex items-center gap-6">
+                    <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                        <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
+                    </button>
                     <div>
-                        <h3 class="font-bold">Viewing Model: ${currentStudent?.name || 'Student'}</h3>
-                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest">${!App.teacherSettings.showCommentsToStudents ? 'Feedback Hidden' : 'Feedback Visible to Student'}</p>
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
+                            <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Model Viewer</span>
+                        </div>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">${!App.teacherSettings.showCommentsToStudents ? 'Grading: Hidden' : 'Grading: Live'}</p>
                     </div>
                 </div>
+                ${renderViewerModuleTabs()}
                 <div class="flex items-center gap-2">
-                    <button onclick="window.presentToClass('model')" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold flex items-center gap-2">
-                        <span class="iconify" data-icon="mdi:presentation"></span>
+                    <button onclick="window.presentToClass('model')" class="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2">
+                        <span class="iconify text-lg" data-icon="mdi:presentation"></span>
                         Present
                     </button>
                 </div>
@@ -77,6 +134,53 @@ export async function renderLiveModels() {
                 </div>
                 <div class="readonly-overlay"></div>
                 ${renderViewerToolbar()}
+            </div>
+        </div>
+    `;
+}
+
+export async function renderLiveGeneric() {
+    if (!App.viewingStudentId) return renderStudentSelectionTiles('View Student Work', 'livegeneric');
+    
+    const users = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
+    const currentStudent = users.find(u => u.visitorId === App.viewingStudentId);
+
+    return `
+        <div class="h-full flex flex-col -m-6">
+            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
+                <div class="flex items-center gap-6">
+                    <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                        <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
+                    </button>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
+                            <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Monitoring</span>
+                        </div>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Practice: ${App.currentModule.toUpperCase()}</p>
+                    </div>
+                </div>
+                ${renderViewerModuleTabs()}
+                <div class="flex items-center gap-2">
+                    <button onclick="window.presentToClass('${App.currentModule}')" class="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2">
+                        <span class="iconify text-lg" data-icon="mdi:presentation"></span>
+                        Present
+                    </button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-auto bg-gray-50 p-8 custom-scrollbar">
+                <div class="max-w-7xl mx-auto h-full bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 relative overflow-hidden">
+                    <div class="readonly-overlay pointer-events-auto"></div>
+                    <div class="pointer-events-none opacity-80 filter grayscale-[0.2]">
+                        ${window.renderStudentContentHtml()}
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
+                         <div class="bg-gray-900/80 backdrop-blur-md text-white px-8 py-4 rounded-[2rem] font-black uppercase tracking-widest flex items-center gap-4">
+                            <span class="iconify text-2xl" data-icon="mdi:eye-outline"></span>
+                            Monitor View Only
+                         </div>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -138,10 +242,8 @@ async function renderStudentSelectionTiles(title, targetModule) {
                 })).then(res => res.join(''))}
                 
                 ${students.length === 0 ? `
-                    <div class="col-span-full py-24 text-center bg-white rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center">
-                        <span class="iconify text-6xl text-gray-200 mb-4" data-icon="mdi:account-group-outline"></span>
-                        <h3 class="text-lg font-bold text-gray-400">No Students Connected</h3>
-                        <p class="text-sm text-gray-400 mt-1">Ask students to join using code: <span class="font-mono font-black text-primary">${App.classCode}</span></p>
+                    <div class="col-span-full">
+                        ${renderEmptyState('No students found', 'Students need to join this session before you can monitor their work.', 'mdi:account-group-outline', true)}
                     </div>
                 ` : ''}
             </div>
@@ -157,76 +259,75 @@ export async function renderLiveData() {
     const stickers = ['⭐', '✅', '❓', '💡', '🎯', '👏'];
 
     return `
-        <div class="max-w-6xl mx-auto p-6">
-            <div class="mb-8 flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <button onclick="window.stopViewingStudent()" class="p-2 bg-white border rounded-xl hover:bg-gray-50 shadow-sm transition-all"><span class="iconify" data-icon="mdi:arrow-left"></span></button>
+        <div class="h-full flex flex-col -m-6">
+            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50 shrink-0">
+                <div class="flex items-center gap-6">
+                    <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                        <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
+                    </button>
                     <div>
-                        <h2 class="text-2xl font-black text-gray-900">Data Table: ${currentStudent?.name || 'Student'}</h2>
-                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest">Live Monitoring</p>
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
+                            <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Data Tables</span>
+                        </div>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Live Collection Monitoring</p>
                     </div>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="window.presentToClass('data')" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold flex items-center gap-2">
-                        <span class="iconify" data-icon="mdi:presentation"></span>
+                ${renderViewerModuleTabs()}
+                <div class="flex items-center gap-2">
+                    <button onclick="window.presentToClass('data')" class="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2">
+                        <span class="iconify text-lg" data-icon="mdi:presentation"></span>
                         Present
                     </button>
-                    <button onclick="window.stopViewingStudent()" class="px-6 py-2 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all">Close Viewer</button>
                 </div>
             </div>
-            <div class="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-xl">
-                <table class="w-full border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50 border-b border-gray-100">
-                            <th class="border p-2 w-10"></th>
-                            ${dt.columns.map(c => `
-                                <th class="p-5 text-left font-black text-gray-400 uppercase tracking-widest text-[10px] border-r border-gray-100 last:border-0">${c.name} ${c.unit ? `(${c.unit})` : ''}</th>
-                            `).join('')}
-                            <th class="p-5 text-center font-black text-gray-400 uppercase tracking-widest text-[10px] w-32">Feedback</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${dt.rows.map((r, ri) => `
-                            <tr class="border-b border-gray-50 last:border-0 hover:bg-blue-50/30 transition-colors">
-                                <td class="border p-2 text-center text-gray-400 text-[10px]">${ri + 1}</td>
-                                ${dt.columns.map(c => `
-                                    <td class="p-5 text-sm text-gray-700 border-r border-gray-50 last:border-0">${r[c.id] || '<span class="text-gray-200">...</span>'}</td>
-                                `).join('')}
-                                <td class="border p-2 text-center">
-                                    ${r.note ? `
-                                        <div class="relative group/note inline-block">
-                                            <span class="iconify text-primary cursor-help" data-icon="mdi:note-text"></span>
-                                            <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-3 bg-gray-900 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover/note:opacity-100 pointer-events-none transition-opacity z-50">
-                                                ${r.note}
-                                            </div>
-                                        </div>
-                                    ` : '<span class="text-gray-200">-</span>'}
-                                </td>
-                                <td class="p-2 text-center border-l border-gray-100">
-                                    <div class="flex flex-wrap justify-center gap-1">
-                                        ${stickers.slice(0, 3).map(s => `
-                                            <button onclick="window.addDataRowSticker(${ri}, '${s}')" 
-                                                class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 transition-all ${dt.feedback?.[ri] === s ? 'bg-blue-100 ring-2 ring-blue-400 scale-110' : ''}">
-                                                ${s}
-                                            </button>
+            <div class="flex-1 overflow-auto bg-gray-50 p-8 custom-scrollbar">
+                <div class="max-w-7xl mx-auto space-y-8">
+                    <div class="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-xl">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-100">
+                                    <th class="border p-2 w-10"></th>
+                                    ${dt.columns.map(c => `
+                                        <th class="p-5 text-left font-black text-gray-400 uppercase tracking-widest text-[10px] border-r border-gray-100 last:border-0">${c.name} ${c.unit ? `(${c.unit})` : ''}</th>
+                                    `).join('')}
+                                    <th class="p-5 text-center font-black text-gray-400 uppercase tracking-widest text-[10px] w-32">Feedback</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dt.rows.map((r, ri) => `
+                                    <tr class="border-b border-gray-50 last:border-0 hover:bg-blue-50/30 transition-colors">
+                                        <td class="border p-2 text-center text-gray-400 text-[10px]">${ri + 1}</td>
+                                        ${dt.columns.map(c => `
+                                            <td class="p-5 text-sm text-gray-700 border-r border-gray-50 last:border-0">${r[c.id] || '<span class="text-gray-200">...</span>'}</td>
                                         `).join('')}
-                                        <button onclick="window.addDataRowSticker(${ri}, null)" class="text-[10px] text-gray-300 hover:text-red-500">×</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                ${dt.rows.length === 0 ? '<div class="py-20 text-center text-gray-300 italic">No data entered yet</div>' : ''}
-            </div>
+                                        <td class="p-2 text-center border-l border-gray-100">
+                                            <div class="flex flex-wrap justify-center gap-1">
+                                                ${stickers.slice(0, 3).map(s => `
+                                                    <button onclick="window.addDataRowSticker(${ri}, '${s}')" 
+                                                        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 transition-all ${dt.feedback?.[ri] === s ? 'bg-blue-100 ring-2 ring-blue-400 scale-110' : ''}">
+                                                        ${s}
+                                                    </button>
+                                                `).join('')}
+                                                <button onclick="window.addDataRowSticker(${ri}, null)" class="text-[10px] text-gray-300 hover:text-red-500">×</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        ${dt.rows.length === 0 ? '<div class="py-20 text-center text-gray-300 italic">No data entered yet</div>' : ''}
+                    </div>
 
-            ${dt.comment ? `
-                <div class="mt-8 p-8 bg-amber-50 rounded-[2rem] border border-amber-100 shadow-sm relative overflow-hidden">
-                    <span class="absolute -top-4 -right-4 iconify text-8xl text-amber-100/50" data-icon="mdi:note-text"></span>
-                    <h4 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3 relative z-10">Student Table Notes</h4>
-                    <p class="text-amber-900 font-medium leading-relaxed relative z-10">${dt.comment}</p>
+                    ${dt.comment ? `
+                        <div class="p-8 bg-amber-50 rounded-[2rem] border border-amber-100 shadow-sm relative overflow-hidden">
+                            <span class="absolute -top-4 -right-4 iconify text-8xl text-amber-100/50" data-icon="mdi:note-text"></span>
+                            <h4 class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3 relative z-10">Student Table Notes</h4>
+                            <p class="text-amber-900 font-medium leading-relaxed relative z-10">${dt.comment}</p>
+                        </div>
+                    ` : ''}
                 </div>
-            ` : ''}
+            </div>
         </div>
     `;
 }
@@ -430,7 +531,7 @@ export function renderIconManager() {
 }
 
 /**
- * Loads icons from Iconify for the manager view with metadata support.
+ * Loads icons from Iconify for the manager view with fuzzy search support.
  */
 export async function loadIconsForManager() {
     const grid = document.getElementById('iconManagerGrid');
@@ -439,14 +540,47 @@ export async function loadIconsForManager() {
     grid.innerHTML = '<div class="col-span-full py-32 flex flex-col items-center justify-center h-full"><span class="iconify animate-spin text-6xl text-primary mb-4" data-icon="mdi:loading"></span><p class="text-primary font-black uppercase tracking-widest text-xs">Accessing Repository...</p></div>';
     
     const prefixes = App.currentIconSet || null;
-    const query = document.getElementById('iconManagerSearch')?.value.trim() || 'science';
+    let query = document.getElementById('iconManagerSearch')?.value.trim() || 'science';
     
+    // Expand query with scientific synonyms for better matching if it's a known topic
+    const topicExpansion = {
+        'biology': 'cell,nature,life,dna,organism,evolution,plant,animal,ecology',
+        'chemistry': 'molecule,atom,reaction,lab,beaker,substance,periodic',
+        'physics': 'energy,force,motion,electricity,magnet,wave,particle,gravity',
+        'space': 'planet,galaxy,star,telescope,rocket,astronaut,cosmos,moon,orbit',
+        'earth': 'weather,climate,geology,volcano,ocean,river,mountain,rock',
+        'engineering': 'design,structure,machine,robot,tools,construction,blueprint'
+    };
+    
+    let searchUrl = query;
+    const lowerQuery = query.toLowerCase();
+    for (const [topic, expansion] of Object.entries(topicExpansion)) {
+        if (lowerQuery.includes(topic)) {
+            searchUrl += ',' + expansion;
+            break;
+        }
+    }
+
     try {
-        let url = `https://api.iconify.design/search?query=${encodeURIComponent(query)}&limit=150`;
+        let url = `https://api.iconify.design/search?query=${encodeURIComponent(searchUrl)}&limit=200`;
         if (prefixes) url += `&prefixes=${prefixes}`;
         const response = await fetch(url);
         const data = await response.json();
-        const icons = data.icons || [];
+        let icons = data.icons || [];
+
+        // Apply Fuse.js fuzzy matching if available to sort by relevance
+        if (typeof Fuse !== 'undefined' && icons.length > 0) {
+            const fuse = new Fuse(icons, {
+                threshold: 0.4,
+                distance: 100
+            });
+            const fuzzyResults = fuse.search(query);
+            if (fuzzyResults.length > 0) {
+                // Combine original results (for breadth) with fuzzy sorted results (for precision)
+                const fuzzyIcons = fuzzyResults.map(r => r.item);
+                icons = [...new Set([...fuzzyIcons, ...icons])].slice(0, 150);
+            }
+        }
 
         if (icons.length === 0) {
             grid.innerHTML = '<div class="col-span-full py-32 text-center opacity-30 grayscale"><span class="iconify text-6xl mb-4" data-icon="mdi:alert-circle-outline"></span><p class="text-sm font-bold uppercase tracking-widest">No matching icons found. Try different keywords.</p></div>';
@@ -462,20 +596,17 @@ export async function loadIconsForManager() {
                 <div class="relative group">
                     <button onclick="window.addLessonIcon('${icon}')" 
                         class="w-full aspect-square rounded-2xl transition-all flex items-center justify-center relative ${isSelected ? 'bg-primary text-white shadow-xl shadow-blue-200 ring-4 ring-primary/20 scale-105' : 'bg-white text-gray-600 hover:bg-blue-50 hover:text-primary border border-gray-100 shadow-sm hover:scale-110 hover:shadow-lg'}"
-                        title="Add to curated set">
+                        title="${icon}">
                         <span class="iconify text-3xl" data-icon="${icon}"></span>
-                        ${isSelected ? '<span class="absolute top-1 right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></span>' : ''}
+                        ${isSelected ? '<span class="absolute top-1 right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow-sm"></span>' : ''}
                     </button>
                     
-                    <!-- Metadata Tooltip Trigger -->
-                    <div class="absolute -top-1 -left-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <div class="absolute -top-1 -left-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
                         <div class="relative">
-                            <span class="iconify text-gray-400 hover:text-primary bg-white rounded-full cursor-help" data-icon="mdi:information"></span>
-                            <div class="absolute bottom-full left-0 mb-2 w-48 p-3 bg-gray-900 text-white text-[10px] rounded-xl shadow-2xl pointer-events-none hidden group-hover:block">
-                                <p class="font-black text-blue-400 uppercase tracking-widest border-b border-white/10 pb-1 mb-1">Metadata</p>
-                                <p><span class="opacity-50">Source:</span> ${prefix}</p>
-                                <p><span class="opacity-50">Name:</span> ${name}</p>
-                                <p class="mt-1 line-clamp-2 italic opacity-70">Keywords: ${query}</p>
+                            <span class="iconify text-gray-400 bg-white rounded-full" data-icon="mdi:information"></span>
+                            <div class="absolute bottom-full left-0 mb-2 w-40 p-2 bg-gray-900 text-white text-[9px] rounded-lg shadow-2xl">
+                                <p class="font-black text-blue-400 uppercase tracking-widest mb-1 border-b border-white/10 pb-1">${prefix}</p>
+                                <p class="opacity-70">${name}</p>
                             </div>
                         </div>
                     </div>

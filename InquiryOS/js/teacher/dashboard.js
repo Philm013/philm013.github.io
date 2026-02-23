@@ -6,9 +6,10 @@
 import { App, getInitialWorkState } from '../core/state.js';
 import { dbGetAll, dbPut, dbDelete, dbGet, dbGetByIndex, STORE_LESSONS, STORE_USERS, STORE_SESSIONS } from '../core/storage.js';
 import { saveToStorage, registerUser, loadFromStorage } from '../core/sync.js';
-import { renderTeacherContent, updateModeUI, renderStudentContent } from '../ui/renderer.js';
+import { renderTeacherContent, updateModeUI, renderStudentContent, renderEmptyState } from '../ui/renderer.js';
 import { renderNavigation } from '../ui/navigation.js';
 import { toast, generateCode, calculateStudentProgress } from '../ui/utils.js';
+import { getNGSSTemplates } from '../core/ngss.js';
 
 function renderStatTile(label, count, icon, color) {
     return `
@@ -37,75 +38,106 @@ export function renderTeacherOverview() {
     };
 
     return `
-        <div class="max-w-5xl mx-auto">
-            <div class="mb-6">
-                <h2 class="text-2xl font-bold text-gray-900">Teacher Dashboard</h2>
+        <div class="max-w-5xl mx-auto space-y-6">
+            <div class="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-10 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-110"></div>
+                
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 relative">
+                    <div class="flex items-center gap-5">
+                        <div class="w-14 h-14 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
+                            <span class="iconify text-3xl" data-icon="mdi:flask-outline"></span>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-black text-gray-900">Class Phenomenon</h3>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Driving Inquiry Focus</p>
+                        </div>
+                    </div>
+                    <button onclick="window.showTeacherModule('ngss')" class="px-6 py-2.5 bg-gray-50 text-primary rounded-xl text-sm font-black hover:bg-primary hover:text-white transition-all border border-primary/10">
+                        Browse Standards
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="relative">
+                            <input type="text" id="phenomTitle" value="${phenomenon.title || ''}" onchange="window.updatePhenomenon()"
+                                placeholder="Enter Phenomenon Title..."
+                                class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xl font-bold focus:border-primary focus:bg-white focus:outline-none transition-all placeholder:text-gray-300">
+                        </div>
+                        <div class="relative">
+                            <textarea id="phenomDesc" rows="3" onchange="window.updatePhenomenon()"
+                                placeholder="Describe the phenomenon or observation that drives this lesson..."
+                                class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-lg font-medium focus:border-primary focus:bg-white focus:outline-none transition-all resize-none placeholder:text-gray-300">${phenomenon.description || ''}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Linked Standards</p>
+                            <span class="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[9px] font-black uppercase tracking-widest">${phenomenon.ngssStandards?.length || 0} PE</span>
+                        </div>
+                        <div class="space-y-2 flex-1 overflow-y-auto max-h-[160px] pr-2 custom-scrollbar">
+                            ${phenomenon.ngssStandards?.length > 0 ? phenomenon.ngssStandards.map(peId => `
+                                <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 group/item shadow-sm">
+                                    <span class="text-xs font-black text-gray-700 font-mono tracking-tighter">${peId}</span>
+                                    <button onclick="window.removeFromPhenomenon('${peId}')" class="text-gray-300 hover:text-red-500 transition-colors">
+                                        <span class="iconify" data-icon="mdi:close-circle"></span>
+                                    </button>
+                                </div>
+                            `).join('') : `
+                                <div class="h-full flex flex-col items-center justify-center opacity-30 py-4">
+                                    <span class="iconify text-3xl mb-2" data-icon="mdi:link-variant-off"></span>
+                                    <p class="text-[10px] font-black uppercase">No Standards Linked</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
             </div>
             
-            <div class="grid md:grid-cols-4 gap-4 mb-6">
+            <div class="grid md:grid-cols-4 gap-4">
                 ${renderStatTile('Notices', counts.notices, 'mdi:eye', 'blue')}
                 ${renderStatTile('Wonders', counts.wonders, 'mdi:lightbulb', 'yellow')}
                 ${renderStatTile('Model Nodes', counts.nodes, 'mdi:cube-outline', 'green')}
                 ${renderStatTile('Posts', counts.posts, 'mdi:forum', 'purple')}
             </div>
 
-            <div class="grid md:grid-cols-2 gap-6 mb-6">
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <span class="iconify text-primary" data-icon="mdi:account-plus"></span>
-                        Join Session
-                    </h3>
-                    <div class="flex flex-col gap-4">
-                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                            <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-2">Join Link</p>
-                            <div class="flex gap-2">
-                                <input type="text" readonly id="joinLinkInput" 
-                                    value="${window.location.origin}${window.location.pathname}?class=${App.classCode}"
-                                    class="flex-1 bg-white border rounded px-3 py-2 text-sm text-gray-600 font-mono">
-                                <button onclick="window.copyJoinLink()" class="p-2 bg-primary text-white rounded-lg hover:bg-blue-600" title="Copy Link">
-                                    <span class="iconify" data-icon="mdi:content-copy"></span>
-                                </button>
-                            </div>
-                        </div>
-                        <button onclick="window.showJoinQR()" class="w-full py-3 bg-gradient-to-r from-primary to-secondary text-white rounded-xl font-bold shadow-lg hover:opacity-90 flex items-center justify-center gap-2">
-                            <span class="iconify text-xl" data-icon="mdi:qrcode"></span>
-                            Show QR Code for Students
-                        </button>
+            <div class="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-10">
+                <div class="flex items-center gap-5 mb-8">
+                    <div class="w-14 h-14 bg-secondary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-purple-100">
+                        <span class="iconify text-3xl" data-icon="mdi:account-plus"></span>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-black text-gray-900">Student Entry</h3>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">Classroom Access Management</p>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm border p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                            <span class="iconify text-primary" data-icon="mdi:flask-outline"></span>
-                            Class Phenomenon
-                        </h3>
-                        <button onclick="window.showTeacherModule('ngss')" class="text-xs font-bold text-primary hover:underline">Browse Standards</button>
-                    </div>
+                <div class="grid md:grid-cols-2 gap-8 items-center">
                     <div class="space-y-4">
-                        <div>
-                            <label class="text-sm font-medium text-gray-700 block mb-1">Title</label>
-                            <input type="text" id="phenomTitle" value="${phenomenon.title || ''}" onchange="window.updatePhenomenon()"
-                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition-all">
-                        </div>
-                        <div>
-                            <label class="text-sm font-medium text-gray-700 block mb-1">Description</label>
-                            <textarea id="phenomDesc" rows="3" onchange="window.updatePhenomenon()"
-                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none transition-all">${phenomenon.description || ''}</textarea>
-                        </div>
-
-                        <div class="pt-4 border-t border-gray-100">
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Linked Standards</p>
-                            <div class="space-y-2">
-                                ${phenomenon.ngssStandards?.length > 0 ? phenomenon.ngssStandards.map(peId => `
-                                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg group">
-                                        <span class="text-xs font-bold text-gray-700">${peId}</span>
-                                        <button onclick="window.removeFromPhenomenon('${peId}')" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span class="iconify" data-icon="mdi:close-circle"></span>
-                                        </button>
-                                    </div>
-                                `).join('') : '<p class="text-xs text-gray-400 italic">No standards linked yet</p>'}
+                        <div class="bg-gray-50 p-6 rounded-[2rem] border-2 border-gray-100 shadow-inner">
+                            <p class="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-3">Join Link</p>
+                            <div class="flex gap-2">
+                                <input type="text" readonly id="joinLinkInput" 
+                                    value="${window.location.origin}${window.location.pathname}?class=${App.classCode}"
+                                    class="flex-1 bg-white border-2 border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-600 font-mono focus:border-primary outline-none transition-all">
+                                <button onclick="window.copyJoinLink()" class="w-12 h-12 bg-primary text-white rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-blue-100 flex items-center justify-center" title="Copy Link">
+                                    <span class="iconify text-xl" data-icon="mdi:content-copy"></span>
+                                </button>
                             </div>
+                        </div>
+                        <button onclick="window.showJoinQR()" class="w-full py-5 bg-gradient-to-r from-primary to-secondary text-white rounded-[2rem] font-black shadow-xl shadow-blue-100 hover:opacity-90 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3">
+                            <span class="iconify text-2xl" data-icon="mdi:qrcode"></span>
+                            Display Join QR Code
+                        </button>
+                    </div>
+
+                    <div class="flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-[2.5rem] p-8 bg-gray-50/30">
+                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4">Class Session Code</div>
+                        <div class="text-6xl font-black text-primary tracking-tighter mb-2">${App.classCode}</div>
+                        <div class="flex items-center gap-2 text-green-500 font-bold text-xs uppercase tracking-widest">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            Active Session
                         </div>
                     </div>
                 </div>
@@ -209,16 +241,8 @@ export async function renderTeacherSnapshots() {
                     `;
                 }).join('')}
                 ${students.length === 0 ? `
-                    <div class="col-span-full py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center shadow-inner">
-                        <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                            <span class="iconify text-6xl text-gray-200" data-icon="mdi:account-search-outline"></span>
-                        </div>
-                        <h3 class="text-2xl font-black text-gray-400">Classroom is currently empty</h3>
-                        <p class="text-gray-400 mt-2 max-w-sm mx-auto leading-relaxed">Students will appear here in real-time as they join the class session with your code.</p>
-                        <div class="mt-8 flex items-center gap-3 px-6 py-3 bg-primary text-white rounded-2xl font-black shadow-lg shadow-blue-100">
-                            <span class="iconify text-xl" data-icon="mdi:qrcode"></span>
-                            CODE: ${App.classCode}
-                        </div>
+                    <div class="col-span-full">
+                        ${renderEmptyState('Classroom is Empty', 'Students will appear here in real-time as they join the class session with your code.', 'mdi:account-search-outline', true)}
                     </div>
                 ` : ''}
             </div>
@@ -231,52 +255,119 @@ export async function renderTeacherSnapshots() {
  */
 export async function renderTeacherLessons() {
     const lessons = await dbGetAll(STORE_LESSONS);
+    const templates = getNGSSTemplates();
+    
     return `
-        <div class="max-w-5xl mx-auto">
-            <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="max-w-6xl mx-auto space-y-12">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 class="text-3xl font-bold text-gray-900">Lesson Designer</h2>
-                    <p class="text-gray-500 mt-1">Create and manage activity presets for your classes.</p>
+                    <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tighter">Lesson Designer</h2>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Activity Presets & NGSS Blueprints</p>
                 </div>
-                <button onclick="window.saveCurrentAsLesson()" class="px-6 py-3 bg-primary text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition-all flex items-center gap-2">
-                    <span class="iconify" data-icon="mdi:plus-circle"></span>
-                    Save Current as Preset
+                <button onclick="window.saveCurrentAsLesson()" class="px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-blue-100 hover:opacity-90 hover:-translate-y-0.5 transition-all flex items-center gap-3">
+                    <span class="iconify text-xl" data-icon="mdi:plus-circle"></span>
+                    Save Current Class as Preset
                 </button>
             </div>
-            <div class="grid md:grid-cols-2 gap-6">
-                ${lessons.map(l => `
-                    <div class="bg-white rounded-2xl border p-6 shadow-sm flex flex-col h-full hover:shadow-md transition-shadow">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-primary">
-                                <span class="iconify text-2xl" data-icon="mdi:lightbulb-variant"></span>
+
+            <section>
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="w-8 h-8 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center">
+                        <span class="iconify" data-icon="mdi:school"></span>
+                    </span>
+                    <h3 class="text-lg font-black text-gray-900 uppercase tracking-tight">NGSS Domain Blueprints</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    ${templates.map(t => `
+                        <div class="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col hover:shadow-xl transition-all group relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-32 h-32 bg-${t.color}-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
+                            <div class="mb-6 flex items-center justify-between">
+                                <div class="w-14 h-14 bg-${t.color}-50 text-${t.color}-600 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <span class="iconify text-3xl" data-icon="${t.icon}"></span>
+                                </div>
+                                <span class="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-[9px] font-black uppercase tracking-widest">${t.domain}</span>
                             </div>
-                            <button onclick="window.deleteLesson('${l.id}')" class="text-gray-300 hover:text-red-500 p-1 transition-colors">
-                                <span class="iconify text-xl" data-icon="mdi:delete-outline"></span>
-                            </button>
+                            <h4 class="text-xl font-black text-gray-900 mb-3">${t.name}</h4>
+                            <p class="text-xs text-gray-500 leading-relaxed mb-8 flex-1 italic">"${t.settings.phenomenon.description}"</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="window.launchTemplate('${t.id}')" class="py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-lg shadow-gray-200">
+                                    Launch New
+                                </button>
+                                <button onclick="window.applyTemplate('${t.id}')" class="py-3 bg-white border-2 border-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-primary hover:text-primary">
+                                    Apply Here
+                                </button>
+                            </div>
                         </div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-2">${l.name}</h3>
-                        <p class="text-sm text-gray-500 mb-4 line-clamp-2 flex-1">${l.settings.phenomenon.description}</p>
-                        <div class="space-y-3 pt-4 border-t border-gray-100">
-                            <button onclick="window.launchLesson('${l.id}')" class="w-full py-3 bg-gradient-to-r from-teacher to-orange-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm hover:opacity-95">
-                                <span class="iconify" data-icon="mdi:rocket-launch"></span>
-                                Start New Session
-                            </button>
-                            <button onclick="window.applyLessonToCurrent('${l.id}')" class="w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
-                                Apply to Current Class
-                            </button>
+                    `).join('')}
+                </div>
+            </section>
+
+            <section>
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                        <span class="iconify" data-icon="mdi:folder-heart"></span>
+                    </span>
+                    <h3 class="text-lg font-black text-gray-900 uppercase tracking-tight">My Saved Presets</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    ${lessons.map(l => `
+                        <div class="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col hover:shadow-xl transition-all group">
+                            <div class="flex justify-between items-start mb-6">
+                                <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-primary shadow-inner">
+                                    <span class="iconify text-2xl" data-icon="mdi:lightbulb-variant"></span>
+                                </div>
+                                <button onclick="window.deleteLesson('${l.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors">
+                                    <span class="iconify text-xl" data-icon="mdi:delete-outline"></span>
+                                </button>
+                            </div>
+                            <h3 class="text-xl font-black text-gray-900 mb-2">${l.name}</h3>
+                            <p class="text-[11px] text-gray-500 mb-8 line-clamp-3 leading-relaxed flex-1 italic">"${l.settings.phenomenon.description}"</p>
+                            <div class="space-y-3">
+                                <button onclick="window.launchLesson('${l.id}')" class="w-full py-4 bg-gradient-to-r from-teacher to-orange-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-100 flex items-center justify-center gap-2 hover:opacity-95">
+                                    <span class="iconify text-lg" data-icon="mdi:rocket-launch"></span>
+                                    Launch Session
+                                </button>
+                                <button onclick="window.applyLessonToCurrent('${l.id}')" class="w-full py-3 bg-gray-50 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100">
+                                    Apply Settings
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                `).join('')}
-                ${lessons.length === 0 ? `
-                    <div class="col-span-full py-20 text-center bg-white rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center">
-                        <span class="iconify text-5xl text-gray-200 mb-4" data-icon="mdi:book-open-variant"></span>
-                        <p class="text-gray-400 font-medium">No lesson presets saved yet.</p>
-                        <p class="text-xs text-gray-400 mt-1">Current class settings can be saved as a template.</p>
-                    </div>
-                ` : ''}
-            </div>
+                    `).join('')}
+                    ${lessons.length === 0 ? `
+                        <div class="col-span-full py-20 text-center bg-gray-50/50 rounded-[3rem] border-2 border-dashed border-gray-100 flex flex-col items-center">
+                            <span class="iconify text-5xl text-gray-200 mb-4" data-icon="mdi:book-open-variant"></span>
+                            <p class="text-sm font-black text-gray-400 uppercase tracking-widest">No custom presets saved</p>
+                            <p class="text-[10px] text-gray-400 mt-1 font-bold uppercase">Save your current class setup to reuse it later.</p>
+                        </div>
+                    ` : ''}
+                </div>
+            </section>Section Template Added.
         </div>
     `;
+}
+
+export async function launchTemplate(templateId) {
+    if (confirm('Launch a new class session with this template?')) {
+        const templates = getNGSSTemplates();
+        const t = templates.find(x => x.id === templateId);
+        if (!t) return;
+        App.classCode = generateCode();
+        App.teacherSettings = JSON.parse(JSON.stringify(t.settings));
+        App.work = getInitialWorkState();
+        App.sharedData = { debatePosts: [] };
+        await saveToStorage(); await registerUser(); updateModeUI(); toast('Template Launched!', 'success');
+    }
+}
+
+export async function applyTemplate(templateId) {
+    if (confirm('Apply this template to your current class?')) {
+        const templates = getNGSSTemplates();
+        const t = templates.find(x => x.id === templateId);
+        if (t) {
+            App.teacherSettings = JSON.parse(JSON.stringify(t.settings));
+            await saveToStorage(); updateModeUI(); toast('Template Applied!', 'success');
+        }
+    }
 }
 
 /**
@@ -328,10 +419,8 @@ export async function renderTeacherStudents() {
                     `;
                 }).join('')}
                 ${students.length === 0 ? `
-                    <div class="col-span-full py-24 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center">
-                        <span class="iconify text-6xl text-gray-200 mb-4" data-icon="mdi:account-group-outline"></span>
-                        <h3 class="text-lg font-bold text-gray-400">Classroom is Empty</h3>
-                        <p class="text-sm text-gray-400 mt-1">Students will appear here as they join.</p>
+                    <div class="col-span-full">
+                        ${renderEmptyState('Classroom is Empty', 'Students will appear here as they join the active session.', 'mdi:account-group-outline', true)}
                     </div>
                 ` : ''}
             </div>
@@ -366,113 +455,130 @@ export function renderTeacherAccess() {
     ];
     
     return `
-        <div class="max-w-3xl mx-auto">
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-gray-900">Access Control</h2>
-                <p class="text-gray-500 mt-1">Control which modules students can access and focus their attention.</p>
-            </div>
-            
-            <div class="bg-white rounded-2xl shadow-sm border p-6 mb-6">
-                <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span class="iconify text-primary" data-icon="mdi:eye-outline"></span>
-                    Feedback Visibility
-                </h3>
-                <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg border-2 border-primary/20">
-                    <div>
-                        <p class="font-bold text-primary">Student Model Feedback</p>
-                        <p class="text-xs text-blue-600">When disabled, students cannot see teacher comments or stickers on their models.</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" ${App.teacherSettings.showCommentsToStudents ? 'checked' : ''} 
-                            onchange="window.toggleFeedbackVisibility()" class="sr-only peer">
-                        <div class="w-14 h-7 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                    </label>
+        <div class="max-w-5xl mx-auto space-y-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tighter">Access Control</h2>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Classroom Focus & Governance</p>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
-                <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span class="iconify text-primary" data-icon="mdi:map-marker-path"></span>
-                    Guided Lesson Mode
-                </h3>
-                <div class="p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <p class="font-bold text-orange-800">Linear Guided Experience</p>
-                            <p class="text-xs text-orange-600">Walk students through each practice step-by-step.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Guided Mode and Feedback -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border p-8">
+                        <h3 class="font-black text-gray-900 mb-6 flex items-center gap-3 uppercase tracking-tight">
+                            <span class="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
+                                <span class="iconify text-xl" data-icon="mdi:map-marker-path"></span>
+                            </span>
+                            Guided Experience
+                        </h3>
+                        <div class="p-6 bg-orange-50 rounded-3xl border-2 border-orange-100">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <p class="font-bold text-orange-800">Linear Lesson Flow</p>
+                                    <p class="text-[10px] text-orange-600 uppercase font-black tracking-widest">Walk students through step-by-step</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" ${App.teacherSettings.guidedMode ? 'checked' : ''} 
+                                        onchange="window.toggleGuidedMode()" class="sr-only peer">
+                                    <div class="w-14 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                                </label>
+                            </div>
+                            
+                            ${App.teacherSettings.guidedMode ? `
+                                <div class="flex items-center gap-4 bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
+                                    <button onclick="window.guidedMove(-1)" class="w-10 h-10 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-30 flex items-center justify-center" ${App.teacherSettings.forceModule === 'questions' ? 'disabled' : ''}>
+                                        <span class="iconify text-xl" data-icon="mdi:chevron-left"></span>
+                                    </button>
+                                    <div class="flex-1 text-center">
+                                        <span class="text-[9px] font-black text-orange-400 uppercase tracking-[0.2em] block mb-1">Current Focus</span>
+                                        <span class="font-black text-gray-900 text-lg uppercase tracking-tight">${App.teacherSettings.forceModule || 'Questions'}</span>
+                                    </div>
+                                    <button onclick="window.guidedMove(1)" class="w-10 h-10 bg-orange-500 text-white rounded-xl hover:bg-orange-600 disabled:opacity-30 flex items-center justify-center" ${App.teacherSettings.forceModule === 'communication' ? 'disabled' : ''}>
+                                        <span class="iconify text-xl" data-icon="mdi:chevron-right"></span>
+                                    </button>
+                                </div>
+                                <div class="mt-4">
+                                    <button onclick="window.openActivityDashboard()" class="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all">
+                                        <span class="iconify text-lg" data-icon="mdi:presentation"></span>
+                                        Open Command Dashboard
+                                    </button>
+                                </div>
+                            ` : `
+                                <p class="text-[11px] text-orange-400 font-bold leading-relaxed">Students can currently navigate freely within unlocked modules. Enable Guided Mode to lock them into specific Science Practices.</p>
+                            `}
                         </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" ${App.teacherSettings.guidedMode ? 'checked' : ''} 
-                                onchange="window.toggleGuidedMode()" class="sr-only peer">
-                            <div class="w-14 h-7 bg-gray-200 peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-                        </label>
+                    </div>
+
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border p-8">
+                        <h3 class="font-black text-gray-900 mb-6 flex items-center gap-3 uppercase tracking-tight">
+                            <span class="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                                <span class="iconify text-xl" data-icon="mdi:comment-check"></span>
+                            </span>
+                            Feedback Visibility
+                        </h3>
+                        <div class="flex items-center justify-between p-6 bg-blue-50 rounded-3xl border-2 border-blue-100">
+                            <div>
+                                <p class="font-bold text-blue-800">Student Feedback Loop</p>
+                                <p class="text-[10px] text-blue-600 uppercase font-black tracking-widest">Allow students to see your grading/comments</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" ${App.teacherSettings.showCommentsToStudents ? 'checked' : ''} 
+                                    onchange="window.toggleFeedbackVisibility()" class="sr-only peer">
+                                <div class="w-14 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Module Access Control -->
+                <div class="bg-white rounded-[2.5rem] shadow-sm border p-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-black text-gray-900 flex items-center gap-3 uppercase tracking-tight">
+                            <span class="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center">
+                                <span class="iconify text-xl" data-icon="mdi:lock-open-variant"></span>
+                            </span>
+                            Module Permissions
+                        </h3>
+                        <div class="flex gap-2">
+                            <button onclick="window.setAllAccess(true)" class="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 border border-green-100" title="Unlock All">
+                                <span class="iconify" data-icon="mdi:lock-open"></span>
+                            </button>
+                            <button onclick="window.setAllAccess(false)" class="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 border border-red-100" title="Lock All">
+                                <span class="iconify" data-icon="mdi:lock"></span>
+                            </button>
+                        </div>
                     </div>
                     
-                    ${App.teacherSettings.guidedMode ? `
-                        <div class="flex items-center gap-2 bg-white p-3 rounded-xl border border-orange-100 shadow-sm">
-                            <button onclick="window.guidedMove(-1)" class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-30" ${App.teacherSettings.forceModule === 'questions' ? 'disabled' : ''}>
-                                <span class="iconify" data-icon="mdi:chevron-left"></span>
-                            </button>
-                            <div class="flex-1 text-center">
-                                <span class="text-[10px] font-bold text-orange-400 uppercase tracking-widest block">Current Step</span>
-                                <span class="font-bold text-gray-800 capitalize">${App.teacherSettings.forceModule || 'Questions'}</span>
+                    <div class="grid grid-cols-1 gap-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                        ${modules.map(m => `
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100 group">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center ${App.teacherSettings.moduleAccess[m.id] ? 'text-primary shadow-sm border border-blue-50' : 'text-gray-300'}">
+                                        <span class="iconify text-xl" data-icon="${m.icon}"></span>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-gray-800 text-sm">${m.label}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button onclick="window.forceAllToModule('${m.id}')" 
+                                        class="px-3 py-1 text-[9px] font-black rounded-lg border-2 uppercase tracking-tighter transition-all ${App.teacherSettings.forceModule === m.id ? 'bg-teacher text-white border-teacher shadow-lg shadow-red-100' : 'text-teacher border-red-100 hover:bg-red-50'}">
+                                        ${App.teacherSettings.forceModule === m.id ? 'Forced' : 'Focus'}
+                                    </button>
+                                    <label class="relative inline-flex items-center cursor-pointer scale-90">
+                                        <input type="checkbox" ${App.teacherSettings.moduleAccess[m.id] ? 'checked' : ''} 
+                                            onchange="window.toggleAccess('${m.id}')" class="sr-only peer">
+                                        <div class="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
                             </div>
-                            <button onclick="window.guidedMove(1)" class="p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-30" ${App.teacherSettings.forceModule === 'communication' ? 'disabled' : ''}>
-                                <span class="iconify" data-icon="mdi:chevron-right"></span>
-                            </button>
-                        </div>
-                        <div class="mt-4">
-                            <button onclick="window.openActivityDashboard()" class="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-all">
-                                <span class="iconify text-xl" data-icon="mdi:presentation"></span>
-                                Open Activity Dashboard & Exemplar
-                            </button>
-                        </div>
-                        <div class="mt-3 flex justify-between px-1">
-                            ${['questions', 'models', 'investigation', 'analysis', 'math', 'explanations', 'argument', 'communication'].map((m, i) => `
-                                <div class="w-2 h-2 rounded-full ${App.teacherSettings.forceModule === m || (!App.teacherSettings.forceModule && m === 'questions') ? 'bg-orange-500 ring-4 ring-orange-100' : 'bg-orange-200'}"></div>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span class="iconify text-primary" data-icon="mdi:lock-open-variant"></span>
-                    Module Access
-                </h3>
-                <div class="space-y-3">
-                    ${modules.map(m => `
-                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                            <div class="flex-1 flex items-center gap-3">
-                                <span class="iconify text-xl ${App.teacherSettings.moduleAccess[m.id] ? 'text-primary' : 'text-gray-400'}" data-icon="${m.icon}"></span>
-                                <span class="font-medium text-sm md:text-base">${m.label}</span>
-                            </div>
-                            <div class="flex items-center gap-4 shrink-0">
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" ${App.teacherSettings.moduleAccess[m.id] ? 'checked' : ''} 
-                                        onchange="window.toggleAccess('${m.id}')" class="sr-only peer">
-                                    <div class="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                                </label>
-                                <button onclick="window.forceAllToModule('${m.id}')" 
-                                    class="px-3 py-1 text-[10px] font-bold rounded-lg border-2 min-w-[60px] ${App.teacherSettings.forceModule === m.id ? 'bg-teacher text-white border-teacher' : 'text-teacher border-teacher/20 hover:bg-red-50'}"
-                                    title="Force all students to this module">
-                                    ${App.teacherSettings.forceModule === m.id ? 'FORCED' : 'FORCE'}
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-                
-                <div class="mt-6 flex gap-4">
-                    <button onclick="window.setAllAccess(true)" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200">
-                        Unlock All
-                    </button>
-                    <button onclick="window.setAllAccess(false)" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
-                        Lock All
-                    </button>
-                    <button onclick="window.forceAllToModule(null)" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-                        Clear Forced Focus
+                        `).join('')}
+                    </div>
+                    
+                    <button onclick="window.forceAllToModule(null)" class="w-full mt-6 py-3 bg-gray-100 text-gray-600 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-gray-200 transition-all">
+                        Release Forced Module
                     </button>
                 </div>
             </div>
@@ -642,9 +748,8 @@ async function renderMonitorView() {
                 `;
             })).then(r => r.join(''))}
             ${students.length === 0 ? `
-                <div class="col-span-full py-24 text-center opacity-30 grayscale">
-                    <span class="iconify text-6xl mb-4" data-icon="mdi:account-group-outline"></span>
-                    <p class="text-sm font-black uppercase tracking-widest">No student work to monitor yet</p>
+                <div class="col-span-full">
+                    ${renderEmptyState('No students to monitor', 'Ask students to join the session to see their progress here.', 'mdi:monitor-dashboard', true)}
                 </div>
             ` : ''}
         </div>
@@ -712,8 +817,12 @@ export async function applyLessonToCurrent(lessonId) {
 
 export async function toggleGuidedMode() {
     App.teacherSettings.guidedMode = !App.teacherSettings.guidedMode;
-    if (App.teacherSettings.guidedMode && !App.teacherSettings.forceModule) {
-        App.teacherSettings.forceModule = 'questions';
+    if (App.teacherSettings.guidedMode) {
+        if (!App.teacherSettings.forceModule) {
+            App.teacherSettings.forceModule = 'questions';
+        }
+    } else {
+        App.teacherSettings.forceModule = null;
     }
     await saveToStorage();
     renderTeacherContent();
