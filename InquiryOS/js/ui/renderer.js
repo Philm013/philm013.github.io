@@ -175,6 +175,73 @@ export function updateModeUI() {
 }
 
 /**
+ * Wraps content into snappable cards for mobile if it contains data-card-title attributes.
+ */
+function wrapInSnapCards(html) {
+    if (window.innerWidth > 768) return html;
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+    const sections = doc.querySelectorAll('[data-card-title]');
+    
+    if (sections.length === 0) return html;
+
+    const cards = Array.from(sections).map((section, i) => `
+        <div class="snap-card" id="card-${i}">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">${section.getAttribute('data-card-title')}</h3>
+                <span class="text-[10px] font-bold text-gray-300">Section ${i + 1}/${sections.length}</span>
+            </div>
+            <div class="flex-1">${section.outerHTML}</div>
+        </div>
+    `).join('');
+
+    const dots = Array.from(sections).map((_, i) => `<div class="dot ${i === 0 ? 'active' : ''}" data-index="${i}"></div>`).join('');
+
+    return `
+        <div class="snap-container" id="snapContainer">
+            ${cards}
+        </div>
+        <div class="pagination-dots">
+            ${dots}
+        </div>
+        <div class="mobile-snap-nav">
+            <button onclick="window.scrollSnap('prev')" class="nav-snap-btn" aria-label="Previous">
+                <span class="iconify text-2xl" data-icon="mdi:chevron-left"></span>
+            </button>
+            <button onclick="window.scrollSnap('next')" class="nav-snap-btn" aria-label="Next">
+                <span class="iconify text-2xl" data-icon="mdi:chevron-right"></span>
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * Initializes listeners for the snap container.
+ */
+function initSnapNavigation() {
+    const container = document.getElementById('snapContainer');
+    if (!container) return;
+
+    container.addEventListener('scroll', () => {
+        const index = Math.round(container.scrollLeft / container.offsetWidth);
+        const dots = document.querySelectorAll('.pagination-dots .dot');
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === index);
+        });
+    });
+
+    window.scrollSnap = (dir) => {
+        const step = container.offsetWidth;
+        const current = container.scrollLeft;
+        container.scrollTo({
+            left: dir === 'next' ? current + step : current - step,
+            behavior: 'smooth'
+        });
+    };
+}
+
+/**
  * Renders the content for the currently active student module.
  */
 export function renderStudentContent() {
@@ -219,27 +286,35 @@ export function renderStudentContent() {
     
     const html = renderers[App.currentModule]?.() || '<p>Module not found</p>';
     
+    // Wrap in Snappable Cards for Mobile
+    const wrappedHtml = wrapInSnapCards(html);
+    
     if (App.isViewingExemplar) {
         content.innerHTML = `
             <div class="relative min-h-full">
                 <div class="absolute inset-0 z-[150] bg-white/10 pointer-events-auto cursor-not-allowed"></div>
-                <div class="pointer-events-none opacity-80 filter grayscale-[0.2]">
-                    ${html}
+                <div class="pointer-events-none opacity-80 filter grayscale-[0.2] h-full">
+                    ${wrappedHtml}
                 </div>
-                <div class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[160] bg-purple-600 text-white px-6 py-3 rounded-full shadow-2xl font-bold flex items-center gap-3">
+                <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[160] bg-purple-600 text-white px-6 py-3 rounded-full shadow-2xl font-bold flex items-center gap-3 whitespace-nowrap">
                     <span class="iconify text-xl" data-icon="mdi:eye"></span>
-                    TEACHER EXAMPLE VIEW
-                    <button onclick="window.toggleExemplarView()" class="ml-4 bg-white text-purple-600 px-4 py-1 rounded-full text-sm">Return to My Work</button>
+                    TEACHER EXAMPLE
+                    <button onclick="window.toggleExemplarView()" class="ml-4 bg-white text-purple-600 px-4 py-1 rounded-full text-sm">Exit</button>
                 </div>
             </div>
         `;
     } else {
-        content.innerHTML = html;
+        content.innerHTML = wrappedHtml;
     }
+    
+    initSnapNavigation();
     
     setTimeout(() => {
         if (App.currentModule === 'models') initModelCanvas();
         if (App.currentModule === 'analysis') initChart();
+        if (App.currentModule === 'investigation' && window.initDataTableSortable) {
+            window.initDataTableSortable();
+        }
     }, 50);
 }
 
@@ -282,7 +357,10 @@ export async function renderTeacherContent() {
     const renderer = renderers[App.teacherModule];
     if (renderer) {
         const result = await renderer();
-        if (typeof result === 'string') content.innerHTML = result;
+        if (typeof result === 'string') {
+            content.innerHTML = wrapInSnapCards(result);
+            initSnapNavigation();
+        }
     } else {
         content.innerHTML = '<p>Module not found</p>';
     }

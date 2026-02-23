@@ -3,6 +3,8 @@
  * @description Logic for the SEP3 module: Planning and Carrying Out Investigations.
  */
 
+/* global Sortable */
+
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
 import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
@@ -14,7 +16,7 @@ export function renderInvestigationModule() {
         <div class="max-w-5xl mx-auto">
             ${renderModuleHeader('Planning & Carrying Out Investigations', 'mdi:microscope', 'SEP3')}
             
-            <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+            <div class="bg-white rounded-xl shadow-sm border p-6 mb-6" data-card-title="Experimental Variables">
                 <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     Experimental Variables
                     <span class="ngss-tag ngss-ccc">CCC2</span>
@@ -25,7 +27,7 @@ export function renderInvestigationModule() {
                 ${renderVariableBank()}
             </div>
             
-            <div class="bg-white rounded-xl shadow-sm border p-6">
+            <div class="bg-white rounded-xl shadow-sm border p-6" data-card-title="Data Collection Table">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="font-semibold text-gray-900">Data Collection Table</h3>
                     <div class="flex gap-2">
@@ -37,6 +39,9 @@ export function renderInvestigationModule() {
                         </button>
                         <button onclick="window.saveDataAsEvidence()" class="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200 transition-colors">
                             <span class="iconify mr-1" data-icon="mdi:bookmark"></span> Save as Evidence
+                        </button>
+                        <button onclick="window.exportToCSV()" class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors" title="Export as CSV">
+                            <span class="iconify mr-1" data-icon="mdi:file-export"></span> CSV
                         </button>
                     </div>
                 </div>
@@ -122,8 +127,9 @@ function renderDataTable() {
                 <thead>
                     <tr class="bg-gray-100">
                         <th class="border p-2 w-10"></th>
+                        <th class="border p-2 w-8"></th>
                         ${(dt.columns || []).map((col, i) => `
-                            <th class="border p-0 min-w-40">
+                            <th class="border p-0 min-w-40 group/col relative">
                                 <div class="p-2 space-y-2">
                                     <div class="flex items-center gap-2">
                                         <input type="text" value="${col.name}" 
@@ -163,10 +169,13 @@ function renderDataTable() {
                         <th class="border p-2 w-10"></th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="dataTableBody">
                     ${(dt.rows || []).map((row, ri) => `
-                        <tr class="hover:bg-gray-50 transition-colors">
+                        <tr class="data-row hover:bg-gray-50 transition-colors" data-id="${ri}">
                             <td class="border p-2 text-center text-gray-400 text-[10px] font-bold">${ri + 1}</td>
+                            <td class="border p-2 text-center">
+                                <span class="row-drag-handle iconify text-gray-300 cursor-grab" data-icon="mdi:drag-vertical"></span>
+                            </td>
                             ${(dt.columns || []).map(col => `
                                 <td class="border p-0">
                                     <input type="${col.type === 'number' ? 'number' : 'text'}"
@@ -225,6 +234,39 @@ function renderDataTable() {
             </table>
         </div>
     `;
+}
+
+/**
+ * Initializes SortableJS on the data table.
+ */
+export function initDataTableSortable() {
+    const el = document.getElementById('dataTableBody');
+    if (!el || typeof Sortable === 'undefined') return;
+    
+    Sortable.create(el, {
+        animation: 150,
+        handle: '.row-drag-handle',
+        ghostClass: 'bg-blue-50',
+        delay: 50, // Mobile optimization: small delay to allow scrolling
+        delayOnTouchOnly: true,
+        touchStartThreshold: 5,
+        onEnd: async (evt) => {
+            const rows = App.work.dataTable.rows;
+            const item = rows.splice(evt.oldIndex, 1)[0];
+            rows.splice(evt.newIndex, 0, item);
+            
+            // Also need to move feedback if it exists
+            if (App.work.dataTable.feedback) {
+                const feedback = App.work.dataTable.feedback;
+                const fItem = feedback[evt.oldIndex];
+                feedback.splice(evt.oldIndex, 1);
+                feedback.splice(evt.newIndex, 0, fItem);
+            }
+            
+            await saveAndBroadcast('dataTable', App.work.dataTable);
+            renderStudentContent();
+        }
+    });
 }
 
 export async function toggleRowNote(index) {
@@ -337,4 +379,32 @@ export async function saveDataAsEvidence() {
     if (!App.work.dataTable.rows.some(r => Object.values(r).some(v => v))) { toast('Add some data first!', 'warning'); return; }
     const evidence = { id: 'ev_' + Date.now(), type: 'data', title: 'Data Table', description: `${App.work.dataTable.rows.length} rows, ${App.work.dataTable.columns.length} columns`, icon: 'mdi:table', data: JSON.parse(JSON.stringify(App.work.dataTable)), author: App.user.name, time: Date.now() };
     App.work.evidence.push(evidence); await saveAndBroadcast('evidence', App.work.evidence); toast('Data saved!', 'success');
+}
+
+/**
+ * Exports the data table as a CSV file.
+ */
+export function exportToCSV() {
+    const dt = App.work.dataTable;
+    if (!dt.rows.length) {
+        toast('No data to export', 'warning');
+        return;
+    }
+
+    const headers = dt.columns.map(c => `"${c.name}${c.unit ? ' (' + c.unit + ')' : ''}"`).join(',');
+    const rows = dt.rows.map(row => {
+        return dt.columns.map(col => `"${row[col.id] || ''}"`).join(',');
+    });
+
+    const csvContent = [headers, ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `InquiryOS_Data_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast('CSV Exported!', 'success');
 }

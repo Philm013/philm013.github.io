@@ -42,7 +42,7 @@ export function renderQuestionsModule() {
                 ${renderModuleHeader('Asking Questions', 'mdi:help-circle', 'SEP1')}
             </div>
             
-            <div class="shrink-0 bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-100 rounded-3xl p-6 shadow-sm relative overflow-hidden mx-2">
+            <div class="shrink-0 bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-100 rounded-3xl p-6 shadow-sm relative overflow-hidden mx-2" data-card-title="Phenomenon">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
                 <div class="flex flex-col md:flex-row gap-5 relative">
                     <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-amber-100 text-amber-50">
@@ -58,7 +58,7 @@ export function renderQuestionsModule() {
                 </div>
             </div>
             
-            <div class="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar pb-4">
+            <div class="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar pb-4" data-card-title="Notice & Wonder">
                 <div class="flex flex-nowrap gap-4 px-2 h-full items-stretch">
                     ${allCategories.map(cat => `
                         <div class="w-80 shrink-0 h-full">
@@ -68,7 +68,7 @@ export function renderQuestionsModule() {
                 </div>
             </div>
             
-            <div class="shrink-0 bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mx-2 mb-2">
+            <div class="shrink-0 bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mx-2 mb-2" data-card-title="Investigation Focus">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-black text-gray-900 flex items-center gap-3">
                         <span class="w-8 h-8 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center">

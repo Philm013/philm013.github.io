@@ -69,7 +69,7 @@ export async function renderTeacherOverview() {
 
     return `
         <div class="max-w-5xl mx-auto space-y-6">
-            <div class="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-10 relative overflow-hidden group">
+            <div class="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-10 relative overflow-hidden group" data-card-title="Phenomenon">
                 <div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-110"></div>
                 
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 relative">
@@ -125,14 +125,14 @@ export async function renderTeacherOverview() {
                 </div>
             </div>
             
-            <div class="grid md:grid-cols-4 gap-4">
+            <div class="grid md:grid-cols-4 gap-4" data-card-title="Class Stats">
                 ${renderStatTile('Total Notices', stats.notices, 'mdi:eye', 'blue')}
                 ${renderStatTile('Total Wonders', stats.wonders, 'mdi:lightbulb', 'yellow')}
                 ${renderStatTile('Class Concepts', stats.nodes, 'mdi:cube-outline', 'green')}
                 ${renderStatTile('Forum Posts', stats.posts, 'mdi:forum', 'purple')}
             </div>
 
-            <div class="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-10">
+            <div class="bg-white rounded-[2.5rem] shadow-sm border p-8 md:p-10" data-card-title="Access Management">
                 <div class="flex items-center gap-5 mb-8">
                     <div class="w-14 h-14 bg-secondary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-purple-100">
                         <span class="iconify text-3xl" data-icon="mdi:account-plus"></span>
@@ -300,7 +300,7 @@ export async function renderTeacherLessons() {
                 </button>
             </div>
 
-            <section>
+            <section data-card-title="NGSS Blueprints">
                 <div class="flex items-center gap-3 mb-6">
                     <span class="w-8 h-8 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center">
                         <span class="iconify" data-icon="mdi:school"></span>
@@ -337,7 +337,7 @@ export async function renderTeacherLessons() {
                 </div>
             </section>
 
-            <section>
+            <section data-card-title="My Presets">
                 <div class="flex items-center gap-3 mb-6">
                     <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
                         <span class="iconify" data-icon="mdi:folder-heart"></span>

@@ -18,7 +18,7 @@ export function renderExplanationsModule() {
             ${renderModuleHeader('Constructing Explanations', 'mdi:lightbulb-on', 'SEP6')}
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col overflow-hidden h-full lg:sticky lg:top-4">
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col overflow-hidden h-full lg:sticky lg:top-4" data-card-title="Evidence Bank">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-xs font-black text-gray-900 uppercase tracking-widest">Evidence Bank</h3>
                         <span class="px-2 py-0.5 bg-purple-100 text-purple-600 rounded text-[9px] font-black uppercase tracking-widest">${(App.work.evidence || []).length + (App.work.modelExplanations || []).length + (App.work.modelGeneralExplanation ? 1 : 0)} Items</span>
@@ -30,9 +30,15 @@ export function renderExplanationsModule() {
                 </div>
                 
                 <div class="lg:col-span-2 space-y-8">
-                    ${renderCerField('Scientific Claim', 'C', 'red', 'Based on your inquiry, what is the answer to your driving question?', App.work.claim, 'window.saveClaim', 'A clear, concise statement that answers the investigation question.')}
-                    ${renderCerField('Evidence Description', 'E', 'blue', 'According to my data and observations...', App.work.evidenceText, 'window.saveEvidenceText', 'Specific data and observations that support your claim.')}
-                    ${renderCerField('Reasoning & Justification', 'R', 'green', 'This evidence supports my claim because...', App.work.reasoning, 'window.saveReasoning', 'Explain how the evidence logically supports the claim using scientific principles.')}
+                    <div data-card-title="Claim">
+                        ${renderCerField('Scientific Claim', 'C', 'red', 'Based on your inquiry, what is the answer to your driving question?', App.work.claim, 'window.saveClaim', 'A clear, concise statement that answers the investigation question.')}
+                    </div>
+                    <div data-card-title="Evidence">
+                        ${renderCerField('Evidence Description', 'E', 'blue', 'According to my data and observations...', App.work.evidenceText, 'window.saveEvidenceText', 'Specific data and observations that support your claim.')}
+                    </div>
+                    <div data-card-title="Reasoning">
+                        ${renderCerField('Reasoning & Justification', 'R', 'green', 'This evidence supports my claim because...', App.work.reasoning, 'window.saveReasoning', 'Explain how the evidence logically supports the claim using scientific principles.')}
+                    </div>
                 </div>
             </div>
         </div>
