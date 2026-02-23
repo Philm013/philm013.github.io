@@ -137,11 +137,12 @@
         /* Asset Action Buttons (Blue Circles) */
         .asset-overlay .btn-to-ai, 
         .asset-overlay .btn-to-code, 
-        .asset-overlay .btn-to-markup {
+        .asset-overlay .btn-to-markup,
+        .asset-overlay .btn-toggle-fav {
             background-color: #6366f1 !important;
             border-radius: 9999px !important;
-            width: 36px !important;
-            height: 36px !important;
+            width: 28px !important;
+            height: 28px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -152,14 +153,13 @@
         }
         .asset-overlay .btn-to-ai:hover, 
         .asset-overlay .btn-to-code:hover, 
-        .asset-overlay .btn-to-markup:hover {
+        .asset-overlay .btn-to-markup:hover,
+        .asset-overlay .btn-toggle-fav:hover {
             background-color: #4f46e5 !important;
             transform: scale(1.1) !important;
         }
-        .asset-overlay .btn-to-ai:active, 
-        .asset-overlay .btn-to-code:active, 
-        .asset-overlay .btn-to-markup:active {
-            transform: scale(0.95) !important;
+        .asset-overlay .btn-toggle-fav.bg-amber-500 {
+            background-color: #f59e0b !important;
         }
 
         /* AI Assistant Fixes */
@@ -265,7 +265,7 @@
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: var(--bg-main); transition: background 0.2s; color: var(--text-main); }
         body { font-family: sans-serif; display: flex; flex-direction: column; padding-top: var(--safe-top); }
         
-        .CodeMirror { height: 100% !important; width: 100% !important; font-family: 'Fira Code', monospace; font-size: 14px; background: transparent !important; color: inherit !important; }
+        .CodeMirror { height: 100% !important; width: 100% !important; font-family: 'Fira Code', monospace; font-size: 14px; background: var(--bg-main) !important; color: inherit !important; }
         
         .app-shell { display: flex; flex: 1; width: 100vw; overflow: hidden; position: relative; }
         .desktop-nav { width: 64px; flex-shrink: 0; background: var(--bg-header); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100%; }
@@ -450,7 +450,7 @@
         <!-- DESKTOP SIDEBAR -->
         <nav class="hidden md:flex desktop-nav py-6 space-y-8">
             <div class="text-indigo-500 text-2xl text-center"><i class="fa-solid fa-atom"></i></div>
-            <button id="nav-explorer" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Explorer"><i class="fa-solid fa-files text-xl"></i></button>
+            <button id="nav-explorer" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Explorer"><i class="fa-solid fa-folder-tree text-xl"></i></button>
             <button id="nav-search" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Search"><i class="fa-solid fa-magnifying-glass text-xl"></i></button>
             <button id="nav-symbols" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Symbols"><i class="fa-solid fa-code-branch text-xl"></i></button>
             <button id="nav-assets" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Assets"><i class="fa-solid fa-image text-xl"></i></button>
@@ -760,7 +760,7 @@
 
     <!-- Mobile Nav -->
     <nav class="md:hidden mobile-nav z-[1000] overflow-hidden" style="background: var(--bg-header); border-top: 1px solid var(--border)">
-        <button id="mobile-nav-explorer" class="flex-1 flex flex-col items-center text-muted"><i class="fa-solid fa-files text-lg"></i><span class="text-[8px] font-bold mt-1 uppercase">Files</span></button>
+        <button id="mobile-nav-explorer" class="flex-1 flex flex-col items-center text-muted"><i class="fa-solid fa-folder-tree text-lg"></i><span class="text-[8px] font-bold mt-1 uppercase">Files</span></button>
         <button id="mobile-nav-search" class="flex-1 flex flex-col items-center text-muted"><i class="fa-solid fa-magnifying-glass text-lg"></i><span class="text-[8px] font-bold mt-1 uppercase">Search</span></button>
         <button id="mobile-nav-symbols" class="flex-1 flex flex-col items-center text-muted"><i class="fa-solid fa-code-branch text-lg"></i><span class="text-[8px] font-bold mt-1 uppercase">Syms</span></button>
         <button id="mobile-nav-editor" class="flex-1 flex flex-col items-center text-muted"><i class="fa-solid fa-code text-lg"></i><span class="text-[8px] font-bold mt-1 uppercase">Code</span></button>

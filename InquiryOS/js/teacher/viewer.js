@@ -608,45 +608,67 @@ export async function loadIconsForManager() {
     grid.innerHTML = '<div class="col-span-full py-32 flex flex-col items-center justify-center h-full"><span class="iconify animate-spin text-6xl text-primary mb-4" data-icon="mdi:loading"></span><p class="text-primary font-black uppercase tracking-widest text-xs">Accessing Repository...</p></div>';
     
     const prefixes = App.currentIconSet || null;
-    let query = document.getElementById('iconManagerSearch')?.value.trim() || 'science';
+    const searchInput = document.getElementById('iconManagerSearch');
+    let query = searchInput?.value.trim() || '';
     
-    // Expand query with scientific synonyms for better matching if it's a known topic
-    const topicExpansion = {
-        'biology': 'cell,nature,life,dna,organism,evolution,plant,animal,ecology',
-        'chemistry': 'molecule,atom,reaction,lab,beaker,substance,periodic',
-        'physics': 'energy,force,motion,electricity,magnet,wave,particle,gravity',
-        'space': 'planet,galaxy,star,telescope,rocket,astronaut,cosmos,moon,orbit',
-        'earth': 'weather,climate,geology,volcano,ocean,river,mountain,rock',
-        'engineering': 'design,structure,machine,robot,tools,construction,blueprint'
-    };
-    
-    let searchUrl = query;
-    const lowerQuery = query.toLowerCase();
-    for (const [topic, expansion] of Object.entries(topicExpansion)) {
-        if (lowerQuery.includes(topic)) {
-            searchUrl += ' ' + expansion.replace(/,/g, ' ');
-            break;
-        }
+    // If no query and no prefix, default to 'science' search
+    if (!query && !prefixes) {
+        query = 'science';
     }
 
     try {
-        let url = `https://api.iconify.design/search?query=${encodeURIComponent(searchUrl)}&limit=200`;
-        if (prefixes) url += `&prefixes=${prefixes}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        let icons = data.icons || [];
+        let icons = [];
+        
+        if (prefixes && !query) {
+            // BROWSE MODE: Fetch collection info
+            const res = await fetch(`https://api.iconify.design/collection?prefix=${prefixes}`);
+            const data = await res.json();
+            if (data.uncategorized) icons = data.uncategorized.slice(0, 150).map(name => `${prefixes}:${name}`);
+            else if (data.categories) {
+                // Get some from each category
+                Object.values(data.categories).forEach(catIcons => {
+                    if (icons.length < 150) icons = [...icons, ...catIcons.slice(0, 20).map(name => `${prefixes}:${name}`)];
+                });
+            }
+        } else {
+            // SEARCH MODE
+            // Expand query with scientific synonyms for better matching if it's a known topic
+            const topicExpansion = {
+                'biology': 'cell nature life dna organism evolution plant animal ecology',
+                'chemistry': 'molecule atom reaction lab beaker substance periodic',
+                'physics': 'energy force motion electricity magnet wave particle gravity',
+                'space': 'planet galaxy star telescope rocket astronaut cosmos moon orbit',
+                'earth': 'weather climate geology volcano ocean river mountain rock',
+                'engineering': 'design structure machine robot tools construction blueprint'
+            };
+            
+            let searchTerms = query;
+            const lowerQuery = query.toLowerCase();
+            for (const [topic, expansion] of Object.entries(topicExpansion)) {
+                if (lowerQuery.includes(topic)) {
+                    searchTerms += ' ' + expansion;
+                    break;
+                }
+            }
 
-        // Apply Fuse.js fuzzy matching if available to sort by relevance
-        if (typeof Fuse !== 'undefined' && icons.length > 0) {
-            const fuse = new Fuse(icons, {
-                threshold: 0.4,
-                distance: 100
-            });
-            const fuzzyResults = fuse.search(query);
-            if (fuzzyResults.length > 0) {
-                // Combine fuzzy results with original results
-                const fuzzyIcons = fuzzyResults.map(r => r.item);
-                icons = [...new Set([...fuzzyIcons, ...icons])].slice(0, 150);
+            let url = `https://api.iconify.design/search?query=${encodeURIComponent(searchTerms)}&limit=200`;
+            if (prefixes) url += `&prefixes=${prefixes}`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            icons = data.icons || [];
+
+            // Apply Fuse.js fuzzy matching if available to sort by relevance
+            if (typeof Fuse !== 'undefined' && icons.length > 0 && query) {
+                const fuse = new Fuse(icons, {
+                    threshold: 0.4,
+                    distance: 100
+                });
+                const fuzzyResults = fuse.search(query);
+                if (fuzzyResults.length > 0) {
+                    const fuzzyIcons = fuzzyResults.map(r => r.item);
+                    icons = [...new Set([...fuzzyIcons, ...icons])].slice(0, 150);
+                }
             }
         }
 
@@ -657,8 +679,9 @@ export async function loadIconsForManager() {
 
         grid.innerHTML = icons.map(icon => {
             const isSelected = App.teacherSettings.lessonIcons?.includes(icon);
-            const prefix = icon.split(':')[0];
-            const name = icon.split(':')[1];
+            const parts = icon.split(':');
+            const prefix = parts[0];
+            const name = parts[1];
             
             return `
                 <div class="relative group">
@@ -682,6 +705,7 @@ export async function loadIconsForManager() {
             `;
         }).join('');
     } catch (e) {
+        console.error('Icon search error:', e);
         grid.innerHTML = '<div class="col-span-full py-32 text-center text-red-400"><span class="iconify text-6xl mb-4" data-icon="mdi:wifi-off"></span><p class="font-black uppercase tracking-widest text-xs">Failed to connect to Iconify API.</p></div>';
     }
 }

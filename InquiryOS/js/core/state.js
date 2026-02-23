@@ -72,6 +72,7 @@ export const App = {
             { id: 'cat_systems', name: 'Systems', color: '#a855f7' },
             { id: 'cat_energy', name: 'Energy', color: '#f59e0b' }
         ],
+        defaultCategoriesEnabled: true,
         anonymousMode: false,
         allowStudentReplies: true,
         lessonIcons: [],

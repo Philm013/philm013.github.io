@@ -16,17 +16,34 @@ export async function renderTeacherNoticeBoard() {
     const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
     const studentList = allUsers.filter(u => u.mode === 'student');
     const phenomenon = App.teacherSettings?.phenomenon || { title: '', description: '', tags: [], ngssStandards: [] };
-    const linkedStandards = phenomenon.ngssStandards || [];
     
-    let items = { notices: [], wonders: [], ideas: [], testableQuestions: [] };
+    // Determine active categories
+    let activeCategories = [];
+    if (App.teacherSettings.defaultCategoriesEnabled) {
+        activeCategories = [
+            { id: 'notices', label: 'Notices', icon: 'mdi:eye', color: 'blue' },
+            { id: 'wonders', label: 'Wonders', icon: 'mdi:lightbulb', color: 'yellow' },
+            { id: 'ideas', label: 'Ideas', icon: 'mdi:thought-bubble', color: 'purple' },
+            { id: 'testableQuestions', label: 'Questions', icon: 'mdi:comment-question', color: 'green' }
+        ];
+    }
+    
+    const customCats = (App.teacherSettings.categories || []).map(c => ({
+        id: c.id, label: c.name, icon: 'mdi:folder-star', color: 'primary', hex: c.color
+    }));
+    
+    activeCategories = [...activeCategories, ...customCats];
+    
+    let items = {};
+    activeCategories.forEach(cat => items[cat.id] = []);
     
     for (const student of studentList) {
         const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + student.visitorId);
         if (saved && saved.work) {
-            ['notices', 'wonders', 'ideas', 'testableQuestions'].forEach(key => {
-                if (saved.work[key]) {
-                    items[key] = items[key].concat(saved.work[key].map(item => ({ 
-                        ...item, studentName: student.name, studentId: student.visitorId, originalCategory: key 
+            activeCategories.forEach(cat => {
+                if (saved.work[cat.id]) {
+                    items[cat.id] = items[cat.id].concat(saved.work[cat.id].map(item => ({ 
+                        ...item, studentName: student.name, studentId: student.visitorId, originalCategory: cat.id 
                     })));
                 }
             });
@@ -35,29 +52,14 @@ export async function renderTeacherNoticeBoard() {
     
     Object.keys(items).forEach(k => items[k].sort((a, b) => b.time - a.time));
 
-    const categories = [
-        { id: 'notices', label: 'Notices', icon: 'mdi:eye', color: 'blue', desc: 'Observations' },
-        { id: 'wonders', label: 'Wonders', icon: 'mdi:lightbulb', color: 'yellow', desc: 'Curiosities' },
-        { id: 'ideas', label: 'Ideas', icon: 'mdi:thought-bubble', color: 'purple', desc: 'Initial Thoughts' },
-        { id: 'testableQuestions', label: 'Questions', icon: 'mdi:comment-question', color: 'green', desc: 'Investigatable' }
-    ];
-
     return `
-        <div class="max-w-7xl mx-auto">
-            <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div class="max-w-full mx-auto pb-20">
+            <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
                 <div>
                     <h2 class="text-3xl font-black text-gray-900">Inquiry Collaboration Board</h2>
                     <p class="text-gray-500 mt-1">Live collaborative view of contributions from ${studentList.length} student scientists.</p>
                 </div>
                 <div class="flex flex-wrap gap-3 items-center">
-                    <div class="flex -space-x-2 mr-4">
-                        ${studentList.slice(0, 5).map(s => `
-                            <div class="w-10 h-10 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-bold shadow-sm" title="${s.name}">
-                                ${s.avatar || s.name.charAt(0).toUpperCase()}
-                            </div>
-                        `).join('')}
-                        ${studentList.length > 5 ? `<div class="w-10 h-10 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center text-[10px] font-black shadow-sm">+${studentList.length - 5}</div>` : ''}
-                    </div>
                     <button onclick="window.renderTeacherContent()" class="p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 shadow-sm transition-all flex items-center gap-2 font-bold active:scale-95">
                         <span class="iconify text-xl" data-icon="mdi:refresh"></span>
                         Refresh Board
@@ -66,7 +68,7 @@ export async function renderTeacherNoticeBoard() {
             </div>
 
             <!-- Dark Mode Phenomenon & standards section -->
-            <div class="mb-8 p-8 bg-gradient-to-br from-gray-900 via-blue-950 to-indigo-950 rounded-[2.5rem] text-white shadow-2xl border border-white/5 relative overflow-hidden">
+            <div class="mx-4 mb-8 p-8 bg-gradient-to-br from-gray-900 via-blue-950 to-indigo-950 rounded-[2.5rem] text-white shadow-2xl border border-white/5 relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-8 opacity-10">
                     <span class="iconify text-9xl" data-icon="mdi:microscope"></span>
                 </div>
@@ -79,66 +81,47 @@ export async function renderTeacherNoticeBoard() {
                             </span>
                             <div>
                                 <h3 class="text-2xl font-black tracking-tight">Active Phenomenon: ${phenomenon.title || 'Inquiry Project'}</h3>
-                                <div class="flex gap-2 mt-1">
-                                    ${phenomenon.tags?.map(t => `<span class="text-[10px] font-black uppercase tracking-widest text-blue-400/80">${t}</span>`).join(' • ') || '<span class="text-[10px] font-black uppercase tracking-widest text-blue-400/80">Scientific Exploration</span>'}
-                                </div>
                             </div>
                         </div>
-                        <p class="text-blue-100/70 text-lg leading-relaxed mb-6 font-medium">${phenomenon.description || 'Observe, question, and investigate the scientific mystery presented in class.'}</p>
-                        <div class="flex gap-2">
-                            <button onclick="window.showTeacherModule('overview')" class="px-5 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl text-xs font-black uppercase tracking-widest transition-all">Edit Context</button>
-                        </div>
+                        <p class="text-blue-100/70 text-lg leading-relaxed mb-6 font-medium line-clamp-3">"${phenomenon.description || 'Observe and investigate the scientific mystery.'}"</p>
                     </div>
                     
-                    <div class="w-full lg:w-96 p-6 bg-white/5 rounded-3xl backdrop-blur-xl border border-white/10 flex flex-col">
+                    <div class="w-full lg:w-80 p-6 bg-white/5 rounded-3xl backdrop-blur-xl border border-white/10 flex flex-col">
                         <h4 class="text-xs font-black uppercase tracking-widest text-blue-300 mb-4 flex items-center gap-2">
                             <span class="iconify" data-icon="mdi:medal"></span>
-                            Linked NGSS Dimensions
+                            Linked Standards
                         </h4>
-                        <div class="space-y-3 flex-1">
-                            ${linkedStandards.length > 0 ? linkedStandards.map(s => `
-                                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5 group transition-all hover:bg-white/10">
-                                    <div class="w-2 h-2 rounded-full bg-blue-400"></div>
-                                    <span class="text-xs font-bold text-white">${s}</span>
-                                    <span class="text-[10px] text-gray-400 ml-auto font-black uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">PE</span>
+                        <div class="space-y-2 flex-1 overflow-y-auto max-h-32">
+                            ${(phenomenon.ngssStandards || []).map(s => `
+                                <div class="flex items-center gap-3 p-2 bg-white/5 rounded-lg border border-white/5">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                                    <span class="text-[10px] font-bold text-white">${s}</span>
                                 </div>
-                            `).join('') : `
-                                <div class="py-10 text-center border-2 border-dashed border-white/10 rounded-2xl">
-                                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">No Standards Linked</p>
-                                    <button onclick="window.showTeacherModule('ngss')" class="mt-2 text-xs text-blue-400 font-bold hover:underline">Browse Standards</button>
-                                </div>
-                            `}
-                        </div>
-                        <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <span class="px-2 py-0.5 bg-blue-600 rounded-lg text-[9px] font-black uppercase">SEP1</span>
-                                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Asking Questions</span>
-                            </div>
-                            <span class="iconify text-gray-600" data-icon="mdi:chevron-right"></span>
+                            `).join('') || '<p class="text-[10px] text-gray-500 italic">No standards linked</p>'}
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
-                ${categories.map(cat => `
-                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col h-[700px] overflow-hidden">
-                        <div class="p-5 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-${cat.color}-100 text-${cat.color}-600 flex items-center justify-center shadow-sm">
+            <div class="flex flex-nowrap overflow-x-auto gap-6 px-4 no-scrollbar items-start min-h-[600px]">
+                ${activeCategories.map(cat => `
+                    <div class="w-80 shrink-0 bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col max-h-[80vh] overflow-hidden">
+                        <div class="p-5 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3" ${cat.hex ? `style="border-top: 4px solid ${cat.hex}"` : ''}>
+                            <div class="w-10 h-10 rounded-xl bg-${cat.color}-100 text-${cat.color}-600 flex items-center justify-center shadow-sm" ${cat.hex ? `style="background: ${cat.hex}20; color: ${cat.hex}"` : ''}>
                                 <span class="iconify text-2xl" data-icon="${cat.icon}"></span>
                             </div>
                             <div class="flex-1">
-                                <h3 class="font-bold text-gray-900 leading-tight">${cat.label}</h3>
-                                <p class="text-[10px] text-gray-400 uppercase font-black tracking-widest">${items[cat.id].length} Total</p>
+                                <h3 class="font-bold text-gray-900 leading-tight text-sm">${cat.label}</h3>
+                                <p class="text-[9px] text-gray-400 uppercase font-black tracking-widest">${items[cat.id]?.length || 0} Contributions</p>
                             </div>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-50/20">
-                            ${items[cat.id].map(item => `
+                        <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-50/10">
+                            ${items[cat.id]?.map(item => `
                                 <div class="group p-4 bg-white border-2 border-gray-50 rounded-2xl hover:border-${cat.color}-200 hover:shadow-md transition-all relative">
                                     <p class="text-gray-800 text-sm leading-relaxed mb-4">${item.text}</p>
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center gap-2">
-                                            <div class="w-6 h-6 bg-${cat.color}-50 rounded-full flex items-center justify-center text-[10px] font-bold text-${cat.color}-600 border border-${cat.color}-100">
+                                            <div class="w-6 h-6 bg-${cat.color}-50 rounded-full flex items-center justify-center text-[10px] font-bold text-${cat.color}-600 border border-${cat.color}-100" ${cat.hex ? `style="background: ${cat.hex}10; color: ${cat.hex}; border-color: ${cat.hex}30"` : ''}>
                                                 ${item.studentName.charAt(0).toUpperCase()}
                                             </div>
                                             <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${item.studentName}</span>
@@ -147,7 +130,7 @@ export async function renderTeacherNoticeBoard() {
                                             <select onchange="window.moveBoardItem('${item.studentId}', '${item.id}', '${item.originalCategory}', this.value)" 
                                                 class="text-[9px] font-black uppercase bg-gray-50 border-gray-200 rounded-lg px-2 py-1 focus:ring-0 cursor-pointer">
                                                 <option value="" disabled selected>Move...</option>
-                                                ${categories.map(c => `<option value="${c.id}">${c.label}</option>`).join('')}
+                                                ${activeCategories.map(c => `<option value="${c.id}">${c.label}</option>`).join('')}
                                             </select>
                                         </div>
                                     </div>
@@ -257,9 +240,10 @@ export async function clearAllPosts() {
 
 export function renderCategoryManager() {
     const categories = App.teacherSettings.categories || [];
+    const defaultsEnabled = App.teacherSettings.defaultCategoriesEnabled;
     
     return `
-        <div class="max-w-4xl mx-auto space-y-8">
+        <div class="max-w-4xl mx-auto space-y-8 pb-20">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tighter">Category Architect</h2>
@@ -268,14 +252,34 @@ export function renderCategoryManager() {
             </div>
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Current Categories -->
-                <div class="lg:col-span-2 space-y-4">
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Default Categories Toggle -->
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                                    <span class="iconify text-2xl" data-icon="mdi:eye"></span>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-black text-gray-900">Scientific Inquiry Defaults</h3>
+                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Notice, Wonder, Ideas, Questions</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" ${defaultsEnabled ? 'checked' : ''} 
+                                    onchange="window.toggleDefaultCategories()" class="sr-only peer">
+                                <div class="w-14 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Current Custom Categories -->
                     <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
                         <h3 class="text-lg font-black text-gray-900 mb-6 flex items-center gap-3">
                             <span class="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
                                 <span class="iconify" data-icon="mdi:view-column"></span>
                             </span>
-                            Active Categories
+                            Custom Categories
                         </h3>
                         
                         <div class="space-y-3" id="categoryList">
@@ -309,11 +313,11 @@ export function renderCategoryManager() {
                 <!-- Create New -->
                 <div class="space-y-6">
                     <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 sticky top-6">
-                        <h3 class="text-lg font-black text-gray-900 mb-6">Create New</h3>
+                        <h3 class="text-lg font-black text-gray-900 mb-6">Add New Theme</h3>
                         <div class="space-y-6">
                             <div>
-                                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Category Name</label>
-                                <input type="text" id="newCategoryName" placeholder="e.g. Observations..." 
+                                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Theme Name</label>
+                                <input type="text" id="newCategoryName" placeholder="e.g. Energy Flow..." 
                                     class="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-sm font-bold focus:border-primary focus:bg-white focus:outline-none transition-all"
                                     onkeypress="if(event.key==='Enter')window.addCategory()">
                             </div>
@@ -342,6 +346,13 @@ export function renderCategoryManager() {
         </div>
     `;
 }
+
+export const toggleDefaultCategories = async () => {
+    App.teacherSettings.defaultCategoriesEnabled = !App.teacherSettings.defaultCategoriesEnabled;
+    await saveToStorage();
+    renderTeacherContent();
+    toast(App.teacherSettings.defaultCategoriesEnabled ? 'Default categories enabled' : 'Default categories disabled', 'info');
+};
 
 
 export async function moveBoardItem(studentId, itemId, fromCat, toCat) {

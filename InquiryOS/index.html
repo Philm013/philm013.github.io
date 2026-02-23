@@ -38,8 +38,37 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { height: 100%; overflow: hidden; font-family: system-ui, sans-serif; }
-        .view { display: none !important; height: 100%; }
+        
+        #appView { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        .view { display: none !important; height: 100%; overflow: hidden; }
         .view.active { display: flex !important; flex-direction: column; }
+        
+        #mainContent { 
+            flex: 1; 
+            overflow-y: auto; 
+            background: #f8fafc; 
+            padding: 1.5rem; 
+            position: relative;
+            scroll-behavior: smooth;
+        }
+        
+        /* Fixed layout for science practices */
+        .view-student #mainContent, .view-teacher #mainContent {
+            height: calc(100vh - 64px); /* Header height */
+        }
+        
+        @media (max-width: 768px) {
+            .view-student #mainContent, .view-teacher #mainContent {
+                height: calc(100vh - 64px - 60px); /* Header + Bottom Nav */
+            }
+        }
+
+        /* Exceptions for long scrolling boards */
+        .view-noticeboard #mainContent, .view-snapshots #mainContent, .view-students #mainContent {
+            overflow-y: auto !important;
+        }
+
         .nav-btn.active { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; }
         .teacher-nav.active { background: linear-gradient(135deg, #dc2626, #f59e0b); color: white; }
         

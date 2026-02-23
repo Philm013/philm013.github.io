@@ -72,15 +72,18 @@ window.previewTemplate = previewTemplate;
 window.previewPreset = previewPreset;
 window.closeLessonPreview = closeLessonPreview;
 
-import { editInquiryItem } from './modules/questions.js';
+import { editInquiryItem, addCustomItem, deleteCustomItem } from './modules/questions.js';
 window.editInquiryItem = editInquiryItem;
+window.addCustomItem = addCustomItem;
+window.deleteCustomItem = deleteCustomItem;
 import { viewStudentWork } from './teacher/viewer.js';
 window.viewStudentWork = viewStudentWork;
 window.launchTemplate = launchTemplate;
 window.applyTemplate = applyTemplate;
 
-import { clearAllPosts } from './teacher/noticeboard.js';
+import { clearAllPosts, toggleDefaultCategories } from './teacher/noticeboard.js';
 window.clearAllPosts = clearAllPosts;
+window.toggleDefaultCategories = toggleDefaultCategories;
 
 import { setFeedbackSticker, closeCommentModal, deleteComment, startCommentDrag, renderViewerNodes, handleViewerPointerDown, handleViewerWheel, handleViewerClick, openTableRowFeedback, addDataRowSticker } from './teacher/viewer.js';
 window.setFeedbackSticker = setFeedbackSticker;
@@ -142,6 +145,14 @@ async function init() {
         const classCode = urlParams.get('class');
         if (classCode) {
             App.classCode = classCode.toUpperCase();
+            const classInput = document.getElementById('loginClass');
+            if (classInput) classInput.value = App.classCode;
+            
+            // Auto-select student role and move to step 2
+            if (typeof window.selectRole === 'function') {
+                window.selectRole('student');
+            }
+            
             toast(`Class code ${App.classCode} applied!`, 'info');
         }
 

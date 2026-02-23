@@ -11,87 +11,103 @@ import { toast } from '../ui/utils.js';
 
 export function renderQuestionsModule() {
     const p = App.teacherSettings.phenomenon;
+    const categories = [];
+    
+    // Default categories if enabled
+    if (App.teacherSettings.defaultCategoriesEnabled !== false) {
+        categories.push({ id: 'notices', label: 'I Notice...', icon: 'mdi:eye', color: 'blue', subtitle: 'Observations', action: 'window.addNotice()', inputId: 'noticeInput', listRenderer: renderNoticesList });
+        categories.push({ id: 'wonders', label: 'I Wonder...', icon: 'mdi:lightbulb', color: 'yellow', subtitle: 'Questions', action: 'window.addWonder()', inputId: 'wonderInput', listRenderer: renderWondersList });
+        categories.push({ id: 'ideas', label: 'Initial Ideas', icon: 'mdi:thought-bubble', color: 'purple', subtitle: 'Hypotheses', action: 'window.addIdea()', inputId: 'ideaInput', listRenderer: renderIdeasList });
+        categories.push({ id: 'testableQuestions', label: 'Testable Questions', icon: 'mdi:comment-question', color: 'green', subtitle: 'Inquiries', action: 'window.addTestableQuestion()', inputId: 'testableQuestionInput', listRenderer: renderTestableQuestionsList });
+    }
+
+    // Custom categories
+    const customCats = (App.teacherSettings.categories || []).map(cat => ({
+        id: cat.id,
+        label: cat.name,
+        icon: 'mdi:folder-star',
+        color: 'primary',
+        hex: cat.color,
+        subtitle: 'Theme',
+        action: `window.addCustomItem('${cat.id}')`,
+        inputId: `input_${cat.id}`,
+        listRenderer: () => renderCustomList(cat.id, cat.color)
+    }));
+
+    const allCategories = [...categories, ...customCats];
+
     return `
-        <div class="max-w-6xl mx-auto">
-            ${renderModuleHeader('Asking Questions', 'mdi:help-circle', 'SEP1')}
+        <div class="h-full flex flex-col space-y-6">
+            <div class="shrink-0 px-2">
+                ${renderModuleHeader('Asking Questions', 'mdi:help-circle', 'SEP1')}
+            </div>
             
-            <div class="bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-100 rounded-3xl p-6 mb-8 shadow-sm relative overflow-hidden">
+            <div class="shrink-0 bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-100 rounded-3xl p-6 shadow-sm relative overflow-hidden mx-2">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
                 <div class="flex flex-col md:flex-row gap-5 relative">
-                    <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-amber-100 text-amber-500">
-                        <span class="iconify text-2xl" data-icon="mdi:eye"></span>
+                    <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-amber-100 text-amber-50">
+                        <span class="iconify text-2xl text-amber-500" data-icon="mdi:eye"></span>
                     </div>
                     <div class="flex-1">
                         <div class="flex items-center gap-2 mb-1">
                             <h3 class="text-lg font-black text-gray-900">${p.title || 'Scientific Phenomenon'}</h3>
                             <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest">Focus</span>
                         </div>
-                        <p class="text-sm text-gray-600 leading-relaxed max-w-4xl">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts below.'}</p>
-                        ${p.tags?.length || p.ngssStandards?.length ? `
-                            <div class="flex gap-2 mt-3 flex-wrap">
-                                ${p.tags?.map(t => `<span class="px-2 py-1 bg-white text-amber-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-amber-100 shadow-sm">${t}</span>`).join('') || ''}
-                                ${p.ngssStandards?.map(s => `<span class="px-2 py-1 bg-white text-purple-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-purple-100 shadow-sm">${s}</span>`).join('') || ''}
-                            </div>
-                        ` : ''}
+                        <p class="text-sm text-gray-600 leading-relaxed max-w-4xl line-clamp-2 md:line-clamp-none">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts below.'}</p>
                     </div>
                 </div>
             </div>
             
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-                ${renderInputCard('I Notice...', 'mdi:eye', 'blue', 'noticeInput', 'window.addNotice()', renderNoticesList(), 'Observations')}
-                ${renderInputCard('I Wonder...', 'mdi:lightbulb', 'yellow', 'wonderInput', 'window.addWonder()', renderWondersList(), 'Questions')}
-                ${renderInputCard('Initial Ideas', 'mdi:thought-bubble', 'purple', 'ideaInput', 'window.addIdea()', renderIdeasList(), 'Hypotheses')}
-                ${renderInputCard('Testable Questions', 'mdi:comment-question', 'green', 'testableQuestionInput', 'window.addTestableQuestion()', renderTestableQuestionsList(), 'Inquiries')}
+            <div class="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar pb-4">
+                <div class="flex flex-nowrap gap-4 px-2 h-full items-stretch">
+                    ${allCategories.map(cat => `
+                        <div class="w-80 shrink-0 h-full">
+                            ${renderInputCard(cat.label, cat.icon, cat.color, cat.inputId, cat.action, cat.listRenderer(), cat.subtitle, cat.hex)}
+                        </div>
+                    `).join('')}
+                </div>
             </div>
             
-            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-xl font-black text-gray-900 flex items-center gap-3">
-                        <span class="w-10 h-10 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center">
-                            <span class="iconify text-xl" data-icon="mdi:compass"></span>
+            <div class="shrink-0 bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mx-2 mb-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-black text-gray-900 flex items-center gap-3">
+                        <span class="w-8 h-8 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center">
+                            <span class="iconify text-lg" data-icon="mdi:compass"></span>
                         </span>
                         Driving Questions
                     </h3>
-                    <span class="px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-[10px] font-black uppercase tracking-widest">Focus</span>
                 </div>
                 
-                <div class="grid md:grid-cols-1 gap-8">
-                    <div class="space-y-4">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Main Investigation Question</label>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-1 space-y-2">
+                        <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Main Question</label>
                         <div class="relative group">
                             <input type="text" value="${App.work.mainQuestion || ''}" 
                                 onchange="window.saveMainQuestion(this.value)"
-                                placeholder="What is the core mystery we are trying to solve?"
-                                class="w-full px-6 py-5 border-2 border-purple-100 bg-purple-50/30 rounded-2xl text-xl font-bold text-gray-800 focus:border-purple-500 focus:bg-white focus:outline-none transition-all placeholder:text-purple-200">
-                            <span class="absolute right-6 top-1/2 -translate-y-1/2 iconify text-2xl text-purple-200 group-focus-within:text-purple-500" data-icon="mdi:target"></span>
+                                placeholder="Core mystery..."
+                                class="w-full px-4 py-3 border-2 border-purple-100 bg-purple-50/30 rounded-xl text-sm font-bold text-gray-800 focus:border-purple-500 focus:bg-white focus:outline-none transition-all">
                         </div>
                     </div>
 
-                    <div class="space-y-4">
+                    <div class="md:col-span-2 space-y-2">
                         <div class="flex items-center justify-between">
-                            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Sub-Questions & Supporting Inquiries</label>
-                            <button onclick="window.addSubQuestion()" class="text-[10px] font-black text-purple-600 uppercase tracking-widest hover:underline flex items-center gap-1">
-                                <span class="iconify" data-icon="mdi:plus-circle"></span> Add New
+                            <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Supporting Inquiries</label>
+                            <button onclick="window.addSubQuestion()" class="text-[9px] font-black text-purple-600 uppercase tracking-widest hover:underline flex items-center gap-1">
+                                <span class="iconify" data-icon="mdi:plus-circle"></span> Add
                             </button>
                         </div>
-                        <div class="grid md:grid-cols-2 gap-4">
+                        <div class="flex flex-wrap gap-2 max-h-24 overflow-y-auto no-scrollbar">
                             ${(App.work.subQuestions || []).map((q, i) => `
-                                <div class="p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-purple-200 group transition-all flex items-center gap-3">
-                                    <span class="text-xs font-black text-purple-300">${i + 1}</span>
+                                <div class="px-3 py-2 bg-gray-50 rounded-xl border border-transparent hover:border-purple-200 group transition-all flex items-center gap-2 max-w-[200px]">
                                     <input type="text" value="${q.text}" 
                                         onchange="window.updateSubQuestion('${q.id}', this.value)"
-                                        placeholder="Specific aspect to investigate..."
-                                        class="flex-1 bg-transparent border-none text-sm font-medium focus:outline-none text-gray-700">
-                                    <button onclick="window.deleteSubQuestion('${q.id}')" class="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-opacity">
+                                        placeholder="Specific aspect..."
+                                        class="flex-1 bg-transparent border-none text-[11px] font-medium focus:outline-none text-gray-700 min-w-0">
+                                    <button onclick="window.deleteSubQuestion('${q.id}')" class="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-opacity flex-shrink-0">
                                         <span class="iconify" data-icon="mdi:close-circle"></span>
                                     </button>
                                 </div>
                             `).join('')}
-                            ${App.work.subQuestions?.length === 0 ? `
-                                <div class="md:col-span-2 py-8 text-center bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-100">
-                                    <p class="text-xs text-gray-400 font-medium">Break down your main question into smaller, manageable parts.</p>
-                                </div>
-                            ` : ''}
                         </div>
                     </div>
                 </div>
@@ -100,11 +116,15 @@ export function renderQuestionsModule() {
     `;
 }
 
-function renderInputCard(title, icon, color, inputId, onAction, content, subtitle = '') {
+function renderInputCard(title, icon, color, inputId, onAction, content, subtitle = '', hex = '') {
+    const borderStyle = hex ? `border-top: 4px solid ${hex};` : '';
+    const iconStyle = hex ? `background: ${hex}10; color: ${hex};` : '';
+    const btnStyle = hex ? `background: ${hex};` : '';
+
     return `
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-full">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-full practice-card" style="${borderStyle}">
             <div class="p-4 border-b border-gray-50 flex items-center gap-3 shrink-0">
-                <div class="w-9 h-9 rounded-xl bg-${color}-50 text-${color}-500 flex items-center justify-center">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center ${hex ? '' : `bg-${color}-50 text-${color}-500`}" style="${iconStyle}">
                     <span class="iconify text-xl" data-icon="${icon}"></span>
                 </div>
                 <div>
@@ -112,7 +132,7 @@ function renderInputCard(title, icon, color, inputId, onAction, content, subtitl
                     <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest">${subtitle}</p>
                 </div>
             </div>
-            <div class="flex-1 p-3 space-y-2 overflow-y-auto min-h-[200px] max-h-[350px] custom-scrollbar bg-gray-50/20">
+            <div class="flex-1 p-3 space-y-2 overflow-y-auto custom-scrollbar bg-gray-50/20">
                 ${content}
             </div>
             <div class="p-3 bg-white border-t border-gray-50 shrink-0">
@@ -120,13 +140,44 @@ function renderInputCard(title, icon, color, inputId, onAction, content, subtitl
                     <input type="text" id="${inputId}" placeholder="Add..." 
                         class="flex-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-${color}-500 focus:bg-white focus:outline-none transition-all"
                         onkeypress="if(event.key==='Enter')${onAction}">
-                    <button onclick="${onAction}" class="w-8 h-8 flex items-center justify-center bg-${color}-500 text-white rounded-xl hover:opacity-90 transition-all shadow-sm">
+                    <button onclick="${onAction}" class="w-8 h-8 flex items-center justify-center text-white rounded-xl hover:opacity-90 transition-all shadow-sm ${hex ? '' : `bg-${color}-500`}" style="${btnStyle}">
                         <span class="iconify" data-icon="mdi:plus"></span>
                     </button>
                 </div>
             </div>
         </div>
     `;
+}
+
+export function renderCustomList(catId, hex) {
+    const list = App.work[catId] || [];
+    if (!list.length) return `
+        <div class="h-full flex flex-col items-center justify-center text-center opacity-20 grayscale py-10">
+            <span class="iconify text-4xl mb-2" data-icon="mdi:folder-outline"></span>
+            <p class="text-[9px] font-black uppercase tracking-widest">Empty</p>
+        </div>
+    `;
+    return list.map(item => `
+        <div class="group p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-primary/30 transition-all relative">
+            <p class="text-sm text-gray-700 leading-relaxed cursor-pointer" onclick="window.editInquiryItem('${item.id}', '${catId}')">${item.text}</p>
+            <button onclick="window.deleteCustomItem('${catId}', '${item.id}')" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-all">
+                <span class="iconify" data-icon="mdi:close-circle"></span>
+            </button>
+        </div>
+    `).join('');
+}
+
+export async function addCustomItem(catId) {
+    const input = document.getElementById(`input_${catId}`);
+    if (!input?.value.trim()) return;
+    if (!App.work[catId]) App.work[catId] = [];
+    App.work[catId].push({ id: 'ci_' + Date.now(), text: input.value.trim(), time: Date.now() });
+    input.value = ''; await saveAndBroadcast(catId, App.work[catId]); renderStudentContent();
+}
+
+export async function deleteCustomItem(catId, id) {
+    App.work[catId] = App.work[catId].filter(i => i.id !== id);
+    await saveAndBroadcast(catId, App.work[catId]); renderStudentContent();
 }
 
 export function renderNoticesList() {

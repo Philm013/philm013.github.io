@@ -197,6 +197,34 @@
         .session-card.selected { border-color: var(--success); }
         .session-card.loading { opacity: 0.6; pointer-events: none; }
         
+        .session-card.new-session-card {
+            border: 2px dashed var(--border);
+            background: transparent;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+            opacity: 0.7;
+        }
+        
+        .session-card.new-session-card:hover {
+            border-color: var(--accent);
+            opacity: 1;
+            background: var(--accent-dim);
+        }
+
+        .new-session-plus {
+            font-size: 24px;
+            color: var(--accent);
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
         .session-select {
             position: absolute;
             top: 6px;
@@ -914,6 +942,8 @@
                 <button class="view-btn" id="btnMarkup">Markup</button>
             </div>
             
+            <button class="btn btn-primary btn-sm" id="startNewBtn" title="Start New Session">＋ New</button>
+            
             <div class="url-bar" id="browserBar">
                 <input type="text" class="url-input" id="urlInput" value="https://wikipedia.org" placeholder="Enter URL...">
                 <button class="btn btn-default" id="goBtn">Go</button>
@@ -949,6 +979,7 @@
                     <button class="tool-btn" id="redoBtn" title="Redo (Ctrl+Y)">↻</button>
                 </div>
                 
+                <button class="btn btn-success btn-sm" id="saveBtn">Save</button>
                 <button class="btn btn-ghost btn-sm" id="layersBtn">📑</button>
                 <button class="btn btn-danger btn-sm" id="deleteBtn">Delete</button>
             </div>
@@ -2020,6 +2051,24 @@ const Library = {
         Toast.show('Capture added!');
     },
 
+    // Save current session to DB
+    async saveCurrentSession() {
+        if (this.activeId && Editor.session) {
+            const current = this.sessions.find(s => s.id === this.activeId);
+            if (current) {
+                current.shapes = [...Editor.session.shapes];
+                current.viewport = { ...Editor.viewport };
+                
+                // Update thumbnail to reflect markups
+                const thumbData = await Editor.generateThumbnail();
+                if (thumbData) current.thumbData = thumbData;
+                
+                await DB.save(current);
+                this.render();
+            }
+        }
+    },
+
     async loadSession(id) {
         // Prevent double-loading
         if (this.loadingSessionId === id) return;
@@ -2028,14 +2077,7 @@ const Library = {
         if (!session) return;
         
         // Save current session first
-        if (this.activeId && Editor.session) {
-            const current = this.sessions.find(s => s.id === this.activeId);
-            if (current) {
-                current.shapes = [...Editor.session.shapes];
-                current.viewport = { ...Editor.viewport };
-                await DB.save(current);
-            }
-        }
+        await this.saveCurrentSession();
         
         this.loadingSessionId = id;
         this.render(); // Show loading state
@@ -2096,16 +2138,18 @@ const Library = {
         const grid = document.getElementById('capturesGrid');
         grid.innerHTML = '';
         
-        if (this.sessions.length === 0) {
-            grid.innerHTML = `
-                <div style="text-align:center; padding:60px 20px; color:var(--text-muted);">
-                    <div style="font-size:48px; margin-bottom:16px; opacity:0.3;">📷</div>
-                    <div>No captures yet</div>
-                    <div style="font-size:12px; margin-top:8px; opacity:0.7;">Browse a page and click Capture</div>
-                </div>
-            `;
-            return;
-        }
+        // Add "New Session" card at the top
+        const newCard = document.createElement('div');
+        newCard.className = 'session-card new-session-card';
+        newCard.innerHTML = `
+            <div class="new-session-plus">＋</div>
+            <div class="session-info">
+                <div class="session-title">New Session</div>
+                <div class="session-meta">Start a new capture workflow</div>
+            </div>
+        `;
+        newCard.addEventListener('click', () => App.startNew());
+        grid.appendChild(newCard);
         
         this.sessions.forEach(s => {
             const card = document.createElement('div');
@@ -2985,6 +3029,11 @@ const Editor = {
             if (stored) {
                 stored.shapes = [...this.session.shapes];
                 stored.viewport = { ...this.viewport };
+                
+                // Update thumbnail
+                const thumbData = await this.generateThumbnail();
+                if (thumbData) stored.thumbData = thumbData;
+                
                 await DB.save(stored);
             }
         }
@@ -3126,7 +3175,7 @@ const Editor = {
         
         this.session.shapes.forEach(shape => {
             if (shape === this.editingText) return;
-            this.drawShape(shape);
+            this.drawShape(shape, ctx);
         });
         
         this.session.shapes.filter(s => s.selected && s !== this.editingText).forEach(shape => {
@@ -3134,8 +3183,7 @@ const Editor = {
         });
     },
 
-    drawShape(shape) {
-        const ctx = this.ctx;
+    drawShape(shape, ctx = this.ctx) {
         ctx.strokeStyle = shape.stroke || '#ef4444';
         ctx.fillStyle = shape.fill || 'transparent';
         ctx.lineWidth = shape.strokeWidth || 4;
@@ -3216,6 +3264,38 @@ const Editor = {
                 ctx.textAlign = 'left';
             }
         }
+    },
+
+    async generateThumbnail() {
+        if (!this.session || !this.session.img) return null;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 200;
+        canvas.height = 140;
+        const ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, 200, 140);
+        
+        const scale = Math.min(200 / this.session.width, 140 / this.session.height);
+        const w = this.session.width * scale;
+        const h = this.session.height * scale;
+        const tx = (200 - w) / 2;
+        const ty = (140 - h) / 2;
+        
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.scale(scale, scale);
+        
+        ctx.drawImage(this.session.img, 0, 0);
+        
+        this.session.shapes.forEach(shape => {
+            this.drawShape(shape, ctx);
+        });
+        
+        ctx.restore();
+        
+        return canvas.toDataURL('image/jpeg', 0.8);
     },
 
     drawSelectionHandles(shape) {
@@ -3610,6 +3690,7 @@ const App = {
     setupEventListeners() {
         document.getElementById('btnBrowse').addEventListener('click', () => this.setView('browse'));
         document.getElementById('btnMarkup').addEventListener('click', () => this.setView('markup'));
+        document.getElementById('startNewBtn').addEventListener('click', () => this.startNew());
         
         document.getElementById('goBtn').addEventListener('click', () => Browser.go());
         document.getElementById('captureBtn').addEventListener('click', () => Browser.capture());
@@ -3630,6 +3711,10 @@ const App = {
         });
         
         document.getElementById('layersBtn').addEventListener('click', () => Editor.toggleLayers());
+        document.getElementById('saveBtn').addEventListener('click', async () => {
+            await Library.saveCurrentSession();
+            Toast.show('Session saved');
+        });
         document.getElementById('deleteBtn').addEventListener('click', () => Editor.deleteSelected());
         document.getElementById('undoBtn').addEventListener('click', () => Editor.undo());
         document.getElementById('redoBtn').addEventListener('click', () => Editor.redo());
@@ -3675,6 +3760,15 @@ const App = {
                 if (Editor.session) Editor.fitToView();
             }, 50);
         }
+    },
+
+    async startNew() {
+        await Library.saveCurrentSession();
+        Library.activeId = null;
+        Editor.session = null;
+        Library.render();
+        this.setView('browse');
+        Toast.show('Starting new session');
     }
 };
 

@@ -1895,7 +1895,22 @@ const Nexus = {
     /** Renders a single photo asset tile. @private */
     renderSingleAsset(container, img) {
         const id = img.id; const isFav = this.isFavorite('photo', id); const div = document.createElement('div'); div.className = `group relative aspect-square rounded-2xl overflow-hidden border border-slate-800 cursor-pointer asset-item transition-all hover:scale-[1.02]`;
-        div.innerHTML = `<img src="${img.thumb}" class="w-full h-full object-cover" loading="lazy"><div class="asset-overlay absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 flex items-center justify-center p-2"><button class="btn-toggle-fav absolute top-1 left-1 w-6 h-6 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[8px]"></i></button><div class="flex flex-col gap-1.5 absolute right-1 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[8px]"></i></button><button class="btn-to-markup w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[8px]"></i></button><button class="btn-to-code w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[8px]"></i></button></div></div>`;
+        div.innerHTML = `
+            <img src="${img.thumb}" class="w-full h-full object-cover" loading="lazy">
+            <div class="asset-overlay absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity p-2">
+                <button class="btn-toggle-fav absolute left-1 top-1/2 -translate-y-1/2 ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}" title="Toggle Favorite">
+                    <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[10px]"></i>
+                </button>
+                <button class="btn-to-ai absolute top-1 left-1/2 -translate-x-1/2 bg-indigo-600 text-white" title="Send to AI">
+                    <i class="fa-solid fa-robot text-[10px]"></i>
+                </button>
+                <button class="btn-to-markup absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 text-white" title="Send to Markup">
+                    <i class="fa-solid fa-pen-ruler text-[10px]"></i>
+                </button>
+                <button class="btn-to-code absolute bottom-1 left-1/2 -translate-x-1/2 bg-indigo-600 text-white" title="Insert into Code">
+                    <i class="fa-solid fa-code text-[10px]"></i>
+                </button>
+            </div>`;
         this.attachAssetHandlers(div, container, 'photo', id, img);
     },
 
@@ -1905,7 +1920,23 @@ const Nexus = {
     renderSingleIcon(container, icon) {
         const id = icon.fullName || icon.name; const isFav = this.isFavorite('icon', id); const div = document.createElement('div'); div.className = `group relative aspect-square rounded-2xl bg-slate-800/50 border border-slate-700 flex flex-col items-center justify-center p-2 cursor-pointer asset-item hover:border-indigo-500`;
         let iconHtml = icon.type === 'iconify' ? `<img src="https://api.iconify.design/${icon.fullName}.svg?color=%236366f1" class="w-10 h-10 mb-1" loading="lazy">` : `<div class="w-10 h-10 text-indigo-500 mb-1 flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">${icon.svg}</svg></div>`;
-        div.innerHTML = `${iconHtml}<div class="text-[8px] text-slate-500 truncate w-full text-center font-bold uppercase tracking-tighter">${icon.name}</div><div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 flex items-center justify-center p-2"><button class="btn-toggle-fav absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[7px]"></i></button><div class="flex flex-col gap-1 absolute right-1 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[8px]"></i></button><button class="btn-to-markup w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[8px]"></i></button><button class="btn-to-code w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[8px]"></i></button></div></div>`;
+        div.innerHTML = `
+            ${iconHtml}
+            <div class="text-[8px] text-slate-500 truncate w-full text-center font-bold uppercase tracking-tighter">${icon.name}</div>
+            <div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 transition-opacity p-2">
+                <button class="btn-toggle-fav absolute left-1 top-1/2 -translate-y-1/2 ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}" title="Toggle Favorite">
+                    <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[7px]"></i>
+                </button>
+                <button class="btn-to-ai absolute top-1 left-1/2 -translate-x-1/2 bg-indigo-600 text-white" title="Send to AI">
+                    <i class="fa-solid fa-robot text-[7px]"></i>
+                </button>
+                <button class="btn-to-markup absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 text-white" title="Send to Markup">
+                    <i class="fa-solid fa-pen-ruler text-[7px]"></i>
+                </button>
+                <button class="btn-to-code absolute bottom-1 left-1/2 -translate-x-1/2 bg-indigo-600 text-white" title="Insert into Code">
+                    <i class="fa-solid fa-code text-[7px]"></i>
+                </button>
+            </div>`;
         this.attachAssetHandlers(div, container, 'icon', id, icon);
     },
 
@@ -1914,7 +1945,22 @@ const Nexus = {
     /** Renders a single emoji asset tile. @private */
     renderSingleEmoji(container, emoji) {
         const id = emoji; const isFav = this.isFavorite('emoji', id); const div = document.createElement('div'); div.className = `group relative aspect-square rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-3xl cursor-pointer asset-item hover:bg-slate-700`;
-        div.innerHTML = `<div class="emoji-display pointer-events-none">${emoji}</div><div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 flex items-center justify-center p-1 rounded-2xl"><button class="btn-toggle-fav absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[7px]"></i></button><div class="flex flex-col gap-1 absolute right-1 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[8px]"></i></button><button class="btn-to-markup w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[8px]"></i></button><button class="btn-to-code w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[8px]"></i></button></div></div>`;
+        div.innerHTML = `
+            <div class="emoji-display pointer-events-none">${emoji}</div>
+            <div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-2xl">
+                <button class="btn-toggle-fav absolute left-1 top-1/2 -translate-y-1/2 ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}" title="Toggle Favorite">
+                    <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[7px]"></i>
+                </button>
+                <button class="btn-to-ai absolute top-1 left-1/2 -translate-x-1/2 bg-indigo-600 text-white" title="Send to AI">
+                    <i class="fa-solid fa-robot text-[7px]"></i>
+                </button>
+                <button class="btn-to-markup absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 text-white" title="Send to Markup">
+                    <i class="fa-solid fa-pen-ruler text-[7px]"></i>
+                </button>
+                <button class="btn-to-code absolute bottom-1 left-1/2 -translate-x-1/2 bg-indigo-600 text-white" title="Insert into Code">
+                    <i class="fa-solid fa-code text-[7px]"></i>
+                </button>
+            </div>`;
         this.attachAssetHandlers(div, container, 'emoji', id, emoji);
     },
 
@@ -2243,6 +2289,39 @@ const Nexus = {
         const k = document.getElementById('setting-gemini-key')?.value || ''; const m = document.getElementById('setting-ai-model')?.value || 'gemini-1.5-flash'; const t = document.getElementById('setting-ai-temp')?.value || '0.7'; const w = document.getElementById('setting-wordwrap')?.checked ?? true;
         Nexus.ai.setApiKey(k); Nexus.ai.setConfig(m, t); localStorage.setItem('nexus_wordwrap', w); if (Nexus.editor) Nexus.editor.setOption('lineWrapping', w);
         Nexus.closeSettings(); Nexus.modals.alert("Saved", "Settings updated.");
+    },
+
+    /** Searches for icons in the Markup tool sidebar. @private */
+    async performMarkupIconSearch(query = '') {
+        const resDiv = document.getElementById('markup-icon-results');
+        if (!resDiv) return;
+        resDiv.innerHTML = '<div class="col-span-3 text-center py-4"><i class="fa-solid fa-circle-notch animate-spin text-indigo-500"></i></div>';
+        try {
+            let icons;
+            if (query.length >= 2) icons = await Nexus.assets.searchIcons(query);
+            else icons = Nexus.assets.builtinIcons.slice(0, 30);
+            resDiv.innerHTML = icons.length === 0 ? '<div class="col-span-3 text-center text-slate-500 text-[10px] py-4">No icons.</div>' : '';
+            icons.forEach(icon => {
+                const div = document.createElement('div');
+                div.className = 'aspect-square rounded bg-slate-100 border border-slate-200 flex items-center justify-center p-1 cursor-pointer hover:border-indigo-500 transition-colors';
+                div.innerHTML = icon.type === 'iconify' ? `<img src="https://api.iconify.design/${icon.fullName}.svg?color=%236366f1" class="w-full h-full">` : `<div class="w-full h-full text-indigo-500"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">${icon.svg}</svg></div>`;
+                div.onclick = () => Nexus.capture.addAsset({ type: 'icon', data: icon });
+                resDiv.appendChild(div);
+            });
+        } catch (e) { resDiv.innerHTML = '<div class="col-span-3 text-center text-red-400 text-[8px]">Error</div>'; }
+    },
+
+    /** Renders emoji categories and results in the Markup tool sidebar. @private */
+    renderMarkupEmojiResults(category) {
+        const catDiv = document.getElementById('markup-emoji-categories');
+        const resDiv = document.getElementById('markup-emoji-results');
+        if (!catDiv || !resDiv) return;
+        
+        const categories = Object.keys(Nexus.assets.emojiCategories);
+        catDiv.innerHTML = categories.map(c => `<button class="px-1.5 py-0.5 rounded text-[8px] font-bold ${c === category ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}" onclick="window.Nexus.renderMarkupEmojiResults('${c}')">${c}</button>`).join('');
+        
+        const emojis = Nexus.assets.emojiCategories[category] || [];
+        resDiv.innerHTML = emojis.map(e => `<button class="aspect-square flex items-center justify-center text-xl hover:bg-slate-100 rounded transition-colors" onclick="window.Nexus.capture.addAsset({ type: 'emoji', data: '${e}' })">${e}</button>`).join('');
     },
 
     /** Toggles between Dark and Light mode. */
