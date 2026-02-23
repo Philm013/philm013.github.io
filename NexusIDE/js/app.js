@@ -46,9 +46,12 @@ const Nexus = {
         context: [], // Context Library
         favorites: JSON.parse(localStorage.getItem('nexus_favorites') || '[]'),
         selectingForAI: false,
+        selectionMode: false, // For visual preview selection
         currentAiMode: 'core',
         assetTarget: 'editor', // 'editor' | 'markup'
-        lastMainView: 'editor'
+        lastMainView: 'editor',
+        sidebarWidth: 300,
+        outputWidth: 50, // Percent
     },
 
     /** @type {Array<Function>} List of state change subscribers. */
@@ -175,8 +178,8 @@ const Nexus = {
             
             if (files.length === 0) {
                 console.log("No files found, applying default template...");
-                await this.templates.applyTemplate('saas-landing');
-                await this.pad.createDefaultPAD("Build a high-conversion SaaS landing page using Tailwind CSS.");
+                await this.templates.applyTemplate('full-app');
+                await this.pad.createDefaultPAD("Build a modern, interactive web application with modular logic and styles.");
             }
             
             const refreshedFiles = await this.fs.listFiles();
@@ -412,34 +415,57 @@ const Nexus = {
 
     /** @private */
     findEnclosingTag(cm, pos) {
-        // Simple walk back/forward for tags
-        let from = pos, to = pos;
-        const lineCount = cm.lineCount();
+        // Use CodeMirror's built-in tag matching logic if possible
+        // CodeMirror doesn't have a direct "find outer tag" that returns a range easily without addons
+        // So we implement a more robust walk-up logic
         
-        // This is a naive implementation; CM has better tools but this is a start
-        // In a real app, we might use cm.getTokenAt or a proper parser
-        const token = cm.getTokenAt(pos);
-        if (token.type === 'tag') {
-            // Already on a tag, try to find the other end
-            // (Wait, let's use a more robust approach)
-        }
-        
-        // Better approach: use CodeMirror.findMatchingTag if available, or just use the current selection if it looks like a tag
-        // For now, let's use a regex-based block finder for simplicity
         const content = cm.getValue();
         const index = cm.indexFromPos(pos);
         
-        // Find nearest < and >
-        const before = content.lastIndexOf('<', index);
-        const after = content.indexOf('>', index);
-        
-        if (before > -1 && after > -1) {
-            // We are inside a tag or between tags. 
-            // Finding the FULL outer element is harder without a real parser.
-            // Let's try to find the matching closing tag.
-            // For now, we'll just select the current tag.
-            return { from: cm.posFromIndex(before), to: cm.posFromIndex(after + 1) };
+        // Find nearest < BEFORE the cursor
+        let openIndex = content.lastIndexOf('<', index);
+        while (openIndex > -1) {
+            // Check if it's a closing tag like </div>
+            if (content[openIndex + 1] === '/') {
+                // Keep searching backwards
+                openIndex = content.lastIndexOf('<', openIndex - 1);
+                continue;
+            }
+            
+            // Try to find the matching closing tag
+            // We'll use a stack-based approach for simple tag matching
+            const tagNameMatch = content.slice(openIndex + 1).match(/^([a-z0-9-]+)/i);
+            if (tagNameMatch) {
+                const tagName = tagNameMatch[1];
+                const closeTag = `</${tagName}>`;
+                
+                // Find matching closing tag by counting nested tags of same name
+                let searchIndex = openIndex + 1;
+                let stack = 1;
+                while (stack > 0) {
+                    const nextOpen = content.indexOf(`<${tagName}`, searchIndex);
+                    const nextClose = content.indexOf(closeTag, searchIndex);
+                    
+                    if (nextClose === -1) break; // No match
+                    
+                    if (nextOpen > -1 && nextOpen < nextClose) {
+                        stack++;
+                        searchIndex = nextOpen + 1;
+                    } else {
+                        stack--;
+                        searchIndex = nextClose + 1;
+                        if (stack === 0) {
+                            // Verify cursor is within this range
+                            if (index >= openIndex && index <= nextClose + closeTag.length) {
+                                return { from: cm.posFromIndex(openIndex), to: cm.posFromIndex(nextClose + closeTag.length) };
+                            }
+                        }
+                    }
+                }
+            }
+            openIndex = content.lastIndexOf('<', openIndex - 1);
         }
+        
         return null;
     },
 
@@ -869,6 +895,7 @@ const Nexus = {
         this.bind('btn-add-file', () => Nexus.openWizard());
         this.bind('btn-close-sidebar', () => Nexus.setView('editor'));
         this.bind('btn-toggle-preview', () => Nexus.togglePreview());
+        this.bind('btn-toggle-selection-mode', () => Nexus.toggleSelectionMode());
         this.bind('btn-close-output', () => Nexus.togglePreview(false));
         this.bind('btn-format', () => Nexus.formatCode());
         this.bind('btn-visual-mode', () => Nexus.toggleVisualMode());
@@ -1032,6 +1059,48 @@ const Nexus = {
         if (fileIn) fileIn.onchange = (e) => Nexus.handleFileImport(e);
         const folderIn = document.getElementById('input-import-folder');
         if (folderIn) folderIn.onchange = (e) => Nexus.handleFileImport(e);
+
+        // Resizable Layout Logic
+        this.setupResizers();
+    },
+
+    /** @private */
+    setupResizers() {
+        const sidebar = document.getElementById('context-sidebar');
+        const sidebarResizer = document.getElementById('sidebar-resizer');
+        const outputPane = document.getElementById('output-pane');
+        const outputResizer = document.getElementById('output-resizer');
+        const editorPanel = document.getElementById('editor-panel');
+
+        let isDraggingSidebar = false;
+        let isDraggingOutput = false;
+
+        sidebarResizer?.addEventListener('mousedown', () => { isDraggingSidebar = true; document.body.style.cursor = 'col-resize'; });
+        outputResizer?.addEventListener('mousedown', () => { isDraggingOutput = true; document.body.style.cursor = 'col-resize'; });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDraggingSidebar) {
+                const newWidth = Math.max(150, Math.min(600, e.clientX - 64)); // 64 is desktop-nav width
+                Nexus.state.sidebarWidth = newWidth;
+                sidebar.style.width = `${newWidth}px`;
+            }
+            if (isDraggingOutput) {
+                const containerWidth = editorPanel.parentElement.clientWidth;
+                const newWidthPx = containerWidth - (e.clientX - sidebar.getBoundingClientRect().right);
+                const newPercent = Math.max(10, Math.min(90, (newWidthPx / containerWidth) * 100));
+                Nexus.state.outputWidth = newPercent;
+                outputPane.style.width = `${newPercent}%`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDraggingSidebar || isDraggingOutput) {
+                isDraggingSidebar = false;
+                isDraggingOutput = false;
+                document.body.style.cursor = '';
+                if (Nexus.editor) Nexus.editor.refresh();
+            }
+        });
     },
 
     /**
@@ -1205,6 +1274,26 @@ const Nexus = {
         }
     },
 
+    /**
+     * Toggles visual selection mode in the preview.
+     * @param {boolean|null} force 
+     */
+    toggleSelectionMode(force = null) {
+        const enabled = force !== null ? force : !this.state.selectionMode;
+        this.setState({ selectionMode: enabled });
+        
+        const btn = document.getElementById('btn-toggle-selection-mode');
+        if (btn) {
+            btn.classList.toggle('text-indigo-500', enabled);
+            btn.classList.toggle('bg-indigo-500/10', enabled);
+        }
+
+        const frame = document.getElementById('preview-frame');
+        if (frame && frame.contentWindow) {
+            frame.contentWindow.postMessage({ type: 'toggle-selection-mode', enabled }, '*');
+        }
+    },
+
     /** Updates active/inactive styles for navigation buttons. @private */
     updateNavHighlights(view) {
         document.querySelectorAll('.nav-active, .mob-nav-active, .text-accent').forEach(el => {
@@ -1369,12 +1458,64 @@ const Nexus = {
                     <script>
                         var module = { exports: {} }; 
                         var exports = module.exports;
+                        var selectionMode = false;
+                        var highlightEl = document.createElement('div');
+                        
+                        // Setup Highlight Overlay
+                        highlightEl.style.position = 'fixed';
+                        highlightEl.style.pointerEvents = 'none';
+                        highlightEl.style.border = '2px solid #6366f1';
+                        highlightEl.style.backgroundColor = 'rgba(99, 102, 241, 0.1)';
+                        highlightEl.style.zIndex = '999999';
+                        highlightEl.style.display = 'none';
+                        highlightEl.style.transition = 'all 0.1s ease-out';
+                        
+                        var labelEl = document.createElement('div');
+                        labelEl.style.position = 'absolute';
+                        labelEl.style.top = '-24px';
+                        labelEl.style.left = '-2px';
+                        labelEl.style.backgroundColor = '#6366f1';
+                        labelEl.style.color = 'white';
+                        labelEl.style.fontSize = '10px';
+                        labelEl.style.padding = '2px 6px';
+                        labelEl.style.borderRadius = '4px';
+                        labelEl.style.whiteSpace = 'nowrap';
+                        labelEl.style.fontWeight = 'bold';
+                        highlightEl.appendChild(labelEl);
+                        
+                        document.documentElement.appendChild(highlightEl);
+
+                        window.addEventListener('message', (e) => {
+                            if (e.data && e.data.type === 'toggle-selection-mode') {
+                                selectionMode = e.data.enabled;
+                                if (!selectionMode) highlightEl.style.display = 'none';
+                            }
+                        });
+
+                        document.addEventListener('mousemove', (e) => {
+                            if (!selectionMode) return;
+                            const target = e.target;
+                            if (target === document.documentElement || target === document.body) {
+                                highlightEl.style.display = 'none';
+                                return;
+                            }
+                            
+                            const rect = target.getBoundingClientRect();
+                            highlightEl.style.top = rect.top + 'px';
+                            highlightEl.style.left = rect.left + 'px';
+                            highlightEl.style.width = rect.width + 'px';
+                            highlightEl.style.height = rect.height + 'px';
+                            highlightEl.style.display = 'block';
+                            
+                            const id = target.id ? '#' + target.id : '';
+                            labelEl.textContent = target.tagName.toLowerCase() + id;
+                        });
                         
                         document.addEventListener('click', (e) => {
+                            if (!selectionMode) return;
                             e.preventDefault();
                             e.stopPropagation();
                             
-                            // Try to identify the element
                             const target = e.target;
                             const tag = target.tagName.toLowerCase();
                             const id = target.id ? '#' + target.id : '';
@@ -1754,7 +1895,7 @@ const Nexus = {
     /** Renders a single photo asset tile. @private */
     renderSingleAsset(container, img) {
         const id = img.id; const isFav = this.isFavorite('photo', id); const div = document.createElement('div'); div.className = `group relative aspect-square rounded-2xl overflow-hidden border border-slate-800 cursor-pointer asset-item transition-all hover:scale-[1.02]`;
-        div.innerHTML = `<img src="${img.thumb}" class="w-full h-full object-cover" loading="lazy"><div class="asset-overlay absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 flex items-center justify-center p-2"><button class="btn-toggle-fav absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star"></i></button><div class="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[10px]"></i></button><button class="btn-to-markup w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[10px]"></i></button><button class="btn-to-code w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[10px]"></i></button></div></div>`;
+        div.innerHTML = `<img src="${img.thumb}" class="w-full h-full object-cover" loading="lazy"><div class="asset-overlay absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 flex items-center justify-center p-2"><button class="btn-toggle-fav absolute top-1 left-1 w-6 h-6 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[8px]"></i></button><div class="flex flex-col gap-1.5 absolute right-1 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[8px]"></i></button><button class="btn-to-markup w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[8px]"></i></button><button class="btn-to-code w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[8px]"></i></button></div></div>`;
         this.attachAssetHandlers(div, container, 'photo', id, img);
     },
 
@@ -1764,7 +1905,7 @@ const Nexus = {
     renderSingleIcon(container, icon) {
         const id = icon.fullName || icon.name; const isFav = this.isFavorite('icon', id); const div = document.createElement('div'); div.className = `group relative aspect-square rounded-2xl bg-slate-800/50 border border-slate-700 flex flex-col items-center justify-center p-2 cursor-pointer asset-item hover:border-indigo-500`;
         let iconHtml = icon.type === 'iconify' ? `<img src="https://api.iconify.design/${icon.fullName}.svg?color=%236366f1" class="w-10 h-10 mb-1" loading="lazy">` : `<div class="w-10 h-10 text-indigo-500 mb-1 flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">${icon.svg}</svg></div>`;
-        div.innerHTML = `${iconHtml}<div class="text-[8px] text-slate-500 truncate w-full text-center font-bold uppercase tracking-tighter">${icon.name}</div><div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 flex items-center justify-center p-2"><button class="btn-toggle-fav absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[10px]"></i></button><div class="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[10px]"></i></button><button class="btn-to-markup w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[10px]"></i></button><button class="btn-to-code w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[10px]"></i></button></div></div>`;
+        div.innerHTML = `${iconHtml}<div class="text-[8px] text-slate-500 truncate w-full text-center font-bold uppercase tracking-tighter">${icon.name}</div><div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 flex items-center justify-center p-2"><button class="btn-toggle-fav absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[7px]"></i></button><div class="flex flex-col gap-1 absolute right-1 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[8px]"></i></button><button class="btn-to-markup w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[8px]"></i></button><button class="btn-to-code w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[8px]"></i></button></div></div>`;
         this.attachAssetHandlers(div, container, 'icon', id, icon);
     },
 
@@ -1773,7 +1914,7 @@ const Nexus = {
     /** Renders a single emoji asset tile. @private */
     renderSingleEmoji(container, emoji) {
         const id = emoji; const isFav = this.isFavorite('emoji', id); const div = document.createElement('div'); div.className = `group relative aspect-square rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-3xl cursor-pointer asset-item hover:bg-slate-700`;
-        div.innerHTML = `<div class="emoji-display pointer-events-none">${emoji}</div><div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 flex items-center justify-center p-1 rounded-2xl"><button class="btn-toggle-fav absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[10px]"></i></button><div class="flex flex-col gap-2 absolute right-2 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[10px]"></i></button><button class="btn-to-markup w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[10px]"></i></button><button class="btn-to-code w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[10px]"></i></button></div></div>`;
+        div.innerHTML = `<div class="emoji-display pointer-events-none">${emoji}</div><div class="asset-overlay absolute inset-0 bg-slate-900/90 opacity-0 group-hover:opacity-100 flex items-center justify-center p-1 rounded-2xl"><button class="btn-toggle-fav absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center ${isFav ? 'bg-amber-500 text-white' : 'bg-white/10 text-white hover:bg-amber-500'}"><i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-star text-[7px]"></i></button><div class="flex flex-col gap-1 absolute right-1 top-1/2 -translate-y-1/2"><button class="btn-to-ai w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to AI"><i class="fa-solid fa-robot text-[8px]"></i></button><button class="btn-to-markup w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Send to Markup"><i class="fa-solid fa-pen-ruler text-[8px]"></i></button><button class="btn-to-code w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center" title="Insert into Code"><i class="fa-solid fa-code text-[8px]"></i></button></div></div>`;
         this.attachAssetHandlers(div, container, 'emoji', id, emoji);
     },
 
@@ -1902,8 +2043,23 @@ const Nexus = {
                 case '/create': if (!args) { Nexus.modals.alert("Error", "Usage: /create <name>"); return; } await Nexus.sendChatForced(`Create file "${args}" with boilerplate.`); return;
                 case '/search': if (!args) { Nexus.modals.alert("Error", "Usage: /search <query>"); return; } await Nexus.sendChatForced(`Search project for "${args}".`); return;
                 case '/auto': Nexus.toggleAutoMode(); return;
-                case '/help': Nexus.addChatMessage('system', `Commands:\n- /explain\n- /fix\n- /refactor\n- /create <name>\n- /search <query>\n- /auto\n- /pad\n- /clear`); return;
-                default: Nexus.addChatMessage('system', `Unknown command.`); return;
+                case '/help': Nexus.addChatMessage('system', `
+                    <div class="space-y-2">
+                        <div class="font-black text-indigo-400 uppercase text-[10px] tracking-widest">Available Commands</div>
+                        <ul class="space-y-1 text-xs">
+                            <li><b class="text-white">/explain</b> - Explain the current file selection</li>
+                            <li><b class="text-white">/fix</b> - Identify and fix bugs in current file</li>
+                            <li><b class="text-white">/refactor</b> - Suggest structural improvements</li>
+                            <li><b class="text-white">/deconstruct</b> - Modularize a monolithic file</li>
+                            <li><b class="text-white">/create &lt;name&gt;</b> - Create a new project file</li>
+                            <li><b class="text-white">/search &lt;query&gt;</b> - Search text across all files</li>
+                            <li><b class="text-white">/auto</b> - Toggle autonomous PAD execution</li>
+                            <li><b class="text-white">/pad</b> - Sync PAD with current progress</li>
+                            <li><b class="text-white">/clear</b> - Clear chat history</li>
+                        </ul>
+                    </div>
+                `); return;
+                default: Nexus.addChatMessage('system', `Unknown command. Type /help for a list of commands.`); return;
             }
         }
 
@@ -2027,10 +2183,15 @@ const Nexus = {
     async updatePaletteResults() {
         const input = document.getElementById('palette-input'); const results = document.getElementById('palette-results'); const query = input.value.toLowerCase();
         const commands = [
-            { icon: 'fa-robot', title: 'AI: Explain File', action: () => Nexus.prepareChat('/explain') },
+            { icon: 'fa-robot', title: 'AI: Explain Selection', action: () => Nexus.prepareChat('/explain') },
             { icon: 'fa-screwdriver-wrench', title: 'AI: Fix Bugs', action: () => Nexus.prepareChat('/fix') },
+            { icon: 'fa-wand-magic-sparkles', title: 'AI: Refactor Selection', action: () => Nexus.prepareChat('/refactor') },
+            { icon: 'fa-cubes', title: 'AI: Deconstruct Monolith', action: () => Nexus.prepareChat('/deconstruct') },
+            { icon: 'fa-list-check', title: 'PAD: Sync Roadmap', action: () => Nexus.prepareChat('/pad') },
             { icon: 'fa-broom', title: 'Editor: Format Code', action: () => Nexus.formatCode() },
-            { icon: 'fa-gear', title: 'System: Settings', action: () => Nexus.openSettings() }
+            { icon: 'fa-eye', title: 'Editor: Toggle Preview', action: () => Nexus.togglePreview() },
+            { icon: 'fa-gear', title: 'System: Settings', action: () => Nexus.openSettings() },
+            { icon: 'fa-folder-tree', title: 'System: Project Library', action: () => Nexus.openProjectLibrary() }
         ];
         const files = await Nexus.fs.listFiles(); const fileItems = files.filter(f => !f.endsWith('.meta')).map(f => ({ icon: 'fa-file-code', title: `File: ${f}`, action: () => Nexus.openFile(f) }));
         const filtered = [...commands, ...fileItems].filter(item => item.title.toLowerCase().includes(query));
@@ -2044,9 +2205,29 @@ const Nexus = {
     async refreshModelList() {
         const selector = document.getElementById('setting-ai-model'); if (!selector || !Nexus.ai.apiKey) return;
         try {
-            const models = await Nexus.ai.listModels(); const filtered = models.filter(m => m.name.includes('gemini') && m.supportedGenerationMethods.includes('generateContent'));
-            if (filtered.length > 0) selector.innerHTML = filtered.map(m => { const short = m.name.replace('models/', ''); return `<option value="${short}" ${short === localStorage.getItem('nexus_ai_model') ? 'selected' : ''}>${m.displayName}</option>`; }).join('');
-        } catch (e) { console.error(e); }
+            const models = await Nexus.ai.listModels(); 
+            // Broaden filter to show more available models
+            const filtered = models.filter(m => 
+                m.name.toLowerCase().includes('gemini') && 
+                m.supportedGenerationMethods.includes('generateContent')
+            );
+            
+            if (filtered.length > 0) {
+                const currentModel = localStorage.getItem('nexus_ai_model');
+                selector.innerHTML = filtered.map(m => {
+                    const short = m.name.replace('models/', '');
+                    return `<option value="${short}" ${short === currentModel ? 'selected' : ''}>${m.displayName} (${short})</option>`;
+                }).join('');
+            } else {
+                selector.innerHTML = `
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Default)</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
+                `;
+            }
+        } catch (e) { 
+            console.error("Failed to refresh models list:", e); 
+        }
     },
 
     closeSettings() { const s = document.getElementById('modal-settings'); if(s) { s.classList.add('hidden'); document.body.classList.remove('modal-open'); } },

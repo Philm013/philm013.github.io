@@ -362,6 +362,33 @@
         .nav-active { color: var(--accent) !important; border-left: 3px solid var(--accent); }
         .mob-nav-active { color: var(--accent) !important; font-weight: bold; }
 
+        /* Tooltips */
+        .nav-icon-btn { position: relative; }
+        .nav-icon-btn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%) translateX(10px);
+            background: #1e293b;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s;
+            z-index: 1000;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgb(0, 0, 0, 0.1);
+        }
+        .nav-icon-btn:hover::after {
+            opacity: 1;
+            transform: translateY(-50%) translateX(15px);
+        }
+
         /* Typography */
         #markdown-render { color: var(--text-main) !important; background: var(--bg-main) !important; line-height: 1.6; }
         #markdown-render h1 { font-size: 2.25rem !important; font-weight: 800 !important; margin-top: 1.5rem !important; margin-bottom: 1rem !important; border-bottom: 1px solid var(--border) !important; padding-bottom: 0.5rem !important; display: block !important; }
@@ -423,15 +450,15 @@
         <!-- DESKTOP SIDEBAR -->
         <nav class="hidden md:flex desktop-nav py-6 space-y-8">
             <div class="text-indigo-500 text-2xl text-center"><i class="fa-solid fa-atom"></i></div>
-            <button id="nav-explorer" class="text-slate-400 hover:text-white p-4 transition-colors"><i class="fa-solid fa-files text-xl"></i></button>
-            <button id="nav-search" class="text-slate-400 hover:text-white p-4 transition-colors" title="Search"><i class="fa-solid fa-magnifying-glass text-xl"></i></button>
-            <button id="nav-symbols" class="text-slate-400 hover:text-white p-4 transition-colors" title="Symbols"><i class="fa-solid fa-code-branch text-xl"></i></button>
-            <button id="nav-assets" class="text-slate-400 hover:text-white p-4 transition-colors"><i class="fa-solid fa-image text-xl"></i></button>
-            <button id="nav-markup" class="text-slate-400 hover:text-white p-4 transition-colors"><i class="fa-solid fa-pen-ruler text-xl"></i></button>
-            <button id="nav-pad" class="text-slate-400 hover:text-white p-4 transition-colors"><i class="fa-solid fa-list-check text-xl"></i></button>
+            <button id="nav-explorer" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Explorer"><i class="fa-solid fa-files text-xl"></i></button>
+            <button id="nav-search" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Search"><i class="fa-solid fa-magnifying-glass text-xl"></i></button>
+            <button id="nav-symbols" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Symbols"><i class="fa-solid fa-code-branch text-xl"></i></button>
+            <button id="nav-assets" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Assets"><i class="fa-solid fa-image text-xl"></i></button>
+            <button id="nav-markup" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="MarkedUp"><i class="fa-solid fa-pen-ruler text-xl"></i></button>
+            <button id="nav-pad" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="PAD Roadmap"><i class="fa-solid fa-list-check text-xl"></i></button>
             <div class="mt-auto">
-                <button id="nav-palette" class="text-slate-400 hover:text-white p-4 transition-colors" title="Command Palette (Ctrl+Shift+P)"><i class="fa-solid fa-terminal text-xl"></i></button>
-                <button id="nav-settings" class="text-slate-400 hover:text-white p-4 transition-colors"><i class="fa-solid fa-gear text-xl"></i></button>
+                <button id="nav-palette" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Command Palette"><i class="fa-solid fa-terminal text-xl"></i></button>
+                <button id="nav-settings" class="nav-icon-btn text-slate-400 hover:text-white p-4 transition-colors" data-tooltip="Settings"><i class="fa-solid fa-gear text-xl"></i></button>
             </div>
         </nav>
 
@@ -447,6 +474,8 @@
             </div>
             <div id="sidebar-content" class="flex-1 overflow-y-auto p-2 scroll-smooth"></div>
         </aside>
+
+        <div id="sidebar-resizer" class="hidden md:block w-1.5 hover:bg-indigo-500/30 cursor-col-resize transition-colors shrink-0 z-[100]"></div>
 
         <!-- MAIN WORKSPACE -->
         <main>
@@ -486,6 +515,9 @@
                             <button id="btn-format" class="btn-header w-8 h-8 rounded-full transition flex items-center justify-center text-indigo-400 hover:bg-indigo-400/10 shrink-0" title="Format Code">
                                 <i class="fa-solid fa-align-left"></i>
                             </button>
+                            <button id="btn-toggle-selection-mode" class="btn-header w-8 h-8 rounded-full transition flex items-center justify-center text-slate-400 hover:bg-indigo-400/10 shrink-0" title="Select Element in Preview">
+                                <i class="fa-solid fa-arrow-pointer text-xs"></i>
+                            </button>
                             <button id="btn-toggle-preview" class="btn-header w-8 h-8 rounded-full transition flex items-center justify-center text-slate-400 hover:bg-slate-400/10 shrink-0" title="Toggle Preview">
                                 <i class="fa-solid fa-eye"></i>
                             </button>
@@ -513,7 +545,7 @@
                 <!-- Editor View -->
                 <div id="view-editor" class="active">
                     <div class="flex flex-col md:flex-row h-full w-full">
-                        <div class="flex-1 relative border-r overflow-hidden h-full" style="border-color: var(--border)">
+                        <div id="editor-panel" class="flex-1 relative border-r overflow-hidden h-full" style="border-color: var(--border)">
                             <textarea id="code-editor"></textarea>
                             
                             <!-- Editor Context Menu -->
@@ -544,6 +576,7 @@
                                 </button>
                             </div>
                         </div>
+                        <div id="output-resizer" class="hidden md:block w-1.5 hover:bg-indigo-500/30 cursor-col-resize transition-colors shrink-0 z-10"></div>
                         <!-- Split Output Pane -->
                         <div id="output-pane" class="md:w-1/2 h-full">
                             <div class="h-10 border-b flex items-center px-4 justify-between shrink-0" style="background: var(--bg-header); border-color: var(--border)">

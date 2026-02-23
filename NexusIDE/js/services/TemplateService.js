@@ -228,29 +228,125 @@ export class TemplateService {
             </div>
         </body>
         </html>`
+                                },
+                                {
+                                    id: 'full-app',
+                                    name: 'Modern Interactive App',
+                                    description: 'Complete multi-file starter with index.html, style.css, and app.js pre-linked.',
+                                    icon: 'fa-solid fa-cubes',
+                                    files: {
+                                        'index.html': `<!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Interactive App</title>
+                        <script src="https://cdn.tailwindcss.com"></script>
+                        <link rel="stylesheet" href="css/style.css">
+                    </head>
+                    <body class="bg-gray-50 flex items-center justify-center min-h-screen">
+                        <div class="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 max-w-sm w-full text-center">
+                            <div class="w-20 h-20 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+                            <h1 class="text-2xl font-black text-gray-900 mb-2">Nexus Starter</h1>
+                            <p class="text-gray-500 text-sm mb-8">This app uses a clean modular structure with separate logic and styles.</p>
+                            
+                            <div class="flex items-center justify-center gap-4 mb-8">
+                                <button id="btn-dec" class="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold transition">-</button>
+                                <span id="counter" class="text-3xl font-black text-indigo-600 w-12">0</span>
+                                <button id="btn-inc" class="w-12 h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-lg shadow-indigo-200">+</button>
+                            </div>
+                            
+                            <button id="btn-theme" class="text-xs font-bold text-gray-400 uppercase tracking-widest hover:text-indigo-600 transition">Toggle Theme</button>
+                        </div>
+                        <script type="module" src="js/app.js"></script>
+                    </body>
+                    </html>`,
+                                        'css/style.css': `:root {
+                        --accent: #6366f1;
                     }
-                ];
-            }
-
-    /**
-     * Returns the list of all hardcoded templates.
-     * @returns {Array<Object>}
-     */
-    getTemplates() {
-        return this.templates;
-    }
-
-    /**
-     * Applies a specific template to the project by writing its HTML to 'index.html'.
-     * @param {string} id - The template ID.
-     * @returns {Promise<string|null>} The HTML content if successful.
-     */
-    async applyTemplate(id) {
-        const tpl = this.templates.find(t => t.id === id);
-        if (tpl) {
-            await this.fs.writeFile('index.html', tpl.html);
-            return tpl.html;
-        }
-        return null;
-    }
-}
+                    
+                    body.dark-mode {
+                        background-color: #0f172a;
+                    }
+                    
+                    body.dark-mode .bg-white {
+                        background-color: #1e293b;
+                        border-color: #334155;
+                    }
+                    
+                    body.dark-mode .text-gray-900 {
+                        color: #f8fafc;
+                    }
+                    
+                    body.dark-mode .text-gray-500 {
+                        color: #94a3b8;
+                    }
+                    
+                    #counter {
+                        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                    }
+                    
+                    .scale-up {
+                        transform: scale(1.2);
+                    }`,
+                                        'js/app.js': `// Nexus Starter Logic
+                    document.addEventListener('DOMContentLoaded', () => {
+                        let count = 0;
+                        const counterEl = document.getElementById('counter');
+                        const btnInc = document.getElementById('btn-inc');
+                        const btnDec = document.getElementById('btn-dec');
+                        const btnTheme = document.getElementById('btn-theme');
+                    
+                        const updateCounter = (delta) => {
+                            count += delta;
+                            counterEl.textContent = count;
+                            
+                            // Add a little pop animation
+                            counterEl.classList.add('scale-up');
+                            setTimeout(() => counterEl.classList.remove('scale-up'), 200);
+                        };
+                    
+                        btnInc?.addEventListener('click', () => updateCounter(1));
+                        btnDec?.addEventListener('click', () => updateCounter(-1));
+                        
+                        btnTheme?.addEventListener('click', () => {
+                            document.body.classList.toggle('dark-mode');
+                        });
+                    
+                        console.log("Nexus App Initialized!");
+                    });`
+                                    }
+                                }
+                            ];
+                        }
+                    
+                        /**
+                         * Returns the list of all hardcoded templates.
+                         * @returns {Array<Object>}
+                         */
+                        getTemplates() {
+                            return this.templates;
+                        }
+                    
+                        /**
+                         * Applies a specific template to the project.
+                         * @param {string} id - The template ID.
+                         * @returns {Promise<boolean>} True if successful.
+                         */
+                        async applyTemplate(id) {
+                            const tpl = this.templates.find(t => t.id === id);
+                            if (tpl) {
+                                if (tpl.files) {
+                                    for (const [path, content] of Object.entries(tpl.files)) {
+                                        await this.fs.writeFile(path, content);
+                                    }
+                                } else if (tpl.html) {
+                                    await this.fs.writeFile('index.html', tpl.html);
+                                }
+                                return true;
+                            }
+                            return false;
+                        }
+                    }
