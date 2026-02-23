@@ -359,51 +359,52 @@ export async function renderTeacherLessons() {
                 </div>
             </section>
 
-            <section data-card-title="My Presets">
-                <div class="flex items-center gap-3 mb-6">
-                    <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
-                        <span class="iconify" data-icon="mdi:folder-heart"></span>
-                    </span>
-                    <h3 class="text-lg font-black text-gray-900 uppercase tracking-tight">My Saved Presets</h3>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    ${lessons.map(l => `
-                        <div class="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col hover:shadow-xl transition-all group">
-                            <div class="flex justify-between items-start mb-6">
-                                <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-primary shadow-inner">
-                                    <span class="iconify text-2xl" data-icon="mdi:lightbulb-variant"></span>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button onclick="window.previewPreset('${l.id}')" class="text-gray-400 hover:text-primary p-2 transition-colors">
-                                        <span class="iconify text-xl" data-icon="mdi:eye-outline"></span>
-                                    </button>
-                                    <button onclick="window.deleteLesson('${l.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors">
-                                        <span class="iconify text-xl" data-icon="mdi:delete-outline"></span>
-                                    </button>
-                                </div>
+                        <section data-card-title="My Presets">
+                            <div class="flex items-center gap-3 mb-6 shrink-0">
+                                <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                                    <span class="iconify" data-icon="mdi:folder-heart"></span>
+                                </span>
+                                <h3 class="text-lg font-black text-gray-900 uppercase tracking-tight">My Saved Presets</h3>
                             </div>
-                            <h3 class="text-xl font-black text-gray-900 mb-2">${l.name}</h3>
-                            <p class="text-[11px] text-gray-500 mb-8 line-clamp-3 leading-relaxed flex-1 italic">"${l.settings.phenomenon.description}"</p>
-                            <div class="space-y-3">
-                                <button onclick="window.launchLesson('${l.id}')" class="w-full py-4 bg-gradient-to-r from-teacher to-orange-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-100 flex items-center justify-center gap-2 hover:opacity-95">
-                                    <span class="iconify text-lg" data-icon="mdi:rocket-launch"></span>
-                                    Launch Session
-                                </button>
-                                <button onclick="window.applyLessonToCurrent('${l.id}')" class="w-full py-3 bg-gray-50 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100">
-                                    Apply Settings
-                                </button>
+                            <div class="mobile-h-scroll flex flex-nowrap md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                ${lessons.map(l => `
+                                    <div class="w-72 shrink-0 md:w-auto bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col hover:shadow-xl transition-all group">
+                                        <div class="flex justify-between items-start mb-6">
+                                            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-primary shadow-inner">
+                                                <span class="iconify text-2xl" data-icon="mdi:lightbulb-variant"></span>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button onclick="window.previewPreset('${l.id}')" class="text-gray-400 hover:text-primary p-2 transition-colors">
+                                                    <span class="iconify text-xl" data-icon="mdi:eye-outline"></span>
+                                                </button>
+                                                <button onclick="window.deleteLesson('${l.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors">
+                                                    <span class="iconify text-xl" data-icon="mdi:delete-outline"></span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <h3 class="text-xl font-black text-gray-900 mb-2">${l.name}</h3>
+                                        <p class="text-[11px] text-gray-500 mb-8 line-clamp-3 leading-relaxed flex-1 italic">"${l.settings.phenomenon.description}"</p>
+                                        <div class="space-y-3">
+                                            <button onclick="window.launchLesson('${l.id}')" class="w-full py-4 bg-gradient-to-r from-teacher to-orange-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-100 flex items-center justify-center gap-2 hover:opacity-95">
+                                                <span class="iconify text-lg" data-icon="mdi:rocket-launch"></span>
+                                                Launch Session
+                                            </button>
+                                            <button onclick="window.applyLessonToCurrent('${l.id}')" class="w-full py-3 bg-gray-50 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100">
+                                                Apply Settings
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                                ${lessons.length === 0 ? `
+                                    <div class="w-full py-20 text-center bg-gray-50/50 rounded-[3rem] border-2 border-dashed border-gray-100 flex flex-col items-center">
+                                        <span class="iconify text-5xl text-gray-200 mb-4" data-icon="mdi:book-open-variant"></span>
+                                        <p class="text-sm font-black text-gray-400 uppercase tracking-widest">No custom presets saved</p>
+                                        <p class="text-[10px] text-gray-400 mt-1 font-bold uppercase">Save your current class setup to reuse it later.</p>
+                                    </div>
+                                ` : ''}
                             </div>
-                        </div>
-                    `).join('')}
-                    ${lessons.length === 0 ? `
-                        <div class="col-span-full py-20 text-center bg-gray-50/50 rounded-[3rem] border-2 border-dashed border-gray-100 flex flex-col items-center">
-                            <span class="iconify text-5xl text-gray-200 mb-4" data-icon="mdi:book-open-variant"></span>
-                            <p class="text-sm font-black text-gray-400 uppercase tracking-widest">No custom presets saved</p>
-                            <p class="text-[10px] text-gray-400 mt-1 font-bold uppercase">Save your current class setup to reuse it later.</p>
-                        </div>
-                    ` : ''}
-                </div>
-            </section>Section Template Added.
+                        </section>
+            Section Template Added.
         </div>
     `;
 }

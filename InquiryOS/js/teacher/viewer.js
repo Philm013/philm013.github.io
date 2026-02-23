@@ -383,24 +383,28 @@ export async function addDataRowSticker(rowIndex, emoji) {
  * UI: Renders the icon manager/curator view.
  */
 export async function renderIconManager() {
-    const topPrefixes = ['mdi', 'fa6-solid', 'lucide', 'tabler', 'ph', 'carbon', 'fluent', 'heroicons', 'bi', 'ri'];
-    
     // Fetch all available collections if not already loaded
     if (!App.availableIconSets || App.availableIconSets.length === 0) {
         try {
             const res = await fetch('https://api.iconify.design/collections');
             const data = await res.json();
-            App.availableIconSets = Object.keys(data).map(prefix => ({
-                prefix,
-                name: data[prefix].name,
-                total: data[prefix].total,
-                category: data[prefix].category
-            }));
+            
+            const categories = {};
+            App.availableIconSets = Object.keys(data).map(prefix => {
+                const set = {
+                    prefix,
+                    name: data[prefix].name,
+                    total: data[prefix].total,
+                    category: data[prefix].category || 'Other'
+                };
+                if (!categories[set.category]) categories[set.category] = [];
+                categories[set.category].push(set);
+                return set;
+            });
+            App.iconCategories = categories;
         } catch (e) { console.error('Failed to load Iconify collections', e); }
     }
 
-    const popularSets = (App.availableIconSets || []).filter(s => topPrefixes.includes(s.prefix));
-    
     // Comprehensive Preset Filters
     const presets = [
         { label: 'Science', query: 'science,nature,biology,chemistry,physics,lab,research,space,earth', icon: 'mdi:flask' },
@@ -408,6 +412,10 @@ export async function renderIconManager() {
         { label: 'Diagramming', query: 'arrow,shape,flow,map,logic,math,symbol,chart,connector', icon: 'mdi:vector-polyline' },
         { label: 'Environment', query: 'ecology,weather,climate,water,energy,animal,plant', icon: 'mdi:leaf' }
     ];
+
+    setTimeout(() => {
+        window.onManagerCategoryChange();
+    }, 100);
 
     return `
         <div class="max-w-6xl mx-auto">
@@ -566,20 +574,12 @@ export async function renderIconManager() {
 
                         <div class="space-y-4">
                             <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Icon Libraries</label>
-                            <div class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                <button onclick="window.changeIconSet(null)" 
-                                    class="w-full text-left px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${!App.currentIconSet ? 'bg-primary border-primary text-white shadow-lg' : 'bg-white border-gray-100 text-gray-400 hover:border-primary/30 hover:text-primary'}">
-                                    All Sources
-                                </button>
-                                ${popularSets.map(s => `
-                                    <button onclick="window.changeIconSet('${s.prefix}')" 
-                                        class="w-full text-left px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${App.currentIconSet === s.prefix ? 'bg-primary border-primary text-white shadow-lg' : 'bg-white border-gray-100 text-gray-400 hover:border-primary/30 hover:text-primary'}">
-                                        <div class="flex items-center justify-between">
-                                            <span>${s.name}</span>
-                                            <span class="opacity-50 text-[8px]">${(s.total/1000).toFixed(1)}k</span>
-                                        </div>
-                                    </button>
-                                `).join('')}
+                            <select id="managerCategorySelect" onchange="window.onManagerCategoryChange()" class="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary focus:outline-none mb-2">
+                                <option value="">All Categories</option>
+                                ${Object.keys(App.iconCategories || {}).sort().map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                            </select>
+                            <div id="managerCollectionsList" class="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                <!-- Populated dynamically based on category -->
                             </div>
                         </div>
                     </div>
@@ -598,6 +598,42 @@ export async function renderIconManager() {
     `;
 }
 
+window.onManagerCategoryChange = () => {
+    const catSelect = document.getElementById('managerCategorySelect');
+    const list = document.getElementById('managerCollectionsList');
+    if (!catSelect || !list) return;
+    
+    const category = catSelect.value;
+    let sets = [];
+    
+    if (category) {
+        sets = App.iconCategories?.[category] || [];
+    } else {
+        // Default to popular sets if no category
+        const topPrefixes = ['mdi', 'fa6-solid', 'lucide', 'tabler', 'ph', 'carbon', 'fluent', 'heroicons', 'bi', 'ri'];
+        sets = (App.availableIconSets || []).filter(s => topPrefixes.includes(s.prefix));
+    }
+
+    list.innerHTML = `
+        <button onclick="window.changeIconSet(null, '${category}')" 
+            class="w-full text-left px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${!App.currentIconSet ? 'bg-primary border-primary text-white shadow-lg' : 'bg-white border-gray-100 text-gray-400 hover:border-primary/30 hover:text-primary'}">
+            ${category ? 'All in ' + category : 'All Sources'}
+        </button>
+        ${sets.sort((a,b) => b.total - a.total).map(s => `
+            <button onclick="window.changeIconSet('${s.prefix}', '${category}')" 
+                class="w-full text-left px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${App.currentIconSet === s.prefix ? 'bg-primary border-primary text-white shadow-lg' : 'bg-white border-gray-100 text-gray-400 hover:border-primary/30 hover:text-primary'}">
+                <div class="flex items-center justify-between">
+                    <span>${s.name}</span>
+                    <span class="opacity-50 text-[8px]">${(s.total/1000).toFixed(1)}k</span>
+                </div>
+            </button>
+        `).join('')}
+    `;
+
+    // Trigger search with new category constraints
+    window.searchIconsForManager();
+};
+
 /**
  * Loads icons from Iconify for the manager view with fuzzy search support.
  */
@@ -608,11 +644,12 @@ export async function loadIconsForManager() {
     grid.innerHTML = '<div class="col-span-full py-32 flex flex-col items-center justify-center h-full"><span class="iconify animate-spin text-6xl text-primary mb-4" data-icon="mdi:loading"></span><p class="text-primary font-black uppercase tracking-widest text-xs">Accessing Repository...</p></div>';
     
     const prefixes = App.currentIconSet || null;
+    const category = App.currentIconCategory || null;
     const searchInput = document.getElementById('iconManagerSearch');
     let query = searchInput?.value.trim() || '';
     
-    // If no query and no prefix, default to 'science' search
-    if (!query && !prefixes) {
+    // If no query and no prefix/category, default to 'science' search
+    if (!query && !prefixes && !category) {
         query = 'science';
     }
 
@@ -652,7 +689,12 @@ export async function loadIconsForManager() {
             }
 
             let url = `https://api.iconify.design/search?query=${encodeURIComponent(searchTerms)}&limit=200`;
-            if (prefixes) url += `&prefixes=${prefixes}`;
+            if (prefixes) {
+                url += `&prefix=${prefixes}`; // 'prefix' restricts to one collection, 'prefixes' for multiple
+            } else if (category && App.iconCategories?.[category]) {
+                const catPrefixes = App.iconCategories[category].map(s => s.prefix).join(',');
+                url += `&prefixes=${catPrefixes}`;
+            }
             
             const response = await fetch(url);
             const data = await response.json();
@@ -726,7 +768,18 @@ export const clearAllCurated = async () => {
     }
 };
 
-export const changeIconSet = async (prefix) => { App.currentIconSet = prefix; renderTeacherContent(); loadIconsForManager(); };
+export const changeIconSet = async (prefix, category) => { 
+    App.currentIconSet = prefix; 
+    App.currentIconCategory = category;
+    // Don't fully re-render teacher content, just update the grid
+    document.querySelectorAll('#managerCollectionsList button').forEach(b => b.classList.remove('bg-primary', 'text-white'));
+    // This is handled by renderTeacherContent but let's just do it directly to prevent scroll reset
+    // Actually, renderTeacherContent is fine, but it resets the whole tab. We can just load icons if we want.
+    // For now, let's stick to the simple re-render.
+    renderTeacherContent(); 
+    setTimeout(() => { loadIconsForManager(); }, 50);
+};
+
 export const searchIconsForManager = () => { loadIconsForManager(); };
 
 export const addLessonIcon = async (icon) => {

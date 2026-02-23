@@ -113,54 +113,58 @@ export function updateModeUI() {
         
         // Update bottom nav for mobile
         const bottomNav = document.getElementById('bottomNav');
-        if (bottomNav) {
-            if (isTeacher) {
-                bottomNav.innerHTML = `
-                    <button onclick="window.showTeacherModule('overview')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'overview' ? 'text-teacher' : 'text-gray-500'}">
-                        <span class="iconify text-2xl" data-icon="mdi:view-dashboard"></span>
-                        <span class="text-[10px] font-medium">Overview</span>
-                    </button>
-                    <button onclick="window.showTeacherModule('snapshots')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'snapshots' ? 'text-teacher' : 'text-gray-500'}">
-                        <span class="iconify text-2xl" data-icon="mdi:camera-outline"></span>
-                        <span class="text-[10px] font-medium">Snapshots</span>
-                    </button>
-                    <button onclick="window.showTeacherModule('noticeboard')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'noticeboard' ? 'text-teacher' : 'text-gray-500'}">
-                        <span class="iconify text-2xl" data-icon="mdi:bulletin-board"></span>
-                        <span class="text-[10px] font-medium">Board</span>
-                    </button>
-                    <button onclick="window.showTeacherModule('students')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'students' ? 'text-teacher' : 'text-gray-500'}">
-                        <span class="iconify text-2xl" data-icon="mdi:account-group"></span>
-                        <span class="text-[10px] font-medium">Students</span>
-                    </button>
+        if (bottomNav && window.innerWidth <= 768) {
+            const centerContent = isTeacher ? `
+                <button onclick="window.showTeacherModule('overview')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'overview' ? 'text-teacher' : 'text-gray-500'}">
+                    <span class="iconify text-xl" data-icon="mdi:view-dashboard"></span>
+                    <span class="text-[8px] font-black uppercase">Home</span>
+                </button>
+                <button onclick="window.showTeacherModule('snapshots')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'snapshots' ? 'text-teacher' : 'text-gray-500'}">
+                    <span class="iconify text-xl" data-icon="mdi:camera-outline"></span>
+                    <span class="text-[8px] font-black uppercase">Snaps</span>
+                </button>
+                <button onclick="window.showTeacherModule('noticeboard')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'noticeboard' ? 'text-teacher' : 'text-gray-500'}">
+                    <span class="iconify text-xl" data-icon="mdi:bulletin-board"></span>
+                    <span class="text-[8px] font-black uppercase">Board</span>
+                </button>
+                <button onclick="window.showTeacherModule('students')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'students' ? 'text-teacher' : 'text-gray-500'}">
+                    <span class="iconify text-xl" data-icon="mdi:account-group"></span>
+                    <span class="text-[8px] font-black uppercase">Class</span>
+                </button>
+            ` : `
+                <button onclick="window.showStudentModule('questions')" class="flex flex-col items-center gap-1 ${App.currentModule === 'questions' ? 'text-primary' : 'text-gray-500'}">
+                    <span class="iconify text-xl" data-icon="mdi:help-circle"></span>
+                    <span class="text-[8px] font-black uppercase">Quest</span>
+                </button>
+                <button onclick="window.showStudentModule('models')" class="flex flex-col items-center gap-1 ${App.currentModule === 'models' ? 'text-primary' : 'text-gray-500'}">
+                    <span class="iconify text-xl" data-icon="mdi:cube-outline"></span>
+                    <span class="text-[8px] font-black uppercase">Model</span>
+                </button>
+                <button onclick="window.showStudentModule('analysis')" class="flex flex-col items-center gap-1 ${App.currentModule === 'analysis' ? 'text-primary' : 'text-gray-500'}">
+                    <span class="iconify text-xl" data-icon="mdi:chart-line"></span>
+                    <span class="text-[8px] font-black uppercase">Data</span>
+                </button>
+                <button onclick="window.showStudentModule('explanations')" class="flex flex-col items-center gap-1 ${App.currentModule === 'explanations' ? 'text-primary' : 'text-gray-500'}">
+                    <span class="iconify text-xl" data-icon="mdi:lightbulb-on"></span>
+                    <span class="text-[8px] font-black uppercase">CER</span>
+                </button>
+            `;
+
+            bottomNav.innerHTML = `
+                <button onclick="window.scrollSnap('prev')" class="nav-snap-btn border-r">
+                    <span class="iconify text-2xl" data-icon="mdi:chevron-left"></span>
+                </button>
+                <div class="bottom-nav-center flex-1 flex justify-around items-center px-2">
+                    ${centerContent}
                     <button onclick="window.toggleSidebar()" class="flex flex-col items-center gap-1 text-gray-500">
-                        <span class="iconify text-2xl" data-icon="mdi:menu"></span>
-                        <span class="text-[10px] font-medium">More</span>
+                        <span class="iconify text-xl" data-icon="mdi:menu"></span>
+                        <span class="text-[8px] font-black uppercase">Menu</span>
                     </button>
-                `;
-            } else {
-                bottomNav.innerHTML = `
-                    <button onclick="window.showStudentModule('questions')" class="flex flex-col items-center gap-1 ${App.currentModule === 'questions' ? 'text-primary' : 'text-gray-500'}">
-                        <span class="iconify text-2xl" data-icon="mdi:help-circle"></span>
-                        <span class="text-[10px] font-medium">Questions</span>
-                    </button>
-                    <button onclick="window.showStudentModule('models')" class="flex flex-col items-center gap-1 ${App.currentModule === 'models' ? 'text-primary' : 'text-gray-500'}">
-                        <span class="iconify text-2xl" data-icon="mdi:cube-outline"></span>
-                        <span class="text-[10px] font-medium">Models</span>
-                    </button>
-                    <button onclick="window.showStudentModule('analysis')" class="flex flex-col items-center gap-1 ${App.currentModule === 'analysis' ? 'text-primary' : 'text-gray-500'}">
-                        <span class="iconify text-2xl" data-icon="mdi:chart-line"></span>
-                        <span class="text-[10px] font-medium">Data</span>
-                    </button>
-                    <button onclick="window.showStudentModule('explanations')" class="flex flex-col items-center gap-1 ${App.currentModule === 'explanations' ? 'text-primary' : 'text-gray-500'}">
-                        <span class="iconify text-2xl" data-icon="mdi:lightbulb-on"></span>
-                        <span class="text-[10px] font-medium">CER</span>
-                    </button>
-                    <button onclick="window.toggleSidebar()" class="flex flex-col items-center gap-1 text-gray-500">
-                        <span class="iconify text-2xl" data-icon="mdi:menu"></span>
-                        <span class="text-[10px] font-medium">More</span>
-                    </button>
-                `;
-            }
+                </div>
+                <button onclick="window.scrollSnap('next')" class="nav-snap-btn border-l">
+                    <span class="iconify text-2xl" data-icon="mdi:chevron-right"></span>
+                </button>
+            `;
         }
 
         renderNavigation();
@@ -188,15 +192,23 @@ function wrapInSnapCards(html) {
 
     const isVertical = App.teacherModule === 'lessons';
 
-    const cards = Array.from(sections).map((section, i) => `
-        <div class="snap-card" id="card-${i}">
-            <div class="mb-3 flex items-center justify-between shrink-0">
-                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${section.getAttribute('data-card-title')}</h3>
-                <span class="text-[9px] font-bold text-gray-300">${i + 1}/${sections.length}</span>
+    const cards = Array.from(sections).map((section, i) => {
+        const title = section.getAttribute('data-card-title');
+        section.removeAttribute('data-card-title');
+        return `
+            <div class="snap-card" id="card-${i}">
+                <div class="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-3 border-b bg-gray-50 flex items-center justify-between shrink-0">
+                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${title}</h3>
+                        <span class="text-[9px] font-bold text-gray-300">${i + 1}/${sections.length}</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-3" data-card-content>
+                        ${section.outerHTML}
+                    </div>
+                </div>
             </div>
-            <div class="flex-1 overflow-y-auto">${section.outerHTML}</div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     const dots = Array.from(sections).map((_, i) => `<div class="dot ${i === 0 ? 'active' : ''}" data-index="${i}"></div>`).join('');
 
@@ -206,14 +218,6 @@ function wrapInSnapCards(html) {
         </div>
         <div class="pagination-dots ${isVertical ? 'hidden' : ''}">
             ${dots}
-        </div>
-        <div class="mobile-snap-nav">
-            <button onclick="window.scrollSnap('prev')" class="nav-snap-btn" aria-label="Previous">
-                <span class="iconify text-xl" data-icon="mdi:chevron-left"></span>
-            </button>
-            <button onclick="window.scrollSnap('next')" class="nav-snap-btn" aria-label="Next">
-                <span class="iconify text-xl" data-icon="mdi:chevron-right"></span>
-            </button>
         </div>
     `;
 }

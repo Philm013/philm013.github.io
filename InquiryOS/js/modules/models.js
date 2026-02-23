@@ -1079,14 +1079,84 @@ export async function deleteExplanationPoint(id) { App.work.modelExplanations = 
 /**
  * UI: Opens the global icon picker modal.
  */
-export function openIconPicker() {
+export async function openIconPicker() {
     const modal = document.getElementById('iconPickerModal');
     if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         document.getElementById('iconSearchInput')?.focus();
+        
+        if (!App.availableIconSets || App.availableIconSets.length === 0) {
+            await loadIconCollections();
+        }
     }
 }
+
+/**
+ * Loads Iconify collections and populates the category and prefix dropdowns.
+ */
+async function loadIconCollections() {
+    try {
+        const res = await fetch('https://api.iconify.design/collections');
+        const data = await res.json();
+        
+        const categories = {};
+        App.availableIconSets = Object.keys(data).map(prefix => {
+            const set = {
+                prefix,
+                name: data[prefix].name,
+                total: data[prefix].total,
+                category: data[prefix].category || 'Other'
+            };
+            if (!categories[set.category]) categories[set.category] = [];
+            categories[set.category].push(set);
+            return set;
+        });
+
+        App.iconCategories = categories;
+
+        const catSelect = document.getElementById('iconCategorySelect');
+        if (catSelect) {
+            catSelect.innerHTML = '<option value="">All Categories</option>' + Object.keys(categories).sort().map(cat => 
+                `<option value="${cat}">${cat}</option>`
+            ).join('');
+        }
+        
+        window.onIconCategoryChange(); // Populate prefixes initially
+    } catch (e) {
+        console.error('Failed to load Iconify collections', e);
+    }
+}
+
+window.onIconCategoryChange = () => {
+    const catSelect = document.getElementById('iconCategorySelect');
+    const prefSelect = document.getElementById('iconPrefixSelect');
+    if (!catSelect || !prefSelect) return;
+    
+    const category = catSelect.value;
+    let sets = App.availableIconSets || [];
+    if (category) {
+        sets = App.iconCategories?.[category] || [];
+    }
+
+    prefSelect.innerHTML = '<option value="">All Collections</option>' + sets.sort((a,b) => b.total - a.total).map(s => 
+        `<option value="${s.prefix}">${s.name} (${(s.total/1000).toFixed(1)}k)</option>`
+    ).join('');
+
+    window.searchIcons();
+};
+
+window.clearCollections = () => {
+    const catSelect = document.getElementById('iconCategorySelect');
+    const prefSelect = document.getElementById('iconPrefixSelect');
+    const input = document.getElementById('iconSearchInput');
+    if (catSelect) catSelect.value = '';
+    if (prefSelect) prefSelect.value = '';
+    if (input) input.value = '';
+    window.onIconCategoryChange();
+    document.getElementById('iconGrid').innerHTML = '';
+    document.getElementById('iconResultCount').textContent = '0 icons found';
+};
 
 /**
  * UI: Closes the global icon picker modal.
@@ -1104,49 +1174,83 @@ export function closeIconPicker() {
  */
 export async function searchIcons() {
     const input = document.getElementById('iconSearchInput');
+    const catSelect = document.getElementById('iconCategorySelect');
+    const prefSelect = document.getElementById('iconPrefixSelect');
     const grid = document.getElementById('iconGrid');
     const status = document.getElementById('iconPickerStatus');
     const countDisplay = document.getElementById('iconResultCount');
     
     if (!input || !grid) return;
     const query = input.value.trim();
-    if (query.length < 2) return;
+    const prefix = prefSelect?.value;
+    const category = catSelect?.value;
+    
+    // Allow browsing a specific collection without a query
+    if (query.length < 2 && !prefix) {
+        if (query.length === 0 && !category) {
+            grid.innerHTML = '';
+            if (countDisplay) countDisplay.textContent = '0 icons found';
+        }
+        return;
+    }
 
     status?.classList.remove('hidden');
     grid.innerHTML = '';
 
-    const topicExpansion = {
-        'biology': 'cell,nature,life,dna,organism,evolution,plant,animal,ecology',
-        'chemistry': 'molecule,atom,reaction,lab,beaker,substance,periodic',
-        'physics': 'energy,force,motion,electricity,magnet,wave,particle,gravity',
-        'space': 'planet,galaxy,star,telescope,rocket,astronaut,cosmos,moon,orbit',
-        'earth': 'weather,climate,geology,volcano,ocean,river,mountain,rock',
-        'engineering': 'design,structure,machine,robot,tools,construction,blueprint'
-    };
-    
-    let searchUrl = query;
-    const lowerQuery = query.toLowerCase();
-    for (const [topic, expansion] of Object.entries(topicExpansion)) {
-        if (lowerQuery.includes(topic)) { searchUrl += ' ' + expansion.replace(/,/g, ' '); break; }
-    }
-
     try {
-        const response = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(searchUrl)}&limit=100`);
-        const data = await response.json();
-        let icons = data.icons || [];
+        let icons = [];
 
-        if (typeof Fuse !== 'undefined' && icons.length > 0) {
-            const fuse = new Fuse(icons, { threshold: 0.4 });
-            const result = fuse.search(query);
-            if (result.length > 0) icons = result.map(r => r.item);
+        if (query) {
+            const topicExpansion = {
+                'biology': 'cell nature life dna organism evolution plant animal ecology',
+                'chemistry': 'molecule atom reaction lab beaker substance periodic',
+                'physics': 'energy force motion electricity magnet wave particle gravity',
+                'space': 'planet galaxy star telescope rocket astronaut cosmos moon orbit',
+                'earth': 'weather climate geology volcano ocean river mountain rock',
+                'engineering': 'design structure machine robot tools construction blueprint'
+            };
+            
+            let searchUrl = query;
+            const lowerQuery = query.toLowerCase();
+            for (const [topic, expansion] of Object.entries(topicExpansion)) {
+                if (lowerQuery.includes(topic)) { searchUrl += ' ' + expansion; break; }
+            }
+
+            let url = `https://api.iconify.design/search?query=${encodeURIComponent(searchUrl)}&limit=150`;
+            if (prefix) url += `&prefix=${prefix}`;
+            else if (category && App.iconCategories?.[category]) {
+                const prefixes = App.iconCategories[category].map(s => s.prefix).join(',');
+                url += `&prefixes=${prefixes}`;
+            }
+
+            const response = await fetch(url);
+            const data = await response.json();
+            icons = data.icons || [];
+
+            if (typeof Fuse !== 'undefined' && icons.length > 0) {
+                const fuse = new Fuse(icons, { threshold: 0.4 });
+                const result = fuse.search(query);
+                if (result.length > 0) icons = result.map(r => r.item);
+            }
+        } else if (prefix) {
+            // Browsing a specific collection without a query
+            const response = await fetch(`https://api.iconify.design/collection?prefix=${prefix}`);
+            const data = await response.json();
+            if (data.uncategorized) icons = data.uncategorized.slice(0, 150).map(name => `${prefix}:${name}`);
+            else if (data.categories) {
+                Object.values(data.categories).forEach(catIcons => {
+                    if (icons.length < 150) icons = [...icons, ...catIcons.slice(0, 30).map(name => `${prefix}:${name}`)];
+                });
+            }
         }
 
         if (countDisplay) countDisplay.textContent = `${icons.length} icons found`;
         status?.classList.add('hidden');
 
         grid.innerHTML = icons.map(icon => `
-            <button onclick="window.selectIcon('${icon}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-primary hover:bg-blue-50 transition-all flex items-center justify-center group" title="${icon}">
-                <span class="iconify text-2xl text-gray-600 group-hover:text-primary group-hover:scale-110 transition-all" data-icon="${icon}"></span>
+            <button onclick="window.selectIcon('${icon}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-primary hover:bg-blue-50 transition-all flex flex-col items-center justify-center group gap-1" title="${icon}">
+                <span class="iconify text-3xl text-gray-600 group-hover:text-primary group-hover:scale-110 transition-all" data-icon="${icon}"></span>
+                <span class="text-[7px] text-gray-400 uppercase tracking-tighter truncate w-full group-hover:text-primary">${icon.split(':')[0]}</span>
             </button>
         `).join('');
     } catch (e) {
