@@ -42,33 +42,57 @@ export function renderQuestionsModule() {
                 ${renderModuleHeader('Asking Questions', 'mdi:help-circle', 'SEP1')}
             </div>
             
-            <div class="shrink-0 bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-100 rounded-3xl p-6 shadow-sm relative overflow-hidden mx-2" data-card-title="Phenomenon">
-                <div class="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
-                <div class="flex flex-col md:flex-row gap-5 relative">
-                    <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-amber-100 text-amber-50">
-                        <span class="iconify text-2xl text-amber-500" data-icon="mdi:eye"></span>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <h3 class="text-lg font-black text-gray-900">${p.title || 'Scientific Phenomenon'}</h3>
-                            <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest">Focus</span>
+            <div class="shrink-0 bg-white border border-amber-100 rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden mx-2" data-card-title="Phenomenon">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-amber-50 rounded-full -mr-32 -mt-32 opacity-50"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-10 relative">
+                    <!-- Left Side: Text Description -->
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-amber-100">
+                                <span class="iconify text-3xl" data-icon="mdi:eye"></span>
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-black text-gray-900 tracking-tight">${p.title || 'Scientific Phenomenon'}</h3>
+                                <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em]">Observation Focus</p>
+                            </div>
                         </div>
-                        <p class="text-sm text-gray-600 leading-relaxed max-w-4xl line-clamp-2 md:line-clamp-none">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts below.'}</p>
+                        <p class="text-lg text-gray-600 leading-relaxed font-medium">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts below.'}</p>
+                        
+                        <div class="flex flex-wrap gap-2 pt-2">
+                            ${(p.ngssStandards || []).map(s => `<span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase border border-blue-100">${s}</span>`).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Right Side: Media Gallery -->
+                    <div class="bg-gray-50 rounded-[2rem] p-6 border-2 border-dashed border-amber-100/50 flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Evidence Gallery</h4>
+                            <span class="text-[9px] font-black text-amber-500 uppercase">${p.media?.length || 0} Artifacts</span>
+                        </div>
                         
                         ${p.media?.length > 0 ? `
-                            <div class="mt-6 flex flex-wrap gap-3">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
                                 ${p.media.map(m => `
                                     <button onclick="window.viewMediaDetail('${m.id}')" 
-                                        class="group relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-white shadow-md hover:ring-4 hover:ring-amber-400 transition-all flex-shrink-0">
+                                        class="group relative aspect-video bg-white rounded-2xl overflow-hidden border-2 border-white shadow-md hover:ring-4 hover:ring-amber-400 transition-all flex-shrink-0">
                                         <img src="${m.thumb}" class="w-full h-full object-cover">
-                                        <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
-                                        <div class="absolute bottom-1 right-1">
-                                            <span class="iconify text-white text-xs" data-icon="${m.type === 'video' ? 'mdi:play-circle' : (m.type === 'sim' ? 'mdi:application-brackets' : 'mdi:image')}"></span>
+                                        <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                                            <div class="bg-white/90 backdrop-blur-sm text-amber-600 p-2 rounded-full scale-0 group-hover:scale-100 transition-transform shadow-xl">
+                                                <span class="iconify text-xl" data-icon="mdi:magnify-plus"></span>
+                                            </div>
+                                        </div>
+                                        <div class="absolute bottom-2 left-2 right-2 flex justify-between items-center pointer-events-none">
+                                            <span class="px-1.5 py-0.5 bg-black/60 backdrop-blur-md text-white text-[8px] font-black uppercase rounded">${m.type}</span>
                                         </div>
                                     </button>
                                 `).join('')}
                             </div>
-                        ` : ''}
+                        ` : `
+                            <div class="flex-1 flex flex-col items-center justify-center py-10 opacity-30">
+                                <span class="iconify text-5xl mb-3" data-icon="mdi:image-off-outline"></span>
+                                <p class="text-[10px] font-black uppercase tracking-widest">No media attached</p>
+                            </div>
+                        `}
                     </div>
                 </div>
             </div>

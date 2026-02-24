@@ -153,29 +153,89 @@ function renderMediaResults(items) {
     }
 
     container.innerHTML = items.map(item => {
+        // Create a unique temporary ID if none exists for detail viewing
+        if (!item.id) item.id = 'temp_' + Math.random().toString(36).substr(2, 9);
         const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+        
         return `
-            <div onclick="window.addMediaToPhenomenon(${itemJson})" 
-                class="media-card group cursor-pointer relative">
-                <div class="w-full overflow-hidden bg-gray-100">
-                    <img src="${item.thumb}" class="transition-transform duration-500 group-hover:scale-110" loading="lazy">
+            <div class="media-card group relative flex flex-col">
+                <div class="img-container cursor-pointer" onclick="window.previewMediaItem(${itemJson})">
+                    <img src="${item.thumb}" loading="lazy">
+                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div class="bg-white/90 backdrop-blur-md text-primary px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl scale-75 group-hover:scale-100 transition-all">
+                            Preview
+                        </div>
+                    </div>
                 </div>
-                <div class="p-3 flex-1 flex flex-col">
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-[8px] font-black text-primary uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded">${item.provider}</span>
+                <div class="p-4 flex-1 flex flex-col">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[8px] font-black text-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">${item.provider}</span>
                         <span class="iconify text-gray-300" data-icon="${item.type === 'video' ? 'mdi:play-circle' : (item.type === 'sim' ? 'mdi:application-brackets' : 'mdi:image')}"></span>
                     </div>
-                    <p class="text-[10px] font-bold text-gray-800 line-clamp-2 leading-snug mb-1">${item.title || 'Untitled'}</p>
-                    <p class="text-[8px] text-gray-400 mt-auto truncate">By ${item.author || item.provider}</p>
-                </div>
-                <div class="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                    <div class="bg-white text-primary p-2 rounded-full shadow-lg scale-75 group-hover:scale-100 transition-transform">
-                        <span class="iconify text-xl" data-icon="mdi:plus"></span>
+                    <p class="text-xs font-bold text-gray-800 line-clamp-2 leading-snug mb-2" title="${item.title || ''}">${item.title || 'Untitled Artifact'}</p>
+                    <div class="mt-auto pt-2 flex items-center justify-between border-t border-gray-50">
+                        <p class="text-[8px] text-gray-400 truncate max-w-[100px]">By ${item.author || item.provider}</p>
+                        <button onclick="window.addMediaToPhenomenon(${itemJson})" 
+                            class="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-lg active:scale-95">
+                            Add Artifact
+                        </button>
                     </div>
                 </div>
             </div>
         `;
     }).join('');
+}
+
+export function viewMediaDetail(idOrItem) {
+    let item;
+    if (typeof idOrItem === 'string') {
+        item = App.teacherSettings.phenomenon.media?.find(m => m.id === idOrItem);
+    } else {
+        item = idOrItem;
+    }
+    
+    if (!item) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'mediaDetailModal';
+    modal.className = 'fixed inset-0 z-[250] bg-black/95 flex flex-col animate-in fade-in duration-300';
+    
+    let mediaHtml = '';
+    if (item.type === 'image') {
+        mediaHtml = `<img src="${item.url}" class="max-w-full max-h-full object-contain shadow-2xl">`;
+    } else if (item.type === 'video') {
+        mediaHtml = `<video src="${item.url}" controls autoplay class="max-w-full max-h-full shadow-2xl"></video>`;
+    } else if (item.type === 'sim') {
+        mediaHtml = `<iframe src="${item.url}" class="w-full h-full bg-white md:rounded-3xl border-0 shadow-2xl" allowfullscreen></iframe>`;
+    }
+
+    modal.innerHTML = `
+        <div class="flex items-center justify-between p-6 text-white bg-black/40 backdrop-blur-md shrink-0">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                    <span class="iconify text-xl" data-icon="${item.type === 'video' ? 'mdi:play-circle' : (item.type === 'sim' ? 'mdi:application-brackets' : 'mdi:image')}"></span>
+                </div>
+                <div>
+                    <h3 class="font-black uppercase tracking-widest text-sm">${item.provider} ${item.type}</h3>
+                    <p class="text-[10px] text-white/60 font-bold uppercase mt-0.5">${item.title || 'Scientific Artifact'}</p>
+                </div>
+            </div>
+            <button onclick="window.closeMediaDetail()" class="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
+                <span class="iconify text-2xl" data-icon="mdi:close"></span>
+            </button>
+        </div>
+        <div class="flex-1 flex items-center justify-center p-0 md:p-12 overflow-hidden bg-black/20">
+            <div class="w-full h-full flex items-center justify-center">
+                ${mediaHtml}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+export function closeMediaDetail() {
+    document.getElementById('mediaDetailModal')?.remove();
 }
 
 export function applyQuickFilter(query) {
@@ -185,7 +245,6 @@ export function applyQuickFilter(query) {
         window.searchMedia();
     }
 }
-
 
 export async function addMediaToPhenomenon(item) {
     if (!App.teacherSettings.phenomenon.media) App.teacherSettings.phenomenon.media = [];
@@ -225,43 +284,9 @@ export function addSimMedia() {
     if (document.getElementById('simUrlInput')) document.getElementById('simUrlInput').value = '';
 }
 
-export function viewMediaDetail(id) {
-    const item = App.teacherSettings.phenomenon.media.find(m => m.id === id);
-    if (!item) return;
-
-    const modal = document.createElement('div');
-    modal.id = 'mediaDetailModal';
-    modal.className = 'fixed inset-0 z-[200] bg-black/95 flex flex-col animate-in fade-in duration-300';
-    
-    let mediaHtml = '';
-    if (item.type === 'image') {
-        mediaHtml = `<img src="${item.url}" class="max-w-full max-h-full object-contain shadow-2xl">`;
-    } else if (item.type === 'video') {
-        mediaHtml = `<video src="${item.url}" controls autoplay class="max-w-full max-h-full shadow-2xl"></video>`;
-    } else if (item.type === 'sim') {
-        mediaHtml = `<iframe src="${item.url}" class="w-full h-full bg-white md:rounded-3xl border-0 shadow-2xl" allowfullscreen></iframe>`;
-    }
-
-    modal.innerHTML = `
-        <div class="flex items-center justify-between p-6 text-white bg-black/40 backdrop-blur-md shrink-0">
-            <div>
-                <h3 class="font-black uppercase tracking-widest text-sm">${item.type}: ${item.provider}</h3>
-                <p class="text-[10px] text-white/60 font-bold uppercase mt-0.5">${item.title || 'Reference Material'}</p>
-            </div>
-            <button onclick="window.closeMediaDetail()" class="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
-                <span class="iconify text-2xl" data-icon="mdi:close"></span>
-            </button>
-        </div>
-        <div class="flex-1 flex items-center justify-center p-0 md:p-12 overflow-hidden bg-black/50">
-            <div class="w-full h-full flex items-center justify-center">
-                ${mediaHtml}
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-}
-
-export function closeMediaDetail() {
-    document.getElementById('mediaDetailModal')?.remove();
+/**
+ * Previews a media item from the picker without adding it.
+ */
+export function previewMediaItem(item) {
+    window.viewMediaDetail(item);
 }

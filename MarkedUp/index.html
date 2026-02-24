@@ -1132,9 +1132,185 @@
             color: var(--text-dim);
             margin-left: auto;
         }
+
+        /* Mobile Native Feel */
+        @media (max-width: 768px) {
+            .app { flex-direction: column; }
+            
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                min-width: 280px;
+                z-index: 3000;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+                border-right: 1px solid var(--border);
+            }
+            .sidebar.open { transform: translateX(0); }
+            
+            .sidebar-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.7);
+                z-index: 2999;
+                display: none;
+                backdrop-filter: blur(4px);
+            }
+            .sidebar-overlay.active { display: block; }
+
+            .main { 
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .header {
+                height: 56px;
+                padding: 0 12px;
+                gap: 8px;
+                flex-shrink: 0;
+            }
+            
+            .view-switch { display: none !important; }
+            #mobileMenuBtn { display: flex !important; }
+            
+            .url-bar { 
+                gap: 4px;
+                flex: 1;
+            }
+            
+            .url-input {
+                padding: 8px 12px;
+                font-size: 13px;
+                border-radius: 20px;
+            }
+            
+            .header-right { display: none !important; }
+            
+            #captureBtn { 
+                padding: 8px;
+                border-radius: 12px;
+                width: 40px;
+                height: 40px;
+                justify-content: center;
+            }
+            #captureBtn span { display: none; }
+            #captureBtn::before { content: '📷'; font-size: 18px; }
+            
+            .mobile-nav {
+                display: flex !important;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 64px;
+                background: var(--bg-panel);
+                border-top: 1px solid var(--border);
+                z-index: 4000;
+                justify-content: space-around;
+                align-items: center;
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            
+            .nav-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                color: var(--text-dim);
+                transition: all 0.2s;
+                height: 100%;
+                cursor: pointer;
+            }
+            .nav-item.active { color: var(--accent); }
+            .nav-item span { font-size: 10px; font-weight: 700; }
+            .nav-item svg { width: 22px; height: 22px; }
+
+            .editor-bar {
+                position: absolute;
+                top: 56px;
+                left: 0;
+                right: 0;
+                z-index: 10;
+                background: var(--bg-panel);
+                padding: 8px;
+                overflow-x: auto;
+                justify-content: flex-start;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            }
+            .editor-bar::-webkit-scrollbar { display: none; }
+            
+            .viewport {
+                flex: 1;
+                margin-bottom: 64px;
+            }
+
+            .landing-header {
+                padding: 32px 20px;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                gap: 16px;
+            }
+            .landing-content { padding: 16px; padding-bottom: 80px; }
+            .sessions-grid { grid-template-columns: 1fr; gap: 16px; }
+            .stat-card { padding: 12px; }
+            .stat-value { font-size: 20px; }
+            
+            .modal {
+                width: 90vw;
+                padding: 20px;
+            }
+            
+            .zoom-controls {
+                bottom: 80px;
+                right: 16px;
+                left: auto;
+            }
+            
+            .layers-panel, .history-panel {
+                right: 12px;
+                width: calc(100% - 24px);
+                max-height: 50vh;
+            }
+            
+            .notes-panel {
+                position: fixed;
+                inset: 0;
+                width: 100%;
+                z-index: 5000;
+                border-left: none;
+            }
+
+            /* Extra Mobile Polish */
+            .logo-text { font-size: 14px; }
+            .btn { padding: 8px 14px; font-size: 12px; border-radius: 10px; }
+            .session-item-info { padding: 12px; }
+            .session-item-title { font-size: 14px; }
+            .session-card { padding: 8px; gap: 8px; }
+            .session-thumb-container { width: 80px; height: 60px; }
+            .session-title { font-size: 12px; }
+            .session-meta { font-size: 10px; }
+            
+            .tab { padding: 8px 4px; font-size: 10px; }
+            .tab-icon { font-size: 16px; }
+            
+            .toast { width: 90%; bottom: 80px; }
+        }
     </style>
 </head>
 <body>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <div class="app">
     <div class="sidebar" id="sidebar">
@@ -1190,6 +1366,7 @@
 
     <div class="main">
         <div class="header">
+            <button class="settings-btn" id="mobileMenuBtn" style="display:none; padding:8px; font-size:20px;">☰</button>
             <div class="view-switch">
                 <button class="view-btn" id="btnLibrary">Library</button>
                 <button class="view-btn active" id="btnBrowse">Browse</button>
@@ -1307,6 +1484,21 @@
                     <div class="notes-list" id="notesList"></div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="mobile-nav" id="mobileNav" style="display:none;">
+        <div class="nav-item" id="navLibrary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Library</span>
+        </div>
+        <div class="nav-item" id="navBrowse">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            <span>Browse</span>
+        </div>
+        <div class="nav-item active" id="navMarkup">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg>
+            <span>Markup</span>
         </div>
     </div>
 </div>
@@ -2675,11 +2867,6 @@ const Library = {
             const selectDot = document.createElement('div');
             selectDot.className = 'session-select';
             selectDot.title = 'Select for multiple actions';
-            selectDot.onclick = (e) => {
-                e.stopPropagation();
-                c.selected = !c.selected;
-                this.render();
-            };
             
             thumbContainer.appendChild(thumb);
             thumbContainer.appendChild(selectDot);
@@ -2698,22 +2885,14 @@ const Library = {
             actions.className = 'session-card-actions';
             
             const renameBtn = document.createElement('button');
-            renameBtn.className = 'session-btn';
+            renameBtn.className = 'session-btn btn-rename-capture';
             renameBtn.innerHTML = '✏️';
             renameBtn.title = 'Rename';
-            renameBtn.onclick = (e) => {
-                e.stopPropagation();
-                this.renameCapture(c.id);
-            };
             
             const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'session-btn session-delete';
+            deleteBtn.className = 'session-btn session-delete btn-delete-capture';
             deleteBtn.innerHTML = '×';
             deleteBtn.title = 'Delete';
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation();
-                this.deleteCapture(c.id);
-            };
             
             actions.appendChild(renameBtn);
             actions.appendChild(deleteBtn);
@@ -2722,10 +2901,33 @@ const Library = {
             card.appendChild(info);
             card.appendChild(actions);
             
-            card.onclick = () => {
-                if (!isLoading) {
-                    this.loadCapture(c.id);
+            card.onclick = (e) => {
+                if (isLoading) return;
+                
+                const isSelect = e.target.closest('.session-select');
+                const isRename = e.target.closest('.btn-rename-capture');
+                const isDelete = e.target.closest('.btn-delete-capture');
+                
+                if (isSelect) {
+                    e.stopPropagation();
+                    c.selected = !c.selected;
+                    this.render();
+                    return;
                 }
+                
+                if (isRename) {
+                    e.stopPropagation();
+                    this.renameCapture(c.id);
+                    return;
+                }
+                
+                if (isDelete) {
+                    e.stopPropagation();
+                    this.deleteCapture(c.id);
+                    return;
+                }
+                
+                this.loadCapture(c.id);
             };
             
             grid.appendChild(card);
@@ -4541,6 +4743,21 @@ const App = {
         document.getElementById('btnMarkup').addEventListener('click', () => this.setView('markup'));
         document.getElementById('startNewBtn').addEventListener('click', () => this.startNew());
         
+        // Mobile Interactions
+        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        });
+        
+        document.getElementById('sidebarOverlay').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        });
+        
+        document.getElementById('navLibrary').addEventListener('click', () => this.setView('library'));
+        document.getElementById('navBrowse').addEventListener('click', () => this.setView('browse'));
+        document.getElementById('navMarkup').addEventListener('click', () => this.setView('markup'));
+        
         document.getElementById('landingNewBtn').addEventListener('click', () => this.startNew());
         document.getElementById('landingExportBtn').addEventListener('click', () => this.exportMultipleSessions());
         
@@ -4624,6 +4841,15 @@ const App = {
         document.getElementById('btnBrowse').classList.toggle('active', mode === 'browse');
         document.getElementById('btnMarkup').classList.toggle('active', mode === 'markup');
         
+        // Mobile nav active class
+        document.getElementById('navLibrary').classList.toggle('active', mode === 'library');
+        document.getElementById('navBrowse').classList.toggle('active', mode === 'browse');
+        document.getElementById('navMarkup').classList.toggle('active', mode === 'markup');
+
+        // Close sidebar on mobile when view changes
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+        
         document.getElementById('browserBar').style.display = mode === 'browse' ? 'flex' : 'none';
         document.getElementById('editorBar').classList.toggle('active', mode === 'markup');
         
@@ -4681,22 +4907,38 @@ const App = {
                     <div class="session-item-meta">${count} captures • ${new Date(s.createdAt).toLocaleDateString()}</div>
                 </div>
                 <div style="position:absolute; bottom:12px; right:12px; display:flex; gap:4px;">
-                    <button class="btn btn-default btn-sm" onclick="event.stopPropagation(); Library.deleteSession('${s.id}')">Delete</button>
+                    ${count > 0 ? '<button class="btn btn-primary btn-sm btn-resume-session">Resume</button>' : ''}
+                    <button class="btn btn-default btn-sm btn-delete-session">Delete</button>
                 </div>
             `;
             
-            item.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') return;
-                Library.switchSession(s.id).then(() => App.setView('browse'));
-            });
-            
-            const check = item.querySelector('.session-check');
-            check.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (Library.selectedSessionIds.has(s.id)) Library.selectedSessionIds.delete(s.id);
-                else Library.selectedSessionIds.add(s.id);
-                this.renderLandingPage();
-            });
+            item.onclick = (e) => {
+                const isCheck = e.target.closest('.session-check');
+                const isDelete = e.target.closest('.btn-delete-session');
+                const isResume = e.target.closest('.btn-resume-session');
+                
+                if (isDelete) {
+                    e.stopPropagation();
+                    Library.deleteSession(s.id);
+                    return;
+                }
+                
+                if (isCheck) {
+                    e.stopPropagation();
+                    if (Library.selectedSessionIds.has(s.id)) Library.selectedSessionIds.delete(s.id);
+                    else Library.selectedSessionIds.add(s.id);
+                    this.renderLandingPage();
+                    return;
+                }
+                
+                Library.switchSession(s.id).then(() => {
+                    if (latest && (isResume || e.target.closest('.session-item-thumb') || e.target.closest('.session-item-info'))) {
+                        Library.loadCapture(latest.id);
+                    } else {
+                        App.setView('browse');
+                    }
+                });
+            };
             
             grid.appendChild(item);
         }

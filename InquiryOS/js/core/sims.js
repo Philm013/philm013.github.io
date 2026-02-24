@@ -121,19 +121,27 @@ export async function loadSimulationsData() {
  * @returns {Array} Filtered list of simulations.
  */
 export function searchSimulations(query = '', category = '') {
-    const q = query.toLowerCase();
-    const cat = category.toLowerCase();
+    const q = (query || '').toLowerCase();
+    const cat = (category || '').toLowerCase();
 
     return App.simulations.filter(s => {
+        if (!s) return false;
+        
+        const title = (s.title || '').toLowerCase();
+        const description = (s.description || '').toLowerCase();
+        const provider = (s.provider || '').toLowerCase();
+        const tags = Array.isArray(s.tags) ? s.tags : [];
+        const categories = Array.isArray(s.categories) ? s.categories : [];
+
         const matchesQuery = !q || 
-            s.title.toLowerCase().includes(q) || 
-            s.description.toLowerCase().includes(q) || 
-            s.tags.some(t => t.toLowerCase().includes(q)) ||
-            s.provider.toLowerCase().includes(q);
+            title.includes(q) || 
+            description.includes(q) || 
+            tags.some(t => t && String(t).toLowerCase().includes(q)) ||
+            provider.includes(q);
         
         const matchesCategory = !cat || 
-            s.categories.some(c => c.toLowerCase().includes(cat)) ||
-            s.provider.toLowerCase().includes(cat);
+            categories.some(c => c && String(c).toLowerCase().includes(cat)) ||
+            provider.includes(cat);
 
         return matchesQuery && matchesCategory;
     });
