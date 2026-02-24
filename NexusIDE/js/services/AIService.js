@@ -110,6 +110,138 @@ PROCESS:
 5. **Verify:** Use the 'lintFile' tool after modifying any file. If lint errors are found, fix them immediately. Take final screenshots to verify the visual fixes.`,
         };
 
+        /** @type {Object.<string, {declaration: Object, handler: Function}>} Registry of available AI tools. */
+        this.toolRegistry = {
+            readFile: {
+                declaration: { name: 'readFile', description: 'Reads the entire content of a file.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' } }, required: ['path'] } },
+                handler: async (args) => {
+                    try {
+                        const content = await this.fs.readFile(args.path);
+                        return { success: !!content, content: content || "File is empty or not found." };
+                    } catch (e) { return { success: false, error: e.message }; }
+                }
+            },
+            writeFile: {
+                declaration: { name: 'writeFile', description: 'Creates a new file or overwrites an existing one. Automatically runs linter and returns errors if any.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' }, content: { type: 'STRING' } }, required: ['path', 'content'] } },
+                handler: async (args) => {
+                    try {
+                        await this.fs.writeFile(args.path, args.content);
+                        let lintResult = "";
+                        if (window.Nexus) {
+                            window.Nexus.refreshFileExplorer();
+                            if (window.Nexus.state.currentFile === args.path) await window.Nexus.editor.openFile(args.path, true);
+                            if (args.path === 'PROJECT_ARCHITECTURE.md') { await window.Nexus.pad.init(); if (window.Nexus.state.view === 'pad') window.Nexus.refreshPADUI(); }
+                            const errors = window.Nexus.lint.lintCode(args.content, args.path);
+                            if (errors.length > 0) lintResult = ` File written, but has linting errors: ${JSON.stringify(errors)}`;
+                        }
+                        return { success: true, message: `File ${args.path} written successfully.${lintResult}` };
+                    } catch (e) { return { success: false, error: e.message }; }
+                }
+            },
+            applyPatch: {
+                declaration: { name: 'applyPatch', description: 'Applies a targeted change to a file. Automatically runs linter and returns errors if any.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' }, explanation: { type: 'STRING' }, originalContent: { type: 'STRING' }, newContent: { type: 'STRING' } }, required: ['path', 'explanation', 'originalContent', 'newContent'] } },
+                handler: async (args, isAutoMode) => {
+                    return new Promise((resolve) => {
+                        (async () => {
+                            const currentContent = await this.fs.readFile(args.path);
+                            if (!currentContent) return resolve({ success: false, error: `File ${args.path} not found.` });
+
+                            if (isAutoMode) {
+                                const updated = currentContent.replace(args.originalContent, args.newContent);
+                                if (updated !== currentContent) {
+                                    await this.fs.writeFile(args.path, updated);
+                                    let lintResult = "";
+                                    if (window.Nexus) {
+                                        window.Nexus.updatePreview(); window.Nexus.refreshFileExplorer();
+                                        if (window.Nexus.state.currentFile === args.path) await window.Nexus.editor.openFile(args.path, true);
+                                        if (args.path === 'PROJECT_ARCHITECTURE.md') { await window.Nexus.pad.init(); window.Nexus.refreshPADUI(); }
+                                        const errors = window.Nexus.lint.lintCode(updated, args.path);
+                                        if (errors.length > 0) lintResult = ` Patch applied, but has linting errors: ${JSON.stringify(errors)}`;
+                                    }
+                                    return resolve({ success: true, message: `Patch applied automatically.${lintResult}` });
+                                }
+                            }
+                            const proposal = this.createProposalUI(args, currentContent, resolve);
+                            const container = document.getElementById('chat-history');
+                            if (container) { container.appendChild(proposal); container.scrollTop = container.scrollHeight; }
+                        })();
+                    });
+                }
+            },
+            listFiles: {
+                declaration: { name: 'listFiles', description: 'Lists all files in the project.', parameters: { type: 'OBJECT', properties: {} } },
+                handler: async () => {
+                    const files = await this.fs.listFiles();
+                    return { success: true, files };
+                }
+            },
+            getSymbols: {
+                declaration: { name: 'getSymbols', description: 'Gets functions/classes outline of a file.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' } }, required: ['path'] } },
+                handler: async (args) => {
+                    const symbols = this.analysis.getFileSymbols(args.path);
+                    return { success: true, symbols };
+                }
+            },
+            grepFiles: {
+                declaration: { name: 'grepFiles', description: 'Searches for a text pattern or regex in all project files.', parameters: { type: 'OBJECT', properties: { pattern: { type: 'STRING' }, isRegex: { type: 'BOOLEAN' } }, required: ['pattern'] } },
+                handler: async (args) => {
+                    const files = await this.fs.listFiles();
+                    const results = []; const regex = args.isRegex ? new RegExp(args.pattern, 'i') : null; const pattern = args.pattern.toLowerCase();
+                    for (const path of files) {
+                        if (path.endsWith('.meta')) continue;
+                        try {
+                            const content = await this.fs.readFile(path); if (!content) continue;
+                            const lines = content.split('\n');
+                            lines.forEach((line, idx) => { if (regex ? regex.test(line) : line.toLowerCase().includes(pattern)) results.push({ file: path, line: idx + 1, content: line.trim() }); });
+                        } catch (e) {}
+                    }
+                    return { success: true, results: results.slice(0, 50), count: results.length };
+                }
+            },
+            lintFile: {
+                declaration: { name: 'lintFile', description: 'Runs the linter on a specific file and returns the issues.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' } }, required: ['path'] } },
+                handler: async (args) => {
+                    try {
+                        const content = await this.fs.readFile(args.path); if (!content) return { success: false, error: "File not found or empty." };
+                        const errors = window.Nexus ? window.Nexus.lint.lintCode(content, args.path) : [];
+                        return { success: true, errors };
+                    } catch (e) { return { success: false, error: e.message }; }
+                }
+            },
+            takeScreenshot: {
+                declaration: { name: 'takeScreenshot', description: 'Takes a screenshot of the current project preview.', parameters: { type: 'OBJECT', properties: {} } },
+                handler: async () => {
+                    try {
+                        if (!window.Nexus) return { success: false, error: "Nexus not available." };
+                        const frame = document.getElementById('preview-frame'); if (!frame) return { success: false, error: "Preview frame not found." };
+                        const isHidden = frame.classList.contains('hidden'); if (isHidden) frame.classList.remove('hidden');
+                        const imgData = await window.Nexus.capture.visual.constructor.renderElement(frame);
+                        if (isHidden) frame.classList.add('hidden');
+                        return { success: true, image: imgData ? "Image Captured" : "Capture Failed", data: imgData };
+                    } catch (e) { return { success: false, error: e.message }; }
+                }
+            },
+            navigatePreview: {
+                declaration: { name: 'navigatePreview', description: 'Navigates the preview iframe to a specific path or URL.', parameters: { type: 'OBJECT', properties: { url: { type: 'STRING' } }, required: ['url'] } },
+                handler: async (args) => {
+                    try {
+                        const frame = document.getElementById('preview-frame'); if (!frame) return { success: false, error: "Preview frame not found." };
+                        frame.src = args.url;
+                        return { success: true, message: `Navigated to ${args.url}.` };
+                    } catch (e) { return { success: false, error: e.message }; }
+                }
+            },
+            getPreviewDOM: {
+                declaration: { name: 'getPreviewDOM', description: 'Gets the current HTML DOM of the preview iframe for analysis.', parameters: { type: 'OBJECT', properties: {} } },
+                handler: async () => {
+                    try {
+                        const frame = document.getElementById('preview-frame'); if (!frame || !frame.contentDocument) return { success: false, error: "Preview DOM not accessible." };
+                        return { success: true, dom: frame.contentDocument.body.innerHTML.substring(0, 50000) };
+                    } catch (e) { return { success: false, error: e.message }; }
+                }
+            }
+        };
+
         this.chatHistory = [];
         this.lastApiCallTimestamp = 0;
         this.MIN_API_CALL_INTERVAL_MS = 5000; 
@@ -201,49 +333,26 @@ PROCESS:
         const mentionRegex = /@([\w.-]+)/g;
         let match;
         const mentionedFiles = new Set();
-        while ((match = mentionRegex.exec(prompt)) !== null) {
-            mentionedFiles.add(match[1]);
-        }
+        while ((match = mentionRegex.exec(prompt)) !== null) mentionedFiles.add(match[1]);
 
         for (const fileName of mentionedFiles) {
             try {
                 const content = await this.fs.readFile(fileName);
-                if (content) {
-                    fileContexts.push({ path: fileName, content });
-                }
-            } catch { console.warn(`Mentioned file not found: ${fileName}`); }
+                if (content) fileContexts.push({ path: fileName, content });
+            } catch {}
         }
 
         let contextStr = "";
         if (fileContexts.length > 0) {
             contextStr += "\n\nREFERENCED FILE CONTEXT:\n";
-            fileContexts.forEach(f => {
-                contextStr += `FILE: ${f.path}\n\`\`\`\n${f.content}\n\`\`\`\n\n`;
-            });
+            fileContexts.forEach(f => { contextStr += `FILE: ${f.path}\n\`\`\`\n${f.content}\n\`\`\`\n\n`; });
         }
 
         const userParts = [{ text: prompt + contextStr }];
-
         if (Array.isArray(contextItems) && contextItems.length > 0) {
             contextItems.forEach(item => {
-                if (item.type === 'image') {
-                    userParts.push({
-                        inlineData: {
-                            mimeType: "image/png",
-                            data: item.content.split(',')[1]
-                        }
-                    });
-                } else if (item.type === 'code') {
-                    userParts[0].text += `\n\n### CONTEXT BLOCK (Type: ${item.type}):\n\`\`\`\n${item.content}\n\`\`\``;
-                }
-            });
-        } else if (contextItems && typeof contextItems === 'string') {
-             // Legacy fallback for single image string
-             userParts.push({
-                inlineData: {
-                    mimeType: "image/png",
-                    data: contextItems.split(',')[1]
-                }
+                if (item.type === 'image') userParts.push({ inlineData: { mimeType: "image/png", data: item.content.split(',')[1] } });
+                else if (item.type === 'code') userParts[0].text += `\n\n### CONTEXT BLOCK (Type: ${item.type}):\n\`\`\`\n${item.content}\n\`\`\``;
             });
         }
 
@@ -260,21 +369,10 @@ PROCESS:
      */
     async executeAILoop(systemPrompt, isAutoMode) {
         let iterations = 0;
-        const MAX_ITERATIONS = 10;
+        const MAX_ITERATIONS = 12;
 
         const tools = [{
-            functionDeclarations: [
-                { name: 'readFile', description: 'Reads the entire content of a file.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' } }, required: ['path'] } },
-                { name: 'writeFile', description: 'Creates a new file or overwrites an existing one. Automatically runs linter and returns errors if any.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' }, content: { type: 'STRING' } }, required: ['path', 'content'] } },
-                { name: 'applyPatch', description: 'Applies a targeted change to a file. Automatically runs linter and returns errors if any.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' }, explanation: { type: 'STRING' }, originalContent: { type: 'STRING' }, newContent: { type: 'STRING' } }, required: ['path', 'explanation', 'originalContent', 'newContent'] } },
-                { name: 'listFiles', description: 'Lists all files in the project.', parameters: { type: 'OBJECT', properties: {} } },
-                { name: 'getSymbols', description: 'Gets functions/classes outline of a file.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' } }, required: ['path'] } },
-                { name: 'grepFiles', description: 'Searches for a text pattern or regex in all project files.', parameters: { type: 'OBJECT', properties: { pattern: { type: 'STRING' }, isRegex: { type: 'BOOLEAN' } }, required: ['pattern'] } },
-                { name: 'lintFile', description: 'Runs the linter on a specific file and returns the issues.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' } }, required: ['path'] } },
-                { name: 'takeScreenshot', description: 'Takes a screenshot of the current project preview and returns a base64 image URL.', parameters: { type: 'OBJECT', properties: {} } },
-                { name: 'navigatePreview', description: 'Navigates the preview iframe to a specific path or URL.', parameters: { type: 'OBJECT', properties: { url: { type: 'STRING' } }, required: ['url'] } },
-                { name: 'getPreviewDOM', description: 'Gets the current HTML DOM of the preview iframe for analysis.', parameters: { type: 'OBJECT', properties: {} } }
-            ]
+            functionDeclarations: Object.values(this.toolRegistry).map(t => t.declaration)
         }];
 
         const model = this.genAI.getGenerativeModel({ 
@@ -287,9 +385,7 @@ PROCESS:
             
             const now = Date.now();
             const elapsed = now - this.lastApiCallTimestamp;
-            if (elapsed < this.MIN_API_CALL_INTERVAL_MS) {
-                await new Promise(r => setTimeout(r, this.MIN_API_CALL_INTERVAL_MS - elapsed));
-            }
+            if (elapsed < this.MIN_API_CALL_INTERVAL_MS) await new Promise(r => setTimeout(r, this.MIN_API_CALL_INTERVAL_MS - elapsed));
             this.lastApiCallTimestamp = Date.now();
 
             try {
@@ -299,49 +395,27 @@ PROCESS:
                     generationConfig: { temperature: this.temperature, topP: 0.95 }
                 });
 
-                const response = result.response;
-                const candidate = response.candidates[0];
-                const content = candidate.content;
-                
+                const content = result.response.candidates[0].content;
                 this.chatHistory.push(content);
 
                 const functionCalls = content.parts.filter(p => p.functionCall).map(p => p.functionCall);
-                
-                if (functionCalls.length === 0) {
-                    return response.text();
-                }
+                if (functionCalls.length === 0) return result.response.text();
 
                 const functionResponses = [];
                 const additionalParts = [];
 
                 for (const call of functionCalls) {
                     const res = await this.handleFunctionCall(call, isAutoMode);
-                    
                     if (res.data && res.data.startsWith('data:image')) {
-                        additionalParts.push({
-                            inlineData: {
-                                mimeType: "image/png",
-                                data: res.data.split(',')[1]
-                            }
-                        });
-                        delete res.data; // Remove raw data from JSON to save tokens
+                        additionalParts.push({ inlineData: { mimeType: "image/png", data: res.data.split(',')[1] } });
+                        delete res.data; 
                     }
-
-                    functionResponses.push({
-                        functionResponse: {
-                            name: call.name,
-                            response: res
-                        }
-                    });
+                    functionResponses.push({ functionResponse: { name: call.name, response: res } });
                 }
-
                 this.chatHistory.push({ role: 'user', parts: [...functionResponses, ...additionalParts] });
-
             } catch (error) {
                 console.error('AI Error:', error);
-                if (this.chatHistory.length > 0 && this.chatHistory[this.chatHistory.length - 1].role === 'model') {
-                    this.chatHistory.pop();
-                }
+                if (this.chatHistory.length > 0 && this.chatHistory[this.chatHistory.length - 1].role === 'model') this.chatHistory.pop();
                 throw error;
             }
         }
@@ -351,178 +425,21 @@ PROCESS:
     /**
      * Routes Gemini tool calls to local system operations.
      * @private
-     * @param {Object} call - The function call object from Gemini.
-     * @param {boolean} isAutoMode - Auto-apply flag.
-     * @returns {Promise<Object>} The result of the local tool execution.
      */
     async handleFunctionCall(call, isAutoMode) {
-        const { name, args } = call;
-        console.log(`AI Calling Tool: ${name}`, args);
-
-        switch (name) {
-            case 'readFile':
-                try {
-                    const content = await this.fs.readFile(args.path);
-                    return { success: !!content, content: content || "File is empty or not found." };
-                } catch (e) { return { success: false, error: e.message }; }
-            
-            case 'writeFile':
-                try {
-                    await this.fs.writeFile(args.path, args.content);
-                    let lintResult = "";
-                    if (window.Nexus) {
-                        window.Nexus.refreshFileExplorer();
-                        if (window.Nexus.state.currentFile === args.path) {
-                            await window.Nexus.editor.openFile(args.path, true);
-                        }
-                        if (args.path === 'PROJECT_ARCHITECTURE.md') {
-                            await window.Nexus.pad.init();
-                            if (window.Nexus.state.view === 'pad') window.Nexus.refreshPADUI();
-                        }
-                        const errors = window.Nexus.lint.lintCode(args.content, args.path);
-                        if (errors.length > 0) {
-                            lintResult = ` File written, but has linting errors: ${JSON.stringify(errors)}`;
-                        }
-                    }
-                    return { success: true, message: `File ${args.path} written successfully.${lintResult}` };
-                } catch (e) { return { success: false, error: e.message }; }
-
-            case 'applyPatch':
-                return new Promise((resolve) => {
-                    (async () => {
-                        const currentContent = await this.fs.readFile(args.path);
-                        if (!currentContent) {
-                            resolve({ success: false, error: `File ${args.path} not found.` });
-                            return;
-                        }
-
-                        if (isAutoMode) {
-                            const updated = currentContent.replace(args.originalContent, args.newContent);
-                            if (updated !== currentContent) {
-                                await this.fs.writeFile(args.path, updated);
-                                let lintResult = "";
-                                if (window.Nexus) {
-                                    window.Nexus.updatePreview();
-                                    window.Nexus.refreshFileExplorer();
-                                    if (window.Nexus.state.currentFile === args.path) {
-                                        await window.Nexus.editor.openFile(args.path, true);
-                                    }
-                                    if (args.path === 'PROJECT_ARCHITECTURE.md') {
-                                        await window.Nexus.pad.init();
-                                        window.Nexus.refreshPADUI();
-                                    }
-                                    const errors = window.Nexus.lint.lintCode(updated, args.path);
-                                    if (errors.length > 0) {
-                                        lintResult = ` Patch applied, but has linting errors: ${JSON.stringify(errors)}`;
-                                    }
-                                }
-                                resolve({ success: true, message: `Patch applied automatically in Auto Mode.${lintResult}` });
-                                return;
-                            }
-                        }
-
-                        const proposal = this.createProposalUI(args, currentContent, resolve);
-                        const container = document.getElementById('chat-history');
-                        if (container) {
-                            container.appendChild(proposal);
-                            container.scrollTop = container.scrollHeight;
-                        }
-                    })();
-                });
-
-            case 'listFiles': {
-                const files = await this.fs.listFiles();
-                return { success: true, files };
-            }
-
-            case 'getSymbols': {
-                const symbols = this.analysis.getFileSymbols(args.path);
-                return { success: true, symbols };
-            }
-
-            case 'grepFiles': {
-                const files = await this.fs.listFiles();
-                const results = [];
-                const regex = args.isRegex ? new RegExp(args.pattern, 'i') : null;
-                const pattern = args.pattern.toLowerCase();
-
-                for (const path of files) {
-                    if (path.endsWith('.meta')) continue;
-                    try {
-                        const content = await this.fs.readFile(path);
-                        if (!content) continue;
-                        
-                        const lines = content.split('\n');
-                        lines.forEach((line, idx) => {
-                            const match = regex ? regex.test(line) : line.toLowerCase().includes(pattern);
-                            if (match) {
-                                results.push({ file: path, line: idx + 1, content: line.trim() });
-                            }
-                        });
-                    } catch (e) {
-                        console.warn(`Grep failed for ${path}:`, e);
-                    }
-                }
-                return { success: true, results: results.slice(0, 50), count: results.length };
-            }
-
-            case 'lintFile': {
-                try {
-                    const content = await this.fs.readFile(args.path);
-                    if (!content) return { success: false, error: "File not found or empty." };
-                    const errors = window.Nexus ? window.Nexus.lint.lintCode(content, args.path) : [];
-                    return { success: true, errors };
-                } catch (e) { return { success: false, error: e.message }; }
-            }
-
-            case 'takeScreenshot': {
-                try {
-                    if (!window.Nexus) return { success: false, error: "Nexus not available." };
-                    const frame = document.getElementById('preview-frame');
-                    if (!frame) return { success: false, error: "Preview frame not found." };
-                    // Temporarily remove hidden to capture if it's hidden
-                    const isHidden = frame.classList.contains('hidden');
-                    if (isHidden) frame.classList.remove('hidden');
-                    const imgData = await window.Nexus.capture.visual.constructor.renderElement(frame);
-                    if (isHidden) frame.classList.add('hidden');
-                    return { success: true, image: imgData ? "Image Captured Successfully" : "Failed to capture image", data: imgData };
-                } catch (e) { return { success: false, error: e.message }; }
-            }
-
-            case 'navigatePreview': {
-                try {
-                    const frame = document.getElementById('preview-frame');
-                    if (!frame) return { success: false, error: "Preview frame not found." };
-                    frame.src = args.url;
-                    return { success: true, message: `Navigated to ${args.url}. Please wait for it to load before capturing.` };
-                } catch (e) { return { success: false, error: e.message }; }
-            }
-
-            case 'getPreviewDOM': {
-                try {
-                    const frame = document.getElementById('preview-frame');
-                    if (!frame || !frame.contentDocument) return { success: false, error: "Preview DOM not accessible." };
-                    return { success: true, dom: frame.contentDocument.body.innerHTML.substring(0, 50000) }; // Truncate to prevent token limit issues
-                } catch (e) { return { success: false, error: e.message }; }
-            }
-
-            default:
-                return { success: false, error: `Tool ${name} not found.` };
-        }
+        const tool = this.toolRegistry[call.name];
+        console.log(`AI Calling Tool: ${call.name}`, call.args);
+        if (tool) return await tool.handler(call.args, isAutoMode);
+        return { success: false, error: `Tool ${call.name} not found.` };
     }
 
     /**
      * Creates an interactive UI component for user review of proposed file patches.
      * @private
-     * @param {Object} args - Tool call arguments.
-     * @param {string} currentContent - The actual content from the file.
-     * @param {Function} resolve - The promise resolver for the tool response.
-     * @returns {HTMLElement} The proposal UI element.
      */
     createProposalUI(args, currentContent, resolve) {
         const div = document.createElement('div');
         div.className = 'log-change-proposal slide-up';
-        
         const diff = Diff.diffLines(args.originalContent, args.newContent);
         const diffHtml = diff.map(part => {
             const tag = part.added ? 'ins' : part.removed ? 'del' : 'span';
@@ -544,35 +461,19 @@ PROCESS:
             await this.fs.writeFile(args.path, updated);
             div.querySelector('.proposal-actions').innerHTML = '<span class="text-emerald-500 font-bold text-xs">APPLIED</span>';
             if (window.Nexus) {
-                window.Nexus.updatePreview();
-                window.Nexus.refreshFileExplorer();
-                // Sync editor if file is open
-                if (window.Nexus.state.currentFile === args.path) {
-                    await window.Nexus.editor.openFile(args.path, true);
-                }
-                if (args.path === 'PROJECT_ARCHITECTURE.md') {
-                    await window.Nexus.pad.init();
-                    window.Nexus.refreshPADUI();
-                }
+                window.Nexus.updatePreview(); window.Nexus.refreshFileExplorer();
+                if (window.Nexus.state.currentFile === args.path) await window.Nexus.editor.openFile(args.path, true);
+                if (args.path === 'PROJECT_ARCHITECTURE.md') { await window.Nexus.pad.init(); window.Nexus.refreshPADUI(); }
             }
             resolve({ success: true, message: "User approved and applied the patch." });
         };
-
         div.querySelector('.btn-proposal-reject').onclick = () => {
             div.querySelector('.proposal-actions').innerHTML = '<span class="text-slate-500 font-bold text-xs">REJECTED</span>';
             resolve({ success: false, error: "User rejected the patch." });
         };
-
         return div;
     }
 
-    /**
-     * Escapes HTML.
-     * @private
-     */
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+    /** Escapes HTML. @private */
+    escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 }

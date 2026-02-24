@@ -52,6 +52,8 @@ const Nexus = {
         lastMainView: 'editor',
         sidebarWidth: 300,
         outputWidth: 50, // Percent
+        isSelectionMode: false,
+        selectedFiles: [],
     },
 
     /** @type {Array<Function>} List of state change subscribers. */
@@ -342,25 +344,41 @@ const Nexus = {
         const cm = this.editor.cm;
         const content = cm.getValue();
         
-        // Try to find exact outerHTML match
+        // Disable selection mode after pick
+        this.toggleSelectionMode(false);
+
+        // Try exact match first
         let index = content.indexOf(data.outerHTML);
+        let matchLength = data.outerHTML.length;
         
-        // If no exact match, try fuzzy match (some attributes might be different or reordered)
+        // Fuzzy search if exact failed
         if (index === -1) {
-            // Try to find by innerText if unique enough
-            if (data.innerText && data.innerText.length > 5) {
-                index = content.indexOf(data.innerText);
+            // Find by a simplified tag start
+            const tagStart = data.outerHTML.substring(0, data.outerHTML.indexOf('>') + 1);
+            index = content.indexOf(tagStart);
+            if (index > -1) {
+                // Approximate end by finding the corresponding closing tag or next opening if unique
+                const nextTag = content.indexOf('</', index);
+                if (nextTag > -1) matchLength = (nextTag + 10) - index; // Rough estimate
             }
+        }
+
+        // Last resort: innerText
+        if (index === -1 && data.innerText && data.innerText.trim().length > 5) {
+            index = content.indexOf(data.innerText.trim());
+            matchLength = data.innerText.trim().length;
         }
         
         if (index > -1) {
             const from = cm.posFromIndex(index);
-            const to = cm.posFromIndex(index + data.outerHTML.length);
+            const to = cm.posFromIndex(index + matchLength);
             cm.setSelection(from, to);
             cm.scrollIntoView(from, 200);
             
-            // If on mobile, switch to editor view
-            if (window.innerWidth < 768) this.setView('editor');
+            if (window.innerWidth < 768) {
+                this.setView('editor');
+                setTimeout(() => cm.focus(), 100);
+            }
         }
     },
 
@@ -553,6 +571,44 @@ const Nexus = {
             await this.fs.deleteFile(path);
             await this.closeFile(path);
             await this.refreshFileExplorer();
+        }
+    },
+
+    /** Deletes multiple files at once. @private */
+    async bulkDelete() {
+        const count = this.state.selectedFiles.length;
+        if (count === 0) return;
+        if (await this.modals.confirm("Bulk Delete", `Are you sure you want to delete ${count} files?`)) {
+            for (const path of this.state.selectedFiles) {
+                await this.fs.deleteFile(path);
+                await this.closeFile(path);
+            }
+            this.setState({ isSelectionMode: false, selectedFiles: [] });
+            await this.refreshFileExplorer();
+        }
+    },
+
+    /** Wipes all files from the current project. @private */
+    async clearAllFiles() {
+        const files = (await this.fs.listFiles()).filter(f => !f.endsWith('.meta'));
+        if (files.length === 0) return;
+        
+        const confirmed = await this.modals.confirm(
+            "CRITICAL: Wipe Project", 
+            `This will permanently DELETE all ${files.length} files in "${this.fs.currentProject}". This cannot be undone. Proceed?`
+        );
+
+        if (confirmed) {
+            for (const f of files) {
+                await this.fs.deleteFile(f);
+                const idx = this.state.openFiles.indexOf(f);
+                if (idx > -1) this.state.openFiles.splice(idx, 1);
+            }
+            this.setState({ currentFile: '', selectedFiles: [], isSelectionMode: false });
+            Nexus.editor.setValue('');
+            await this.refreshFileExplorer();
+            Nexus.updateTabs();
+            Nexus.modals.alert("Project Wiped", "All project files have been removed.");
         }
     },
 
@@ -900,6 +956,11 @@ const Nexus = {
         this.bind('btn-close-sidebar', () => Nexus.setView('editor'));
         this.bind('btn-toggle-preview', () => Nexus.togglePreview());
         this.bind('btn-toggle-selection-mode', () => Nexus.toggleSelectionMode());
+        this.bind('btn-capture-preview', async () => {
+            Nexus.toggleAI(true);
+            Nexus.setAITab('chat');
+            await Nexus.sendChatForced("Take a screenshot of the current preview and explain what you see.");
+        });
         this.bind('btn-close-output', () => Nexus.togglePreview(false));
         this.bind('btn-format', () => Nexus.formatCode());
         this.bind('btn-visual-mode', () => Nexus.toggleVisualMode());
@@ -1043,9 +1104,14 @@ const Nexus = {
         document.querySelectorAll('#mobile-selection-toolbar .ctx-item').forEach(btn => {
             btn.onclick = () => {
                 const action = btn.dataset.action;
+                
+                if (action === 'select-component') {
+                    Nexus.selectCurrentComponent();
+                    return; // Don't proceed to chat, just update selection
+                }
+                
                 const selection = Nexus.editor.cm.getSelection();
-                if (action === 'select-component') Nexus.selectCurrentComponent();
-                else if (action === 'explain') Nexus.prepareChat(`/explain ${selection}`);
+                if (action === 'explain') Nexus.prepareChat(`/explain ${selection}`);
                 else if (action === 'fix') Nexus.prepareChat(`/fix ${selection}`);
                 else if (action === 'refactor') Nexus.prepareChat(`/refactor ${selection}`);
                 else if (action === 'save-block') {
@@ -1460,19 +1526,16 @@ const Nexus = {
                 frame.classList.remove('hidden'); render.classList.add('hidden');
                 const shim = `
                     <script>
-                        var module = { exports: {} }; 
-                        var exports = module.exports;
                         var selectionMode = false;
                         var highlightEl = document.createElement('div');
                         
-                        // Setup Highlight Overlay
                         highlightEl.style.position = 'fixed';
                         highlightEl.style.pointerEvents = 'none';
                         highlightEl.style.border = '2px solid #6366f1';
                         highlightEl.style.backgroundColor = 'rgba(99, 102, 241, 0.1)';
                         highlightEl.style.zIndex = '999999';
                         highlightEl.style.display = 'none';
-                        highlightEl.style.transition = 'all 0.1s ease-out';
+                        highlightEl.style.transition = 'all 0.05s ease-out';
                         
                         var labelEl = document.createElement('div');
                         labelEl.style.position = 'absolute';
@@ -1496,10 +1559,10 @@ const Nexus = {
                             }
                         });
 
-                        document.addEventListener('mousemove', (e) => {
+                        const updateHighlight = (e) => {
                             if (!selectionMode) return;
                             const target = e.target;
-                            if (target === document.documentElement || target === document.body) {
+                            if (!target || target === document.documentElement || target === document.body || target === highlightEl) {
                                 highlightEl.style.display = 'none';
                                 return;
                             }
@@ -1513,9 +1576,9 @@ const Nexus = {
                             
                             const id = target.id ? '#' + target.id : '';
                             labelEl.textContent = target.tagName.toLowerCase() + id;
-                        });
-                        
-                        document.addEventListener('click', (e) => {
+                        };
+
+                        const handleSelect = (e) => {
                             if (!selectionMode) return;
                             e.preventDefault();
                             e.stopPropagation();
@@ -1523,7 +1586,7 @@ const Nexus = {
                             const target = e.target;
                             const tag = target.tagName.toLowerCase();
                             const id = target.id ? '#' + target.id : '';
-                            const cls = target.className ? '.' + target.className.split(' ').join('.') : '';
+                            const cls = target.className ? '.' + String(target.className).split(' ').join('.') : '';
                             
                             window.parent.postMessage({
                                 type: 'preview-click',
@@ -1531,6 +1594,16 @@ const Nexus = {
                                 outerHTML: target.outerHTML,
                                 innerText: target.innerText
                             }, '*');
+                        };
+
+                        document.addEventListener('mousemove', updateHighlight);
+                        document.addEventListener('touchstart', (e) => updateHighlight(e.touches[0]), {passive: true});
+                        document.addEventListener('click', handleSelect, true);
+                        document.addEventListener('touchend', (e) => {
+                            if (selectionMode) {
+                                e.preventDefault();
+                                handleSelect(e);
+                            }
                         }, true);
                     <\/script>`;
                 let content = val.includes('<head>') ? val.replace('<head>', '<head>' + shim) : shim + val;
@@ -1640,47 +1713,114 @@ const Nexus = {
         this._refreshing = true;
         try {
             const content = document.getElementById('sidebar-content'); if (!content) return;
-            const files = await Nexus.fs.listFiles();
+            const files = (await Nexus.fs.listFiles()).filter(f => !f.endsWith('.meta'));
+            
+            const selectionMode = this.state.isSelectionMode;
+            const selectedCount = this.state.selectedFiles.length;
+
             content.innerHTML = `
-                <div class="p-2 mb-2">
-                    <div class="px-3 py-1 text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2 flex justify-between items-center">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-folder-tree"></i>
-                            <span>Project: ${Nexus.fs.currentProject}</span>
+                <div class="p-2 mb-2 space-y-3">
+                    <div class="px-3 py-2 bg-slate-900/50 rounded-2xl border border-white/5 flex justify-between items-center">
+                        <div class="flex flex-col">
+                            <span class="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">Project</span>
+                            <span class="text-[11px] font-bold text-indigo-400 truncate max-w-[120px]">${Nexus.fs.currentProject}</span>
                         </div>
-                        <div class="flex gap-2">
-                            <button id="btn-export-project" title="Export Project (ZIP)" class="hover:text-white transition-colors"><i class="fa-solid fa-file-export"></i></button>
-                            <button id="btn-switch-project" title="Switch Project" class="hover:text-white transition-colors"><i class="fa-solid fa-right-left"></i></button>
+                        <div class="flex gap-1">
+                            <button id="btn-export-project" title="Export Project (ZIP)" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/10 hover:text-white transition-all text-slate-400"><i class="fa-solid fa-file-export text-lg"></i></button>
+                            <button id="btn-switch-project" title="Switch Project" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/10 hover:text-white transition-all text-slate-400"><i class="fa-solid fa-right-left text-lg"></i></button>
                         </div>
                     </div>
-                    <button id="btn-add-file-sidebar" class="w-full py-3 bg-indigo-600/10 text-indigo-500 border border-indigo-500/20 rounded-xl font-bold text-xs flex items-center justify-center hover:bg-indigo-600 transition-all">
-                        <i class="fa-solid fa-plus mr-2"></i> Add New File
-                    </button>
-                </div>`;
+
+                    ${selectionMode ? `
+                        <div class="flex gap-2 animate-slide-down">
+                            <button id="btn-bulk-delete" class="flex-1 py-3 bg-red-600/10 text-red-500 border border-red-500/20 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center hover:bg-red-600 hover:text-white transition-all">
+                                <i class="fa-solid fa-trash-can mr-2"></i> Delete (${selectedCount})
+                            </button>
+                            <button id="btn-cancel-selection" class="w-12 h-12 bg-slate-800 text-slate-400 rounded-xl flex items-center justify-center hover:text-white transition-all">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="flex gap-2">
+                            <button id="btn-add-file-sidebar" class="flex-1 py-3 bg-indigo-600/10 text-indigo-500 border border-indigo-500/20 rounded-xl font-bold text-xs flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all">
+                                <i class="fa-solid fa-plus mr-2"></i> New File
+                            </button>
+                            <button id="btn-toggle-selection" class="w-12 h-12 bg-slate-800/50 text-slate-500 rounded-xl flex items-center justify-center hover:text-indigo-400 transition-all" title="Batch Manage">
+                                <i class="fa-solid fa-list-check"></i>
+                            </button>
+                        </div>
+                    `}
+                </div>
+                
+                <div id="file-list-items" class="space-y-0.5 px-2 pb-20"></div>`;
+
             this.bind('btn-add-file-sidebar', () => Nexus.openWizard());
             this.bind('btn-switch-project', () => Nexus.openProjectLibrary());
             this.bind('btn-export-project', () => Nexus.exportProject());
+            this.bind('btn-toggle-selection', () => { this.setState({ isSelectionMode: true, selectedFiles: [] }); this.refreshFileExplorer(); });
+            this.bind('btn-cancel-selection', () => { this.setState({ isSelectionMode: false, selectedFiles: [] }); this.refreshFileExplorer(); });
+            this.bind('btn-bulk-delete', () => Nexus.bulkDelete());
             
+            const listItems = document.getElementById('file-list-items');
             for (const f of files) {
-                if (f.endsWith('.meta')) continue;
                 const thumb = await Nexus.thumbs.getThumbnail(f);
+                const isSelected = this.state.selectedFiles.includes(f);
+                const isActive = Nexus.state.currentFile === f;
+
                 const div = document.createElement('div');
-                div.className = `p-3 px-4 hover:bg-indigo-500/10 cursor-pointer text-sm rounded transition-all flex items-center group relative ${Nexus.state.currentFile === f ? 'text-indigo-500 font-bold' : 'text-slate-400'}`;
+                div.className = `p-2.5 px-3 hover:bg-white/5 cursor-pointer rounded-xl transition-all flex items-center group relative ${isActive ? 'bg-indigo-500/10' : ''}`;
+                
                 div.innerHTML = `
-                    <div class="w-10 h-8 rounded bg-slate-800 mr-3 flex items-center justify-center overflow-hidden border border-slate-700">
-                        ${thumb ? `<img src="${thumb}" class="w-full h-full object-cover">` : Nexus.getFileIcon(f)}
+                    <div class="flex items-center flex-1 min-w-0 gap-3">
+                        ${selectionMode ? `
+                            <div class="w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-700'}">
+                                ${isSelected ? '<i class="fa-solid fa-check text-[10px] text-white"></i>' : ''}
+                            </div>
+                        ` : ''}
+                        <div class="w-10 h-8 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden border border-white/5 shrink-0">
+                            ${thumb ? `<img src="${thumb}" class="w-full h-full object-cover">` : Nexus.getFileIcon(f)}
+                        </div>
+                        <span class="truncate text-sm font-medium ${isActive ? 'text-indigo-400' : 'text-slate-300'}">${f}</span>
                     </div>
-                    <span class="truncate flex-1">${f}</span>
-                    <button class="md:hidden p-2 text-slate-500 hover:text-white" onclick="event.stopPropagation(); window.Nexus.toggleFileMenu(this)">
-                        <i class="fa-solid fa-ellipsis-vertical"></i>
-                    </button>
-                    <div class="hidden md:flex md:group-hover:flex gap-2 items-center mobile-actions absolute right-12 top-1/2 -translate-y-1/2 bg-card border border-main p-1 rounded-xl shadow-2xl z-[100] md:static md:translate-y-0 md:bg-transparent md:border-none md:shadow-none">
-                        <button onclick="event.stopPropagation(); window.Nexus.renameFile('${f}')" class="p-2 hover:bg-indigo-600 hover:text-white rounded-lg transition-colors" title="Rename"><i class="fa-solid fa-i-cursor"></i></button>
-                        <button onclick="event.stopPropagation(); window.Nexus.deleteFile('${f}')" class="p-2 hover:bg-red-600 hover:text-white rounded-lg transition-colors" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
-                    </div>`;
-                div.onclick = () => Nexus.openFile(f);
-                content.appendChild(div);
+                    
+                    ${!selectionMode ? `
+                        <div class="hidden md:flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="event.stopPropagation(); window.Nexus.renameFile('${f}')" class="p-2 hover:bg-indigo-600/20 hover:text-indigo-400 text-slate-500 rounded-lg transition-colors" title="Rename"><i class="fa-solid fa-i-cursor"></i></button>
+                            <button onclick="event.stopPropagation(); window.Nexus.deleteFile('${f}')" class="p-2 hover:bg-red-600/20 hover:text-red-400 text-slate-500 rounded-lg transition-colors" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                        <button class="md:hidden p-2 text-slate-500" onclick="event.stopPropagation(); window.Nexus.toggleFileMenu(this)">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+                        <div class="hidden md:hidden absolute right-12 top-1/2 -translate-y-1/2 bg-card border border-main p-1 rounded-xl shadow-2xl z-[100] mobile-actions">
+                            <button onclick="event.stopPropagation(); window.Nexus.renameFile('${f}')" class="p-2 hover:bg-indigo-600 hover:text-white rounded-lg transition-colors"><i class="fa-solid fa-i-cursor"></i></button>
+                            <button onclick="event.stopPropagation(); window.Nexus.deleteFile('${f}')" class="p-2 hover:bg-red-600 hover:text-white rounded-lg transition-colors"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    ` : ''}
+                `;
+
+                div.onclick = () => {
+                    if (selectionMode) {
+                        const newSelection = [...this.state.selectedFiles];
+                        const idx = newSelection.indexOf(f);
+                        if (idx > -1) newSelection.splice(idx, 1);
+                        else newSelection.push(f);
+                        this.setState({ selectedFiles: newSelection });
+                        this.refreshFileExplorer();
+                    } else {
+                        Nexus.openFile(f);
+                    }
+                };
+                listItems.appendChild(div);
             }
+
+            if (!selectionMode && files.length > 5) {
+                const clearAll = document.createElement('button');
+                clearAll.className = 'w-full py-4 text-[9px] font-black text-slate-600 uppercase tracking-[0.3em] hover:text-red-500 transition-colors mt-4';
+                clearAll.innerHTML = '<i class="fa-solid fa-skull-crossbones mr-2"></i> Wipe Project Files';
+                clearAll.onclick = () => Nexus.clearAllFiles();
+                listItems.appendChild(clearAll);
+            }
+
         } finally { this._refreshing = false; }
     },
 
