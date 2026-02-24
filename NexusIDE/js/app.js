@@ -54,6 +54,7 @@ const Nexus = {
         outputWidth: 50, // Percent
         isSelectionMode: false,
         selectedFiles: [],
+        importStaging: [], // { file: File, path: string, selected: boolean }
     },
 
     /** @type {Array<Function>} List of state change subscribers. */
@@ -2234,16 +2235,110 @@ const Nexus = {
 
     showImportPicker() { const details = document.getElementById('wizard-details'); if(!details) return; details.classList.remove('hidden'); details.innerHTML = `<h4 class="font-bold mb-4" style="color: var(--text-main)">Import Data</h4><div class="grid grid-cols-2 gap-4"><button id="btn-import-files" class="p-6 border rounded-xl flex flex-col items-center bg-slate-800/50"><i class="fa-solid fa-file-circle-plus text-2xl text-indigo-500 mb-2"></i><span class="text-xs font-bold">Files</span></button><button id="btn-import-folder" class="p-6 border rounded-xl flex flex-col items-center bg-slate-800/50"><i class="fa-solid fa-folder-plus text-2xl text-amber-500 mb-2"></i><span class="text-xs font-bold">Folder</span></button></div>`; this.bind('btn-import-files', () => document.getElementById('input-import-files').click()); this.bind('btn-import-folder', () => document.getElementById('input-import-folder').click()); },
 
-    /** Handles file/folder selection from system dialogs and writes them to VFS. @private */
+    /** Handles file/folder selection from system dialogs and stages them for review. @private */
     async handleFileImport(e) {
         const files = Array.from(e.target.files); if (files.length === 0) return;
-        let targetProject = Nexus.fs.currentProject; const fromLibrary = !document.getElementById('modal-project-library').classList.contains('hidden');
-        if (fromLibrary) { const name = await Nexus.modals.prompt("New Project Name", "Enter name:", files[0].webkitRelativePath?.split('/')[0] || "Imported Project"); if (!name) { e.target.value = ''; return; } targetProject = name; await Nexus.fs.setProject(targetProject); }
-        Nexus.modals.alert("Importing", `Loading ${files.length} items...`);
-        for (const file of files) { const path = file.webkitRelativePath || file.name; try { const content = await this.readFileAsync(file); await Nexus.fs.writeFile(path, content); } catch (err) { console.error(err); } }
-        if (fromLibrary) { await this.renderProjectLibraryGrid(); const refreshed = await this.fs.listFiles(); if (refreshed.length > 0) await this.openFile(refreshed[0]); this.closeProjectLibrary(); } 
-        else { Nexus.closeWizard(); await Nexus.refreshFileExplorer(); if (files.length > 0) await Nexus.openFile(files[0].webkitRelativePath || files[0].name); }
+        
+        // Populate Staging
+        this.state.importStaging = files.map(f => ({
+            file: f,
+            path: f.webkitRelativePath || f.name,
+            selected: true
+        }));
+
+        this.openImportStaging();
         e.target.value = '';
+    },
+
+    openImportStaging() {
+        const modal = document.getElementById('modal-import-staging');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.classList.add('modal-open');
+            this.renderImportStaging();
+        }
+    },
+
+    closeImportStaging() {
+        const modal = document.getElementById('modal-import-staging');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('modal-open');
+            this.state.importStaging = [];
+        }
+    },
+
+    renderImportStaging() {
+        const list = document.getElementById('import-staging-list');
+        const count = document.getElementById('import-staging-count');
+        if (!list || !count) return;
+
+        count.textContent = `${this.state.importStaging.length} items detected`;
+        
+        list.innerHTML = this.state.importStaging.map((item, i) => `
+            <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all cursor-pointer group" onclick="window.Nexus.toggleImportItem(${i})">
+                <div class="w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${item.selected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-700'}">
+                    ${item.selected ? '<i class="fa-solid fa-check text-xs text-white"></i>' : ''}
+                </div>
+                <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center shrink-0 border border-white/5">
+                    ${Nexus.getFileIcon(item.path)}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[11px] font-bold text-slate-200 truncate">${item.path}</div>
+                    <div class="text-[8px] text-slate-500 font-black uppercase tracking-widest">${(item.file.size / 1024).toFixed(1)} KB</div>
+                </div>
+            </div>
+        `).join('');
+
+        this.bind('btn-import-staging-finalize', () => this.finalizeImport());
+        this.bind('btn-close-import-staging', () => this.closeImportStaging());
+        this.bind('btn-import-staging-toggle-all', () => {
+            const allSelected = this.state.importStaging.every(i => i.selected);
+            this.state.importStaging.forEach(i => i.selected = !allSelected);
+            this.renderImportStaging();
+        });
+    },
+
+    toggleImportItem(idx) {
+        this.state.importStaging[idx].selected = !this.state.importStaging[idx].selected;
+        this.renderImportStaging();
+    },
+
+    async finalizeImport() {
+        const selectedItems = this.state.importStaging.filter(i => i.selected);
+        if (selectedItems.length === 0) return;
+
+        let targetProject = Nexus.fs.currentProject; 
+        const fromLibrary = !document.getElementById('modal-project-library').classList.contains('hidden');
+        
+        if (fromLibrary) { 
+            const name = await Nexus.modals.prompt("New Project Name", "Enter name:", selectedItems[0].path.split('/')[0] || "Imported Project"); 
+            if (!name) return; 
+            targetProject = name; 
+            await Nexus.fs.setProject(targetProject); 
+        }
+
+        Nexus.modals.alert("Importing", `Writing ${selectedItems.length} items to VFS...`);
+        
+        for (const item of selectedItems) { 
+            try { 
+                const content = await this.readFileAsync(item.file); 
+                await Nexus.fs.writeFile(item.path, content); 
+            } catch (err) { console.error(err); } 
+        }
+
+        if (fromLibrary) { 
+            await this.renderProjectLibraryGrid(); 
+            const refreshed = await this.fs.listFiles(); 
+            if (refreshed.length > 0) await this.openFile(refreshed[0]); 
+            this.closeProjectLibrary(); 
+        } else { 
+            Nexus.closeWizard(); 
+            await Nexus.refreshFileExplorer(); 
+            if (selectedItems.length > 0) await this.openFile(selectedItems[0].path); 
+        }
+        
+        this.closeImportStaging();
     },
 
     readFileAsync(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = (e) => resolve(e.target.result); reader.onerror = reject; reader.readAsText(file); }); },
