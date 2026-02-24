@@ -179,8 +179,8 @@
         }
         
         .note-number {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             background: var(--accent);
             color: white;
             border-radius: 50%;
@@ -189,17 +189,26 @@
             justify-content: center;
             font-size: 11px;
             font-weight: 700;
+            flex-shrink: 0;
         }
         
         .note-text {
             width: 100%;
-            background: transparent;
-            border: none;
+            background: var(--bg-base);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 8px;
             color: var(--text);
             font-size: 13px;
-            resize: none;
+            resize: vertical;
             outline: none;
-            min-height: 60px;
+            min-height: 80px;
+            transition: border-color 0.2s;
+        }
+
+        .note-text:focus {
+            border-color: var(--accent);
+            background: var(--bg-card);
         }
         
         .note-actions {
@@ -736,11 +745,12 @@
             position: absolute;
             inset: 0;
             display: none;
+            justify-content: center;
         }
         
         .view-layer.active { display: flex; }
         
-        #webFrame { width: 100%; height: 100%; border: none; background: white; }
+        #webFrame { width: 100%; height: 100%; border: none; background: white; transition: width 0.3s ease; }
         
         #canvas-container {
             width: 100%;
@@ -1155,6 +1165,11 @@
             </div>
             
             <div class="category-chips" id="categoryChips" style="display:none;"></div>
+            <div class="category-chips" id="stockProviders" style="display:none;">
+                <div class="chip active" data-provider="picsum">Picsum</div>
+                <div class="chip" data-provider="unsplash">Unsplash</div>
+                <div class="chip" data-provider="pexels">Pexels</div>
+            </div>
             
             <div class="content-area" id="contentArea">
                 <div class="grid grid-sessions" id="capturesGrid"></div>
@@ -1184,10 +1199,20 @@
             <div class="url-bar" id="browserBar">
                 <input type="text" class="url-input" id="urlInput" value="https://wikipedia.org" placeholder="Enter URL...">
                 <button class="btn btn-default" id="goBtn">Go</button>
+                <div style="display:flex; align-items:center; gap:4px; background:var(--bg-card); padding:4px 8px; border-radius:8px; border:1px solid var(--border);">
+                    <select id="viewportSelect" style="background:transparent; border:none; color:var(--text); font-size:11px; font-weight:600; cursor:pointer; outline:none;">
+                        <option value="desktop">🖥️ Desktop</option>
+                        <option value="tablet">平板 Tablet</option>
+                        <option value="mobile">📱 Mobile</option>
+                    </select>
+                </div>
                 <button class="btn btn-default" id="pdfOpenBtn" title="Open PDF">📄 PDF</button>
                 <div style="display:flex; align-items:center; gap:4px; margin:0 8px; background:var(--bg-card); padding:4px 8px; border-radius:8px; border:1px solid var(--border);">
                     <input type="checkbox" id="fullPageCheck" style="cursor:pointer;">
                     <label for="fullPageCheck" style="font-size:11px; cursor:pointer; font-weight:600; color:var(--text-muted);">Full Page</label>
+                    <div id="fullPageControls" style="display:none; align-items:center; gap:4px; border-left:1px solid var(--border); padding-left:4px; margin-left:4px;">
+                        <input type="number" id="manualHeight" value="2000" step="500" min="500" max="10000" style="width:50px; background:transparent; border:none; color:var(--text); font-size:10px; outline:none;" title="Force Height (px)">
+                    </div>
                 </div>
                 <button class="btn btn-success" id="captureBtn">📷 Capture</button>
             </div>
@@ -1600,6 +1625,52 @@ const DB = {
         });
     },
 
+    async countStore(storeName) {
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(storeName, 'readonly');
+            const req = tx.objectStore(storeName).count();
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    },
+
+    async countIndex(storeName, indexName, key) {
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(storeName, 'readonly');
+            const req = tx.objectStore(storeName).index(indexName).count(key);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    },
+
+    async getLatestCaptureForSession(sessionId) {
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(this.STORES.CAPTURES, 'readonly');
+            const index = tx.objectStore(this.STORES.CAPTURES).index('sessionId');
+            const req = index.openCursor(IDBKeyRange.only(sessionId), 'prev');
+            req.onsuccess = () => resolve(req.result ? req.result.value : null);
+            req.onerror = () => reject(req.error);
+        });
+    },
+
+    async getTotalShapesCount() {
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(this.STORES.CAPTURES, 'readonly');
+            const req = tx.objectStore(this.STORES.CAPTURES).openCursor();
+            let count = 0;
+            req.onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    count += (cursor.value.shapes || []).length;
+                    cursor.continue();
+                } else {
+                    resolve(count);
+                }
+            };
+            req.onerror = () => reject(req.error);
+        });
+    },
+
     async clear(storeName) {
         return new Promise((resolve, reject) => {
             const tx = this.db.transaction(storeName, 'readwrite');
@@ -2002,6 +2073,35 @@ const Stock = {
     query: '',
     provider: 'picsum',
 
+    init() {
+        this.setupProviderSelector();
+    },
+
+    setupProviderSelector() {
+        document.querySelectorAll('#stockProviders .chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const provider = chip.dataset.provider;
+                if (provider === 'unsplash' && (!Settings.get('unsplashEnabled') || !Settings.get('unsplashKey'))) {
+                    Toast.show('Unsplash is not enabled in settings', 'error');
+                    return;
+                }
+                if (provider === 'pexels' && (!Settings.get('pexelsEnabled') || !Settings.get('pexelsKey'))) {
+                    Toast.show('Pexels is not enabled in settings', 'error');
+                    return;
+                }
+                
+                document.querySelectorAll('#stockProviders .chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                this.setProvider(provider);
+            });
+        });
+    },
+
+    setProvider(provider) {
+        this.provider = provider;
+        this.load(true);
+    },
+
     async load(reset = false) {
         if (this.loading) return;
         if (reset) {
@@ -2012,14 +2112,11 @@ const Stock = {
         this.loading = true;
         this.showLoading();
         
-        if (Settings.get('unsplashEnabled') && Settings.get('unsplashKey')) {
-            this.provider = 'unsplash';
+        if (this.provider === 'unsplash') {
             await this.loadFromUnsplash();
-        } else if (Settings.get('pexelsEnabled') && Settings.get('pexelsKey')) {
-            this.provider = 'pexels';
+        } else if (this.provider === 'pexels') {
             await this.loadFromPexels();
         } else {
-            this.provider = 'picsum';
             await this.loadFromPicsum();
         }
         
@@ -2220,6 +2317,7 @@ const Library = {
         this.render();
         Icons.init();
         Emojis.init();
+        Stock.init();
         Stock.load(true);
     },
 
@@ -2399,6 +2497,7 @@ const Library = {
         document.getElementById('stockGrid').style.display = tab === 'stock' ? 'grid' : 'none';
         document.getElementById('actionsBar').style.display = tab === 'captures' ? 'flex' : 'none';
         document.getElementById('categoryChips').style.display = tab === 'emojis' ? 'flex' : 'none';
+        document.getElementById('stockProviders').style.display = tab === 'stock' ? 'flex' : 'none';
         
         const apiStatus = document.getElementById('apiStatus');
         if (tab === 'icons') { apiStatus.style.display = 'flex'; Icons.updateApiStatus(); }
@@ -2616,22 +2715,26 @@ const Browser = {
 
     async capture() {
         const isFullPage = document.getElementById('fullPageCheck').checked;
+        const manualHeight = parseInt(document.getElementById('manualHeight').value) || 2000;
         const iframe = document.getElementById('webFrame');
         const originalHeight = iframe.style.height;
+        const originalScroll = iframe.contentWindow.scrollY;
         
         try {
             if (isFullPage) {
-                Toast.show('Attempting full page capture...');
-                // Try to get scroll height - this may fail due to cross-origin
+                Toast.show('Expanding view for capture...');
+                // Try to get scroll height
+                let targetHeight = manualHeight;
                 try {
                     const scrollHeight = iframe.contentWindow.document.body.scrollHeight;
-                    if (scrollHeight > 0) {
-                        iframe.style.height = scrollHeight + 'px';
-                        await new Promise(r => setTimeout(r, 500));
-                    }
+                    if (scrollHeight > 0) targetHeight = Math.max(targetHeight, scrollHeight);
                 } catch(e) {
-                    console.warn('Cross-origin restriction: cannot get scrollHeight. Capturing viewport instead.');
+                    console.warn('Cross-origin restriction: using manual height ' + targetHeight + 'px');
                 }
+                
+                iframe.style.height = targetHeight + 'px';
+                // Wait for potential re-renders
+                await new Promise(r => setTimeout(r, 800));
             }
 
             const iframeRect = iframe.getBoundingClientRect();
@@ -2639,14 +2742,18 @@ const Browser = {
             
             Toast.show('Select this tab to capture...');
             const stream = await navigator.mediaDevices.getDisplayMedia({
-                video: { displaySurface: 'browser' },
+                video: { 
+                    displaySurface: 'browser',
+                    width: { ideal: window.screen.width * dpr },
+                    height: { ideal: window.screen.height * dpr }
+                },
                 preferCurrentTab: true
             });
             
             const video = document.createElement('video');
             video.srcObject = stream;
             await video.play();
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 400));
             
             const fullCanvas = document.createElement('canvas');
             fullCanvas.width = video.videoWidth;
@@ -2657,12 +2764,16 @@ const Browser = {
             
             if (isFullPage) iframe.style.height = originalHeight;
 
-            // Adjust crop for header/sidebar
+            // Calculate crop area
             const cropX = iframeRect.left * dpr;
             const cropY = iframeRect.top * dpr;
             const cropW = iframeRect.width * dpr;
-            const cropH = iframeRect.height * dpr;
+            const cropH = Math.min(iframeRect.height * dpr, fullCanvas.height - cropY);
             
+            if (cropH <= 0) {
+                throw new Error('Capture area not visible');
+            }
+
             const croppedCanvas = document.createElement('canvas');
             croppedCanvas.width = cropW;
             croppedCanvas.height = cropH;
@@ -2673,11 +2784,15 @@ const Browser = {
             );
             
             const img = await Utils.loadImage(croppedCanvas.toDataURL());
-            Library.addCapture(img, isFullPage ? 'Full Web Capture' : 'Web Capture');
+            Library.addCapture(img, isFullPage ? 'Full Capture' : 'Web Capture');
+            
+            if (isFullPage) {
+                Toast.show('Full page capture note: Some areas may be missing if they were off-screen during capture.');
+            }
         } catch (e) {
             console.error('Capture failed:', e);
             iframe.style.height = originalHeight;
-            Toast.show('Capture cancelled or failed', 'error');
+            Toast.show('Capture failed: ' + (e.message || 'Cancelled'), 'error');
         }
     }
 };
@@ -2797,8 +2912,14 @@ const Notes = {
             
             const textarea = item.querySelector('.note-text');
             textarea.addEventListener('input', (e) => {
+                e.stopPropagation();
                 p.note = e.target.value;
                 Library.saveCurrentCapture();
+            });
+            
+            textarea.addEventListener('click', (e) => {
+                e.stopPropagation();
+                textarea.focus();
             });
             
             item.addEventListener('click', () => {
@@ -4371,7 +4492,18 @@ const App = {
         document.getElementById('landingExportBtn').addEventListener('click', () => this.exportMultipleSessions());
         
         document.getElementById('goBtn').addEventListener('click', () => Browser.go());
+        document.getElementById('viewportSelect').addEventListener('change', (e) => {
+            const val = e.target.value;
+            const frame = document.getElementById('webFrame');
+            if (val === 'desktop') frame.style.width = '100%';
+            else if (val === 'tablet') frame.style.width = '768px';
+            else if (val === 'mobile') frame.style.width = '375px';
+        });
         document.getElementById('captureBtn').addEventListener('click', () => Browser.capture());
+        document.getElementById('fullPageCheck').addEventListener('change', (e) => {
+            document.getElementById('fullPageControls').style.display = e.target.checked ? 'flex' : 'none';
+        });
+        
         document.getElementById('pdfOpenBtn').addEventListener('click', () => Modal.open('pdfModal'));
         
         document.getElementById('pdfCancelBtn').addEventListener('click', () => Modal.close('pdfModal'));
@@ -4455,25 +4587,29 @@ const App = {
 
     async renderLandingPage() {
         const grid = document.getElementById('landingSessionsGrid');
-        grid.innerHTML = '';
+        grid.innerHTML = '<div class="loading-spinner" style="grid-column:1/-1;"><div class="spinner"></div>Loading sessions...</div>';
         
-        const allCaptures = await DB.getAll(DB.STORES.CAPTURES);
-        let totalShapes = 0;
-        allCaptures.forEach(c => totalShapes += (c.shapes || []).length);
-        
+        const totalCaptures = await DB.countStore(DB.STORES.CAPTURES);
         document.getElementById('statSessions').textContent = Library.sessions.length;
-        document.getElementById('statCaptures').textContent = allCaptures.length;
-        document.getElementById('statAnnotations').textContent = totalShapes;
+        document.getElementById('statCaptures').textContent = totalCaptures;
+        
+        // Stats that might take time are updated asynchronously
+        DB.getTotalShapesCount().then(count => {
+            document.getElementById('statAnnotations').textContent = count;
+        });
         
         const lastActive = Library.sessions.length > 0 ? new Date(Math.max(...Library.sessions.map(s => s.createdAt))).toLocaleDateString() : 'Never';
         document.getElementById('statLastActive').textContent = lastActive;
 
-        Library.sessions.forEach(s => {
+        grid.innerHTML = '';
+        for (const s of Library.sessions) {
             const item = document.createElement('div');
             item.className = 'session-item' + (Library.selectedSessionIds.has(s.id) ? ' selected' : '');
             
-            const sessionCaptures = allCaptures.filter(c => c.sessionId === s.id);
-            const latestThumb = sessionCaptures.length > 0 ? sessionCaptures[0].thumbData : '';
+            // Get session info efficiently
+            const count = await DB.countIndex(DB.STORES.CAPTURES, 'sessionId', s.id);
+            const latest = await DB.getLatestCaptureForSession(s.id);
+            const latestThumb = latest ? latest.thumbData : '';
             
             item.innerHTML = `
                 <div class="session-check">${Library.selectedSessionIds.has(s.id) ? '✓' : ''}</div>
@@ -4482,7 +4618,7 @@ const App = {
                 </div>
                 <div class="session-item-info">
                     <div class="session-item-title">${s.name}</div>
-                    <div class="session-item-meta">${sessionCaptures.length} captures • ${new Date(s.createdAt).toLocaleDateString()}</div>
+                    <div class="session-item-meta">${count} captures • ${new Date(s.createdAt).toLocaleDateString()}</div>
                 </div>
                 <div style="position:absolute; bottom:12px; right:12px; display:flex; gap:4px;">
                     <button class="btn btn-default btn-sm" onclick="event.stopPropagation(); Library.deleteSession('${s.id}')">Delete</button>
@@ -4503,7 +4639,7 @@ const App = {
             });
             
             grid.appendChild(item);
-        });
+        }
     },
 
     async startNew() {
