@@ -163,6 +163,7 @@ const Nexus = {
             this.setupMobileKeyboardFix();
             this.setupEditorContextMenu();
             this.setupCommandPalette();
+            this.setupProblemsPanel();
             this.applyTheme(this.state.theme);
             this.setupListeners();
             
@@ -863,6 +864,9 @@ const Nexus = {
         this.bind('btn-ai-pad-sync', () => {
             Nexus.prepareChat('COMMAND: Analyze my current codebase and reconstruct the PROJECT_ARCHITECTURE.md file to reflect the actual file structure, contracts, and implemented features. Then SAVE the updated content to PROJECT_ARCHITECTURE.md using your tools. Ensure all completed tasks are marked as COMPLETED.', 'pad');
         });
+        this.bind('btn-ai-auditor', () => {
+            Nexus.prepareChat('COMMAND: Run a full site audit. Use your tools to take screenshots, navigate the site, analyze the visuals/code against best practices, provide a step-by-step revision plan, and implement the necessary fixes.', 'auditor');
+        });
         this.bind('btn-ai-auto-toggle', () => Nexus.toggleAutoMode());
 
         this.bind('btn-ai-tools-toggle', (e) => {
@@ -1562,10 +1566,72 @@ const Nexus = {
         } catch (e) { console.error("Formatting failed:", e); }
     },
 
-    /** Triggers the linting service for the given content. @private */
+    /** Triggers the linting service and updates the Problems UI. @private */
     runLint(content, path) {
         const errors = Nexus.lint.lintCode(content, path);
-        if (errors.length > 0) console.warn("Linting issues found:", errors);
+        const countEl = document.getElementById('problems-count');
+        const listEl = document.getElementById('problems-list');
+        
+        if (countEl) {
+            countEl.textContent = errors.length;
+            countEl.className = errors.length > 0 
+                ? 'bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[8px]' 
+                : 'bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-full text-[8px]';
+        }
+
+        if (listEl) {
+            if (errors.length === 0) {
+                listEl.innerHTML = '<div class="text-center py-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">No problems detected.</div>';
+            } else {
+                listEl.innerHTML = errors.map(err => `
+                    <div class="flex items-start gap-3 p-2 hover:bg-white/5 cursor-pointer rounded transition-colors group" onclick="Nexus.jumpToProblem(${err.line}, ${err.column})">
+                        <i class="fa-solid ${err.severity === 'error' ? 'fa-circle-xmark text-red-500' : 'fa-triangle-exclamation text-amber-500'} mt-1 text-[10px]"></i>
+                        <div class="flex-1">
+                            <div class="text-[11px] text-slate-300 font-medium">${escapeHtml(err.message)}</div>
+                            <div class="text-[9px] text-slate-500 font-bold">Line ${err.line}, Col ${err.column} ${err.ruleId ? `• ${err.ruleId}` : ''}</div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right text-slate-600 opacity-0 group-hover:opacity-100 text-[8px] mt-1"></i>
+                    </div>
+                `).join('');
+            }
+        }
+    },
+
+    /** Jumps the editor to a specific line and column. */
+    jumpToProblem(line, col) {
+        if (!this.editor || !this.editor.cm) return;
+        this.editor.cm.setCursor({ line: line - 1, ch: col - 1 });
+        this.editor.cm.focus();
+        if (window.innerWidth < 768) this.toggleProblems(false);
+    },
+
+    /** Initializes the Problems panel event listeners. @private */
+    setupProblemsPanel() {
+        const header = document.getElementById('problems-header');
+        if (header) header.onclick = () => this.toggleProblems();
+    },
+
+    /** Toggles the Problems panel expanded state. */
+    toggleProblems(show) {
+        const panel = document.getElementById('problems-panel');
+        const list = document.getElementById('problems-list');
+        const icon = document.getElementById('problems-toggle-icon');
+        if (!panel || !list || !icon) return;
+
+        const isExpanded = panel.classList.contains('h-40');
+        const shouldExpand = show !== undefined ? show : !isExpanded;
+
+        if (shouldExpand) {
+            panel.classList.remove('h-8');
+            panel.classList.add('h-40');
+            list.classList.remove('hidden');
+            icon.classList.add('rotate-180');
+        } else {
+            panel.classList.remove('h-40');
+            panel.classList.add('h-8');
+            list.classList.add('hidden');
+            icon.classList.remove('rotate-180');
+        }
     },
 
     /** Re-renders the file list in the Explorer sidebar. */
@@ -2089,6 +2155,8 @@ const Nexus = {
                 case '/create': if (!args) { Nexus.modals.alert("Error", "Usage: /create <name>"); return; } await Nexus.sendChatForced(`Create file "${args}" with boilerplate.`); return;
                 case '/search': if (!args) { Nexus.modals.alert("Error", "Usage: /search <query>"); return; } await Nexus.sendChatForced(`Search project for "${args}".`); return;
                 case '/auto': Nexus.toggleAutoMode(); return;
+                case '/audit': Nexus.prepareChat('COMMAND: Run a full site audit. Use your tools to take screenshots, navigate the site, analyze the visuals/code against best practices, provide a step-by-step revision plan, and implement the necessary fixes.', 'auditor'); return;
+                case '/pad': Nexus.prepareChat('COMMAND: Analyze my current codebase and reconstruct the PROJECT_ARCHITECTURE.md file to reflect the actual file structure, contracts, and implemented features. Then SAVE the updated content to PROJECT_ARCHITECTURE.md using your tools. Ensure all completed tasks are marked as COMPLETED.', 'pad'); return;
                 case '/help': Nexus.addChatMessage('system', `
                     <div class="space-y-2">
                         <div class="font-black text-indigo-400 uppercase text-[10px] tracking-widest">Available Commands</div>
@@ -2097,10 +2165,11 @@ const Nexus = {
                             <li><b class="text-white">/fix</b> - Identify and fix bugs in current file</li>
                             <li><b class="text-white">/refactor</b> - Suggest structural improvements</li>
                             <li><b class="text-white">/deconstruct</b> - Modularize a monolithic file</li>
+                            <li><b class="text-white">/audit</b> - Run automated site visual/code audit</li>
+                            <li><b class="text-white">/pad</b> - Sync PAD roadmap with implementation</li>
                             <li><b class="text-white">/create &lt;name&gt;</b> - Create a new project file</li>
                             <li><b class="text-white">/search &lt;query&gt;</b> - Search text across all files</li>
                             <li><b class="text-white">/auto</b> - Toggle autonomous PAD execution</li>
-                            <li><b class="text-white">/pad</b> - Sync PAD with current progress</li>
                             <li><b class="text-white">/clear</b> - Clear chat history</li>
                         </ul>
                     </div>
@@ -2220,6 +2289,7 @@ const Nexus = {
             if (e.key === 'ArrowDown') { e.preventDefault(); if (active < items.length - 1) { if (active >= 0) items[active].classList.remove('bg-indigo-600'); items[active + 1].classList.add('bg-indigo-600'); items[active + 1].scrollIntoView({ block: 'nearest' }); } } 
             else if (e.key === 'ArrowUp') { e.preventDefault(); if (active > 0) { items[active].classList.remove('bg-indigo-600'); items[active - 1].classList.add('bg-indigo-600'); items[active - 1].scrollIntoView({ block: 'nearest' }); } } 
             else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); items[active].click(); }
+            else if (e.key === 'Escape') { Nexus.closePalette(); }
         };
     },
 
@@ -2228,21 +2298,71 @@ const Nexus = {
 
     async updatePaletteResults() {
         const input = document.getElementById('palette-input'); const results = document.getElementById('palette-results'); const query = input.value.toLowerCase();
+        
         const commands = [
+            // AI Tools
             { icon: 'fa-robot', title: 'AI: Explain Selection', action: () => Nexus.prepareChat('/explain') },
             { icon: 'fa-screwdriver-wrench', title: 'AI: Fix Bugs', action: () => Nexus.prepareChat('/fix') },
             { icon: 'fa-wand-magic-sparkles', title: 'AI: Refactor Selection', action: () => Nexus.prepareChat('/refactor') },
             { icon: 'fa-cubes', title: 'AI: Deconstruct Monolith', action: () => Nexus.prepareChat('/deconstruct') },
-            { icon: 'fa-list-check', title: 'PAD: Sync Roadmap', action: () => Nexus.prepareChat('/pad') },
+            { icon: 'fa-magnifying-glass-chart', title: 'AI: Run Site Auditor', action: () => Nexus.prepareChat('/audit') },
+            { icon: 'fa-list-check', title: 'AI: Sync PAD Roadmap', action: () => Nexus.prepareChat('/pad') },
+            { icon: 'fa-play', title: 'AI: Toggle Auto Mode', action: () => Nexus.toggleAutoMode() },
+
+            // Views
+            { icon: 'fa-folder-tree', title: 'View: Explorer', action: () => Nexus.setView('explorer') },
+            { icon: 'fa-magnifying-glass', title: 'View: Global Search', action: () => Nexus.setView('search') },
+            { icon: 'fa-code-branch', title: 'View: Symbols Outline', action: () => Nexus.setView('symbols') },
+            { icon: 'fa-layer-group', title: 'View: Asset Manager', action: () => Nexus.setView('assets') },
+            { icon: 'fa-pen-ruler', title: 'View: Markup / Drawing', action: () => Nexus.setView('markup') },
+            { icon: 'fa-road', title: 'View: PAD Project Roadmap', action: () => Nexus.setView('pad') },
+            { icon: 'fa-code', title: 'View: Source Editor', action: () => Nexus.setView('editor') },
+            { icon: 'fa-columns', title: 'View: Toggle Split Preview', action: () => Nexus.togglePreview() },
+
+            // Project / File
+            { icon: 'fa-plus', title: 'File: New File / Wizard', action: () => Nexus.openWizard() },
+            { icon: 'fa-file-export', title: 'Project: Export ZIP', action: () => Nexus.exportProject() },
+            { icon: 'fa-building-columns', title: 'Project: Library / Switch', action: () => Nexus.openProjectLibrary() },
+
+            // Editor
             { icon: 'fa-broom', title: 'Editor: Format Code', action: () => Nexus.formatCode() },
-            { icon: 'fa-eye', title: 'Editor: Toggle Preview', action: () => Nexus.togglePreview() },
-            { icon: 'fa-gear', title: 'System: Settings', action: () => Nexus.openSettings() },
-            { icon: 'fa-folder-tree', title: 'System: Project Library', action: () => Nexus.openProjectLibrary() }
+            { icon: 'fa-paragraph', title: 'Editor: Toggle Word Wrap', action: () => {
+                const ww = document.getElementById('setting-wordwrap');
+                if (ww) { ww.checked = !ww.checked; Nexus.saveSettings(); }
+            }},
+
+            // System
+            { icon: 'fa-circle-half-stroke', title: 'System: Toggle Dark/Light Mode', action: () => Nexus.toggleTheme() },
+            { icon: 'fa-gear', title: 'System: Configuration Settings', action: () => Nexus.openSettings() }
         ];
-        const files = await Nexus.fs.listFiles(); const fileItems = files.filter(f => !f.endsWith('.meta')).map(f => ({ icon: 'fa-file-code', title: `File: ${f}`, action: () => Nexus.openFile(f) }));
+
+        const files = await Nexus.fs.listFiles(); 
+        const fileItems = files.filter(f => !f.endsWith('.meta')).map(f => ({ 
+            icon: 'fa-file-code', 
+            title: `Open: ${f}`, 
+            action: () => Nexus.openFile(f) 
+        }));
+
         const filtered = [...commands, ...fileItems].filter(item => item.title.toLowerCase().includes(query));
-        results.innerHTML = filtered.map((item, i) => `<div class="palette-item p-3 rounded-xl flex items-center gap-4 cursor-pointer ${i === 0 ? 'bg-indigo-600 text-white' : 'text-slate-300'}"><i class="fa-solid ${item.icon} opacity-50 w-5"></i><span class="text-xs font-bold">${item.title}</span></div>`).join('');
-        results.querySelectorAll('.palette-item').forEach((el, i) => el.onclick = () => { filtered[i].action(); Nexus.closePalette(); });
+        
+        results.innerHTML = filtered.length > 0 
+            ? filtered.map((item, i) => `
+                <div class="palette-item p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all border border-transparent hover:border-indigo-500/30 group ${i === 0 ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' : 'text-slate-300 hover:bg-indigo-600/10'}">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center shrink-0">
+                            <i class="fa-solid ${item.icon} opacity-60 group-hover:opacity-100 transition-opacity"></i>
+                        </div>
+                        <span class="text-xs font-black uppercase tracking-widest">${item.title}</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-[10px] opacity-20 group-hover:opacity-100 transition-opacity"></i>
+                </div>
+            `).join('')
+            : '<div class="text-center py-12 text-slate-500 font-bold uppercase tracking-widest text-[10px]">No matching results found</div>';
+
+        results.querySelectorAll('.palette-item').forEach((el, i) => el.onclick = () => { 
+            filtered[i].action(); 
+            Nexus.closePalette(); 
+        });
     },
 
     openSettings() { const s = document.getElementById('modal-settings'); if(s) { s.classList.remove('hidden'); document.body.classList.add('modal-open'); this.loadSettings(); this.refreshModelList(); } },
@@ -2280,14 +2400,61 @@ const Nexus = {
     
     /** Synchronizes LocalStorage settings with the Settings modal inputs. @private */
     loadSettings() {
-        const gi = document.getElementById('setting-gemini-key'); const mi = document.getElementById('setting-ai-model'); const ti = document.getElementById('setting-ai-temp'); const ww = document.getElementById('setting-wordwrap');
-        if (gi) gi.value = localStorage.getItem('nexus_gemini_key') || ''; if (mi) mi.value = localStorage.getItem('nexus_ai_model') || 'gemini-1.5-flash'; if (ti) ti.value = localStorage.getItem('nexus_ai_temp') || '0.7'; if (ww) ww.checked = localStorage.getItem('nexus_wordwrap') !== 'false';
+        const gi = document.getElementById('setting-gemini-key'); const mi = document.getElementById('setting-ai-model');
+        const ti = document.getElementById('setting-ai-temp'); const ai = document.getElementById('setting-ai-instructions');
+        const ww = document.getElementById('setting-wordwrap');
+        const pc = document.getElementById('setting-prompt-core'); const pp = document.getElementById('setting-prompt-pad');
+        const pu = document.getElementById('setting-prompt-ui'); const pd = document.getElementById('setting-prompt-deconstruct');
+        const pa = document.getElementById('setting-prompt-auditor');
+        const uk = document.getElementById('setting-unsplash-key'); const pk = document.getElementById('setting-pexels-key');
+
+        if (gi) gi.value = localStorage.getItem('nexus_gemini_key') || '';
+        if (mi) mi.value = localStorage.getItem('nexus_ai_model') || 'gemini-1.5-flash';
+        if (ti) ti.value = localStorage.getItem('nexus_ai_temp') || '0.7';
+        if (ai) ai.value = localStorage.getItem('nexus_ai_instructions') || '';
+        if (ww) ww.checked = localStorage.getItem('nexus_wordwrap') !== 'false';
+        
+        // Use this.ai to ensure we are accessing the instance correctly
+        if (pc) pc.value = localStorage.getItem('nexus_prompt_core') || (this.ai ? this.ai.prompts.core : '');
+        if (pp) pp.value = localStorage.getItem('nexus_prompt_pad') || (this.ai ? this.ai.prompts.pad : '');
+        if (pu) pu.value = localStorage.getItem('nexus_prompt_ui') || (this.ai ? this.ai.prompts.ui : '');
+        if (pd) pd.value = localStorage.getItem('nexus_prompt_deconstruct') || (this.ai ? this.ai.prompts.deconstruct : '');
+        if (pa) pa.value = localStorage.getItem('nexus_prompt_auditor') || (this.ai ? this.ai.prompts.auditor : '');
+        
+        if (uk) uk.value = localStorage.getItem('nexus_unsplash_key') || '';
+        if (pk) pk.value = localStorage.getItem('nexus_pexels_key') || '';
     },
 
     /** Saves Settings modal inputs back to LocalStorage and updates service instances. */
     saveSettings() {
-        const k = document.getElementById('setting-gemini-key')?.value || ''; const m = document.getElementById('setting-ai-model')?.value || 'gemini-1.5-flash'; const t = document.getElementById('setting-ai-temp')?.value || '0.7'; const w = document.getElementById('setting-wordwrap')?.checked ?? true;
-        Nexus.ai.setApiKey(k); Nexus.ai.setConfig(m, t); localStorage.setItem('nexus_wordwrap', w); if (Nexus.editor) Nexus.editor.setOption('lineWrapping', w);
+        const k = document.getElementById('setting-gemini-key')?.value || ''; 
+        const m = document.getElementById('setting-ai-model')?.value || 'gemini-1.5-flash'; 
+        const t = document.getElementById('setting-ai-temp')?.value || '0.7'; 
+        const i = document.getElementById('setting-ai-instructions')?.value || '';
+        const w = document.getElementById('setting-wordwrap')?.checked ?? true;
+        
+        const pc = document.getElementById('setting-prompt-core')?.value || '';
+        const pp = document.getElementById('setting-prompt-pad')?.value || '';
+        const pu = document.getElementById('setting-prompt-ui')?.value || '';
+        const pd = document.getElementById('setting-prompt-deconstruct')?.value || '';
+        const pa = document.getElementById('setting-prompt-auditor')?.value || '';
+        
+        const uk = document.getElementById('setting-unsplash-key')?.value || '';
+        const pk = document.getElementById('setting-pexels-key')?.value || '';
+
+        if (this.ai) {
+            this.ai.setApiKey(k); 
+            this.ai.setConfig(m, t, i, { core: pc, pad: pp, ui: pu, deconstruct: pd, auditor: pa });
+        }
+        
+        if (this.assets) {
+            this.assets.setUnsplashKey(uk);
+            this.assets.setPexelsKey(pk);
+        }
+
+        localStorage.setItem('nexus_wordwrap', w); 
+        if (this.editor) this.editor.setOption('lineWrapping', w);
+        
         Nexus.closeSettings(); Nexus.modals.alert("Saved", "Settings updated.");
     },
 

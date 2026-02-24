@@ -60,6 +60,21 @@ export const LintingService = (() => {
         }
     };
 
+    /**
+     * Performs basic linting on CSS content.
+     * @private
+     */
+    const lintCSS = (content) => {
+        const issues = [];
+        // Basic syntax check: matching braces
+        const openBraces = (content.match(/\{/g) || []).length;
+        const closeBraces = (content.match(/\}/g) || []).length;
+        if (openBraces !== closeBraces) {
+            issues.push({ line: 1, column: 1, message: `Mismatched braces: ${openBraces} open, ${closeBraces} closed.`, severity: 'error' });
+        }
+        return issues;
+    };
+
     return {
         /**
          * Main entry point for linting. Detects language by path extension.
@@ -69,6 +84,32 @@ export const LintingService = (() => {
          */
         lintCode: (content, path) => {
             if (path.endsWith('.js')) return lintJavaScript(content);
+            if (path.endsWith('.css')) return lintCSS(content);
+            if (path.endsWith('.html')) {
+                let issues = [];
+                // Extract and lint JS
+                const scriptRegex = /<script\b[^>]*>([\s\S]*?)<\/script>/g;
+                let match;
+                while ((match = scriptRegex.exec(content)) !== null) {
+                    const scriptContent = match[1];
+                    if (scriptContent.trim()) {
+                        const lineOffset = content.substring(0, match.index).split('\n').length - 1;
+                        const jsIssues = lintJavaScript(scriptContent);
+                        issues = issues.concat(jsIssues.map(iss => ({ ...iss, line: iss.line + lineOffset, message: `[JS] ${iss.message}` })));
+                    }
+                }
+                // Extract and lint CSS
+                const styleRegex = /<style\b[^>]*>([\s\S]*?)<\/style>/g;
+                while ((match = styleRegex.exec(content)) !== null) {
+                    const styleContent = match[1];
+                    if (styleContent.trim()) {
+                        const lineOffset = content.substring(0, match.index).split('\n').length - 1;
+                        const cssIssues = lintCSS(styleContent);
+                        issues = issues.concat(cssIssues.map(iss => ({ ...iss, line: iss.line + lineOffset, message: `[CSS] ${iss.message}` })));
+                    }
+                }
+                return issues;
+            }
             return [];
         }
     };

@@ -545,8 +545,25 @@
                 <!-- Editor View -->
                 <div id="view-editor" class="active">
                     <div class="flex flex-col md:flex-row h-full w-full">
-                        <div id="editor-panel" class="flex-1 relative border-r overflow-hidden h-full" style="border-color: var(--border)">
-                            <textarea id="code-editor"></textarea>
+                        <div id="editor-panel" class="flex-1 relative border-r overflow-hidden h-full flex flex-col" style="border-color: var(--border)">
+                            <div class="flex-1 relative overflow-hidden">
+                                <textarea id="code-editor"></textarea>
+                            </div>
+                            
+                            <!-- Problems/Linting Panel -->
+                            <div id="problems-panel" class="border-t bg-modal flex flex-col transition-all h-8 shrink-0" style="border-color: var(--border)">
+                                <div class="h-8 px-4 flex items-center justify-between cursor-pointer hover:bg-hover shrink-0" id="problems-header">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fa-solid fa-circle-exclamation text-amber-500 text-[10px]"></i>
+                                        <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Problems</span>
+                                        <span id="problems-count" class="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-full text-[8px]">0</span>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-up text-[10px] text-slate-500 transition-transform" id="problems-toggle-icon"></i>
+                                </div>
+                                <div id="problems-list" class="flex-1 overflow-y-auto p-2 space-y-1 hidden">
+                                    <div class="text-center py-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">No problems detected.</div>
+                                </div>
+                            </div>
                             
                             <!-- Editor Context Menu -->
                             <div id="editor-context-menu" class="hidden fixed z-[500] bg-modal border border-main rounded-xl shadow-2xl py-2 min-w-[200px]">
@@ -731,6 +748,7 @@
                 <button id="btn-ai-refactor" class="px-2 py-1 rounded bg-purple-600/10 text-purple-400 text-[8px] font-bold uppercase border border-purple-500/10 whitespace-nowrap">Refactor</button>
                 <button id="btn-ai-modularize" class="px-2 py-1 rounded bg-pink-600/10 text-pink-400 text-[8px] font-bold uppercase border border-pink-500/10 whitespace-nowrap">Modularize</button>
                 <button id="btn-ai-pad-sync" class="px-2 py-1 rounded bg-amber-600/10 text-amber-400 text-[8px] font-bold uppercase border border-amber-500/10 whitespace-nowrap">Sync</button>
+                <button id="btn-ai-auditor" class="px-2 py-1 rounded bg-blue-600/10 text-blue-400 text-[8px] font-bold uppercase border border-blue-500/10 whitespace-nowrap" title="Run Site Auditor">Auditor</button>
             </div>
             <div id="chat-history" class="flex-1 overflow-y-auto p-3 space-y-3 text-sm"></div>
             <div id="pad-summary" class="hidden flex-1 overflow-y-auto p-3 space-y-3"></div>
@@ -856,6 +874,10 @@
                             <label class="text-[10px] text-slate-400">Modularize (Deconstruct) Prompt</label>
                             <textarea id="setting-prompt-deconstruct" class="w-full border rounded-xl p-2 text-[10px] focus:outline-none h-20 resize-none font-mono bg-main border-main text-main"></textarea>
                         </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-slate-400">QA Auditor Prompt</label>
+                            <textarea id="setting-prompt-auditor" class="w-full border rounded-xl p-2 text-[10px] focus:outline-none h-20 resize-none font-mono bg-main border-main text-main"></textarea>
+                        </div>
                     </div>
                 </div>
 
@@ -931,22 +953,27 @@
         </div>
     </div>
 
-    <!-- Command Palette -->
-    <div id="modal-palette" class="hidden fixed inset-0 z-[800] flex items-start justify-center pt-20" style="background: rgb(0,0,0,0.4)">
-        <div class="modal-card max-w-lg shadow-2xl">
-            <div class="p-4 bg-header border-b border-main flex items-center justify-between gap-4">
+    <!-- Command Palette (Overhauled for Full-Screen Mobile) -->
+    <div id="modal-palette" class="hidden fixed inset-0 z-[1500] flex items-start justify-center md:pt-20 md:bg-black/40 backdrop-blur-sm md:backdrop-blur-none transition-all duration-300">
+        <div class="modal-card w-full h-full md:h-auto md:max-w-2xl bg-card border-none md:border md:border-main md:rounded-3xl shadow-2xl flex flex-col overflow-hidden transform transition-all">
+            <div class="p-6 bg-header border-b border-main flex items-center justify-between gap-4 shrink-0">
                 <div class="relative flex-1">
                     <i class="fa-solid fa-terminal absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500"></i>
-                    <input type="text" id="palette-input" placeholder="Type a command or file name..." class="w-full bg-main border border-indigo-500/30 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-indigo-500 shadow-xl shadow-indigo-500/10" style="color: var(--text-main); border-color: var(--border)">
+                    <input type="text" id="palette-input" placeholder="Search commands, files, tools..." class="w-full bg-main border border-indigo-500/30 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-indigo-500 shadow-xl shadow-indigo-500/10 font-bold" style="color: var(--text-main); border-color: var(--border)">
                 </div>
-                <button id="btn-close-palette" class="text-slate-500 hover:text-white transition-colors p-2"><i class="fa-solid fa-xmark text-xl"></i></button>
+                <button id="btn-close-palette" class="text-slate-500 hover:text-white transition-colors p-3 bg-main border border-main rounded-xl"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
-            <div id="palette-results" class="modal-body p-2 space-y-1">
+            <div id="palette-results" class="flex-1 overflow-y-auto p-4 space-y-2 bg-main custom-scrollbar">
                 <!-- Results will be injected here -->
             </div>
-            <div class="modal-footer flex justify-between items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                <span><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">↑↓</kbd> to navigate</span>
-                <span><kbd class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">Enter</kbd> to select</span>
+            <div class="p-4 bg-header border-t border-main flex justify-between items-center text-[10px] text-slate-500 font-black uppercase tracking-widest shrink-0">
+                <div class="flex items-center gap-4">
+                    <span class="flex items-center gap-1.5"><kbd class="bg-slate-800 text-slate-300 px-2 py-1 rounded-md border border-slate-700">↑↓</kbd> Navigate</span>
+                    <span class="flex items-center gap-1.5"><kbd class="bg-slate-800 text-slate-300 px-2 py-1 rounded-md border border-slate-700">Enter</kbd> Select</span>
+                </div>
+                <div class="hidden md:block">
+                    <span class="flex items-center gap-1.5"><kbd class="bg-slate-800 text-slate-300 px-2 py-1 rounded-md border border-slate-700">Esc</kbd> Close</span>
+                </div>
             </div>
         </div>
     </div>

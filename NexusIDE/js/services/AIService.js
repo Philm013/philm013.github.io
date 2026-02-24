@@ -100,6 +100,14 @@ PROCESS:
     *   Use 'applyPatch' or 'writeFile' to clean up the original file (e.g., removing extracted scripts/styles and adding <link>/<script type="module"> tags).
     *   Ensure all imports and exports are valid ES6 modules.
 4.  **Finalize:** Mark the task as COMPLETED in the PAD.`,
+            
+            auditor: localStorage.getItem('nexus_prompt_auditor') || `You are the "Nexus Site Auditor & Automated Architect". You operate in a continuous, multi-step agentic loop.
+**YOUR WORKFLOW:**
+1. **Discover:** Take screenshots of the current view using the 'takeScreenshot' tool. Read the main page DOM using 'getPreviewDOM'. Use 'navigatePreview' to visit linked internal pages and take screenshots of those too.
+2. **Analyze & Suggest:** Compare the visuals and code against modern best practices. Identify layout issues, missing styles, or broken links. Provide revision suggestions to the user or interpret their direct requests.
+3. **Plan:** Present a step-by-step plan.
+4. **Implement:** Use 'writeFile', 'applyPatch' to implement changes.
+5. **Verify:** Use the 'lintFile' tool after modifying any file. If lint errors are found, fix them immediately. Take final screenshots to verify the visual fixes.`,
         };
 
         this.chatHistory = [];
@@ -139,6 +147,7 @@ PROCESS:
         if (prompts.pad) { this.prompts.pad = prompts.pad; localStorage.setItem('nexus_prompt_pad', prompts.pad); }
         if (prompts.ui) { this.prompts.ui = prompts.ui; localStorage.setItem('nexus_prompt_ui', prompts.ui); }
         if (prompts.deconstruct) { this.prompts.deconstruct = prompts.deconstruct; localStorage.setItem('nexus_prompt_deconstruct', prompts.deconstruct); }
+        if (prompts.auditor) { this.prompts.auditor = prompts.auditor; localStorage.setItem('nexus_prompt_auditor', prompts.auditor); }
     }
 
     /**
@@ -256,11 +265,15 @@ PROCESS:
         const tools = [{
             functionDeclarations: [
                 { name: 'readFile', description: 'Reads the entire content of a file.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' } }, required: ['path'] } },
-                { name: 'writeFile', description: 'Creates a new file or overwrites an existing one.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' }, content: { type: 'STRING' } }, required: ['path', 'content'] } },
-                { name: 'applyPatch', description: 'Applies a targeted change to a file.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' }, explanation: { type: 'STRING' }, originalContent: { type: 'STRING' }, newContent: { type: 'STRING' } }, required: ['path', 'explanation', 'originalContent', 'newContent'] } },
+                { name: 'writeFile', description: 'Creates a new file or overwrites an existing one. Automatically runs linter and returns errors if any.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' }, content: { type: 'STRING' } }, required: ['path', 'content'] } },
+                { name: 'applyPatch', description: 'Applies a targeted change to a file. Automatically runs linter and returns errors if any.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' }, explanation: { type: 'STRING' }, originalContent: { type: 'STRING' }, newContent: { type: 'STRING' } }, required: ['path', 'explanation', 'originalContent', 'newContent'] } },
                 { name: 'listFiles', description: 'Lists all files in the project.', parameters: { type: 'OBJECT', properties: {} } },
                 { name: 'getSymbols', description: 'Gets functions/classes outline of a file.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' } }, required: ['path'] } },
-                { name: 'grepFiles', description: 'Searches for a text pattern or regex in all project files.', parameters: { type: 'OBJECT', properties: { pattern: { type: 'STRING' }, isRegex: { type: 'BOOLEAN' } }, required: ['pattern'] } }
+                { name: 'grepFiles', description: 'Searches for a text pattern or regex in all project files.', parameters: { type: 'OBJECT', properties: { pattern: { type: 'STRING' }, isRegex: { type: 'BOOLEAN' } }, required: ['pattern'] } },
+                { name: 'lintFile', description: 'Runs the linter on a specific file and returns the issues.', parameters: { type: 'OBJECT', properties: { path: { type: 'STRING' } }, required: ['path'] } },
+                { name: 'takeScreenshot', description: 'Takes a screenshot of the current project preview and returns a base64 image URL.', parameters: { type: 'OBJECT', properties: {} } },
+                { name: 'navigatePreview', description: 'Navigates the preview iframe to a specific path or URL.', parameters: { type: 'OBJECT', properties: { url: { type: 'STRING' } }, required: ['url'] } },
+                { name: 'getPreviewDOM', description: 'Gets the current HTML DOM of the preview iframe for analysis.', parameters: { type: 'OBJECT', properties: {} } }
             ]
         }];
 
@@ -299,8 +312,21 @@ PROCESS:
                 }
 
                 const functionResponses = [];
+                const additionalParts = [];
+
                 for (const call of functionCalls) {
                     const res = await this.handleFunctionCall(call, isAutoMode);
+                    
+                    if (res.data && res.data.startsWith('data:image')) {
+                        additionalParts.push({
+                            inlineData: {
+                                mimeType: "image/png",
+                                data: res.data.split(',')[1]
+                            }
+                        });
+                        delete res.data; // Remove raw data from JSON to save tokens
+                    }
+
                     functionResponses.push({
                         functionResponse: {
                             name: call.name,
@@ -309,7 +335,7 @@ PROCESS:
                     });
                 }
 
-                this.chatHistory.push({ role: 'user', parts: functionResponses });
+                this.chatHistory.push({ role: 'user', parts: [...functionResponses, ...additionalParts] });
 
             } catch (error) {
                 console.error('AI Error:', error);
@@ -343,9 +369,9 @@ PROCESS:
             case 'writeFile':
                 try {
                     await this.fs.writeFile(args.path, args.content);
+                    let lintResult = "";
                     if (window.Nexus) {
                         window.Nexus.refreshFileExplorer();
-                        // Sync editor if file is open
                         if (window.Nexus.state.currentFile === args.path) {
                             await window.Nexus.editor.openFile(args.path, true);
                         }
@@ -353,8 +379,12 @@ PROCESS:
                             await window.Nexus.pad.init();
                             if (window.Nexus.state.view === 'pad') window.Nexus.refreshPADUI();
                         }
+                        const errors = window.Nexus.lint.lintCode(args.content, args.path);
+                        if (errors.length > 0) {
+                            lintResult = ` File written, but has linting errors: ${JSON.stringify(errors)}`;
+                        }
                     }
-                    return { success: true, message: `File ${args.path} written successfully.` };
+                    return { success: true, message: `File ${args.path} written successfully.${lintResult}` };
                 } catch (e) { return { success: false, error: e.message }; }
 
             case 'applyPatch':
@@ -370,10 +400,10 @@ PROCESS:
                             const updated = currentContent.replace(args.originalContent, args.newContent);
                             if (updated !== currentContent) {
                                 await this.fs.writeFile(args.path, updated);
+                                let lintResult = "";
                                 if (window.Nexus) {
                                     window.Nexus.updatePreview();
                                     window.Nexus.refreshFileExplorer();
-                                    // Sync editor if file is open
                                     if (window.Nexus.state.currentFile === args.path) {
                                         await window.Nexus.editor.openFile(args.path, true);
                                     }
@@ -381,8 +411,12 @@ PROCESS:
                                         await window.Nexus.pad.init();
                                         window.Nexus.refreshPADUI();
                                     }
+                                    const errors = window.Nexus.lint.lintCode(updated, args.path);
+                                    if (errors.length > 0) {
+                                        lintResult = ` Patch applied, but has linting errors: ${JSON.stringify(errors)}`;
+                                    }
                                 }
-                                resolve({ success: true, message: "Patch applied automatically in Auto Mode." });
+                                resolve({ success: true, message: `Patch applied automatically in Auto Mode.${lintResult}` });
                                 return;
                             }
                         }
@@ -430,6 +464,46 @@ PROCESS:
                     }
                 }
                 return { success: true, results: results.slice(0, 50), count: results.length };
+            }
+
+            case 'lintFile': {
+                try {
+                    const content = await this.fs.readFile(args.path);
+                    if (!content) return { success: false, error: "File not found or empty." };
+                    const errors = window.Nexus ? window.Nexus.lint.lintCode(content, args.path) : [];
+                    return { success: true, errors };
+                } catch (e) { return { success: false, error: e.message }; }
+            }
+
+            case 'takeScreenshot': {
+                try {
+                    if (!window.Nexus) return { success: false, error: "Nexus not available." };
+                    const frame = document.getElementById('preview-frame');
+                    if (!frame) return { success: false, error: "Preview frame not found." };
+                    // Temporarily remove hidden to capture if it's hidden
+                    const isHidden = frame.classList.contains('hidden');
+                    if (isHidden) frame.classList.remove('hidden');
+                    const imgData = await window.Nexus.capture.visual.constructor.renderElement(frame);
+                    if (isHidden) frame.classList.add('hidden');
+                    return { success: true, image: imgData ? "Image Captured Successfully" : "Failed to capture image", data: imgData };
+                } catch (e) { return { success: false, error: e.message }; }
+            }
+
+            case 'navigatePreview': {
+                try {
+                    const frame = document.getElementById('preview-frame');
+                    if (!frame) return { success: false, error: "Preview frame not found." };
+                    frame.src = args.url;
+                    return { success: true, message: `Navigated to ${args.url}. Please wait for it to load before capturing.` };
+                } catch (e) { return { success: false, error: e.message }; }
+            }
+
+            case 'getPreviewDOM': {
+                try {
+                    const frame = document.getElementById('preview-frame');
+                    if (!frame || !frame.contentDocument) return { success: false, error: "Preview DOM not accessible." };
+                    return { success: true, dom: frame.contentDocument.body.innerHTML.substring(0, 50000) }; // Truncate to prevent token limit issues
+                } catch (e) { return { success: false, error: e.message }; }
             }
 
             default:
