@@ -22,6 +22,7 @@ export const App = {
     currentIconSet: 'mdi',
     availableIconSets: [],
     selectedIconCollections: [],
+    simulations: [], // Global library of simulations from Concord, PhET, etc.
     viewingStudentId: null,
     isExemplarMode: false,
     isViewingExemplar: false,

@@ -6,6 +6,7 @@
 import { App } from './core/state.js';
 import { initDB } from './core/storage.js';
 import { loadNGSSData } from './core/ngss.js';
+import { loadSimulationsData, searchSimulations } from './core/sims.js';
 import * as renderer from './ui/renderer.js';
 import * as sync from './core/sync.js';
 import * as utils from './ui/utils.js';
@@ -50,6 +51,7 @@ window.exportSession = exportSession;
 window.importSession = importSession;
 window.handleImportFile = handleImportFile;
 window.saveCurrentSession = saveCurrentSession;
+window.searchSimulations = searchSimulations;
 
 import { openGenericInput, closeGenericInput, submitGenericInput } from './ui/utils.js';
 window.openGenericInput = openGenericInput;
@@ -142,6 +144,7 @@ async function init() {
         // BACKGROUND: Storage and data
         await initDB();
         await loadNGSSData();
+        await loadSimulationsData();
         
         // Routing logic for Class Code from URL
         const urlParams = new URLSearchParams(window.location.search);

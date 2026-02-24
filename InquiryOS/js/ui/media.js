@@ -9,6 +9,7 @@ import { renderTeacherContent } from '../ui/renderer.js';
 import { toast } from './utils.js';
 
 let currentMediaType = 'image';
+let searchDebounceTimer = null;
 
 export function openMediaPicker() {
     const modal = document.getElementById('mediaPickerModal');
@@ -17,15 +18,6 @@ export function openMediaPicker() {
         modal.classList.add('flex');
         window.setMediaType('sim');
         window.searchMedia();
-        
-        // Add enter key listener to search input
-        const searchInput = document.getElementById('mediaSearchInput');
-        if (searchInput && !searchInput.dataset.listenerAdded) {
-            searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') window.searchMedia();
-            });
-            searchInput.dataset.listenerAdded = 'true';
-        }
     }
 }
 
@@ -49,16 +41,24 @@ export function setMediaType(type) {
     const simPanel = document.getElementById('simInputPanel');
     if (simPanel) simPanel.classList.toggle('hidden', type !== 'sim');
     
-    // Auto-search when switching tabs
     window.searchMedia();
 }
 
 export async function searchMedia() {
-    let query = document.getElementById('mediaSearchInput')?.value.trim();
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(async () => {
+        await executeSearch();
+    }, 300);
+}
+
+async function executeSearch() {
+    const query = document.getElementById('mediaSearchInput')?.value.trim();
+    const category = document.getElementById('mediaCategorySelect')?.value || '';
     
     // Default to 'science' if query is empty for images/videos
-    if (!query && currentMediaType !== 'sim') {
-        query = 'science';
+    if (!query && !category && currentMediaType !== 'sim') {
+        await searchUnsplash('science');
+        return;
     }
 
     const resultsContainer = document.getElementById('mediaResults');
@@ -68,11 +68,11 @@ export async function searchMedia() {
 
     try {
         if (currentMediaType === 'image') {
-            await searchUnsplash(query);
+            await searchUnsplash(query || category || 'science');
         } else if (currentMediaType === 'video') {
-            await searchPexels(query);
+            await searchPexels(query || category || 'science');
         } else if (currentMediaType === 'sim') {
-            await searchSims(query);
+            await searchSimsLocal(query, category);
         }
     } catch (e) {
         console.error(e);
@@ -80,37 +80,25 @@ export async function searchMedia() {
     }
 }
 
-async function searchSims(query) {
-    // PhET doesn't have a CORS-friendly search API, so we use a curated list of popular sims
-    const phetSims = [
-        { id: 'phet_energy', title: 'Energy Skate Park', url: 'https://phet.colorado.edu/sims/html/energy-skate-park/latest/energy-skate-park_all.html', thumb: 'https://phet.colorado.edu/sims/html/energy-skate-park/latest/energy-skate-park-600.png' },
-        { id: 'phet_natural_sel', title: 'Natural Selection', url: 'https://phet.colorado.edu/sims/html/natural-selection/latest/natural-selection_all.html', thumb: 'https://phet.colorado.edu/sims/html/natural-selection/latest/natural-selection-600.png' },
-        { id: 'phet_forces', title: 'Forces and Motion', url: 'https://phet.colorado.edu/sims/html/forces-and-motion-basics/latest/forces-and-motion-basics_all.html', thumb: 'https://phet.colorado.edu/sims/html/forces-and-motion-basics/latest/forces-and-motion-basics-600.png' },
-        { id: 'phet_ph', title: 'pH Scale', url: 'https://phet.colorado.edu/sims/html/ph-scale/latest/ph-scale_all.html', thumb: 'https://phet.colorado.edu/sims/html/ph-scale/latest/ph-scale-600.png' },
-        { id: 'phet_circuit', title: 'Circuit Construction', url: 'https://phet.colorado.edu/sims/html/circuit-construction-kit-dc/latest/circuit-construction-kit-dc_all.html', thumb: 'https://phet.colorado.edu/sims/html/circuit-construction-kit-dc/latest/circuit-construction-kit-dc-600.png' },
-        { id: 'phet_states', title: 'States of Matter', url: 'https://phet.colorado.edu/sims/html/states-of-matter/latest/states-of-matter_all.html', thumb: 'https://phet.colorado.edu/sims/html/states-of-matter/latest/states-of-matter-600.png' },
-        { id: 'phet_gene', title: 'Gene Expression', url: 'https://phet.colorado.edu/sims/html/gene-expression-essentials/latest/gene-expression-essentials_all.html', thumb: 'https://phet.colorado.edu/sims/html/gene-expression-essentials/latest/gene-expression-essentials-600.png' },
-        { id: 'phet_gravity', title: 'Gravity and Orbits', url: 'https://phet.colorado.edu/sims/html/gravity-and-orbits/latest/gravity-and-orbits_all.html', thumb: 'https://phet.colorado.edu/sims/html/gravity-and-orbits/latest/gravity-and-orbits-600.png' }
-    ];
-
-    const results = phetSims.filter(s => !query || s.title.toLowerCase().includes(query.toLowerCase())).map(s => ({
-        id: s.id,
-        type: 'sim',
-        thumb: s.thumb,
-        url: s.url,
-        provider: 'PhET Interactive Simulations',
-        author: 'University of Colorado Boulder',
-        title: s.title
-    }));
-
+async function searchSimsLocal(query, category) {
+    if (typeof window.searchSimulations !== 'function') {
+        throw new Error('Simulation library not loaded');
+    }
+    
+    const results = window.searchSimulations(query, category);
     renderMediaResults(results);
 }
 
 async function searchUnsplash(query) {
     const key = App.teacherSettings.keys?.unsplash;
-    if (!key) throw new Error('No Unsplash Key');
+    if (!key) {
+        renderMediaResults([]);
+        toast('Please add an Unsplash API Key in Settings', 'warning');
+        return;
+    }
 
-    const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=20&client_id=${key}`);
+    const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=30&client_id=${key}`);
+    if (!res.ok) throw new Error('Unsplash API error');
     const data = await res.json();
     renderMediaResults(data.results.map(img => ({
         id: img.id,
@@ -118,25 +106,34 @@ async function searchUnsplash(query) {
         thumb: img.urls.small,
         url: img.urls.regular,
         provider: 'Unsplash',
-        author: img.user.name
+        author: img.user.name,
+        title: img.alt_description || img.description || 'Scientific Image'
     })));
 }
 
 async function searchPexels(query) {
     const key = App.teacherSettings.keys?.pexels;
-    if (!key) throw new Error('No Pexels Key');
+    if (!key) {
+        renderMediaResults([]);
+        toast('Please add a Pexels API Key in Settings', 'warning');
+        return;
+    }
 
-    const res = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=20`, {
+    // Pexels v1 search returns photos by default, for videos use /videos/search
+    const videoRes = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=30`, {
         headers: { Authorization: key }
     });
-    const data = await res.json();
-    renderMediaResults(data.videos.map(vid => ({
+    if (!videoRes.ok) throw new Error('Pexels API error');
+    const videoData = await videoRes.json();
+
+    renderMediaResults(videoData.videos.map(vid => ({
         id: vid.id,
         type: 'video',
         thumb: vid.image,
-        url: vid.video_files[0].link,
+        url: vid.video_files.find(f => f.quality === 'hd')?.link || vid.video_files[0].link,
         provider: 'Pexels',
-        author: vid.user.name
+        author: vid.user.name,
+        title: 'Scientific Video'
     })));
 }
 
@@ -145,23 +142,50 @@ function renderMediaResults(items) {
     if (!container) return;
 
     if (items.length === 0) {
-        container.innerHTML = '<div class="col-span-full py-20 text-center opacity-30"><p class="font-black uppercase tracking-widest">No results found</p></div>';
+        container.innerHTML = `
+            <div class="col-span-full py-20 text-center opacity-30">
+                <span class="iconify text-6xl mx-auto mb-4" data-icon="mdi:image-off-outline"></span>
+                <p class="font-black uppercase tracking-widest">No results found</p>
+                <p class="text-xs mt-2">Try a different keyword or category</p>
+            </div>
+        `;
         return;
     }
 
-    container.innerHTML = items.map(item => `
-        <div onclick="window.addMediaToPhenomenon(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
-            class="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden cursor-pointer hover:ring-4 hover:ring-primary transition-all shadow-sm">
-            <img src="${item.thumb}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
-                <p class="text-[10px] font-bold text-white uppercase tracking-widest">${item.provider}</p>
-                ${item.title ? `<p class="text-xs font-black text-white mt-1 line-clamp-1">${item.title}</p>` : ''}
+    container.innerHTML = items.map(item => {
+        const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+        return `
+            <div onclick="window.addMediaToPhenomenon(${itemJson})" 
+                class="media-card group cursor-pointer relative">
+                <div class="w-full overflow-hidden bg-gray-100">
+                    <img src="${item.thumb}" class="transition-transform duration-500 group-hover:scale-110" loading="lazy">
+                </div>
+                <div class="p-3 flex-1 flex flex-col">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[8px] font-black text-primary uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded">${item.provider}</span>
+                        <span class="iconify text-gray-300" data-icon="${item.type === 'video' ? 'mdi:play-circle' : (item.type === 'sim' ? 'mdi:application-brackets' : 'mdi:image')}"></span>
+                    </div>
+                    <p class="text-[10px] font-bold text-gray-800 line-clamp-2 leading-snug mb-1">${item.title || 'Untitled'}</p>
+                    <p class="text-[8px] text-gray-400 mt-auto truncate">By ${item.author || item.provider}</p>
+                </div>
+                <div class="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                    <div class="bg-white text-primary p-2 rounded-full shadow-lg scale-75 group-hover:scale-100 transition-transform">
+                        <span class="iconify text-xl" data-icon="mdi:plus"></span>
+                    </div>
+                </div>
             </div>
-            ${item.type === 'video' ? '<div class="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-lg"><span class="iconify" data-icon="mdi:play-circle"></span></div>' : ''}
-            ${item.type === 'sim' ? '<div class="absolute top-2 right-2 bg-primary text-white p-1 rounded-lg shadow-lg"><span class="iconify" data-icon="mdi:application-brackets"></span></div>' : ''}
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
+
+export function applyQuickFilter(query) {
+    const input = document.getElementById('mediaSearchInput');
+    if (input) {
+        input.value = query;
+        window.searchMedia();
+    }
+}
+
 
 export async function addMediaToPhenomenon(item) {
     if (!App.teacherSettings.phenomenon.media) App.teacherSettings.phenomenon.media = [];
