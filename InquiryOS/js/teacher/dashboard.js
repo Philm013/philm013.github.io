@@ -6,20 +6,28 @@
 import { App, getInitialWorkState } from '../core/state.js';
 import { dbGetAll, dbPut, dbDelete, dbGet, dbGetByIndex, STORE_LESSONS, STORE_USERS, STORE_SESSIONS } from '../core/storage.js';
 import { saveToStorage, registerUser, loadFromStorage, saveAndBroadcast } from '../core/sync.js';
-import { renderTeacherContent, updateModeUI, renderStudentContent, renderEmptyState, renderModuleHeader, renderSectionHeader } from '../ui/renderer.js';
+import { renderTeacherContent, updateModeUI, renderStudentContent, renderEmptyState } from '../ui/renderer.js';
 import { renderNavigation } from '../ui/navigation.js';
 import { toast, generateCode, calculateStudentProgress } from '../ui/utils.js';
 import { getNGSSTemplates } from '../core/ngss.js';
 
 function renderStatTile(label, count, icon, color) {
+    const colorMap = {
+        blue: 'from-blue-500 to-blue-600 shadow-blue-100',
+        yellow: 'from-amber-400 to-amber-500 shadow-amber-100',
+        green: 'from-emerald-500 to-emerald-600 shadow-emerald-100',
+        purple: 'from-purple-500 to-purple-600 shadow-purple-100'
+    };
+    const gradient = colorMap[color] || 'from-primary to-blue-500 shadow-blue-100';
+
     return `
-        <div class="bg-white rounded-3xl shadow-sm p-6 border border-gray-50 flex items-center gap-4">
-            <div class="w-14 h-14 bg-${color}-50 rounded-2xl flex items-center justify-center text-${color}-600 shadow-sm border border-${color}-100">
+        <div class="bg-white rounded-3xl shadow-sm p-6 border border-gray-50 flex items-center gap-5 transition-all hover:shadow-md hover:-translate-y-0.5">
+            <div class="w-16 h-16 bg-gradient-to-br ${gradient} rounded-2xl flex items-center justify-center text-white shadow-lg">
                 <span class="iconify text-3xl" data-icon="${icon}"></span>
             </div>
             <div>
-                <p class="text-2xl font-black text-gray-900">${count}</p>
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${label}</p>
+                <p class="text-3xl font-black text-gray-900 tracking-tighter">${count}</p>
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">${label}</p>
             </div>
         </div>
     `;
@@ -69,42 +77,72 @@ export async function renderTeacherOverview() {
 
     return `
         <div class="max-w-5xl mx-auto space-y-6">
-            ${renderModuleHeader('Activity Dashboard', 'mdi:view-dashboard', null)}
-
-            <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 md:p-10 relative overflow-hidden group" data-card-title="Phenomenon">
-                <div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-110"></div>
-                
-                ${renderSectionHeader('Scientific Phenomenon', 'mdi:flask-outline', 'primary')}
-
-                <div class="space-y-4 relative" data-card-content>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Investigation Title</label>
-                        <input type="text" id="phenomTitle" value="${phenomenon.title || ''}" onchange="window.updatePhenomenon()"
-                            placeholder="Title..." class="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-lg font-black focus:border-primary focus:bg-white focus:outline-none transition-all shadow-inner">
-                    </div>
-                    
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phenomenon Description</label>
-                        <textarea id="phenomDesc" rows="3" onchange="window.updatePhenomenon()"
-                            placeholder="Description..." class="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-primary focus:bg-white focus:outline-none transition-all resize-none shadow-inner">${phenomenon.description || ''}</textarea>
-                    </div>
-
-                    <div class="space-y-4 pt-6 border-t border-gray-100">
-                        <div class="flex items-center justify-between">
-                            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Media Library</h4>
-                            <button onclick="window.openMediaPicker()" class="px-3 py-1 bg-primary/10 text-primary rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary/20 transition-all">+ Add Media</button>
+            <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col overflow-hidden group" data-card-title="Phenomenon">
+                <div class="p-6 border-b bg-amber-50/50 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-amber-500 text-white rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                            <span class="iconify text-xl" data-icon="mdi:flask-outline"></span>
                         </div>
-                        <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+                        <h3 class="text-sm font-black text-gray-900 uppercase tracking-tight">Lesson Phenomenon</h3>
+                    </div>
+                    <span class="px-3 py-1 bg-white text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-100 shadow-sm">Classroom Focus</span>
+                </div>
+
+                <div class="p-8 space-y-6 bg-white relative">
+                    <div class="space-y-4 relative">
+                        <div>
+                            <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Phenomenon Title</label>
+                            <input type="text" id="phenomTitle" value="${phenomenon.title || ''}" onchange="window.updatePhenomenon()"
+                                placeholder="e.g. Ecosystem Dynamics..." class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xl font-bold focus:border-amber-500 focus:bg-white focus:outline-none transition-all">
+                        </div>
+                        
+                        <div>
+                            <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Essential Description</label>
+                            <textarea id="phenomDesc" rows="3" onchange="window.updatePhenomenon()"
+                                placeholder="What should students observe?..." class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-lg font-medium focus:border-amber-500 focus:bg-white focus:outline-none transition-all resize-none">${phenomenon.description || ''}</textarea>
+                        </div>
+
+                        <div class="space-y-4 pt-4">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Evidence & Media Gallery</h4>
+                                <button onclick="window.openMediaPicker()" class="px-4 py-1.5 bg-amber-50 text-amber-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-all border border-amber-100 shadow-sm">
+                                    + Add Media
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+                                ${(phenomenon.media || []).map(m => `
+                                    <div class="group relative aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                                        <img src="${m.thumb}" class="w-full h-full object-cover">
+                                        <button onclick="window.removeMediaFromPhenomenon('${m.id}')" class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <span class="iconify text-xl" data-icon="mdi:trash-can-outline"></span>
+                                        </button>
+                                    </div>
+                                `).join('')}
+                                ${(phenomenon.media || []).length < 6 ? `
+                                    <div onclick="window.openMediaPicker()" class="aspect-square rounded-xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 hover:text-amber-500 hover:border-amber-200 transition-all cursor-pointer bg-gray-50/50">
+                                        <span class="iconify text-xl" data-icon="mdi:image-plus"></span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Media Gallery</h4>
+                            <button onclick="window.openMediaPicker()" class="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">+ Add</button>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
                             ${(phenomenon.media || []).map(m => `
                                 <div class="group relative aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
                                     <img src="${m.thumb}" class="w-full h-full object-cover">
                                     <button onclick="window.removeMediaFromPhenomenon('${m.id}')" class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <span class="iconify text-sm" data-icon="mdi:trash-can-outline"></span>
+                                        <span class="iconify text-xl" data-icon="mdi:trash-can-outline"></span>
                                     </button>
                                 </div>
                             `).join('')}
                             ${(phenomenon.media || []).length < 6 ? `
-                                <div onclick="window.openMediaPicker()" class="aspect-square rounded-xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 hover:text-primary hover:border-primary transition-all cursor-pointer">
+                                <div onclick="window.openMediaPicker()" class="aspect-square rounded-xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 hover:text-primary transition-all cursor-pointer">
                                     <span class="iconify text-xl" data-icon="mdi:image-plus"></span>
                                 </div>
                             ` : ''}
@@ -113,38 +151,56 @@ export async function renderTeacherOverview() {
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-gray-50 rounded-[2.5rem] p-8 border border-gray-100 flex flex-col" data-card-title="Standards">
-                    <div class="flex items-center justify-between mb-8">
-                        ${renderSectionHeader('NGSS Standards', 'mdi:school', 'blue')}
-                        <span class="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest mb-6">${phenomenon.ngssStandards?.length || 0} PE</span>
+            <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col overflow-hidden" data-card-title="Standards">
+                <div class="p-6 border-b bg-blue-50/50 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-md">
+                            <span class="iconify text-xl" data-icon="mdi:school"></span>
+                        </div>
+                        <h3 class="text-sm font-black text-gray-900 uppercase tracking-tight">Academic Standards</h3>
                     </div>
-                    <div class="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
+                    <span class="px-3 py-1 bg-white text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100 shadow-sm">${phenomenon.ngssStandards?.length || 0} PE</span>
+                </div>
+                <div class="p-6 flex-1 bg-white relative">
+                    <div class="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                         ${phenomenon.ngssStandards?.length > 0 ? phenomenon.ngssStandards.map(peId => `
-                            <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 group/item shadow-sm hover:border-primary transition-all">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group/item hover:border-blue-200 hover:bg-white transition-all shadow-sm">
                                 <span class="text-sm font-black text-gray-700 font-mono tracking-tighter">${peId}</span>
-                                <button onclick="window.removeFromPhenomenon('${peId}')" class="text-gray-300 hover:text-red-500 transition-colors">
-                                    <span class="iconify" data-icon="mdi:close-circle"></span>
+                                <button onclick="window.removeFromPhenomenon('${peId}')" class="text-gray-300 hover:text-red-500 transition-colors p-1">
+                                    <span class="iconify text-xl" data-icon="mdi:close-circle"></span>
                                 </button>
                             </div>
-                        `).join('') : '<div class="py-12 text-center opacity-30 text-xs font-black uppercase tracking-widest">No Standards Linked</div>'}
+                        `).join('') : `
+                            <div class="py-16 text-center opacity-40">
+                                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-gray-200">
+                                    <span class="iconify text-4xl text-gray-300" data-icon="mdi:link-variant-off"></span>
+                                </div>
+                                <p class="text-[10px] font-black uppercase tracking-widest text-gray-400">No Standards Linked Yet</p>
+                            </div>
+                        `}
                     </div>
-                    <button onclick="window.showTeacherModule('ngss')" class="mt-8 w-full py-4 bg-white border-2 border-dashed border-gray-200 rounded-2xl text-[10px] font-black text-gray-400 hover:border-primary hover:text-primary transition-all uppercase tracking-[0.2em] shadow-sm hover:shadow-md">
-                        Browse NGSS Standards
+                    <button onclick="window.showTeacherModule('ngss')" class="mt-6 w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl text-xs font-black shadow-xl shadow-blue-100 hover:opacity-90 hover:-translate-y-0.5 transition-all uppercase tracking-widest flex items-center justify-center gap-3">
+                        <span class="iconify text-xl" data-icon="mdi:plus-circle"></span>
+                        Connect NGSS Standards
                     </button>
                 </div>
-                
-                <div class="flex flex-col gap-3" data-card-title="Class Stats">
-                    ${renderStatTile('Observations', stats.notices, 'mdi:eye', 'blue')}
-                    ${renderStatTile('Questions', stats.wonders, 'mdi:lightbulb', 'yellow')}
-                    ${renderStatTile('Concepts', stats.nodes, 'mdi:cube-outline', 'green')}
-                    ${renderStatTile('Forum Posts', stats.posts, 'mdi:forum', 'purple')}
-                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" data-card-title="Class Stats">
+                ${renderStatTile('Observations', stats.notices, 'mdi:eye', 'blue')}
+                ${renderStatTile('Questions', stats.wonders, 'mdi:lightbulb', 'yellow')}
+                ${renderStatTile('Concepts', stats.nodes, 'mdi:cube-outline', 'green')}
+                ${renderStatTile('Forum Posts', stats.posts, 'mdi:forum', 'purple')}
             </div>
 
-            <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8" data-card-title="Access">
-                <div class="flex items-center justify-between mb-8">
-                    ${renderSectionHeader('Class Entry & Join Code', 'mdi:account-plus', 'secondary')}
+            <div class="bg-white rounded-[2.5rem] shadow-sm border p-8" data-card-title="Access">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 bg-secondary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-purple-100">
+                        <span class="iconify text-2xl" data-icon="mdi:account-plus"></span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-gray-900 uppercase">Entry</h3>
+                    </div>
                 </div>
 
                 <div class="space-y-6">
@@ -261,7 +317,7 @@ export async function renderTeacherSnapshots() {
                 </div>
             </div>
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-4" data-card-title="Student Activity">
-                ${studentData.map(data => {
+                ${studentData.length > 0 ? studentData.map(data => {
                     const w = data.work || {};
                     const progress = calculateStudentProgress(w);
                     return `
@@ -293,7 +349,11 @@ export async function renderTeacherSnapshots() {
                             </button>
                         </div>
                     `;
-                }).join('')}
+                }).join('') : `
+                    <div class="col-span-full py-12">
+                        ${renderEmptyState('No Active Students', 'Waiting for students to join the class...', 'mdi:account-group-outline', true)}
+                    </div>
+                `}
             </div>
         </div>
     `;
@@ -306,19 +366,26 @@ export async function renderTeacherLessons() {
     const lessons = await dbGetAll(STORE_LESSONS);
     const templates = getNGSSTemplates();
     
-    const saveBtn = `
-        <button onclick="window.saveCurrentAsLesson()" class="px-6 py-2.5 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:opacity-90 transition-all flex items-center gap-2">
-            <span class="iconify text-lg" data-icon="mdi:plus-circle"></span>
-            <span class="hidden sm:inline">Save Current as Preset</span>
-        </button>
-    `;
-
     return `
         <div class="max-w-6xl mx-auto space-y-12">
-            ${renderModuleHeader('Lesson Designer', 'mdi:pencil-ruler', null, saveBtn)}
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tighter">Lesson Designer</h2>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Activity Presets & NGSS Blueprints</p>
+                </div>
+                <button onclick="window.saveCurrentAsLesson()" class="px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-blue-100 hover:opacity-90 hover:-translate-y-0.5 transition-all flex items-center gap-3">
+                    <span class="iconify text-xl" data-icon="mdi:plus-circle"></span>
+                    Save Current Class as Preset
+                </button>
+            </div>
 
             <section data-card-title="NGSS Blueprints">
-                ${renderSectionHeader('NGSS Domain Blueprints', 'mdi:school', 'amber')}
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="w-8 h-8 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center">
+                        <span class="iconify" data-icon="mdi:school"></span>
+                    </span>
+                    <h3 class="text-lg font-black text-gray-900 uppercase tracking-tight">NGSS Domain Blueprints</h3>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     ${templates.map(t => `
                         <div class="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col hover:shadow-xl transition-all group relative overflow-hidden">
@@ -349,37 +416,42 @@ export async function renderTeacherLessons() {
                 </div>
             </section>
 
-            <section data-card-title="My Presets">
-                ${renderSectionHeader('My Saved Presets', 'mdi:folder-heart', 'blue')}
-                <div class="mobile-h-scroll flex flex-nowrap md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    ${lessons.map(l => `
-                        <div class="w-72 shrink-0 md:w-auto bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col hover:shadow-xl transition-all group">
-                            <div class="flex justify-between items-start mb-6">
-                                <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-primary shadow-inner">
-                                    <span class="iconify text-2xl" data-icon="mdi:lightbulb-variant"></span>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button onclick="window.previewPreset('${l.id}')" class="text-gray-400 hover:text-primary p-2 transition-colors">
-                                        <span class="iconify text-xl" data-icon="mdi:eye-outline"></span>
-                                    </button>
-                                    <button onclick="window.deleteLesson('${l.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors">
-                                        <span class="iconify text-xl" data-icon="mdi:delete-outline"></span>
-                                    </button>
-                                </div>
+                        <section data-card-title="My Presets">
+                            <div class="flex items-center gap-3 mb-6 shrink-0">
+                                <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                                    <span class="iconify" data-icon="mdi:folder-heart"></span>
+                                </span>
+                                <h3 class="text-lg font-black text-gray-900 uppercase tracking-tight">My Saved Presets</h3>
                             </div>
-                            <h3 class="text-xl font-black text-gray-900 mb-2">${l.name}</h3>
-                            <p class="text-[11px] text-gray-500 mb-8 line-clamp-3 leading-relaxed flex-1 italic">"${l.settings.phenomenon.description}"</p>
-                            <div class="space-y-3">
-                                <button onclick="window.launchLesson('${l.id}')" class="w-full py-4 bg-gradient-to-r from-teacher to-orange-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-100 flex items-center justify-center gap-2 hover:opacity-95">
-                                    <span class="iconify text-lg" data-icon="mdi:rocket-launch"></span>
-                                    Launch Session
-                                </button>
-                                <button onclick="window.applyLessonToCurrent('${l.id}')" class="w-full py-3 bg-gray-50 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100">
-                                    Apply Settings
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
+                            <div class="mobile-h-scroll flex flex-nowrap md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                ${lessons.map(l => `
+                                    <div class="w-72 shrink-0 md:w-auto bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col hover:shadow-xl transition-all group">
+                                        <div class="flex justify-between items-start mb-6">
+                                            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-primary shadow-inner">
+                                                <span class="iconify text-2xl" data-icon="mdi:lightbulb-variant"></span>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button onclick="window.previewPreset('${l.id}')" class="text-gray-400 hover:text-primary p-2 transition-colors">
+                                                    <span class="iconify text-xl" data-icon="mdi:eye-outline"></span>
+                                                </button>
+                                                <button onclick="window.deleteLesson('${l.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors">
+                                                    <span class="iconify text-xl" data-icon="mdi:delete-outline"></span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <h3 class="text-xl font-black text-gray-900 mb-2">${l.name}</h3>
+                                        <p class="text-[11px] text-gray-500 mb-8 line-clamp-3 leading-relaxed flex-1 italic">"${l.settings.phenomenon.description}"</p>
+                                        <div class="space-y-3">
+                                            <button onclick="window.launchLesson('${l.id}')" class="w-full py-4 bg-gradient-to-r from-teacher to-orange-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-100 flex items-center justify-center gap-2 hover:opacity-95">
+                                                <span class="iconify text-lg" data-icon="mdi:rocket-launch"></span>
+                                                Launch Session
+                                            </button>
+                                            <button onclick="window.applyLessonToCurrent('${l.id}')" class="w-full py-3 bg-gray-50 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100">
+                                                Apply Settings
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
                                 ${lessons.length === 0 ? `
                                     <div class="w-full py-20 text-center bg-gray-50/50 rounded-[3rem] border-2 border-dashed border-gray-100 flex flex-col items-center">
                                         <span class="iconify text-5xl text-gray-200 mb-4" data-icon="mdi:book-open-variant"></span>
@@ -584,16 +656,18 @@ export async function renderTeacherAccess() {
     }
 
     return `
-        <div class="max-w-5xl mx-auto px-2 md:px-0">
-            <div class="mb-4">
-                <h2 class="text-xl font-black text-gray-900 uppercase tracking-tighter">Access Control</h2>
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Classroom Governance</p>
+        <div class="max-w-5xl mx-auto space-y-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-3xl font-black text-gray-900 uppercase tracking-tighter">Access Control</h2>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Classroom Focus & Governance</p>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" data-card-content>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Guided Mode and Feedback -->
-                <div class="space-y-4">
-                    <div class="bg-white rounded-xl shadow-sm border p-4" data-card-title="Guided Mode">
+                <div class="space-y-6" data-card-title="Guided Mode">
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border p-8">
                         <h3 class="font-black text-gray-900 mb-6 flex items-center gap-3 uppercase tracking-tight">
                             <span class="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
                                 <span class="iconify" data-icon="mdi:map-marker-path"></span>
@@ -638,7 +712,7 @@ export async function renderTeacherAccess() {
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-[2.5rem] shadow-sm border p-8">
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border p-8" data-card-title="Feedback">
                         <h3 class="font-black text-gray-900 mb-6 flex items-center gap-3 uppercase tracking-tight">
                             <span class="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
                                 <span class="iconify text-xl" data-icon="mdi:comment-check"></span>
@@ -660,7 +734,7 @@ export async function renderTeacherAccess() {
                 </div>
 
                 <!-- Module Access Control -->
-                <div class="bg-white rounded-[2.5rem] shadow-sm border p-8">
+                <div class="bg-white rounded-[2.5rem] shadow-sm border p-8" data-card-title="Permissions">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="font-black text-gray-900 flex items-center gap-3 uppercase tracking-tight">
                             <span class="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center">
@@ -778,7 +852,7 @@ export async function renderActivityDashboard() {
                                     Live to Class
                                 </div>
                             </div>
-                            <div class="flex-1 p-8" data-card-content>
+                            <div class="flex-1 p-8">
                                 ${window.renderStudentContentHtml()}
                             </div>
                         </div>
@@ -1030,6 +1104,19 @@ export async function renderSessionSettings() {
                             </div>
                         </div>
                     `).join('')}
+                    
+                    <div class="flex items-center justify-between p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                        <div>
+                            <p class="text-sm font-black text-gray-800">Global Icon Theme</p>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Visual style for library search</p>
+                        </div>
+                        <select onchange="window.updateTeacherSetting('iconTheme', this.value)" 
+                            class="bg-white border-2 border-gray-100 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest focus:border-primary focus:outline-none">
+                            <option value="solid" ${App.teacherSettings.iconTheme === 'solid' ? 'selected' : ''}>Solid / Bold</option>
+                            <option value="outline" ${App.teacherSettings.iconTheme === 'outline' ? 'selected' : ''}>Minimal Outline</option>
+                            <option value="colorful" ${App.teacherSettings.iconTheme === 'colorful' ? 'selected' : ''}>Vibrant / Dual</option>
+                        </select>
+                    </div>
                 </div>
             </section>
         </div>
@@ -1050,6 +1137,12 @@ export const toggleTeacherSetting = async (k) => {
     App.teacherSettings[k] = !App.teacherSettings[k]; 
     await saveToStorage(); 
     renderTeacherContent(); 
+};
+
+export const updateTeacherSetting = async (k, v) => {
+    App.teacherSettings[k] = v;
+    await saveToStorage();
+    renderTeacherContent();
 };
 
 

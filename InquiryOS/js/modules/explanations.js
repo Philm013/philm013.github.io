@@ -6,7 +6,7 @@
 
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
-import { renderStudentContent, renderModuleHeader, renderEmptyState, renderSectionHeader } from '../ui/renderer.js';
+import { renderStudentContent, renderModuleHeader, renderEmptyState } from '../ui/renderer.js';
 
 /**
  * Renders the Explanations Practice module (CER workspace).
@@ -18,10 +18,10 @@ export function renderExplanationsModule() {
             ${renderModuleHeader('Constructing Explanations', 'mdi:lightbulb-on', 'SEP6')}
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 flex flex-col overflow-hidden h-full lg:sticky lg:top-4" data-card-title="Evidence Bank">
-                    <div class="flex items-center justify-between mb-8">
-                        ${renderSectionHeader('Evidence Bank', 'mdi:folder-star', 'purple')}
-                        <span class="px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-[10px] font-black uppercase tracking-widest mb-6">${(App.work.evidence || []).length + (App.work.modelExplanations || []).length + (App.work.modelGeneralExplanation ? 1 : 0)} Items</span>
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col overflow-hidden h-full lg:sticky lg:top-4" data-card-title="Evidence Bank">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xs font-black text-gray-900 uppercase tracking-widest">Evidence Bank</h3>
+                        <span class="px-2 py-0.5 bg-purple-100 text-purple-600 rounded text-[9px] font-black uppercase tracking-widest">${(App.work.evidence || []).length + (App.work.modelExplanations || []).length + (App.work.modelGeneralExplanation ? 1 : 0)} Items</span>
                     </div>
                     <div class="space-y-3 flex-1 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar" id="evidenceSelectionBank">
                         ${renderEvidenceSelectionBank()}

@@ -6,7 +6,7 @@
 
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
-import { renderModuleHeader, renderSectionHeader } from '../ui/renderer.js';
+import { renderModuleHeader } from '../ui/renderer.js';
 import { toast } from '../ui/utils.js';
 
 /**
@@ -18,14 +18,14 @@ export function renderCommunicationModule() {
         <div class="max-w-6xl mx-auto">
             ${renderModuleHeader('Communicating Information', 'mdi:share-variant', 'SEP8')}
             
-            <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 flex flex-col overflow-hidden">
-                <div class="p-8 md:p-10 border-b border-gray-50 bg-gray-50/30">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
+                <div class="p-6 md:p-8 border-b border-gray-50 bg-gray-50/30">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            ${renderSectionHeader('Scientific Research Poster', 'mdi:share-variant', 'blue')}
-                            <p class="text-sm text-gray-500 -mt-4 ml-14">Summarize your investigation and findings for the community.</p>
+                            <h3 class="text-xl font-black text-gray-900">Scientific Research Poster</h3>
+                            <p class="text-sm text-gray-500 mt-1">Summarize your investigation and findings for the community.</p>
                         </div>
-                        <button onclick="window.autoFillPoster()" class="px-6 py-4 bg-amber-50 text-amber-600 rounded-2xl font-black hover:bg-amber-100 transition-all flex items-center justify-center gap-2 border border-amber-100 shadow-sm text-xs uppercase tracking-widest mb-6">
+                        <button onclick="window.autoFillPoster()" class="px-6 py-3 bg-amber-50 text-amber-600 rounded-2xl font-bold hover:bg-amber-100 transition-all flex items-center justify-center gap-2 border border-amber-100 shadow-sm">
                             <span class="iconify text-xl" data-icon="mdi:auto-fix"></span>
                             Auto-fill My Work
                         </button>

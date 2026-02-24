@@ -5,7 +5,7 @@
 
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
-import { renderStudentContent, renderModuleHeader, renderSectionHeader } from '../ui/renderer.js';
+import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
 import { renderNavigation } from '../ui/navigation.js';
 import { toast } from '../ui/utils.js';
 
@@ -42,26 +42,23 @@ export function renderQuestionsModule() {
                 ${renderModuleHeader('Asking Questions', 'mdi:help-circle', 'SEP1')}
             </div>
             
-            <div onclick="if(window.innerWidth <= 768) window.viewPhenomenonDetail()" class="shrink-0 bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-100 rounded-3xl p-6 shadow-sm relative overflow-hidden mx-2 cursor-pointer group/phenom" data-card-title="Phenomenon">
-                <div class="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16 transition-transform group-hover/phenom:scale-110"></div>
+            <div class="shrink-0 bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-100 rounded-3xl p-6 shadow-sm relative overflow-hidden mx-2" data-card-title="Phenomenon">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-amber-200/20 rounded-full -mr-16 -mt-16"></div>
                 <div class="flex flex-col md:flex-row gap-5 relative">
-                    <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-amber-100 text-amber-50 group-hover/phenom:border-amber-300 transition-colors">
+                    <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-amber-100 text-amber-50">
                         <span class="iconify text-2xl text-amber-500" data-icon="mdi:eye"></span>
                     </div>
                     <div class="flex-1">
-                        <div class="flex items-center justify-between mb-1">
-                            <div class="flex items-center gap-2">
-                                <h3 class="text-lg font-black text-gray-900">${p.title || 'Scientific Phenomenon'}</h3>
-                                <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest">Focus</span>
-                            </div>
-                            <span class="md:hidden iconify text-amber-400 animate-bounce" data-icon="mdi:arrow-expand"></span>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-lg font-black text-gray-900">${p.title || 'Scientific Phenomenon'}</h3>
+                            <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest">Focus</span>
                         </div>
                         <p class="text-sm text-gray-600 leading-relaxed max-w-4xl line-clamp-2 md:line-clamp-none">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts below.'}</p>
                         
                         ${p.media?.length > 0 ? `
                             <div class="mt-6 flex flex-wrap gap-3">
                                 ${p.media.map(m => `
-                                    <button onclick="event.stopPropagation(); window.viewMediaDetail('${m.id}')" 
+                                    <button onclick="window.viewMediaDetail('${m.id}')" 
                                         class="group relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-white shadow-md hover:ring-4 hover:ring-amber-400 transition-all flex-shrink-0">
                                         <img src="${m.thumb}" class="w-full h-full object-cover">
                                         <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
@@ -87,7 +84,14 @@ export function renderQuestionsModule() {
             </div>
             
             <div class="shrink-0 bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mx-2 mb-2" data-card-title="Investigation Focus">
-                ${renderSectionHeader('Driving Questions', 'mdi:compass', 'purple')}
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-black text-gray-900 flex items-center gap-3">
+                        <span class="w-8 h-8 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center">
+                            <span class="iconify text-lg" data-icon="mdi:compass"></span>
+                        </span>
+                        Driving Questions
+                    </h3>
+                </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="md:col-span-1 space-y-2">
@@ -128,29 +132,31 @@ export function renderQuestionsModule() {
 }
 
 function renderInputCard(title, icon, color, inputId, onAction, content, subtitle = '', hex = '') {
-    const accentColor = hex || (color === 'blue' ? '#2563eb' : (color === 'yellow' ? '#f59e0b' : (color === 'purple' ? '#7c3aed' : (color === 'green' ? '#10b981' : '#2563eb'))));
+    const borderStyle = hex ? `border-top: 4px solid ${hex};` : '';
+    const iconStyle = hex ? `background: ${hex}10; color: ${hex};` : '';
+    const btnStyle = hex ? `background: ${hex};` : '';
 
     return `
-        <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 flex flex-col overflow-hidden h-full practice-card transition-all hover:shadow-xl hover:shadow-gray-200/50">
-            <div class="p-5 border-b border-gray-50 flex items-center gap-4 shrink-0 bg-gradient-to-b from-white to-gray-50/30">
-                <div class="w-11 h-11 rounded-2xl flex items-center justify-center shadow-inner" style="background: ${accentColor}15; color: ${accentColor};">
-                    <span class="iconify text-2xl" data-icon="${icon}"></span>
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col overflow-hidden h-full practice-card" style="${borderStyle}">
+            <div class="p-4 border-b border-gray-50 flex items-center gap-3 shrink-0">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center ${hex ? '' : `bg-${color}-50 text-${color}-500`}" style="${iconStyle}">
+                    <span class="iconify text-xl" data-icon="${icon}"></span>
                 </div>
                 <div>
-                    <h3 class="font-black text-gray-900 text-sm tracking-tight uppercase">${title}</h3>
-                    <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.1em] mt-0.5">${subtitle}</p>
+                    <h3 class="font-bold text-gray-900 text-sm">${title}</h3>
+                    <p class="text-[9px] text-gray-400 font-black uppercase tracking-widest">${subtitle}</p>
                 </div>
             </div>
-            <div class="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar bg-gray-50/20">
+            <div class="flex-1 p-3 space-y-2 overflow-y-auto custom-scrollbar bg-gray-50/20">
                 ${content}
             </div>
-            <div class="p-4 bg-white border-t border-gray-50 shrink-0">
+            <div class="p-3 bg-white border-t border-gray-50 shrink-0">
                 <div class="flex gap-2">
                     <input type="text" id="${inputId}" placeholder="Add..." 
-                        class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-xs font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white focus:outline-none transition-all"
+                        class="flex-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs focus:ring-2 focus:ring-${color}-500 focus:bg-white focus:outline-none transition-all"
                         onkeypress="if(event.key==='Enter')${onAction}">
-                    <button onclick="${onAction}" class="w-10 h-10 flex items-center justify-center text-white rounded-xl hover:opacity-90 transition-all shadow-lg" style="background: ${accentColor}; shadow-color: ${accentColor}40">
-                        <span class="iconify text-xl" data-icon="mdi:plus"></span>
+                    <button onclick="${onAction}" class="w-8 h-8 flex items-center justify-center text-white rounded-xl hover:opacity-90 transition-all shadow-sm ${hex ? '' : `bg-${color}-500`}" style="${btnStyle}">
+                        <span class="iconify" data-icon="mdi:plus"></span>
                     </button>
                 </div>
             </div>

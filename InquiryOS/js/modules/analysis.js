@@ -8,7 +8,7 @@
 
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
-import { renderModuleHeader, renderEmptyState, renderSectionHeader } from '../ui/renderer.js';
+import { renderModuleHeader, renderEmptyState } from '../ui/renderer.js';
 import { toast } from '../ui/utils.js';
 
 let chartInstance = null;
@@ -35,15 +35,21 @@ export function renderAnalysisModule() {
             
             ${!hasData ? renderNoDataAlert() : renderChartWorkspace(dt)}
             
-            <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 mt-8" data-card-title="Statistical Summary">
-                <div class="flex items-center justify-between mb-8 shrink-0">
-                    ${renderSectionHeader('Statistical Summary', 'mdi:calculator', 'amber')}
-                    <div class="flex items-center gap-4 mb-6">
-                        <span class="ngss-tag ngss-ccc">CCC3</span>
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mt-8" data-card-title="Statistical Summary">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-black text-gray-900 flex items-center gap-3">
+                        <span class="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+                            <span class="iconify" data-icon="mdi:calculator"></span>
+                        </span>
+                        Statistical Summary
+                    </h3>
+                    <div class="flex items-center gap-4">
+                        <span class="ngss-tag ngss-ccc">CCC3: Scale, Proportion, and Quantity</span>
+                        <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Scientific Analysis</span>
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-card-content>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     ${renderStatisticsSummary(dt) || `
                         <div class="col-span-full py-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
                             <p class="text-sm text-gray-400 font-medium">Add numeric data to see statistical analysis.</p>
@@ -84,12 +90,9 @@ function renderChartWorkspace(dt) {
     
     return `
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
-            <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 flex flex-col h-full" data-card-title="Chart Configuration">
-                <div class="mb-8">
-                    <h3 class="font-black text-gray-900 uppercase tracking-widest text-[10px] flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-primary"></span>
-                        Chart Designer
-                    </h3>
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col h-full" data-card-title="Chart Configuration">
+                <div class="flex items-center gap-2 mb-6">
+                    <h3 class="font-black text-gray-900 uppercase tracking-widest text-xs">Chart Designer</h3>
                 </div>
                 
                 <div class="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -147,15 +150,15 @@ function renderChartWorkspace(dt) {
                 </div>
             </div>
             
-            <div class="lg:col-span-3 bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 flex flex-col h-full min-h-[550px]" data-card-title="Data Visualization">
+            <div class="lg:col-span-3 bg-white rounded-3xl shadow-sm border border-gray-100 p-8 flex flex-col h-full min-h-[550px]" data-card-title="Data Visualization">
                 <div class="flex justify-between items-center mb-8">
                     <div>
-                        ${renderSectionHeader('Data Visualization', 'mdi:chart-scatter-plot', 'blue')}
-                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest -mt-4 ml-14">
+                        <h3 class="text-xl font-black text-gray-900">Data Visualization</h3>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">
                             ${selectedYCols.length > 1 ? 'Comparing Multiple Variables' : 'Variable Relationship Analysis'}
                         </p>
                     </div>
-                    <div class="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-100 mb-6">
+                    <div class="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-100">
                         <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                         Live Analysis
                     </div>

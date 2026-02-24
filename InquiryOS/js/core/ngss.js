@@ -129,7 +129,7 @@ export function renderNGSSBrowser() {
             
             <div class="flex flex-col lg:flex-row gap-8">
                 <!-- Sidebar: Dimensions -->
-                <div class="lg:w-1/4 space-y-3">
+                <div class="lg:w-1/4 space-y-3" data-card-title="Dimensions">
                     <button onclick="window.showNGSSSection('sep')" class="ngss-dim-btn w-full p-5 rounded-3xl text-left transition-all bg-blue-50 border-2 border-blue-100 text-blue-700 shadow-sm" data-section="sep">
                         <div class="flex items-center gap-4">
                             <span class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-lg">SEP</span>
@@ -169,7 +169,7 @@ export function renderNGSSBrowser() {
                     </div>
                 </div>
                 
-                <div class="lg:w-3/4 bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 md:p-10 min-h-[700px]">
+                <div class="lg:w-3/4 bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 md:p-10 min-h-[700px]" data-card-title="Details">
                     <div id="ngssContent" class="animate-in fade-in duration-500">
                         ${renderNGSSSection('sep')}
                     </div>

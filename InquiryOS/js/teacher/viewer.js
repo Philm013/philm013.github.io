@@ -101,25 +101,23 @@ export async function renderLiveModels() {
 
     return `
         <div class="h-full flex flex-col -m-6">
-            <div class="bg-gray-900 text-white p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
+            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
                 <div class="flex items-center gap-6">
-                    <button onclick="window.stopViewingStudent()" class="w-14 h-14 bg-white/10 hover:bg-white/20 rounded-[1.25rem] flex items-center justify-center transition-all shadow-lg border border-white/5">
+                    <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
                         <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
                     </button>
                     <div>
-                        <div class="flex items-center gap-4">
-                            <h2 class="font-black text-3xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
-                            <span class="px-3 py-1 bg-primary text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20">Model Viewer</span>
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
+                            <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Model Viewer</span>
                         </div>
-                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.3em] mt-2">${!App.teacherSettings.showFeedbackToStudents ? 'Grading: Hidden' : 'Grading: Live Focus'}</p>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">${!App.teacherSettings.showFeedbackToStudents ? 'Grading: Hidden' : 'Grading: Live'}</p>
                     </div>
                 </div>
-                <div class="bg-white/5 p-1 rounded-2xl border border-white/10">
-                    ${renderViewerModuleTabs()}
-                </div>
+                ${renderViewerModuleTabs()}
                 <div class="flex items-center gap-2">
-                    <button onclick="window.presentToClass('model')" class="px-8 py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-3 shadow-xl shadow-primary/20">
-                        <span class="iconify text-xl" data-icon="mdi:presentation"></span>
+                    <button onclick="window.presentToClass('model')" class="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2">
+                        <span class="iconify text-lg" data-icon="mdi:presentation"></span>
                         Present
                     </button>
                 </div>
@@ -152,25 +150,23 @@ export async function renderLiveGeneric() {
 
     return `
         <div class="h-full flex flex-col -m-6">
-            <div class="bg-gray-900 text-white p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
+            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
                 <div class="flex items-center gap-6">
-                    <button onclick="window.stopViewingStudent()" class="w-14 h-14 bg-white/10 hover:bg-white/20 rounded-[1.25rem] flex items-center justify-center transition-all shadow-lg border border-white/5">
+                    <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
                         <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
                     </button>
                     <div>
-                        <div class="flex items-center gap-4">
-                            <h2 class="font-black text-3xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
-                            <span class="px-3 py-1 bg-primary text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20">Monitoring</span>
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
+                            <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Monitoring</span>
                         </div>
-                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-[0.3em] mt-2">Practice: ${App.currentModule.toUpperCase()}</p>
+                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Practice: ${App.currentModule.toUpperCase()}</p>
                     </div>
                 </div>
-                <div class="bg-white/5 p-1 rounded-2xl border border-white/10">
-                    ${renderViewerModuleTabs()}
-                </div>
+                ${renderViewerModuleTabs()}
                 <div class="flex items-center gap-2">
-                    <button onclick="window.presentToClass('${App.currentModule}')" class="px-8 py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-3 shadow-xl shadow-primary/20">
-                        <span class="iconify text-xl" data-icon="mdi:presentation"></span>
+                    <button onclick="window.presentToClass('${App.currentModule}')" class="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2">
+                        <span class="iconify text-lg" data-icon="mdi:presentation"></span>
                         Present
                     </button>
                 </div>
@@ -440,7 +436,7 @@ export async function renderIconManager() {
             
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
                 <!-- Curated Lesson Bin -->
-                <div class="xl:col-span-2 space-y-8">
+                <div class="xl:col-span-2 space-y-8" data-card-title="Curated Set">
                     <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
                         <div class="flex items-center justify-between mb-8">
                             <div class="flex items-center gap-4">
@@ -505,7 +501,7 @@ export async function renderIconManager() {
                 </div>
 
                 <!-- Emoji Fast-Add -->
-                <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 flex flex-col">
+                <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 flex flex-col" data-card-title="Emoji Library">
                     <div class="flex items-center gap-4 mb-8">
                         <div class="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-2xl flex items-center justify-center shadow-sm">
                             <span class="iconify text-2xl" data-icon="mdi:sticker-emoji"></span>
@@ -536,7 +532,7 @@ export async function renderIconManager() {
             </div>
 
             <!-- Global Icon Navigator -->
-            <div class="bg-white rounded-[3rem] shadow-xl border border-gray-100 p-8 md:p-12">
+            <div class="bg-white rounded-[3rem] shadow-xl border border-gray-100 p-8 md:p-12" data-card-title="Global Library">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-10 mb-12">
                     <div class="flex items-center gap-6">
                         <div class="w-16 h-16 bg-blue-600 text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-blue-200">
@@ -658,72 +654,66 @@ export async function loadIconsForManager() {
     }
 
     try {
-        let icons = [];
+        let allIcons = [];
         
         if (prefixes && !query) {
             // BROWSE MODE: Fetch collection info
             const res = await fetch(`https://api.iconify.design/collection?prefix=${prefixes}`);
             const data = await res.json();
-            if (data.uncategorized) icons = data.uncategorized.slice(0, 150).map(name => `${prefixes}:${name}`);
+            if (data.uncategorized) allIcons = data.uncategorized.slice(0, 150).map(name => `${prefixes}:${name}`);
             else if (data.categories) {
-                // Get some from each category
                 Object.values(data.categories).forEach(catIcons => {
-                    if (icons.length < 150) icons = [...icons, ...catIcons.slice(0, 20).map(name => `${prefixes}:${name}`)];
+                    if (allIcons.length < 150) allIcons = [...allIcons, ...catIcons.slice(0, 20).map(name => `${prefixes}:${name}`)];
                 });
             }
         } else {
-            // SEARCH MODE
-            // Expand query with scientific synonyms for better matching if it's a known topic
-            const topicExpansion = {
-                'biology': 'cell nature life dna organism evolution plant animal ecology',
-                'chemistry': 'molecule atom reaction lab beaker substance periodic',
-                'physics': 'energy force motion electricity magnet wave particle gravity',
-                'space': 'planet galaxy star telescope rocket astronaut cosmos moon orbit',
-                'earth': 'weather climate geology volcano ocean river mountain rock',
-                'engineering': 'design structure machine robot tools construction blueprint'
-            };
-            
-            let searchTerms = query;
-            const lowerQuery = query.toLowerCase();
-            for (const [topic, expansion] of Object.entries(topicExpansion)) {
-                if (lowerQuery.includes(topic)) {
-                    searchTerms += ' ' + expansion;
-                    break;
+            // SEARCH MODE with Comma Splitting
+            const terms = query.split(',').map(t => t.trim()).filter(t => t.length > 0);
+            const results = await Promise.all(terms.map(async (term) => {
+                // Style theme constraints
+                let themePrefixes = '';
+                const theme = App.teacherSettings.iconTheme || 'solid';
+                if (theme === 'solid') themePrefixes = 'mdi,fa6-solid,material-symbols,ph-fill';
+                else if (theme === 'outline') themePrefixes = 'line-md,lucide,tabler,ph,heroicons-outline';
+                else if (theme === 'colorful') themePrefixes = 'logos,skill-icons,flat-color-icons,noto';
+
+                let url = `https://api.iconify.design/search?query=${encodeURIComponent(term)}&limit=100`;
+                
+                // Prioritize theme prefixes if global search is on or if no specific set selected
+                if (prefixes) {
+                    url += `&prefix=${prefixes}`;
+                } else if (themePrefixes && !category) {
+                    url += `&prefixes=${themePrefixes}`;
+                } else if (category && App.iconCategories?.[category]) {
+                    const catPrefixes = App.iconCategories[category].map(s => s.prefix).join(',');
+                    url += `&prefixes=${catPrefixes}`;
                 }
-            }
 
-            let url = `https://api.iconify.design/search?query=${encodeURIComponent(searchTerms)}&limit=200`;
-            if (prefixes) {
-                url += `&prefix=${prefixes}`; // 'prefix' restricts to one collection, 'prefixes' for multiple
-            } else if (category && App.iconCategories?.[category]) {
-                const catPrefixes = App.iconCategories[category].map(s => s.prefix).join(',');
-                url += `&prefixes=${catPrefixes}`;
-            }
-            
-            const response = await fetch(url);
-            const data = await response.json();
-            icons = data.icons || [];
+                const response = await fetch(url);
+                const data = await response.json();
+                return data.icons || [];
+            }));
 
-            // Apply Fuse.js fuzzy matching if available to sort by relevance
-            if (typeof Fuse !== 'undefined' && icons.length > 0 && query) {
-                const fuse = new Fuse(icons, {
-                    threshold: 0.4,
-                    distance: 100
-                });
-                const fuzzyResults = fuse.search(query);
+            // Combine and De-duplicate
+            allIcons = [...new Set(results.flat())].slice(0, 200);
+
+            // Apply Fuse.js fuzzy matching if available
+            if (typeof Fuse !== 'undefined' && allIcons.length > 0 && query) {
+                const fuse = new Fuse(allIcons, { threshold: 0.4, distance: 100 });
+                const fuzzyResults = fuse.search(terms[0] || ''); // Fuzzy match on first term
                 if (fuzzyResults.length > 0) {
                     const fuzzyIcons = fuzzyResults.map(r => r.item);
-                    icons = [...new Set([...fuzzyIcons, ...icons])].slice(0, 150);
+                    allIcons = [...new Set([...fuzzyIcons, ...allIcons])].slice(0, 150);
                 }
             }
         }
 
-        if (icons.length === 0) {
-            grid.innerHTML = '<div class="col-span-full py-32 text-center opacity-30 grayscale"><span class="iconify text-6xl mb-4" data-icon="mdi:alert-circle-outline"></span><p class="text-sm font-bold uppercase tracking-widest">No matching icons found. Try different keywords.</p></div>';
+        if (allIcons.length === 0) {
+            grid.innerHTML = '<div class="col-span-full py-32 text-center opacity-30 grayscale"><span class="iconify text-6xl mb-4" data-icon="mdi:alert-circle-outline"></span><p class="text-sm font-bold uppercase tracking-widest">No matching icons found.</p></div>';
             return;
         }
 
-        grid.innerHTML = icons.map(icon => {
+        grid.innerHTML = allIcons.map(icon => {
             const isSelected = App.teacherSettings.lessonIcons?.includes(icon);
             const parts = icon.split(':');
             const prefix = parts[0];

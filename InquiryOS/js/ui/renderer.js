@@ -115,38 +115,38 @@ export function updateModeUI() {
         const bottomNav = document.getElementById('bottomNav');
         if (bottomNav && window.innerWidth <= 768) {
             const centerContent = isTeacher ? `
-                <button onclick="window.showTeacherModule('overview')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'overview' ? 'text-teacher' : 'text-gray-500'}">
-                    <span class="iconify text-xl" data-icon="mdi:view-dashboard"></span>
-                    <span class="text-[8px] font-black uppercase">Home</span>
+                <button onclick="window.showTeacherModule('overview')" class="flex flex-col items-center justify-center h-full ${App.teacherModule === 'overview' ? 'text-teacher' : 'text-gray-400'}">
+                    <span class="iconify text-2xl" data-icon="mdi:view-dashboard"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-tighter">Home</span>
                 </button>
-                <button onclick="window.showTeacherModule('snapshots')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'snapshots' ? 'text-teacher' : 'text-gray-500'}">
-                    <span class="iconify text-xl" data-icon="mdi:camera-outline"></span>
-                    <span class="text-[8px] font-black uppercase">Snaps</span>
+                <button onclick="window.showTeacherModule('snapshots')" class="flex flex-col items-center justify-center h-full ${App.teacherModule === 'snapshots' ? 'text-teacher' : 'text-gray-400'}">
+                    <span class="iconify text-2xl" data-icon="mdi:camera-outline"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-tighter">Snaps</span>
                 </button>
-                <button onclick="window.showTeacherModule('noticeboard')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'noticeboard' ? 'text-teacher' : 'text-gray-500'}">
-                    <span class="iconify text-xl" data-icon="mdi:bulletin-board"></span>
-                    <span class="text-[8px] font-black uppercase">Board</span>
+                <button onclick="window.showTeacherModule('noticeboard')" class="flex flex-col items-center justify-center h-full ${App.teacherModule === 'noticeboard' ? 'text-teacher' : 'text-gray-400'}">
+                    <span class="iconify text-2xl" data-icon="mdi:bulletin-board"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-tighter">Board</span>
                 </button>
-                <button onclick="window.showTeacherModule('students')" class="flex flex-col items-center gap-1 ${App.teacherModule === 'students' ? 'text-teacher' : 'text-gray-500'}">
-                    <span class="iconify text-xl" data-icon="mdi:account-group"></span>
-                    <span class="text-[8px] font-black uppercase">Class</span>
+                <button onclick="window.showTeacherModule('students')" class="flex flex-col items-center justify-center h-full ${App.teacherModule === 'students' ? 'text-teacher' : 'text-gray-400'}">
+                    <span class="iconify text-2xl" data-icon="mdi:account-group"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-tighter">Class</span>
                 </button>
             ` : `
-                <button onclick="window.showStudentModule('questions')" class="flex flex-col items-center gap-1 ${App.currentModule === 'questions' ? 'text-primary' : 'text-gray-500'}">
-                    <span class="iconify text-xl" data-icon="mdi:help-circle"></span>
-                    <span class="text-[8px] font-black uppercase">Quest</span>
+                <button onclick="window.showStudentModule('questions')" class="flex flex-col items-center justify-center h-full ${App.currentModule === 'questions' ? 'text-primary' : 'text-gray-400'}">
+                    <span class="iconify text-2xl" data-icon="mdi:help-circle"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-tighter">Quest</span>
                 </button>
-                <button onclick="window.showStudentModule('models')" class="flex flex-col items-center gap-1 ${App.currentModule === 'models' ? 'text-primary' : 'text-gray-500'}">
-                    <span class="iconify text-xl" data-icon="mdi:cube-outline"></span>
-                    <span class="text-[8px] font-black uppercase">Model</span>
+                <button onclick="window.showStudentModule('models')" class="flex flex-col items-center justify-center h-full ${App.currentModule === 'models' ? 'text-primary' : 'text-gray-400'}">
+                    <span class="iconify text-2xl" data-icon="mdi:cube-outline"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-tighter">Model</span>
                 </button>
-                <button onclick="window.showStudentModule('analysis')" class="flex flex-col items-center gap-1 ${App.currentModule === 'analysis' ? 'text-primary' : 'text-gray-500'}">
-                    <span class="iconify text-xl" data-icon="mdi:chart-line"></span>
-                    <span class="text-[8px] font-black uppercase">Data</span>
+                <button onclick="window.showStudentModule('analysis')" class="flex flex-col items-center justify-center h-full ${App.currentModule === 'analysis' ? 'text-primary' : 'text-gray-400'}">
+                    <span class="iconify text-2xl" data-icon="mdi:chart-line"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-tighter">Data</span>
                 </button>
-                <button onclick="window.showStudentModule('explanations')" class="flex flex-col items-center gap-1 ${App.currentModule === 'explanations' ? 'text-primary' : 'text-gray-500'}">
-                    <span class="iconify text-xl" data-icon="mdi:lightbulb-on"></span>
-                    <span class="text-[8px] font-black uppercase">CER</span>
+                <button onclick="window.showStudentModule('explanations')" class="flex flex-col items-center justify-center h-full ${App.currentModule === 'explanations' ? 'text-primary' : 'text-gray-400'}">
+                    <span class="iconify text-2xl" data-icon="mdi:lightbulb-on"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-tighter">CER</span>
                 </button>
             `;
 
@@ -154,11 +154,11 @@ export function updateModeUI() {
                 <button onclick="window.scrollSnap('prev')" class="nav-snap-btn border-r">
                     <span class="iconify text-2xl" data-icon="mdi:chevron-left"></span>
                 </button>
-                <div class="bottom-nav-center flex-1 flex justify-around items-center px-2">
+                <div class="bottom-nav-center flex-1 flex justify-around items-center">
                     ${centerContent}
-                    <button onclick="window.toggleSidebar()" class="flex flex-col items-center gap-1 text-gray-500">
-                        <span class="iconify text-xl" data-icon="mdi:menu"></span>
-                        <span class="text-[8px] font-black uppercase">Menu</span>
+                    <button onclick="window.toggleSidebar()" class="flex flex-col items-center justify-center h-full text-gray-400">
+                        <span class="iconify text-2xl" data-icon="mdi:menu"></span>
+                        <span class="text-[9px] font-bold uppercase tracking-tighter">Menu</span>
                     </button>
                 </div>
                 <button onclick="window.scrollSnap('next')" class="nav-snap-btn border-l">
@@ -197,12 +197,12 @@ function wrapInSnapCards(html) {
         section.removeAttribute('data-card-title');
         return `
             <div class="snap-card" id="card-${i}">
-                <div class="flex flex-col h-full bg-white overflow-hidden border-none shadow-none">
-                    <div class="px-3 py-2 border-b bg-gray-50 flex items-center justify-between shrink-0">
-                        <h3 class="text-[9px] font-black text-gray-400 uppercase tracking-widest">${title}</h3>
-                        <span class="text-[8px] font-bold text-gray-300">${i + 1}/${sections.length}</span>
+                <div class="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-3 border-b bg-gray-50 flex items-center justify-between shrink-0">
+                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${title}</h3>
+                        <span class="text-[9px] font-bold text-gray-300">${i + 1}/${sections.length}</span>
                     </div>
-                    <div class="flex-1 overflow-y-auto p-2" data-card-content>
+                    <div class="flex-1 overflow-y-auto p-3" data-card-content>
                         ${section.outerHTML}
                     </div>
                 </div>
@@ -465,43 +465,37 @@ export function renderModuleHeader(title, icon, sep, customButtons = '') {
     const hasExemplar = !!App.teacherSettings.exemplars?.[App.currentModule];
     
     return `
-        <div class="panel-header">
-            <div class="panel-title-group">
-                <div class="panel-icon-box">
-                    <span class="iconify text-3xl" data-icon="${icon}"></span>
-                </div>
-                <div>
-                    <div class="flex items-center gap-3">
-                        <h2 class="panel-title">${title}</h2>
-                        ${sep ? `
-                            <div class="relative group">
-                                <span class="ngss-tag ngss-sep cursor-help transition-all hover:scale-110">${sep}</span>
-                                ${sepData ? `
-                                    <div class="absolute left-0 top-full mt-3 w-72 p-5 bg-white rounded-2xl shadow-2xl border border-blue-50 z-[1000] hidden group-hover:block animate-in fade-in zoom-in duration-200">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                                            <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Scientific Practice</p>
-                                        </div>
-                                        <p class="text-sm font-black text-gray-900 mb-2 leading-tight">${sepData.name}</p>
-                                        <p class="text-[11px] text-gray-500 leading-relaxed font-medium">${sepData.description || ''}</p>
-                                    </div>
-                                ` : ''}
+        <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                        <span class="iconify text-white text-xl" data-icon="${icon}"></span>
+                    </span>
+                    ${title}
+                </h2>
+                ${sep ? `
+                    <div class="relative group">
+                        <span class="ngss-tag ngss-sep cursor-help">${sep}</span>
+                        ${sepData ? `
+                            <div class="absolute left-0 top-full mt-2 w-64 p-4 bg-white rounded-xl shadow-2xl border border-blue-100 z-[1000] hidden group-hover:block animate-in fade-in slide-in-from-top-2">
+                                <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Practice: ${sep}</p>
+                                <p class="text-xs font-bold text-gray-900 mb-2">${sepData.name}</p>
+                                <p class="text-[11px] text-gray-600 leading-relaxed">${sepData.description || ''}</p>
                             </div>
                         ` : ''}
                     </div>
-                    <p class="panel-subtitle">${sepData ? sepData.name : 'Scientific Practice'}</p>
-                </div>
+                ` : ''}
             </div>
             <div class="flex items-center gap-2">
                 ${hasExemplar && App.mode === 'student' ? `
-                    <button onclick="window.toggleExemplarView()" class="px-4 py-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-purple-100/50 shadow-sm">
-                        <span class="iconify text-lg" data-icon="mdi:lightbulb-on"></span>
-                        <span class="hidden sm:inline">${App.isViewingExemplar ? 'Back to My Work' : 'Teacher Example'}</span>
+                    <button onclick="window.toggleExemplarView()" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm font-bold flex items-center gap-2 transition-all">
+                        <span class="iconify" data-icon="mdi:lightbulb-on"></span>
+                        <span class="hidden sm:inline">${App.isViewingExemplar ? 'Back to My Work' : 'View Example'}</span>
                     </button>
                 ` : ''}
                 ${customButtons}
-                <button onclick="window.toggleModuleFullscreen()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-primary hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
-                    <span class="iconify text-2xl" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span>
+                <button onclick="window.toggleModuleFullscreen()" class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+                    <span class="iconify" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span>
                 </button>
             </div>
         </div>
@@ -671,25 +665,6 @@ export async function renderPresentationLayer() {
 }
 
 /**
- * Renders a consistent sub-section header.
- * @param {string} title - Section title.
- * @param {string} icon - Iconify icon ID.
- * @param {string} [color='blue'] - Accent color.
- * @returns {string} HTML content.
- */
-export function renderSectionHeader(title, icon, color = 'blue') {
-    return `
-        <div class="flex items-center gap-4 mb-6 group">
-            <div class="w-10 h-10 bg-${color}-50 text-${color}-500 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 group-hover:bg-${color}-100">
-                <span class="iconify text-xl" data-icon="${icon}"></span>
-            </div>
-            <h3 class="text-xl font-black text-gray-900 tracking-tight uppercase">${title}</h3>
-            <div class="flex-1 h-px bg-gradient-to-r from-gray-100 to-transparent ml-2"></div>
-        </div>
-    `;
-}
-
-/**
  * Toggles the student's view between their own work and the teacher's exemplar.
  */
 export async function toggleExemplarView() {
@@ -722,19 +697,19 @@ export async function toggleExemplarView() {
  */
 export function renderEmptyState(title, message, icon = 'mdi:folder-open-outline', showQR = false) {
     return `
-        <div class="flex-1 flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in duration-500">
-            <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6 shadow-inner border border-white">
+        <div class="flex-1 flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in zoom-in duration-500 bg-gray-50/50 rounded-[3rem] border-2 border-dashed border-gray-100/50 m-4">
+            <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-gray-50">
                 <span class="iconify text-6xl text-gray-200" data-icon="${icon}"></span>
             </div>
             <h3 class="text-2xl font-black text-gray-400 uppercase tracking-tighter">${title}</h3>
-            <p class="text-gray-400 mt-2 max-w-md mx-auto leading-relaxed font-medium">${message}</p>
+            <p class="text-gray-400 mt-2 max-w-md mx-auto leading-relaxed font-medium text-sm">${message}</p>
             ${showQR ? `
                 <div class="mt-10 flex flex-col items-center gap-4">
                     <button onclick="window.showJoinQR()" class="px-8 py-4 bg-primary text-white rounded-[2rem] font-black shadow-xl shadow-blue-100 hover:opacity-90 flex items-center gap-3 transition-all hover:-translate-y-1">
                         <span class="iconify text-2xl" data-icon="mdi:qrcode"></span>
                         Show Class QR Code
                     </button>
-                    <div class="px-6 py-2 bg-purple-50 text-purple-600 rounded-xl border border-purple-100 font-mono font-black text-lg tracking-widest">
+                    <div class="px-6 py-2 bg-white text-purple-600 rounded-xl border border-purple-100 font-mono font-black text-lg tracking-widest shadow-sm">
                         ${App.classCode}
                     </div>
                 </div>

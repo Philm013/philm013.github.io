@@ -57,33 +57,46 @@ export function selectRole(role) {
 }
 
 /**
- * Renders the emoji-based avatar selection grid.
+ * Renders the Iconify-based avatar selection grid.
  */
 export function renderAvatarPicker() {
     const container = document.getElementById('avatarPicker');
     if (!container) return;
     
-    const emojis = ['🔬','🧪','🧬','🌍','🔭','🌱','🔋','🌡️','🤖','🚀','🧠','🌋','🐳','🐝','☀️','🌪️'];
-    container.innerHTML = emojis.map((emoji, idx) => `
-        <button onclick="window.selectLoginAvatar('${emoji}')" class="avatar-option w-10 h-10 flex items-center justify-center text-2xl rounded-xl border-2 border-transparent hover:bg-blue-50 transition-all ${idx === 0 ? 'selected ring-2 ring-primary border-primary bg-blue-50' : ''}" data-emoji="${emoji}">
-            ${emoji}
+    const icons = [
+        'mdi:microscope', 'mdi:flask-outline', 'mdi:dna', 'mdi:earth', 
+        'mdi:telescope', 'mdi:leaf', 'mdi:battery-charging', 'mdi:thermometer', 
+        'mdi:robot', 'mdi:rocket-launch', 'mdi:brain', 'mdi:volcano', 
+        'mdi:whale', 'mdi:bee', 'mdi:sun-wireless', 'mdi:weather-tornado'
+    ];
+    
+    container.innerHTML = icons.map((icon, idx) => `
+        <button onclick="window.selectLoginAvatar('${icon}')" 
+            class="avatar-option w-12 h-12 flex items-center justify-center rounded-xl border-2 border-transparent hover:bg-blue-50 transition-all ${idx === 0 ? 'selected ring-2 ring-primary border-primary bg-blue-50' : ''}" 
+            data-icon="${icon}">
+            <span class="iconify text-2xl ${idx === 0 ? 'text-primary' : 'text-gray-500'}" data-icon="${icon}"></span>
         </button>
     `).join('');
     
     // Set initial selection in state
-    if (!App.user.avatar) App.user.avatar = emojis[0];
+    if (!App.user.avatar) App.user.avatar = icons[0];
 }
 
 /**
- * Handles the selection of a user avatar emoji.
- * @param {string} emoji 
+ * Handles the selection of a user avatar icon.
+ * @param {string} icon 
  */
-export function selectLoginAvatar(emoji) {
-    App.user.avatar = emoji;
+export function selectLoginAvatar(icon) {
+    App.user.avatar = icon;
     document.querySelectorAll('.avatar-option').forEach(btn => {
         btn.classList.remove('selected', 'ring-2', 'ring-primary', 'border-primary', 'bg-blue-50');
-        if (btn.dataset.emoji === emoji) {
+        btn.querySelector('.iconify')?.classList.remove('text-primary');
+        btn.querySelector('.iconify')?.classList.add('text-gray-500');
+        
+        if (btn.dataset.icon === icon) {
             btn.classList.add('selected', 'ring-2', 'ring-primary', 'border-primary', 'bg-blue-50');
+            btn.querySelector('.iconify')?.classList.add('text-primary');
+            btn.querySelector('.iconify')?.classList.remove('text-gray-500');
         }
     });
 }
@@ -147,7 +160,14 @@ async function initializeApp() {
     if (userNameEl) userNameEl.textContent = App.user.name;
     
     const avatarEl = document.getElementById('userAvatar');
-    if (avatarEl) avatarEl.textContent = App.user.avatar;
+    if (avatarEl) {
+        const avatar = App.user.avatar || 'mdi:account-circle';
+        if (avatar.includes(':')) {
+            avatarEl.innerHTML = `<span class="iconify" data-icon="${avatar}"></span>`;
+        } else {
+            avatarEl.textContent = avatar;
+        }
+    }
     
     const classCodeEl = document.getElementById('displayClassCode');
     if (classCodeEl) classCodeEl.textContent = App.classCode;

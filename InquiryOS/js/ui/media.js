@@ -190,111 +190,33 @@ export function viewMediaDetail(id) {
 
     const modal = document.createElement('div');
     modal.id = 'mediaDetailModal';
-    modal.className = 'fixed inset-0 z-[200] bg-black/95 flex flex-col animate-in fade-in duration-300 backdrop-blur-3xl';
+    modal.className = 'fixed inset-0 z-[200] bg-black/95 flex flex-col animate-in fade-in duration-300';
     
     let mediaHtml = '';
     if (item.type === 'image') {
-        mediaHtml = `<img src="${item.url}" class="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-500">`;
+        mediaHtml = `<img src="${item.url}" class="max-w-full max-h-full object-contain shadow-2xl">`;
     } else if (item.type === 'video') {
-        mediaHtml = `<video src="${item.url}" controls autoplay class="max-w-full max-h-full shadow-2xl animate-in zoom-in-95 duration-500"></video>`;
+        mediaHtml = `<video src="${item.url}" controls autoplay class="max-w-full max-h-full shadow-2xl"></video>`;
     } else if (item.type === 'sim') {
         mediaHtml = `<iframe src="${item.url}" class="w-full h-full bg-white rounded-3xl" allowfullscreen></iframe>`;
     }
 
     modal.innerHTML = `
-        <div class="flex items-center justify-between p-6 text-white bg-black/40 backdrop-blur-md border-b border-white/10">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
-                    <span class="iconify text-xl" data-icon="${item.type === 'video' ? 'mdi:play-circle' : (item.type === 'sim' ? 'mdi:application-brackets' : 'mdi:image')}"></span>
-                </div>
-                <div>
-                    <h3 class="font-black uppercase tracking-widest text-sm">${item.type}: ${item.provider}</h3>
-                    <p class="text-[10px] text-white/40 font-black uppercase tracking-widest mt-0.5">Scientific Resource</p>
-                </div>
+        <div class="flex items-center justify-between p-6 text-white bg-black/40 backdrop-blur-md">
+            <div>
+                <h3 class="font-black uppercase tracking-widest text-sm">${item.type}: ${item.provider}</h3>
+                <p class="text-[10px] text-white/60 font-bold uppercase mt-0.5">Reference Material</p>
             </div>
-            <button onclick="window.closeMediaDetail()" class="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all active:scale-95">
+            <button onclick="window.closeMediaDetail()" class="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
                 <span class="iconify text-2xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <div class="flex-1 flex items-center justify-center p-4 md:p-12 overflow-hidden relative">
+        <div class="flex-1 flex items-center justify-center p-4 md:p-12 overflow-hidden">
             ${mediaHtml}
         </div>
-        <div class="p-6 bg-black/40 backdrop-blur-md border-t border-white/10 text-center">
-            <p class="text-white/80 text-xs font-medium italic">"${item.title || 'Observational Data'}"</p>
-        </div>
     `;
 
     document.body.appendChild(modal);
-}
-
-/**
- * Opens the Phenomenon in a full-screen detail panel.
- */
-export function viewPhenomenonDetail() {
-    const p = App.teacherSettings.phenomenon;
-    const modal = document.createElement('div');
-    modal.id = 'phenomenonDetailModal';
-    modal.className = 'fixed inset-0 z-[150] bg-white flex flex-col animate-in slide-in-from-bottom duration-500';
-    
-    modal.innerHTML = `
-        <div class="flex items-center justify-between p-6 border-b bg-amber-50/50 shrink-0">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-amber-200">
-                    <span class="iconify text-2xl" data-icon="mdi:eye"></span>
-                </div>
-                <div>
-                    <h3 class="text-xl font-black text-gray-900 tracking-tight">Phenomenon</h3>
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Scientific Observation</p>
-                </div>
-            </div>
-            <button onclick="window.closePhenomenonDetail()" class="p-3 hover:bg-gray-100 rounded-2xl transition-all">
-                <span class="iconify text-2xl" data-icon="mdi:close"></span>
-            </button>
-        </div>
-        <div class="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
-            <div class="space-y-4">
-                <h2 class="text-3xl font-black text-gray-900 leading-tight">${p.title || 'Exploring the Phenomenon'}</h2>
-                <div class="h-1.5 w-24 bg-amber-500 rounded-full"></div>
-                <p class="text-lg text-gray-600 leading-relaxed font-medium">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts.'}</p>
-            </div>
-
-            ${p.media?.length > 0 ? `
-                <div class="space-y-4">
-                    <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Evidence Library</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        ${p.media.map(m => `
-                            <button onclick="window.viewMediaDetail('${m.id}')" 
-                                class="group relative aspect-video rounded-3xl overflow-hidden border-2 border-gray-100 shadow-md hover:ring-4 hover:ring-amber-400 transition-all flex-shrink-0">
-                                <img src="${m.thumb}" class="w-full h-full object-cover">
-                                <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors flex items-center justify-center">
-                                    <span class="iconify text-white text-3xl opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100" data-icon="mdi:magnify-plus"></span>
-                                </div>
-                                <div class="absolute bottom-3 right-3">
-                                    <span class="iconify text-white text-xl" data-icon="${m.type === 'video' ? 'mdi:play-circle' : (m.type === 'sim' ? 'mdi:application-brackets' : 'mdi:image')}"></span>
-                                </div>
-                            </button>
-                        `).join('')}
-                    </div>
-                </div>
-            ` : ''}
-            
-            <div class="p-8 bg-blue-50 rounded-[2.5rem] border border-blue-100">
-                <h4 class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-4">Your Scientific Task</h4>
-                <p class="text-sm text-blue-800 font-bold leading-relaxed">Document your observations, ask questions, and develop a model that explains the mechanisms behind this phenomenon.</p>
-            </div>
-        </div>
-        <div class="p-6 bg-gray-50 border-t flex justify-center shrink-0">
-            <button onclick="window.closePhenomenonDetail()" class="px-12 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-black transition-all">
-                Got it
-            </button>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-}
-
-export function closePhenomenonDetail() {
-    document.getElementById('phenomenonDetailModal')?.remove();
 }
 
 export function closeMediaDetail() {
