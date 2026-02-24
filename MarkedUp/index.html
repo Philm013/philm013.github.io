@@ -44,8 +44,200 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 4px; }
 
-        .app { display: flex; width: 100%; height: 100%; }
+        .app { display: flex; width: 100%; height: 100%; position: relative; }
         
+        /* Landing Page Styles */
+        .landing-page {
+            position: absolute;
+            inset: 0;
+            background: var(--bg-base);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            padding: 0;
+        }
+        .landing-page.active { display: flex; }
+        
+        .landing-header {
+            padding: 40px 60px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .landing-content {
+            flex: 1;
+            padding: 40px 60px;
+            overflow-y: auto;
+        }
+        
+        .sessions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+        }
+        
+        .session-item {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .session-item:hover { transform: translateY(-4px); border-color: var(--accent); }
+        .session-item.selected { border-color: var(--success); box-shadow: 0 0 0 2px var(--success); }
+        
+        .session-item-thumb {
+            height: 160px;
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .session-item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .session-item-info { padding: 16px; }
+        .session-item-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+        .session-item-meta { font-size: 12px; color: var(--text-dim); }
+        
+        .session-check {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid white;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            opacity: 0.5;
+        }
+        .session-item.selected .session-check { background: var(--success); border-color: var(--success); opacity: 1; }
+        
+        .header-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .notes-panel {
+            width: 320px;
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border);
+            display: none;
+            flex-direction: column;
+            z-index: 100;
+        }
+        .notes-panel.active { display: flex; }
+        
+        .notes-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notes-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        
+        .note-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .note-item:hover { border-color: var(--accent); }
+        .note-item.active { border-color: var(--accent); background: var(--accent-dim); }
+        
+        .note-item-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .note-number {
+            width: 20px;
+            height: 20px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        
+        .note-text {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 13px;
+            resize: none;
+            outline: none;
+            min-height: 60px;
+        }
+        
+        .note-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .note-item:hover .note-actions { opacity: 1; }
+
+        .btn-round {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: var(--bg-hover);
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        .btn-round:hover { background: var(--bg-active); color: var(--text); }
+        
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .stat-value { font-size: 24px; font-weight: 800; color: var(--accent); }
+        .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
         .sidebar {
             width: 340px;
             min-width: 340px;
@@ -984,20 +1176,19 @@
     <div class="main">
         <div class="header">
             <div class="view-switch">
+                <button class="view-btn" id="btnLibrary">Library</button>
                 <button class="view-btn active" id="btnBrowse">Browse</button>
                 <button class="view-btn" id="btnMarkup">Markup</button>
             </div>
             
-            <button class="btn btn-primary btn-sm" id="startNewBtn" title="Start New Session">＋ New</button>
-            
-            <div class="session-manager" id="sessionManager" style="display:flex; align-items:center; gap:8px; margin-left:10px; border-left:1px solid var(--border); padding-left:10px;">
-                <select id="sessionSwitcher" class="btn btn-default btn-sm" style="max-width:150px; padding:6px 10px;"></select>
-            </div>
-
             <div class="url-bar" id="browserBar">
                 <input type="text" class="url-input" id="urlInput" value="https://wikipedia.org" placeholder="Enter URL...">
                 <button class="btn btn-default" id="goBtn">Go</button>
                 <button class="btn btn-default" id="pdfOpenBtn" title="Open PDF">📄 PDF</button>
+                <div style="display:flex; align-items:center; gap:4px; margin:0 8px; background:var(--bg-card); padding:4px 8px; border-radius:8px; border:1px solid var(--border);">
+                    <input type="checkbox" id="fullPageCheck" style="cursor:pointer;">
+                    <label for="fullPageCheck" style="font-size:11px; cursor:pointer; font-weight:600; color:var(--text-muted);">Full Page</label>
+                </div>
                 <button class="btn btn-success" id="captureBtn">📷 Capture</button>
             </div>
             
@@ -1033,6 +1224,14 @@
                 <button class="btn btn-success btn-sm" id="saveBtn">Save</button>
                 <button class="btn btn-ghost btn-sm" id="layersBtn">📑</button>
                 <button class="btn btn-danger btn-sm" id="deleteBtn">Delete</button>
+            </div>
+
+            <div class="header-right">
+                <button class="btn btn-primary btn-sm" id="startNewBtn" title="Start New Session">＋ New</button>
+                
+                <div class="session-manager" id="sessionManager" style="display:flex; align-items:center; gap:8px; border-left:1px solid var(--border); padding-left:12px;">
+                    <select id="sessionSwitcher" class="btn btn-default btn-sm" style="max-width:150px; padding:6px 10px;"></select>
+                </div>
             </div>
         </div>
         
@@ -1074,8 +1273,66 @@
                     </div>
                     <div class="history-list" id="historyList"></div>
                 </div>
+
+                <div class="notes-panel" id="notesPanel">
+                    <div class="notes-header">
+                        <span>Notes</span>
+                        <button class="btn-round" id="closeNotesBtn" title="Close Notes">×</button>
+                    </div>
+                    <div class="notes-list" id="notesList"></div>
+                </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Landing Page -->
+<div class="landing-page" id="landingPage">
+    <div class="landing-header">
+        <div style="display:flex; align-items:center; gap:20px;">
+            <div class="logo" style="width:48px; height:48px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                    <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                </svg>
+            </div>
+            <div>
+                <h1 style="font-size:24px; font-weight:800;">DevMarkup Studio Pro</h1>
+                <p style="color:var(--text-dim); font-size:14px;">Web Annotation & Documentation Workspace</p>
+            </div>
+        </div>
+        <div style="display:flex; gap:12px;">
+            <button class="btn btn-default" id="landingExportBtn">Export Selected</button>
+            <button class="btn btn-primary" id="landingNewBtn">＋ Start New Session</button>
+        </div>
+    </div>
+    
+    <div class="landing-content">
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:20px; margin-bottom:40px;">
+            <div class="stat-card">
+                <span class="stat-label">Total Sessions</span>
+                <span class="stat-value" id="statSessions">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Total Captures</span>
+                <span class="stat-value" id="statCaptures">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Annotations</span>
+                <span class="stat-value" id="statAnnotations">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Last Activity</span>
+                <span class="stat-value" id="statLastActive">Never</span>
+            </div>
+        </div>
+        
+        <h2 style="font-size:18px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+            <span>Your Sessions</span>
+            <span style="font-weight:400; font-size:13px; color:var(--text-dim);">(Select multiple for bulk export)</span>
+        </h2>
+        
+        <div class="sessions-grid" id="landingSessionsGrid"></div>
     </div>
 </div>
 
@@ -1943,12 +2200,13 @@ const Stock = {
 };
 
 // =============================================
-// LIBRARY - FIXED VERSION
+// LIBRARY - UPDATED
 // =============================================
 const Library = {
-    sessions: [], // This will now store Session containers
+    sessions: [],
+    selectedSessionIds: new Set(),
     activeSessionId: null,
-    captures: [], // This will store Captures for the active session
+    captures: [],
     activeCaptureId: null,
     currentTab: 'captures',
     loadingCaptureId: null,
@@ -1970,9 +2228,7 @@ const Library = {
             this.sessions = await DB.getAll(DB.STORES.SESSIONS);
             this.sessions.sort((a, b) => b.createdAt - a.createdAt);
             
-            if (this.sessions.length === 0) {
-                await this.createNewSession('Default Session');
-            } else {
+            if (this.sessions.length > 0) {
                 this.activeSessionId = this.sessions[0].id;
                 await this.loadCaptures(this.activeSessionId);
             }
@@ -1994,6 +2250,7 @@ const Library = {
         this.activeCaptureId = null;
         this.updateSessionSwitcher();
         this.render();
+        App.setView('browse');
         return session;
     },
 
@@ -2022,18 +2279,20 @@ const Library = {
         Editor.session = null;
         await this.loadCaptures(sessionId);
         this.updateSessionSwitcher();
-        App.setView('browse');
     },
 
     setupSessionSwitcher() {
         const switcher = document.getElementById('sessionSwitcher');
+        if (!switcher) return;
         switcher.addEventListener('change', (e) => {
             if (e.target.value === 'NEW_SESSION') {
                 const name = prompt('Enter session name:', 'Session ' + (this.sessions.length + 1));
                 if (name) this.createNewSession(name);
                 else this.updateSessionSwitcher();
             } else {
-                this.switchSession(e.target.value);
+                this.switchSession(e.target.value).then(() => {
+                    App.setView('browse');
+                });
             }
         });
         this.updateSessionSwitcher();
@@ -2041,6 +2300,7 @@ const Library = {
 
     updateSessionSwitcher() {
         const switcher = document.getElementById('sessionSwitcher');
+        if (!switcher) return;
         switcher.innerHTML = '';
         this.sessions.forEach(s => {
             const opt = document.createElement('option');
@@ -2057,6 +2317,29 @@ const Library = {
         newOpt.value = 'NEW_SESSION';
         newOpt.textContent = '＋ New Session...';
         switcher.appendChild(newOpt);
+    },
+
+    async deleteSession(sessionId) {
+        Modal.confirm('Delete Session', 'Delete this session and all its captures?', async () => {
+            const captures = await DB.getCapturesForSession(sessionId);
+            for (const c of captures) {
+                await DB.delete(DB.STORES.CAPTURES, c.id);
+            }
+            await DB.delete(DB.STORES.SESSIONS, sessionId);
+            this.sessions = this.sessions.filter(s => s.id !== sessionId);
+            if (this.activeSessionId === sessionId) {
+                if (this.sessions.length > 0) {
+                    await this.switchSession(this.sessions[0].id);
+                } else {
+                    this.activeSessionId = null;
+                    this.captures = [];
+                    await this.createNewSession('Default Session');
+                }
+            }
+            this.render();
+            App.renderLandingPage();
+            Toast.show('Session deleted');
+        });
     },
 
     // Ensure capture image is loaded
@@ -2127,6 +2410,10 @@ const Library = {
     },
 
     async addCapture(img, title = 'Capture', pdfData = null) {
+        if (!this.activeSessionId) {
+            await this.createNewSession('Default Session');
+        }
+
         const thumbCanvas = document.createElement('canvas');
         thumbCanvas.width = 200;
         thumbCanvas.height = 140;
@@ -2152,7 +2439,6 @@ const Library = {
             sessionId: this.activeSessionId,
             title: title + ' (' + host + ')',
             sourceUrl: sourceUrl,
-            img,
             imageData: fullCanvas.toDataURL('image/png'),
             thumbData: thumbCanvas.toDataURL('image/jpeg', 0.8),
             pdfData: pdfData,
@@ -2161,12 +2447,13 @@ const Library = {
             shapes: [],
             viewport: { x: 0, y: 0, scale: 1 },
             selected: false,
-            createdAt: Date.now(),
-            loaded: true
+            createdAt: Date.now()
         };
         
-        this.captures.unshift(capture);
         await DB.save(DB.STORES.CAPTURES, capture);
+        
+        const sessionCapture = { ...capture, img, loaded: true };
+        this.captures.unshift(sessionCapture);
         
         this.render();
         this.loadCapture(capture.id);
@@ -2321,17 +2608,36 @@ const Library = {
 const Browser = {
     go() {
         let url = document.getElementById('urlInput').value.trim();
+        if (!url) return;
         if (!url.startsWith('http')) url = 'https://' + url;
         document.getElementById('urlInput').value = url;
         document.getElementById('webFrame').src = url;
     },
 
     async capture() {
+        const isFullPage = document.getElementById('fullPageCheck').checked;
+        const iframe = document.getElementById('webFrame');
+        const originalHeight = iframe.style.height;
+        
         try {
-            const iframe = document.getElementById('webFrame');
+            if (isFullPage) {
+                Toast.show('Attempting full page capture...');
+                // Try to get scroll height - this may fail due to cross-origin
+                try {
+                    const scrollHeight = iframe.contentWindow.document.body.scrollHeight;
+                    if (scrollHeight > 0) {
+                        iframe.style.height = scrollHeight + 'px';
+                        await new Promise(r => setTimeout(r, 500));
+                    }
+                } catch(e) {
+                    console.warn('Cross-origin restriction: cannot get scrollHeight. Capturing viewport instead.');
+                }
+            }
+
             const iframeRect = iframe.getBoundingClientRect();
             const dpr = window.devicePixelRatio || 1;
             
+            Toast.show('Select this tab to capture...');
             const stream = await navigator.mediaDevices.getDisplayMedia({
                 video: { displaySurface: 'browser' },
                 preferCurrentTab: true
@@ -2340,7 +2646,7 @@ const Browser = {
             const video = document.createElement('video');
             video.srcObject = stream;
             await video.play();
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 200));
             
             const fullCanvas = document.createElement('canvas');
             fullCanvas.width = video.videoWidth;
@@ -2349,6 +2655,9 @@ const Browser = {
             
             stream.getTracks().forEach(t => t.stop());
             
+            if (isFullPage) iframe.style.height = originalHeight;
+
+            // Adjust crop for header/sidebar
             const cropX = iframeRect.left * dpr;
             const cropY = iframeRect.top * dpr;
             const cropW = iframeRect.width * dpr;
@@ -2364,9 +2673,11 @@ const Browser = {
             );
             
             const img = await Utils.loadImage(croppedCanvas.toDataURL());
-            Library.addCapture(img, 'Web Capture');
+            Library.addCapture(img, isFullPage ? 'Full Web Capture' : 'Web Capture');
         } catch (e) {
-            Toast.show('Capture cancelled', 'error');
+            console.error('Capture failed:', e);
+            iframe.style.height = originalHeight;
+            Toast.show('Capture cancelled or failed', 'error');
         }
     }
 };
@@ -2435,6 +2746,79 @@ const PDFViewer = {
             reader.onerror = reject;
             reader.readAsDataURL(blob);
         });
+    }
+};
+
+// =============================================
+// NOTES MANAGER
+// =============================================
+const Notes = {
+    activeNoteId: null,
+
+    init() {
+        // Handled by Editor and UI events
+    },
+
+    toggle(force) {
+        const panel = document.getElementById('notesPanel');
+        const isActive = force !== undefined ? force : !panel.classList.contains('active');
+        panel.classList.toggle('active', isActive);
+    },
+
+    render() {
+        const list = document.getElementById('notesList');
+        list.innerHTML = '';
+        
+        if (!Editor.session) return;
+        
+        const points = Editor.session.shapes
+            .filter(s => s.type === 'point')
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+            
+        if (points.length === 0) {
+            list.innerHTML = '<div style="text-align:center; padding:40px 20px; color:var(--text-dim); font-size:13px;">No comment points added yet. Use the Point tool to add markers.</div>';
+            return;
+        }
+        
+        points.forEach((p, i) => {
+            const item = document.createElement('div');
+            item.className = 'note-item' + (p.selected ? ' active' : '');
+            
+            item.innerHTML = `
+                <div class="note-item-header">
+                    <div class="note-number">${i + 1}</div>
+                    <span style="font-size:11px; color:var(--text-dim); font-weight:600;">POINT MARKER</span>
+                </div>
+                <textarea class="note-text" placeholder="Add a note or comment here...">${p.note || ''}</textarea>
+                <div class="note-actions">
+                    <button class="btn-round" title="Delete Point" onclick="Notes.deletePoint('${p.id}')">×</button>
+                </div>
+            `;
+            
+            const textarea = item.querySelector('.note-text');
+            textarea.addEventListener('input', (e) => {
+                p.note = e.target.value;
+                Library.saveCurrentCapture();
+            });
+            
+            item.addEventListener('click', () => {
+                Editor.session.shapes.forEach(s => s.selected = false);
+                p.selected = true;
+                Editor.draw();
+                this.render();
+            });
+            
+            list.appendChild(item);
+        });
+    },
+
+    deletePoint(id) {
+        if (!Editor.session) return;
+        Editor.session.shapes = Editor.session.shapes.filter(s => s.id !== id);
+        Editor.draw();
+        Editor.updateLayers();
+        this.render();
+        Library.saveCurrentCapture();
     }
 };
 
@@ -2527,6 +2911,7 @@ const Editor = {
         const tools = [
             { id: 'hand', icon: '✋', key: 'H' },
             { id: 'select', icon: '↖', key: 'V' },
+            { id: 'point', icon: '📍', key: 'M' },
             { id: 'rect', icon: '□', key: 'R' },
             { id: 'circle', icon: '○', key: 'C' },
             { id: 'path', icon: '✎', key: 'P' },
@@ -2582,6 +2967,7 @@ const Editor = {
         this.fitToView();
         this.draw();
         this.updateLayers();
+        Notes.render();
     },
 
     resize() {
@@ -2669,6 +3055,7 @@ const Editor = {
         this.draw();
         this.updateLayers();
         this.updateHistoryUI();
+        Notes.render();
     },
 
     toggleHistory() {
@@ -2722,6 +3109,9 @@ const Editor = {
         if (shape.type === 'emoji' || shape.type === 'icon') {
             const size = shape.size || 48;
             return { x: shape.x, y: shape.y, w: size, h: size };
+        } else if (shape.type === 'point') {
+            const size = 30;
+            return { x: shape.x - size/2, y: shape.y - size/2, w: size, h: size };
         } else if (shape.type === 'path') {
             if (!shape.points || shape.points.length === 0) return { x: shape.x, y: shape.y, w: 10, h: 10 };
             const xs = shape.points.map(p => p.x);
@@ -2772,6 +3162,8 @@ const Editor = {
             }
             return null;
         }
+
+        if (shape.type === 'point') return null;
 
         const bounds = this.getShapeBounds(shape);
         const padding = 8 / this.viewport.scale;
@@ -2860,10 +3252,35 @@ const Editor = {
                     this.startTextEdit(hit);
                     return;
                 }
+                
+                if (hit.type === 'point') {
+                    Notes.toggle(true);
+                    Notes.render();
+                }
             } else if (e.pointerType === 'touch') {
                 this.isPan = true;
                 this.container.classList.add('pan-mode');
             }
+        } else if (this.tool === 'point') {
+            this.isPan = false;
+            this.session.shapes.forEach(s => s.selected = false);
+            
+            const pointCount = this.session.shapes.filter(s => s.type === 'point').length;
+            
+            const shape = {
+                id: Utils.uid(),
+                type: 'point',
+                x: w.x,
+                y: w.y,
+                stroke: this.style.stroke,
+                order: pointCount + 1,
+                note: '',
+                selected: true
+            };
+            this.session.shapes.push(shape);
+            this.activeShape = shape;
+            Notes.toggle(true);
+            Notes.render();
         } else if (this.tool === 'path') {
             this.isPan = false;
             // Check if we should continue existing path or start new
@@ -3174,6 +3591,7 @@ const Editor = {
         
         this.updateLayers();
         Library.render();
+        if (wasDrawing && this.tool === 'point') Notes.render();
     },
 
     onWheel(e) {
@@ -3199,6 +3617,7 @@ const Editor = {
         
         if (key === 'v') this.setTool('select');
         if (key === 'h') this.setTool('hand');
+        if (key === 'm') this.setTool('point');
         if (key === 'r') this.setTool('rect');
         if (key === 'c') this.setTool('circle');
         if (key === 'a') this.setTool('arrow');
@@ -3231,6 +3650,9 @@ const Editor = {
         if (shape.type === 'emoji' || shape.type === 'icon') {
             const size = shape.size || 48;
             return Utils.pointInRect(wx, wy, shape.x - padding, shape.y - padding, size + padding * 2, size + padding * 2);
+        } else if (shape.type === 'point') {
+            const size = 30;
+            return Math.hypot(wx - shape.x, wy - shape.y) < size / this.viewport.scale;
         } else if (shape.type === 'path') {
             if (!shape.points) return false;
             for (let i = 0; i < shape.points.length - 1; i++) {
@@ -3327,6 +3749,28 @@ const Editor = {
         if (shape.type === 'rect') {
             if (shape.fill && shape.fill !== 'transparent') ctx.fillRect(shape.x, shape.y, shape.w, shape.h);
             ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+        } else if (shape.type === 'point') {
+            const drawSize = ctx === this.ctx ? 24 : 30;
+            
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.fillStyle = shape.stroke || '#ef4444';
+            ctx.beginPath();
+            ctx.arc(shape.x, shape.y, drawSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${drawSize/2}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const order = Editor.session.shapes.filter(s => s.type === 'point').sort((a,b) => (a.order||0)-(b.order||0)).indexOf(shape) + 1;
+            ctx.fillText(order, shape.x, shape.y);
+            ctx.textAlign = 'left';
         } else if (shape.type === 'path') {
             if (!shape.points || shape.points.length < 2) return;
             ctx.beginPath();
@@ -3448,6 +3892,8 @@ const Editor = {
         
         if (shape.type === 'path') {
             handles = shape.points.map((p, i) => ({ x: p.x, y: p.y, id: 'p' + i }));
+        } else if (shape.type === 'point') {
+            return; // No handles for points
         } else {
             handles = [
                 { x: bounds.x - padding, y: bounds.y - padding },
@@ -3485,6 +3931,7 @@ const Editor = {
         this.saveHistory('Delete Selection');
         this.draw();
         this.updateLayers();
+        Notes.render();
         Toast.show('Deleted');
     },
 
@@ -3511,6 +3958,9 @@ const Editor = {
             if (shape.type === 'emoji') {
                 thumb.textContent = shape.emoji;
                 thumb.style.fontSize = '20px';
+            } else if (shape.type === 'point') {
+                thumb.textContent = '📍';
+                thumb.style.fontSize = '16px';
             } else if (shape.type === 'icon' && shape.iconData) {
                 const icon = shape.iconData;
                 const color = (shape.stroke || '#fafafa').replace('#', '');
@@ -3539,6 +3989,7 @@ const Editor = {
             if (shape.type === 'text') name = (shape.text || 'Text').substring(0, 12);
             else if (shape.type === 'emoji') name = shape.emoji;
             else if (shape.type === 'icon' && shape.iconData) name = shape.iconData.name;
+            else if (shape.type === 'point') name = 'Point ' + (Editor.session.shapes.filter(s => s.type === 'point').sort((a,b) => (a.order||0)-(b.order||0)).indexOf(shape) + 1);
             
             info.innerHTML = `
                 <div class="layer-name">${name}</div>
@@ -3553,6 +4004,7 @@ const Editor = {
                 this.session.shapes = this.session.shapes.filter(s => s.id !== shape.id);
                 this.draw();
                 this.updateLayers();
+                Notes.render();
             });
             
             el.appendChild(thumb);
@@ -3564,6 +4016,10 @@ const Editor = {
                 shape.selected = true;
                 this.draw();
                 this.updateLayers();
+                if (shape.type === 'point') {
+                    Notes.toggle(true);
+                    Notes.render();
+                }
             });
             
             list.appendChild(el);
@@ -3614,14 +4070,20 @@ const Exporter = {
                     const blob = await this.render(session);
                     const imgData = await this.blobToDataURL(blob);
                     
-                    const orientation = session.width > session.height ? 'l' : 'p';
+                    const pointsWithNotes = (session.shapes || [])
+                        .filter(s => s.type === 'point')
+                        .sort((a, b) => (a.order || 0) - (b.order || 0));
+                    const noteSectionHeight = pointsWithNotes.length > 0 ? 200 + (pointsWithNotes.length * 40) : 0;
+                    const finalHeight = session.height + noteSectionHeight;
+                    
+                    const orientation = session.width > finalHeight ? 'l' : 'p';
                     if (!pdf) {
-                        pdf = new jsPDF({ orientation, unit: 'px', format: [session.width, session.height] });
+                        pdf = new jsPDF({ orientation, unit: 'px', format: [session.width, finalHeight] });
                     } else {
-                        pdf.addPage([session.width, session.height], orientation);
+                        pdf.addPage([session.width, finalHeight], orientation);
                     }
                     
-                    pdf.addImage(imgData, 'PNG', 0, 0, session.width, session.height);
+                    pdf.addImage(imgData, 'PNG', 0, 0, session.width, finalHeight);
                 }
                 pdf.save('markup-export.pdf');
             }
@@ -3641,10 +4103,20 @@ const Exporter = {
     },
 
     async render(session) {
+        const pointsWithNotes = (session.shapes || [])
+            .filter(s => s.type === 'point')
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+            
+        const noteSectionHeight = pointsWithNotes.length > 0 ? 200 + (pointsWithNotes.length * 40) : 0;
+        
         const canvas = document.createElement('canvas');
         canvas.width = session.width;
-        canvas.height = session.height;
+        canvas.height = session.height + noteSectionHeight;
         const ctx = canvas.getContext('2d');
+        
+        // Background
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         ctx.drawImage(session.img, 0, 0);
         
@@ -3656,6 +4128,22 @@ const Exporter = {
             if (shape.type === 'rect') {
                 if (shape.fill && shape.fill !== 'transparent') ctx.fillRect(shape.x, shape.y, shape.w, shape.h);
                 ctx.strokeRect(shape.x, shape.y, shape.w, shape.h);
+            } else if (shape.type === 'point') {
+                const drawSize = 30;
+                ctx.fillStyle = shape.stroke || '#ef4444';
+                ctx.beginPath();
+                ctx.arc(shape.x, shape.y, drawSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = '#fff';
+                ctx.font = `bold ${drawSize/2}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const order = pointsWithNotes.indexOf(shape) + 1;
+                ctx.fillText(order, shape.x, shape.y);
+                ctx.textAlign = 'left';
             } else if (shape.type === 'path') {
                 if (!shape.points || shape.points.length < 2) continue;
                 ctx.beginPath();
@@ -3722,7 +4210,62 @@ const Exporter = {
             }
         }
         
+        // Render Notes Section
+        if (noteSectionHeight > 0) {
+            ctx.fillStyle = '#f8f9fa';
+            ctx.fillRect(0, session.height, canvas.width, noteSectionHeight);
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, session.height);
+            ctx.lineTo(canvas.width, session.height);
+            ctx.stroke();
+            
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.textBaseline = 'top';
+            ctx.fillText('Notes & Annotations', 40, session.height + 40);
+            
+            let currentY = session.height + 80;
+            pointsWithNotes.forEach((p, i) => {
+                const order = i + 1;
+                ctx.fillStyle = p.stroke || '#ef4444';
+                ctx.beginPath();
+                ctx.arc(55, currentY + 12, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(order, 55, currentY + 6);
+                
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#444';
+                ctx.font = '16px sans-serif';
+                const linesHeight = this.wrapText(ctx, p.note || '(No note provided)', 80, currentY + 4, canvas.width - 120, 22);
+                currentY += Math.max(40, linesHeight + 10);
+            });
+        }
+        
         return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    },
+
+    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = text.split(' ');
+        let line = '';
+        let totalHeight = 0;
+        for (let n = 0; n < words.length; n++) {
+            let testLine = line + words[n] + ' ';
+            if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+                ctx.fillText(line, x, y);
+                line = words[n] + ' ';
+                y += lineHeight;
+                totalHeight += lineHeight;
+            } else {
+                line = testLine;
+            }
+        }
+        ctx.fillText(line, x, y);
+        return totalHeight + lineHeight;
     }
 };
 
@@ -3792,20 +4335,17 @@ const SettingsUI = {
 // APP
 // =============================================
 const App = {
-    mode: 'browse',
+    mode: 'library',
 
     async init() {
         Settings.init();
         await Library.init();
         Editor.init();
         SettingsUI.init();
-        Browser.go();
-        this.setupEventListeners();
+        Notes.init();
         
-        // Auto-load most recent capture if exists
-        if (Library.captures.length > 0) {
-            setTimeout(() => Library.loadCapture(Library.captures[0].id), 500);
-        }
+        this.setupEventListeners();
+        this.setView('library');
         
         window.addEventListener('paste', async e => {
             const item = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'));
@@ -3822,9 +4362,13 @@ const App = {
     },
 
     setupEventListeners() {
+        document.getElementById('btnLibrary').addEventListener('click', () => this.setView('library'));
         document.getElementById('btnBrowse').addEventListener('click', () => this.setView('browse'));
         document.getElementById('btnMarkup').addEventListener('click', () => this.setView('markup'));
         document.getElementById('startNewBtn').addEventListener('click', () => this.startNew());
+        
+        document.getElementById('landingNewBtn').addEventListener('click', () => this.startNew());
+        document.getElementById('landingExportBtn').addEventListener('click', () => this.exportMultipleSessions());
         
         document.getElementById('goBtn').addEventListener('click', () => Browser.go());
         document.getElementById('captureBtn').addEventListener('click', () => Browser.capture());
@@ -3878,32 +4422,118 @@ const App = {
             Modal.close('confirmModal');
             if (Modal.confirmCallback) Modal.confirmCallback();
         });
+        
+        document.getElementById('closeNotesBtn').addEventListener('click', () => Notes.toggle(false));
     },
 
     setView(mode) {
         this.mode = mode;
+        document.getElementById('btnLibrary').classList.toggle('active', mode === 'library');
         document.getElementById('btnBrowse').classList.toggle('active', mode === 'browse');
         document.getElementById('btnMarkup').classList.toggle('active', mode === 'markup');
+        
         document.getElementById('browserBar').style.display = mode === 'browse' ? 'flex' : 'none';
         document.getElementById('editorBar').classList.toggle('active', mode === 'markup');
+        
         document.getElementById('browseView').classList.toggle('active', mode === 'browse');
         document.getElementById('markupView').classList.toggle('active', mode === 'markup');
+        document.getElementById('landingPage').classList.toggle('active', mode === 'library');
         
-        if (mode === 'markup') {
+        document.getElementById('sidebar').style.display = mode === 'library' ? 'none' : 'flex';
+        
+        if (mode === 'library') {
+            this.renderLandingPage();
+        } else if (mode === 'markup') {
             setTimeout(() => {
                 Editor.resize();
                 if (Editor.session) Editor.fitToView();
             }, 50);
+        } else if (mode === 'browse') {
+            if (!document.getElementById('webFrame').src) Browser.go();
         }
     },
 
+    async renderLandingPage() {
+        const grid = document.getElementById('landingSessionsGrid');
+        grid.innerHTML = '';
+        
+        const allCaptures = await DB.getAll(DB.STORES.CAPTURES);
+        let totalShapes = 0;
+        allCaptures.forEach(c => totalShapes += (c.shapes || []).length);
+        
+        document.getElementById('statSessions').textContent = Library.sessions.length;
+        document.getElementById('statCaptures').textContent = allCaptures.length;
+        document.getElementById('statAnnotations').textContent = totalShapes;
+        
+        const lastActive = Library.sessions.length > 0 ? new Date(Math.max(...Library.sessions.map(s => s.createdAt))).toLocaleDateString() : 'Never';
+        document.getElementById('statLastActive').textContent = lastActive;
+
+        Library.sessions.forEach(s => {
+            const item = document.createElement('div');
+            item.className = 'session-item' + (Library.selectedSessionIds.has(s.id) ? ' selected' : '');
+            
+            const sessionCaptures = allCaptures.filter(c => c.sessionId === s.id);
+            const latestThumb = sessionCaptures.length > 0 ? sessionCaptures[0].thumbData : '';
+            
+            item.innerHTML = `
+                <div class="session-check">${Library.selectedSessionIds.has(s.id) ? '✓' : ''}</div>
+                <div class="session-item-thumb">
+                    ${latestThumb ? `<img src="${latestThumb}">` : '<div style="font-size:40px; opacity:0.2;">📂</div>'}
+                </div>
+                <div class="session-item-info">
+                    <div class="session-item-title">${s.name}</div>
+                    <div class="session-item-meta">${sessionCaptures.length} captures • ${new Date(s.createdAt).toLocaleDateString()}</div>
+                </div>
+                <div style="position:absolute; bottom:12px; right:12px; display:flex; gap:4px;">
+                    <button class="btn btn-default btn-sm" onclick="event.stopPropagation(); Library.deleteSession('${s.id}')">Delete</button>
+                </div>
+            `;
+            
+            item.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                Library.switchSession(s.id).then(() => App.setView('browse'));
+            });
+            
+            const check = item.querySelector('.session-check');
+            check.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (Library.selectedSessionIds.has(s.id)) Library.selectedSessionIds.delete(s.id);
+                else Library.selectedSessionIds.add(s.id);
+                this.renderLandingPage();
+            });
+            
+            grid.appendChild(item);
+        });
+    },
+
     async startNew() {
-        const name = prompt('Enter new session name:', 'Session ' + (Library.sessions.length + 1));
+        const name = prompt('Enter new session name:', 'Session ' + (Library.sessions ? Library.sessions.length + 1 : 1));
         if (name) {
             await Library.createNewSession(name);
-            this.setView('browse');
             Toast.show('Started new session: ' + name);
         }
+    },
+
+    async exportMultipleSessions() {
+        if (Library.selectedSessionIds.size === 0) {
+            Toast.show('Select at least one session to export', 'error');
+            return;
+        }
+        
+        const selectedIds = Array.from(Library.selectedSessionIds);
+        const allCaptures = await DB.getAll(DB.STORES.CAPTURES);
+        const capturesToExport = allCaptures.filter(c => selectedIds.includes(c.sessionId));
+        
+        if (capturesToExport.length === 0) {
+            Toast.show('Selected sessions have no captures', 'error');
+            return;
+        }
+
+        // We'll use the Exporter, but we need to temporarily set these as selected in Library
+        const originalCaptures = Library.captures;
+        Library.captures = capturesToExport.map(c => ({ ...c, selected: true }));
+        Exporter.showDialog();
+        Library.captures = originalCaptures;
     }
 };
 

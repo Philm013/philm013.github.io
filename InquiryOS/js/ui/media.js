@@ -4,7 +4,7 @@
  */
 
 import { App } from '../core/state.js';
-import { saveToStorage, saveAndBroadcast } from '../core/sync.js';
+import { saveAndBroadcast } from '../core/sync.js';
 import { renderTeacherContent } from '../ui/renderer.js';
 import { toast } from './utils.js';
 
@@ -15,7 +15,17 @@ export function openMediaPicker() {
     if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        window.setMediaType('image');
+        window.setMediaType('sim');
+        window.searchMedia();
+        
+        // Add enter key listener to search input
+        const searchInput = document.getElementById('mediaSearchInput');
+        if (searchInput && !searchInput.dataset.listenerAdded) {
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') window.searchMedia();
+            });
+            searchInput.dataset.listenerAdded = 'true';
+        }
     }
 }
 
@@ -38,11 +48,18 @@ export function setMediaType(type) {
 
     const simPanel = document.getElementById('simInputPanel');
     if (simPanel) simPanel.classList.toggle('hidden', type !== 'sim');
+    
+    // Auto-search when switching tabs
+    window.searchMedia();
 }
 
 export async function searchMedia() {
-    const query = document.getElementById('mediaSearchInput')?.value.trim();
-    if (!query && currentMediaType !== 'sim') return;
+    let query = document.getElementById('mediaSearchInput')?.value.trim();
+    
+    // Default to 'science' if query is empty for images/videos
+    if (!query && currentMediaType !== 'sim') {
+        query = 'science';
+    }
 
     const resultsContainer = document.getElementById('mediaResults');
     if (!resultsContainer) return;
@@ -198,21 +215,23 @@ export function viewMediaDetail(id) {
     } else if (item.type === 'video') {
         mediaHtml = `<video src="${item.url}" controls autoplay class="max-w-full max-h-full shadow-2xl"></video>`;
     } else if (item.type === 'sim') {
-        mediaHtml = `<iframe src="${item.url}" class="w-full h-full bg-white rounded-3xl" allowfullscreen></iframe>`;
+        mediaHtml = `<iframe src="${item.url}" class="w-full h-full bg-white md:rounded-3xl border-0 shadow-2xl" allowfullscreen></iframe>`;
     }
 
     modal.innerHTML = `
-        <div class="flex items-center justify-between p-6 text-white bg-black/40 backdrop-blur-md">
+        <div class="flex items-center justify-between p-6 text-white bg-black/40 backdrop-blur-md shrink-0">
             <div>
                 <h3 class="font-black uppercase tracking-widest text-sm">${item.type}: ${item.provider}</h3>
-                <p class="text-[10px] text-white/60 font-bold uppercase mt-0.5">Reference Material</p>
+                <p class="text-[10px] text-white/60 font-bold uppercase mt-0.5">${item.title || 'Reference Material'}</p>
             </div>
             <button onclick="window.closeMediaDetail()" class="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
                 <span class="iconify text-2xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <div class="flex-1 flex items-center justify-center p-4 md:p-12 overflow-hidden">
-            ${mediaHtml}
+        <div class="flex-1 flex items-center justify-center p-0 md:p-12 overflow-hidden bg-black/50">
+            <div class="w-full h-full flex items-center justify-center">
+                ${mediaHtml}
+            </div>
         </div>
     `;
 
