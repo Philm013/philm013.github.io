@@ -73,6 +73,9 @@ window.showView = (viewId) => {
         target.style.display = (viewId === 'appView') ? 'flex' : 'block';
         if (viewId === 'loginView' || viewId === 'docsView' || viewId === 'supportView') {
             target.scrollTo(0, 0);
+            if (viewId === 'loginView' && typeof window.loadRecentSessions === 'function') {
+                window.loadRecentSessions();
+            }
         }
     }
 };
@@ -195,6 +198,10 @@ async function init() {
 
         if (typeof window.renderAvatarPicker === 'function') {
             window.renderAvatarPicker();
+        }
+
+        if (typeof window.loadRecentSessions === 'function') {
+            await window.loadRecentSessions();
         }
         
         if (typeof window.initTouchNavigation === 'function') {

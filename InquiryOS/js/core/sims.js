@@ -4,12 +4,25 @@
  */
 
 import { App } from './state.js';
+import { dbGet, dbPut, STORE_CACHE, isDBReady } from './storage.js';
 
 /**
- * Loads all scientific simulation data from local JSON files.
+ * Loads all scientific simulation data. Uses local cache if available to speed up startup.
  */
 export async function loadSimulationsData() {
     try {
+        // Check cache first
+        if (isDBReady()) {
+            const cached = await dbGet(STORE_CACHE, 'simulations');
+            // Cache is valid for 24 hours
+            if (cached && (Date.now() - cached.timestamp < 24 * 60 * 60 * 1000)) {
+                App.simulations = cached.data;
+                console.log(`Loaded ${App.simulations.length} simulations from cache.`);
+                return;
+            }
+        }
+
+        console.log('Fetching simulations data from source...');
         const fetchJSON = async (url) => {
             const r = await fetch(url);
             if (!r.ok) throw new Error(`HTTP error! status: ${r.status}`);
@@ -142,6 +155,11 @@ export async function loadSimulationsData() {
 
         App.simulations = sims;
         console.log(`Loaded ${sims.length} simulations from JSON sources.`);
+
+        // Save to cache
+        if (isDBReady()) {
+            await dbPut(STORE_CACHE, { id: 'simulations', data: sims, timestamp: Date.now() });
+        }
     } catch (e) {
         console.error('Failed to load simulations data:', e);
         // Fallback to minimal hardcoded list if fetch fails

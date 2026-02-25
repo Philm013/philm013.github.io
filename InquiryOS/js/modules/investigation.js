@@ -8,7 +8,7 @@
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
 import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
-import { toast } from '../ui/utils.js';
+import { toast, deepClone } from '../ui/utils.js';
 
 export function renderInvestigationModule() {
     const dt = App.work.dataTable || { columns: [], rows: [] };
@@ -377,7 +377,7 @@ export async function saveRowNote() {
 
 export async function saveDataAsEvidence() {
     if (!App.work.dataTable.rows.some(r => Object.values(r).some(v => v))) { toast('Add some data first!', 'warning'); return; }
-    const evidence = { id: 'ev_' + Date.now(), type: 'data', title: 'Data Table', description: `${App.work.dataTable.rows.length} rows, ${App.work.dataTable.columns.length} columns`, icon: 'mdi:table', data: JSON.parse(JSON.stringify(App.work.dataTable)), author: App.user.name, time: Date.now() };
+    const evidence = { id: 'ev_' + Date.now(), type: 'data', title: 'Data Table', description: `${App.work.dataTable.rows.length} rows, ${App.work.dataTable.columns.length} columns`, icon: 'mdi:table', data: deepClone(App.work.dataTable)), author: App.user.name, time: Date.now() };
     App.work.evidence.push(evidence); await saveAndBroadcast('evidence', App.work.evidence); toast('Data saved!', 'success');
 }
 

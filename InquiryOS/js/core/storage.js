@@ -14,6 +14,8 @@ export const STORE_LIBRARY = 'library';
 export const STORE_USERS = 'users';
 /** @constant {string} Store name for saved lesson presets */
 export const STORE_LESSONS = 'lessons';
+/** @constant {string} Store name for internal app cache */
+export const STORE_CACHE = 'app_cache';
 
 let db = null;
 let dbReady = false;
@@ -24,6 +26,8 @@ let dbReady = false;
  */
 export function initDB() {
     return new Promise((resolve, reject) => {
+        if (db) return resolve(db);
+
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         
         request.onerror = (event) => {
@@ -52,6 +56,10 @@ export function initDB() {
             
             if (!database.objectStoreNames.contains(STORE_LESSONS)) {
                 database.createObjectStore(STORE_LESSONS, { keyPath: 'id' });
+            }
+
+            if (!database.objectStoreNames.contains(STORE_CACHE)) {
+                database.createObjectStore(STORE_CACHE, { keyPath: 'id' });
             }
 
             if (database.objectStoreNames.contains(STORE_USERS)) {
@@ -100,6 +108,34 @@ export function dbPut(storeName, data) {
 }
 
 /**
+ * Saves or updates multiple records in a single transaction.
+ * @param {string} storeName 
+ * @param {Array<any>} dataArray 
+ * @returns {Promise<void>}
+ */
+export function dbPutMany(storeName, dataArray) {
+    return new Promise((resolve, reject) => {
+        if (!db || !dbReady) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        if (!dataArray || dataArray.length === 0) return resolve();
+        
+        try {
+            const transaction = db.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            
+            dataArray.forEach(data => store.put(data));
+            
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+/**
  * Retrieves an item from the specified object store by its key.
  * @param {string} storeName - The name of the object store.
  * @param {any} key - The key of the item to retrieve.
@@ -118,6 +154,33 @@ export function dbGet(storeName, key) {
             const request = store.get(key);
             
             request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+/**
+ * Fetches all records from a store that start with a specific prefix.
+ * Useful for getting all session data for a specific class code.
+ * @param {string} storeName 
+ * @param {string} prefix 
+ * @returns {Promise<Array<any>>}
+ */
+export function dbGetByPrefix(storeName, prefix) {
+    return new Promise((resolve, reject) => {
+        if (!db || !dbReady) {
+            resolve([]);
+            return;
+        }
+        try {
+            const transaction = db.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const range = IDBKeyRange.bound(prefix, prefix + '\uffff');
+            const request = store.getAll(range);
+            
+            request.onsuccess = () => resolve(request.result || []);
             request.onerror = () => reject(request.error);
         } catch (e) {
             reject(e);

@@ -10,7 +10,7 @@
 import { App } from '../core/state.js';
 import { saveAndBroadcast, saveToStorage } from '../core/sync.js';
 import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
-import { toast } from '../ui/utils.js';
+import { toast, deepClone } from '../ui/utils.js';
 
 /**
  * Renders the Models Practice module.
@@ -807,7 +807,7 @@ export function startNodeDrag(event, nodeId) {
         else if (item.type === 'path') el = App.work.modelPaths.find(i => i.id === item.id);
         
         if (el) {
-            if (item.type === 'path') return { ...item, points: JSON.parse(JSON.stringify(el.points)) };
+            if (item.type === 'path') return { ...item, points: deepClone(el.points)) };
             return { ...item, x: el.x, y: el.y };
         }
         return null;
@@ -915,7 +915,7 @@ export async function clearAllModelElements() {
 }
 
 export async function saveModelAsEvidence() {
-    const evidence = { id: 'ev_' + Date.now(), type: 'model', title: 'Scientific Model', description: `Model with ${App.work.modelNodes.length} concepts`, icon: 'mdi:cube-outline', data: JSON.parse(JSON.stringify(App.work)), author: App.user.name, time: Date.now() };
+    const evidence = { id: 'ev_' + Date.now(), type: 'model', title: 'Scientific Model', description: `Model with ${App.work.modelNodes.length} concepts`, icon: 'mdi:cube-outline', data: deepClone(App.work)), author: App.user.name, time: Date.now() };
     App.work.evidence.push(evidence); await saveAndBroadcast('evidence', App.work.evidence); toast('Model saved!', 'success');
 }
 

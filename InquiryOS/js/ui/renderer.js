@@ -8,7 +8,7 @@ import { dbGetByIndex, STORE_USERS } from '../core/storage.js';
 import { renderNavigation } from './navigation.js';
 import { saveToStorage } from '../core/sync.js';
 import { ngssData } from '../core/state.js';
-import { toast } from './utils.js';
+import { toast, deepClone } from './utils.js';
 
 
 // Import Student Module Renderers
@@ -706,8 +706,8 @@ export async function renderPresentationLayer() {
         const exemplar = App.teacherSettings.exemplars[pres.moduleId];
         if (exemplar) {
             // Temporarily swap work state to render the exemplar
-            const originalWork = JSON.parse(JSON.stringify(App.work));
-            App.work = JSON.parse(JSON.stringify(exemplar));
+            const originalWork = deepClone(App.work));
+            App.work = deepClone(exemplar));
             const container = document.getElementById('presentationContent');
             if (container) {
                 const renderers = {
@@ -729,7 +729,7 @@ export async function renderPresentationLayer() {
         const { dbGet, STORE_SESSIONS } = await import('../core/storage.js');
         const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + pres.visitorId);
         if (saved && saved.work) {
-            const originalWork = JSON.parse(JSON.stringify(App.work));
+            const originalWork = deepClone(App.work));
             App.work = saved.work;
             const container = document.getElementById('presentationContent');
             if (container) {
@@ -757,12 +757,12 @@ export async function toggleExemplarView() {
     App.isViewingExemplar = !App.isViewingExemplar;
     if (App.isViewingExemplar) {
         // Cache current work
-        App.studentWorkCache = JSON.parse(JSON.stringify(App.work));
+        App.studentWorkCache = deepClone(App.work));
         
         // Show exemplar
         const exemplar = App.teacherSettings.exemplars?.[App.currentModule];
         if (exemplar) {
-            App.work = JSON.parse(JSON.stringify(exemplar));
+            App.work = deepClone(exemplar));
         } else {
             App.work = getInitialWorkState();
         }

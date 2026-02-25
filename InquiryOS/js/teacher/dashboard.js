@@ -4,11 +4,11 @@
  */
 
 import { App, getInitialWorkState } from '../core/state.js';
-import { dbGetAll, dbPut, dbDelete, dbGet, dbGetByIndex, STORE_LESSONS, STORE_USERS, STORE_SESSIONS } from '../core/storage.js';
+import { dbGetAll, dbPut, dbDelete, dbGet, dbGetByIndex, dbGetByPrefix, STORE_LESSONS, STORE_USERS, STORE_SESSIONS } from '../core/storage.js';
 import { saveToStorage, registerUser, loadFromStorage, saveAndBroadcast } from '../core/sync.js';
 import { renderTeacherContent, updateModeUI, renderStudentContent, renderEmptyState } from '../ui/renderer.js';
 import { renderNavigation } from '../ui/navigation.js';
-import { toast, generateCode, calculateStudentProgress } from '../ui/utils.js';
+import { toast, generateCode, calculateStudentProgress, deepClone } from '../ui/utils.js';
 import { getNGSSTemplates } from '../core/ngss.js';
 
 function renderStatTile(label, count, icon, color) {
@@ -237,11 +237,14 @@ export async function renderTeacherSnapshots() {
     const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
     const students = allUsers.filter(u => u.mode === 'student');
     
-    let studentData = [];
-    for (const s of students) {
-        const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + s.visitorId);
-        studentData.push({ student: s, work: saved ? saved.work : null });
-    }
+    // Batch fetch all student work for this class
+    const classData = await dbGetByPrefix(STORE_SESSIONS, App.classCode + ':work:');
+    const workMap = new Map(classData.map(item => [item.code, item.work]));
+
+    const studentData = students.map(s => ({
+        student: s,
+        work: workMap.get(App.classCode + ':work:' + s.visitorId) || null
+    }));
 
     return `
         <div class="max-w-7xl mx-auto px-2 md:px-0">
@@ -293,6 +296,7 @@ export async function renderTeacherSnapshots() {
         </div>
     `;
 }
+
 
 /**
  * Renders the Lesson Designer.
@@ -407,7 +411,7 @@ export async function launchTemplate(templateId) {
         const t = templates.find(x => x.id === templateId);
         if (!t) return;
         App.classCode = generateCode();
-        App.teacherSettings = JSON.parse(JSON.stringify(t.settings));
+        App.teacherSettings = deepClone(t.settings));
         App.work = getInitialWorkState();
         App.sharedData = { debatePosts: [] };
         await saveToStorage(); await registerUser(); updateModeUI(); toast('Template Launched!', 'success');
@@ -499,7 +503,7 @@ export async function applyTemplate(templateId) {
         const templates = getNGSSTemplates();
         const t = templates.find(x => x.id === templateId);
         if (t) {
-            App.teacherSettings = JSON.parse(JSON.stringify(t.settings));
+            App.teacherSettings = deepClone(t.settings));
             await saveToStorage(); updateModeUI(); toast('Template Applied!', 'success');
         }
     }
@@ -584,11 +588,10 @@ export async function renderTeacherAccess() {
     
     const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
     const students = allUsers.filter(u => u.mode === 'student');
-    const studentWorks = [];
-    for (const s of students) {
-        const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + s.visitorId);
-        if (saved) studentWorks.push(saved.work);
-    }
+
+    // Batch fetch all student work for this class
+    const classData = await dbGetByPrefix(STORE_SESSIONS, App.classCode + ':work:');
+    const studentWorks = classData.map(item => item.work).filter(Boolean);
 
     return `
         <div class="max-w-5xl mx-auto space-y-6">
@@ -799,17 +802,25 @@ export async function renderActivityDashboard() {
 }
 
 
+/**
+ * Renders the Activity Dashboard Monitoring view.
+ * Optimized with batch data fetching.
+ */
 async function renderMonitorView() {
     const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
     const students = allUsers.filter(u => u.mode === 'student');
     const now = Date.now();
 
+    // Batch fetch all session data for this class
+    const classData = await dbGetByPrefix(STORE_SESSIONS, App.classCode + ':work:');
+    const workMap = new Map(classData.map(item => [item.code, item.work]));
+
     return `
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            ${await Promise.all(students.map(async s => {
+            ${students.map(s => {
                 const isOnline = now - s.lastSeen < 15000;
-                const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + s.visitorId);
-                const progress = saved ? calculateStudentProgress(saved.work) : 0;
+                const work = workMap.get(App.classCode + ':work:' + s.visitorId);
+                const progress = work ? calculateStudentProgress(work) : 0;
                 
                 return `
                     <div class="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm hover:shadow-xl transition-all group">
@@ -832,7 +843,7 @@ async function renderMonitorView() {
                         </button>
                     </div>
                 `;
-            })).then(r => r.join(''))}
+            }).join('')}
             ${students.length === 0 ? `
                 <div class="col-span-full">
                     ${renderEmptyState('No students to monitor', 'Ask students to join the session to see their progress here.', 'mdi:monitor-dashboard', true)}
@@ -841,6 +852,7 @@ async function renderMonitorView() {
         </div>
     `;
 }
+
 
 
 /**
@@ -862,7 +874,7 @@ window.renderStudentContentHtml = () => {
 
 export async function toggleDashboardMode(isMonitoring) {
     if (App.isExemplarMode && !App.viewerState.isMonitoring) {
-        App.teacherSettings.exemplars[App.currentModule] = JSON.parse(JSON.stringify(App.work));
+        App.teacherSettings.exemplars[App.currentModule] = deepClone(App.work));
     }
     App.viewerState.isMonitoring = isMonitoring;
     if (!isMonitoring) {
@@ -874,14 +886,14 @@ export async function toggleDashboardMode(isMonitoring) {
 
 export async function exitActivityDashboard() {
     App.isExemplarMode = false;
-    if (!App.viewerState.isMonitoring) App.teacherSettings.exemplars[App.currentModule] = JSON.parse(JSON.stringify(App.work));
+    if (!App.viewerState.isMonitoring) App.teacherSettings.exemplars[App.currentModule] = deepClone(App.work));
     App.viewingStudentId = null; await saveToStorage(); await loadFromStorage(); updateModeUI(); renderNavigation(); renderTeacherContent();
 }
 
 export async function saveCurrentAsLesson() {
     window.openGenericInput('Save Preset', 'Enter template name...', App.teacherSettings.phenomenon.title, async (name) => {
         if (!name) return;
-        const lesson = { id: 'l_' + Date.now(), name, settings: JSON.parse(JSON.stringify(App.teacherSettings)), timestamp: Date.now() };
+        const lesson = { id: 'l_' + Date.now(), name, settings: deepClone(App.teacherSettings)), timestamp: Date.now() };
         await dbPut(STORE_LESSONS, lesson); 
         toast('Preset Saved!', 'success'); 
         renderTeacherContent();
@@ -893,7 +905,7 @@ export async function deleteLesson(id) { if (confirm('Delete lesson?')) { await 
 export async function launchLesson(lessonId) {
     if (confirm('Start new session?')) {
         const l = await dbGet(STORE_LESSONS, lessonId); if (!l) return;
-        App.classCode = generateCode(); App.teacherSettings = JSON.parse(JSON.stringify(l.settings));
+        App.classCode = generateCode(); App.teacherSettings = deepClone(l.settings));
         App.work = getInitialWorkState(); App.sharedData = { debatePosts: [] };
         await saveToStorage(); await registerUser(); updateModeUI(); toast('Launched!', 'success');
     }
@@ -901,7 +913,7 @@ export async function launchLesson(lessonId) {
 
 export async function applyLessonToCurrent(lessonId) {
     if (confirm('Apply to this class?')) {
-        const l = await dbGet(STORE_LESSONS, lessonId); if (l) { App.teacherSettings = JSON.parse(JSON.stringify(l.settings)); await saveToStorage(); updateModeUI(); toast('Applied!', 'success'); }
+        const l = await dbGet(STORE_LESSONS, lessonId); if (l) { App.teacherSettings = deepClone(l.settings)); await saveToStorage(); updateModeUI(); toast('Applied!', 'success'); }
     }
 }
 
@@ -928,7 +940,7 @@ export async function guidedMove(dir) {
     if (App.teacherSettings.forceModule === targetModule) return;
 
     if (App.isExemplarMode && !App.viewerState.isMonitoring) {
-        App.teacherSettings.exemplars[App.currentModule] = JSON.parse(JSON.stringify(App.work));
+        App.teacherSettings.exemplars[App.currentModule] = deepClone(App.work));
     }
     
     App.teacherSettings.forceModule = App.currentModule = targetModule;

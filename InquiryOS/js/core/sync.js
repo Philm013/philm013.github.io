@@ -1,58 +1,58 @@
 /**
  * @file sync.js
  * @description Core synchronization logic for InquiryOS, handling data persistence and real-time state updates.
+ * Optimized with batch operations and range queries to reduce IndexedDB overhead.
  */
 
 import { App, getInitialWorkState } from './state.js';
-import { dbPut, dbGet, dbGetByIndex, STORE_SESSIONS, STORE_USERS, isDBReady } from './storage.js';
-import { updateHealthIndicator } from '../ui/utils.js';
+import { dbPut, dbGet, dbGetByIndex, dbPutMany, dbGetByPrefix, STORE_SESSIONS, STORE_USERS, isDBReady } from './storage.js';
+import { updateHealthIndicator, deepClone } from '../ui/utils.js';
 import { renderNavigation } from '../ui/navigation.js';
-import { renderStudentContent, renderTeacherContent } from '../ui/renderer.js';
-import { renderEvidenceBank } from '../ui/renderer.js'; // Note: check where this eventually lands
+import { renderStudentContent, renderTeacherContent, renderEvidenceBank } from '../ui/renderer.js';
 
 /**
  * Saves current application state to IndexedDB.
- * Handles teacher settings, shared data, and student work separately.
+ * Optimized to use a single transaction (dbPutMany).
  * @returns {Promise<boolean>} Success status of the save operation.
  */
 export async function saveToStorage() {
-    if (!isDBReady()) return false;
+    if (!isDBReady() || !App.classCode) return false;
     
     try {
         const timestamp = Date.now();
+        const batch = [];
         
-        // 1. Save Teacher Settings (only if teacher)
+        // 1. Prepare Teacher Settings (only if teacher)
         if (App.mode === 'teacher') {
-            // If in exemplar mode, sync current work to the exemplar slot first
             if (App.isExemplarMode && !App.viewerState.isMonitoring) {
-                App.teacherSettings.exemplars[App.currentModule] = JSON.parse(JSON.stringify(App.work));
+                App.teacherSettings.exemplars[App.currentModule] = deepClone(App.work);
             }
-            
-            const settingsData = {
+            batch.push({
                 code: App.classCode + ':settings',
-                teacherSettings: JSON.parse(JSON.stringify(App.teacherSettings)),
+                teacherSettings: deepClone(App.teacherSettings),
                 timestamp: timestamp
-            };
-            await dbPut(STORE_SESSIONS, settingsData);
+            });
         }
         
-        // 2. Save Shared Data (posts, etc)
-        const sharedData = {
+        // 2. Prepare Shared Data
+        batch.push({
             code: App.classCode + ':shared',
-            sharedData: JSON.parse(JSON.stringify(App.sharedData)),
+            sharedData: deepClone(App.sharedData),
             timestamp: timestamp
-        };
-        await dbPut(STORE_SESSIONS, sharedData);
+        });
         
-        // 3. Save Student Work (if student or teacher viewing a student)
+        // 3. Prepare Student Work (if student or teacher viewing a student)
         const targetId = App.mode === 'student' ? App.user.visitorId : App.viewingStudentId;
         if (targetId) {
-            const workData = {
+            batch.push({
                 code: App.classCode + ':work:' + targetId,
-                work: JSON.parse(JSON.stringify(App.work)),
+                work: deepClone(App.work),
                 timestamp: timestamp
-            };
-            await dbPut(STORE_SESSIONS, workData);
+            });
+        }
+
+        if (batch.length > 0) {
+            await dbPutMany(STORE_SESSIONS, batch);
         }
         
         App.syncState.lastSync = timestamp;
@@ -69,38 +69,38 @@ export async function saveToStorage() {
 
 /**
  * Loads application state from IndexedDB based on class code and current role.
+ * Optimized to fetch all class-related data in a single range query.
  * @returns {Promise<void>}
  */
 export async function loadFromStorage() {
-    if (!isDBReady()) return;
+    if (!isDBReady() || !App.classCode) return;
     
     try {
+        // Fetch all class data in one go
+        const classData = await dbGetByPrefix(STORE_SESSIONS, App.classCode + ':');
+        const dataMap = new Map(classData.map(item => [item.code, item]));
+
         // 1. Load Settings
-        const settings = await dbGet(STORE_SESSIONS, App.classCode + ':settings');
+        const settings = dataMap.get(App.classCode + ':settings');
         if (settings && settings.teacherSettings) {
             App.teacherSettings = { ...App.teacherSettings, ...settings.teacherSettings };
         }
         
         // 2. Load Shared Data
-        const shared = await dbGet(STORE_SESSIONS, App.classCode + ':shared');
+        const shared = dataMap.get(App.classCode + ':shared');
         if (shared && shared.sharedData) {
             App.sharedData = { ...App.sharedData, ...shared.sharedData };
         }
         
         // 3. Load Work
         const targetId = App.mode === 'student' ? App.user.visitorId : App.viewingStudentId;
-        
-        // Reset work state before loading to avoid bleeding
         App.work = getInitialWorkState();
         
         if (targetId) {
-            const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + targetId);
+            const saved = dataMap.get(App.classCode + ':work:' + targetId);
             if (saved && saved.work) {
                 App.work = { ...App.work, ...saved.work };
-                // Ensure array fields exist
-                ['modelNodes', 'modelConnections', 'modelShapes', 'modelNotes', 'modelPaths', 'modelGroups', 'modelComments', 'modelStickers'].forEach(key => {
-                    if (!App.work[key]) App.work[key] = [];
-                });
+                ensureWorkFields(App.work);
             }
         }
         
@@ -122,47 +122,44 @@ export function startSync() {
 
 /**
  * Synchronizes local state with data stored in IndexedDB.
- * Triggers UI updates if remote data is newer than local last sync.
+ * Optimized to use range queries and reduced transaction count.
  * @returns {Promise<void>}
  */
 export async function syncWithStorage() {
-    if (!isDBReady()) return;
+    if (!isDBReady() || !App.classCode) return;
     
     try {
         let changed = false;
         
+        // Fetch all class data in one go for the entire sync cycle
+        const classData = await dbGetByPrefix(STORE_SESSIONS, App.classCode + ':');
+        const dataMap = new Map(classData.map(item => [item.code, item]));
+        
         // 1. Sync Settings
-        const settings = await dbGet(STORE_SESSIONS, App.classCode + ':settings');
+        const settings = dataMap.get(App.classCode + ':settings');
         if (settings && settings.timestamp > App.syncState.lastSync) {
             App.teacherSettings = { ...App.teacherSettings, ...settings.teacherSettings };
             changed = true;
         }
         
         // 2. Sync Shared Data
-        const shared = await dbGet(STORE_SESSIONS, App.classCode + ':shared');
+        const shared = dataMap.get(App.classCode + ':shared');
         if (shared && shared.timestamp > App.syncState.lastSync) {
             App.sharedData = { ...App.sharedData, ...shared.sharedData };
             changed = true;
         }
         
         // 3. Sync Work
-        // IMPORTANT: Skip syncing work if student is viewing an exemplar
         const targetId = App.mode === 'student' ? App.user.visitorId : App.viewingStudentId;
         if (targetId && !App.isViewingExemplar) {
-            const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + targetId);
+            const saved = dataMap.get(App.classCode + ':work:' + targetId);
             if (saved && saved.timestamp > App.syncState.lastSync) {
-                // To avoid bleeding, we merge into a fresh state if it's a major sync
                 const baseWork = getInitialWorkState();
                 App.work = { ...baseWork, ...saved.work };
-                
-                // Ensure array fields exist
-                ['modelNodes', 'modelConnections', 'modelShapes', 'modelNotes', 'modelPaths', 'modelGroups', 'modelComments', 'modelStickers'].forEach(key => {
-                    if (!App.work[key]) App.work[key] = [];
-                });
+                ensureWorkFields(App.work);
                 changed = true;
             }
         } else if (App.mode === 'teacher' && !App.viewingStudentId && (App.work.modelNodes?.length > 0 || App.work.notices?.length > 0)) {
-            // Teacher is not viewing anyone and has leftover data, reset work to avoid bleeding
             App.work = getInitialWorkState();
             changed = true;
         }
@@ -170,13 +167,13 @@ export async function syncWithStorage() {
         if (changed) {
             App.syncState.lastSync = Date.now();
             
-            // Recalculate Class Stats if teacher
+            // Recalculate Class Stats if teacher - reuse the dataMap!
             if (App.mode === 'teacher') {
                 const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
                 const students = allUsers.filter(u => u.mode === 'student');
                 let notices = 0, wonders = 0, nodes = 0;
                 for (const s of students) {
-                    const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + s.visitorId);
+                    const saved = dataMap.get(App.classCode + ':work:' + s.visitorId);
                     if (saved && saved.work) {
                         notices += saved.work.notices?.length || 0;
                         wonders += saved.work.wonders?.length || 0;
@@ -193,7 +190,6 @@ export async function syncWithStorage() {
                     renderNavigation();
                     renderStudentContent();
                 } else {
-                    // Just update content if we are already on the right module
                     renderStudentContent();
                 }
             } else {
@@ -217,10 +213,17 @@ export async function syncWithStorage() {
 }
 
 /**
+ * Ensures all required fields exist on a work object.
+ */
+function ensureWorkFields(work) {
+    const arrayFields = ['modelNodes', 'modelConnections', 'modelShapes', 'modelNotes', 'modelPaths', 'modelGroups', 'modelComments', 'modelStickers', 'evidence', 'notices', 'wonders'];
+    arrayFields.forEach(key => {
+        if (!work[key]) work[key] = [];
+    });
+}
+
+/**
  * Updates a specific data path and triggers a save/broadcast.
- * @param {string} path - Dot-notated path in App.work or specific shared data key.
- * @param {any} value - The new value to set.
- * @returns {Promise<void>}
  */
 export async function saveAndBroadcast(path, value) {
     if (path === 'debatePosts') {
@@ -237,9 +240,6 @@ export async function saveAndBroadcast(path, value) {
 
 /**
  * Internal helper to set a value deep within an object.
- * @param {Object} obj - Target object.
- * @param {string} path - Dot-notated path.
- * @param {any} value - Value to set.
  */
 export function setNestedValue(obj, path, value) {
     const keys = path.split('.');
@@ -253,14 +253,9 @@ export function setNestedValue(obj, path, value) {
 
 /**
  * Registers the current user in the class participant list.
- * Starts a heartbeat interval to update 'lastSeen'.
- * @returns {Promise<void>}
  */
 export async function registerUser() {
-    if (!isDBReady() || !App.user.visitorId) {
-        console.warn('Cannot register user - DB not ready or no visitorId');
-        return;
-    }
+    if (!isDBReady() || !App.user.visitorId) return;
     
     try {
         const userData = {
@@ -275,12 +270,13 @@ export async function registerUser() {
         await dbPut(STORE_USERS, userData);
         await updateConnectedUsers();
         
-        setInterval(async () => {
+        if (App.syncState.heartbeatInterval) clearInterval(App.syncState.heartbeatInterval);
+        App.syncState.heartbeatInterval = setInterval(async () => {
             if (isDBReady() && App.user.visitorId) {
                 userData.lastSeen = Date.now();
                 await dbPut(STORE_USERS, userData).catch(() => {});
             }
-        }, 5000);
+        }, 10000); // Increased interval to 10s to reduce load
     } catch (e) {
         console.error('Register user error:', e);
     }
@@ -288,14 +284,12 @@ export async function registerUser() {
 
 /**
  * Queries IndexedDB for active users in the current class code.
- * Updates the 'connectedCount' UI element.
- * @returns {Promise<void>}
  */
 export async function updateConnectedUsers() {
     try {
         const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
         const now = Date.now();
-        const active = allUsers.filter(u => now - u.lastSeen < 15000);
+        const active = allUsers.filter(u => now - u.lastSeen < 20000);
         const countEl = document.getElementById('connectedCount');
         if (countEl) countEl.textContent = active.length || '1';
     } catch (e) {

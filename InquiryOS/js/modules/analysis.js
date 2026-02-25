@@ -9,7 +9,7 @@
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
 import { renderModuleHeader, renderEmptyState } from '../ui/renderer.js';
-import { toast } from '../ui/utils.js';
+import { toast, deepClone } from '../ui/utils.js';
 
 let chartInstance = null;
 let chartType = 'scatter';
@@ -378,7 +378,7 @@ export async function saveChartAsEvidence() {
         title: 'Data Graph',
         description: `${chartType} chart showing relationships in data`,
         icon: 'mdi:chart-line',
-        data: { chartType, dataTable: JSON.parse(JSON.stringify(App.work.dataTable)) },
+        data: { chartType, dataTable: deepClone(App.work.dataTable)) },
         author: App.user.name,
         time: Date.now()
     };

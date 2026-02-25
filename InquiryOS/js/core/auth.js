@@ -8,6 +8,79 @@ import { loadFromStorage, registerUser, startSync } from './sync.js';
 import { updateModeUI } from '../ui/renderer.js';
 import { generateCode, toast } from '../ui/utils.js';
 
+import { dbPut, dbGet, dbGetByIndex, dbGetAll, STORE_SESSIONS, STORE_USERS, isDBReady } from './storage.js';
+
+/**
+ * Populates the 'Recent Sessions' list on the login screen.
+ */
+export async function loadRecentSessions() {
+    const container = document.getElementById('sessionLibrary');
+    const list = document.getElementById('sessionList');
+    if (!container || !list || !isDBReady()) return;
+
+    try {
+        const allData = await dbGetAll(STORE_SESSIONS);
+        // Filter for settings records to identify unique classes
+        const sessions = allData
+            .filter(d => d.code.endsWith(':settings'))
+            .map(d => ({
+                code: d.code.split(':')[0],
+                title: d.teacherSettings?.phenomenon?.title || 'Untitled Session',
+                timestamp: d.timestamp
+            }))
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 5); // Show last 5
+
+        if (sessions.length > 0) {
+            list.innerHTML = sessions.map(s => `
+                <button onclick="window.resumeSession('${s.code}')" class="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl hover:border-primary hover:shadow-md transition-all group">
+                    <div class="flex items-center gap-4 text-left">
+                        <div class="w-10 h-10 bg-blue-50 text-primary rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span class="iconify" data-icon="mdi:history"></span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-sm text-gray-800">${s.title}</p>
+                            <p class="text-[10px] font-mono text-primary font-black uppercase tracking-widest">${s.code}</p>
+                        </div>
+                    </div>
+                    <span class="iconify text-gray-300 group-hover:text-primary transition-colors" data-icon="mdi:chevron-right"></span>
+                </button>
+            `).join('');
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+        }
+    } catch (e) {
+        console.error('Failed to load recent sessions:', e);
+    }
+}
+
+/**
+ * Resumes a session from the recent list.
+ */
+window.resumeSession = async (code) => {
+    App.classCode = code;
+    // For resumption, we need to know the role. 
+    // We'll try to find if this user has a profile for this class.
+    const users = await dbGetByIndex(STORE_USERS, 'classCode', code);
+    // This is a bit simplified, ideally we'd store the last used visitorId
+    const lastUser = users[0]; 
+    
+    if (lastUser) {
+        App.user.name = lastUser.name;
+        App.user.visitorId = lastUser.visitorId;
+        App.user.avatar = lastUser.avatar;
+        App.mode = lastUser.mode;
+        
+        await initializeApp();
+    } else {
+        // Fallback to onboarding but with class code filled
+        const classInput = document.getElementById('loginClass');
+        if (classInput) classInput.value = code;
+        toast('Session found. Please enter your name to join.', 'info');
+    }
+};
+
 /**
  * Navigates between the onboarding steps.
  * @param {number} step - Step number (1 or 2).

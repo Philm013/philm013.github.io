@@ -7,6 +7,24 @@ import { App } from '../core/state.js';
 import { saveToStorage } from '../core/sync.js';
 
 /**
+ * Performs a high-performance deep clone of an object.
+ * Uses structuredClone if available, falling back to JSON serialization.
+ * @param {Object} obj - The object to clone.
+ * @returns {Object} The cloned object.
+ */
+export function deepClone(obj) {
+    if (!obj) return obj;
+    try {
+        if (typeof structuredClone === 'function') {
+            return structuredClone(obj);
+        }
+    } catch (e) {
+        // Fallback for objects with non-clonable properties
+    }
+    return JSON.parse(JSON.stringify(obj));
+}
+
+/**
  * Displays a temporary toast notification.
  */
 export function toast(message, type = 'info') {

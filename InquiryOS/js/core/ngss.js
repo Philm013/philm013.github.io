@@ -5,15 +5,30 @@
  */
 
 import { App, ngssData } from './state.js';
-import { toast } from '../ui/utils.js';
+import { toast, deepClone } from '../ui/utils.js';
 import { renderTeacherContent } from '../ui/renderer.js';
 import { saveToStorage } from './sync.js';
+import { dbGet, dbPut, STORE_CACHE, isDBReady } from './storage.js';
 
 /**
- * Fetches and processes NGSS 3D elements and Performance Expectations from external JSON sources.
+ * Fetches and processes NGSS 3D elements and Performance Expectations.
+ * Uses local cache if available to drastically speed up startup.
  */
 export async function loadNGSSData() {
     try {
+        // Check cache first
+        if (isDBReady()) {
+            const cached = await dbGet(STORE_CACHE, 'ngss_data_processed');
+            // Cache valid for 7 days as standards don't change often
+            if (cached && (Date.now() - cached.timestamp < 7 * 24 * 60 * 60 * 1000)) {
+                reconstructNgssData(cached.data);
+                ngssData.loaded = true;
+                console.log('Loaded NGSS data from cache.');
+                return;
+            }
+        }
+
+        console.log('Fetching NGSS data from source...');
         const fetchJSON = async (url) => {
             const r = await fetch(url);
             if (!r.ok) throw new Error(`HTTP error! status: ${r.status}`);
@@ -130,12 +145,54 @@ export async function loadNGSSData() {
         allNgssData.forEach(d => d.topics.forEach(t => topics.add(t.topicTitle)));
         ngssData.allTopics = [...topics].sort();
 
+        // Save to cache
+        if (isDBReady()) {
+            await dbPut(STORE_CACHE, { 
+                id: 'ngss_data_processed', 
+                data: serializeNgssData(), 
+                timestamp: Date.now() 
+            });
+        }
+
         ngssData.loaded = true;
     } catch (e) {
         console.error('Failed to load NGSS data:', e);
         ngssData.loaded = true;
     }
 }
+
+/**
+ * Serializes Maps and Sets in ngssData for IndexedDB storage.
+ */
+function serializeNgssData() {
+    return {
+        elementMap: Array.from(ngssData.elementMap.entries()),
+        specificElementMap: Array.from(ngssData.specificElementMap.entries()).map(([k, v]) => [k, { ...v, relatedPes: Array.from(v.relatedPes) }]),
+        peMap: Array.from(ngssData.peMap.entries()).map(([k, v]) => [k, { ...v, associatedComponentCodes: Array.from(v.associatedComponentCodes), associatedSpecificCodes: Array.from(v.associatedSpecificCodes) }]),
+        nameToCodeMap: Array.from(ngssData.nameToCodeMap.entries()),
+        textToSpecificCodeMap: Array.from(ngssData.textToSpecificCodeMap.entries()),
+        gradeToTopicsMap: ngssData.gradeToTopicsMap,
+        sortedGradeLabels: ngssData.sortedGradeLabels,
+        allTopics: ngssData.allTopics,
+        raw: ngssData.raw
+    };
+}
+
+/**
+ * Reconstructs Maps and Sets from cached NGSS data.
+ */
+function reconstructNgssData(data) {
+    ngssData.elementMap = new Map(data.elementMap);
+    ngssData.specificElementMap = new Map(data.specificElementMap.map(([k, v]) => [k, { ...v, relatedPes: new Set(v.relatedPes) }]));
+    ngssData.peMap = new Map(data.peMap.map(([k, v]) => [k, { ...v, associatedComponentCodes: new Set(v.associatedComponentCodes), associatedSpecificCodes: new Set(v.associatedSpecificCodes) }]));
+    ngssData.nameToCodeMap = new Map(data.nameToCodeMap);
+    ngssData.textToSpecificCodeMap = new Map(data.textToSpecificCodeMap);
+    ngssData.gradeToTopicsMap = data.gradeToTopicsMap;
+    ngssData.sortedGradeLabels = data.sortedGradeLabels;
+    ngssData.allTopics = data.allTopics;
+    ngssData.raw = data.raw;
+}
+
 
 function findBestMatchingSpecificElement(text) {
     const clean = text.trim().replace(/^[\*•]\s*/, '').replace(/\s*\([^)]*\)/g, '').trim();
