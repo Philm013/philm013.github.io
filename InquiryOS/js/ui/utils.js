@@ -119,6 +119,97 @@ export async function handleImportFile(event) {
 }
 
 /**
+ * UI: Opens the evidence viewer modal.
+ */
+export function viewEvidence(id) {
+    const item = App.work.evidence.find(e => e.id === id);
+    if (!item) return;
+
+    const modal = document.getElementById('evidenceViewerModal');
+    const title = document.getElementById('evidenceViewerTitle');
+    const content = document.getElementById('evidenceViewerContent');
+    if (!modal || !content) return;
+
+    title.textContent = item.title;
+    
+    let detailHtml = '';
+    if (item.type === 'data') {
+        const dt = item.data;
+        detailHtml = `
+            <div class="space-y-6">
+                <div class="overflow-x-auto rounded-xl border border-gray-200">
+                    <table class="w-full border-collapse bg-white">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                ${dt.columns.map(c => `<th class="p-3 text-left text-[10px] font-black uppercase text-gray-400 border-b">${c.name}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${dt.rows.map(r => `
+                                <tr>
+                                    ${dt.columns.map(c => `<td class="p-3 text-sm text-gray-600 border-b border-gray-50">${r[c.id] || ''}</td>`).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                ${dt.comment ? `<p class="p-4 bg-amber-50 rounded-xl text-sm italic">"${dt.comment}"</p>` : ''}
+            </div>
+        `;
+    } else if (item.type === 'model') {
+        detailHtml = `
+            <div class="bg-gray-50 rounded-3xl p-8 border border-gray-200 text-center">
+                <span class="iconify text-6xl text-gray-300 mb-4" data-icon="mdi:cube-outline"></span>
+                <p class="text-sm font-bold text-gray-500">Scientific Model Artifact</p>
+                <p class="text-xs text-gray-400 mt-1">${item.description}</p>
+                <button onclick="window.showStudentModule('models')" class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-full text-xs font-bold">Open Active Model</button>
+            </div>
+        `;
+    } else {
+        detailHtml = `<p class="text-gray-600 leading-relaxed">${item.description || 'No description provided.'}</p>`;
+    }
+
+    content.innerHTML = `
+        <div class="space-y-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+                        <span class="iconify text-xl" data-icon="${item.icon || 'mdi:file-document'}"></span>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Evidence Type: ${item.type.toUpperCase()}</p>
+                        <p class="text-xs font-bold text-gray-500">Collected by ${item.author} • ${new Date(item.time).toLocaleString()}</p>
+                    </div>
+                </div>
+            </div>
+            
+            ${detailHtml}
+
+            <!-- NGSS Context -->
+            <div class="pt-8 border-t border-gray-100">
+                <h5 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Aligned Standards</h5>
+                <div class="flex flex-wrap gap-2">
+                    ${(App.teacherSettings.phenomenon?.ngssStandards || []).map(s => `
+                        <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[9px] font-black border border-blue-100">${s}</span>
+                    `).join('') || '<span class="text-xs text-gray-400 italic">No class standards linked</span>'}
+                </div>
+            </div>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+export function closeEvidenceViewer() {
+    const modal = document.getElementById('evidenceViewerModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+/**
  * Returns the user to the login screen.
  */
 export function leaveSession() {

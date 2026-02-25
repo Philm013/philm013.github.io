@@ -33,7 +33,8 @@ export async function loadSimulationsData() {
                     id: 'codap_' + doc.title.replace(/\s+/g, '_'),
                     title: doc.title,
                     description: doc.description,
-                    url: `https://codap.concord.org/releases/latest/static/dg/en/cert/index.html?url=https://philm013.github.io/InquiryOS/${doc.path}`,
+                    // Pattern: codap-data/ + path
+                    url: `https://codap.concord.org/releases/latest/static/dg/en/cert/index.html?url=https://concord-consortium.github.io/codap-data/${doc.path}`,
                     thumb: doc.image_path ? (doc.image_path.startsWith('.') ? `./JSON/${doc.image_path.substring(2)}` : doc.image_path) : './resources/images/codap_logo.png',
                     provider: 'Concord CODAP',
                     tags: doc.tag || [],
@@ -46,11 +47,13 @@ export async function loadSimulationsData() {
         // 2. Process Concord Interactives
         if (interactives.interactives) {
             interactives.interactives.forEach(item => {
+                const title = item.title || 'Untitled Concord';
                 sims.push({
-                    id: 'concord_' + item.title.replace(/\s+/g, '_'),
-                    title: item.title,
-                    description: item.subtitle || (Array.isArray(item.about) ? item.about.join(' ') : item.about),
-                    url: `https://lab.concord.org/embeddable.html#${item.path}`,
+                    id: 'concord_' + title.replace(/\s+/g, '_') + '_' + Math.random().toString(36).substr(2, 5),
+                    title: title,
+                    description: item.subtitle || (Array.isArray(item.about) ? item.about.join(' ') : item.about) || '',
+                    // Pattern: #path
+                    url: `https://lab.concord.org/embeddable.html#${item.path || ''}`,
                     thumb: item.screenshot || 'https://lab.concord.org/favicon.ico',
                     provider: 'Concord Lab',
                     tags: [item.category, item.subCategory].filter(Boolean),
@@ -63,14 +66,18 @@ export async function loadSimulationsData() {
         // 3. Process PhET Simulations
         if (phet.projects) {
             phet.projects.forEach(project => {
+                if (!project.name) return;
                 project.simulations.forEach(sim => {
                     const locale = sim.localizedSimulations?.en || Object.values(sim.localizedSimulations || {})[0];
-                    if (locale) {
+                    if (locale && locale.title) {
+                        // Remove html/ from name if present
+                        const cleanName = project.name.replace(/^html\//, '');
                         sims.push({
-                            id: 'phet_' + locale.title.replace(/\s+/g, '_'),
+                            id: 'phet_' + locale.title.replace(/\s+/g, '_') + '_' + project.name,
                             title: locale.title,
                             description: project.name.replace(/-/g, ' '),
-                            url: `https://phet.colorado.edu/sims/html/${project.name}/latest/${project.name}_all.html`,
+                            // Pattern: simulations/ + cleanName
+                            url: `https://phet.colorado.edu/en/simulations/${cleanName}`,
                             thumb: `https://phet.colorado.edu/sims/html/${project.name}/latest/${project.name}-600.png`,
                             provider: 'PhET Interactive Simulations',
                             tags: ['PhET', project.name],
@@ -87,12 +94,16 @@ export async function loadSimulationsData() {
             search.results.forEach(res => {
                 if (res.materials) {
                     res.materials.forEach(mat => {
+                        const iconUrl = mat.icon?.url || '';
+                        // Pattern: eresources/{id}.run_resource_html
+                        const runUrl = mat.id ? `https://learn.concord.org/eresources/${mat.id}.run_resource_html` : '';
+                        
                         sims.push({
-                            id: 'concord_mat_' + mat.id,
-                            title: mat.name,
+                            id: 'concord_mat_' + (mat.id || Math.random().toString(36).substr(2, 9)),
+                            title: mat.name || 'Concord Activity',
                             description: mat.short_description || mat.long_description || '',
-                            url: mat.icon?.url ? mat.icon.url.replace('thumbnail.jpeg', '') : '', // Best guess for activity URL if not provided
-                            thumb: mat.icon?.url || 'https://has-production.s3.amazonaws.com/resources/concord_logo.png',
+                            url: runUrl, 
+                            thumb: iconUrl || 'https://has-production.s3.amazonaws.com/resources/concord_logo.png',
                             provider: 'Concord Consortium',
                             tags: [...(mat.subject_areas || []), ...(mat.grade_levels || [])],
                             categories: mat.subject_areas || [],

@@ -163,14 +163,20 @@ export async function renderTeacherOverview() {
                 </div>
                 <div class="p-6 flex-1 bg-white relative">
                     <div class="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                        ${phenomenon.ngssStandards?.length > 0 ? phenomenon.ngssStandards.map(peId => `
-                            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group/item hover:border-blue-200 hover:bg-white transition-all shadow-sm">
-                                <span class="text-sm font-black text-gray-700 font-mono tracking-tighter">${peId}</span>
-                                <button onclick="window.removeFromPhenomenon('${peId}')" class="text-gray-300 hover:text-red-500 transition-colors p-1">
-                                    <span class="iconify text-xl" data-icon="mdi:close-circle"></span>
-                                </button>
-                            </div>
-                        `).join('') : `
+                        ${phenomenon.ngssStandards?.length > 0 ? phenomenon.ngssStandards.map(peId => {
+                            const pe = App.ngssData?.peMap?.get(peId);
+                            return `
+                                <div class="flex items-start justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group/item hover:border-blue-200 hover:bg-white transition-all shadow-sm">
+                                    <div class="flex-1">
+                                        <p class="text-[10px] font-black text-blue-600 uppercase mb-1">${peId}</p>
+                                        <p class="text-xs font-medium text-gray-700 leading-snug">${pe?.description || 'Loading standard details...'}</p>
+                                    </div>
+                                    <button onclick="window.removeFromPhenomenon('${peId}')" class="text-gray-300 hover:text-red-500 transition-colors p-1 shrink-0 ml-4">
+                                        <span class="iconify text-xl" data-icon="mdi:close-circle"></span>
+                                    </button>
+                                </div>
+                            `;
+                        }).join('') : `
                             <div class="py-16 text-center opacity-40">
                                 <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-gray-200">
                                     <span class="iconify text-4xl text-gray-300" data-icon="mdi:link-variant-off"></span>
@@ -180,8 +186,8 @@ export async function renderTeacherOverview() {
                         `}
                     </div>
                     <button onclick="window.showTeacherModule('ngss')" class="mt-6 w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl text-xs font-black shadow-xl shadow-blue-100 hover:opacity-90 hover:-translate-y-0.5 transition-all uppercase tracking-widest flex items-center justify-center gap-3">
-                        <span class="iconify text-xl" data-icon="mdi:plus-circle"></span>
-                        Connect NGSS Standards
+                        <span class="iconify text-xl" data-icon="mdi:library-search"></span>
+                        Browse NGSS Repository
                     </button>
                 </div>
             </div>

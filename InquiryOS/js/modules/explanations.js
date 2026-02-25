@@ -30,6 +30,9 @@ export function renderExplanationsModule() {
                 </div>
                 
                 <div class="lg:col-span-2 space-y-8">
+                    <!-- Standards Checklist / Evidence Statements -->
+                    ${renderStandardsChecklist()}
+
                     <div data-card-title="Claim">
                         ${renderCerField('Scientific Claim', 'C', 'red', 'Based on your inquiry, what is the answer to your driving question?', App.work.claim, 'window.saveClaim', 'A clear, concise statement that answers the investigation question.')}
                     </div>
@@ -40,6 +43,54 @@ export function renderExplanationsModule() {
                         ${renderCerField('Reasoning & Justification', 'R', 'green', 'This evidence supports my claim because...', App.work.reasoning, 'window.saveReasoning', 'Explain how the evidence logically supports the claim using scientific principles.')}
                     </div>
                 </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderStandardsChecklist() {
+    const linkedPEs = App.teacherSettings.phenomenon?.ngssStandards || [];
+    if (linkedPEs.length === 0) return '';
+
+    return `
+        <div class="bg-white rounded-[2.5rem] p-8 border border-blue-100 shadow-sm overflow-hidden relative group" data-card-title="Criteria for Success">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
+            
+            <div class="flex items-center gap-4 mb-8 relative">
+                <div class="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
+                    <span class="iconify text-2xl" data-icon="mdi:playlist-check"></span>
+                </div>
+                <div>
+                    <h4 class="text-xl font-black text-gray-900 uppercase tracking-tight">Scientific Criteria</h4>
+                    <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mt-1">Evidence Statements for Success</p>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                ${linkedPEs.map(peId => {
+                    const pe = App.ngssData?.peMap?.get(peId);
+                    if (!pe) return '';
+                    
+                    return `
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-black font-mono border border-blue-100">${peId}</span>
+                                <span class="text-xs font-bold text-gray-700 truncate">${pe.description}</span>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 gap-2">
+                                ${(pe.details?.evidenceStatements || []).map(es => `
+                                    <div class="flex items-start gap-3 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 group/item hover:bg-white hover:border-blue-200 transition-all">
+                                        <div class="mt-1">
+                                            <input type="checkbox" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        </div>
+                                        <p class="text-sm text-gray-600 leading-relaxed font-medium">${es}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
             </div>
         </div>
     `;

@@ -208,5 +208,13 @@ export function getInitialWorkState() {
 export const ngssData = {
     elements3D: { dimensions: [] },
     pes: { 'K-5': [], '6-8': [], '9-12': [] },
+    peMap: new Map(),
+    elementMap: new Map(),
+    specificElementMap: new Map(),
+    nameToCodeMap: new Map(),
+    textToSpecificCodeMap: new Map(),
+    sortedGradeLabels: [],
+    allTopics: [],
+    gradeToTopicsMap: {},
     loaded: false
 };

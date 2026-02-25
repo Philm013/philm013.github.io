@@ -1,8 +1,6 @@
 const CACHE_NAME = 'inquiryos-v1';
 const ASSETS = [
-  './',
   './index.html',
-  './manifest.json',
   './js/main.js',
   './js/core/state.js',
   './js/core/storage.js',
@@ -41,7 +39,11 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
+      return Promise.all(
+        ASSETS.map(url => {
+          return cache.add(url).catch(err => console.warn('SW: Failed to cache', url, err));
+        })
+      );
     })
   );
 });

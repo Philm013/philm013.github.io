@@ -16,8 +16,7 @@ export function openMediaPicker() {
     if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        window.setMediaType('sim');
-        window.searchMedia();
+        window.setMediaType('image');
     }
 }
 
@@ -157,27 +156,33 @@ function renderMediaResults(items) {
         if (!item.id) item.id = 'temp_' + Math.random().toString(36).substr(2, 9);
         const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
         
+        const isSim = item.type === 'sim';
+        const thumbUrl = item.thumb || (isSim ? 'https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/application-brackets-outline.svg' : 'https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/image-off-outline.svg');
+
         return `
-            <div class="media-card group relative flex flex-col">
-                <div class="img-container cursor-pointer" onclick="window.previewMediaItem(${itemJson})">
-                    <img src="${item.thumb}" loading="lazy">
-                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div class="media-card group relative flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all">
+                <div class="img-container cursor-pointer bg-gray-50 flex items-center justify-center relative overflow-hidden min-h-[140px] md:min-h-[180px]" onclick="window.previewMediaItem(${itemJson})">
+                    <img src="${thumbUrl}" 
+                        onerror="this.src='https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/image-off-outline.svg'; this.style.opacity='0.2';"
+                        class="${isSim ? 'w-16 h-16 object-contain opacity-50' : 'w-full h-full object-cover'} transition-transform duration-500 group-hover:scale-110" 
+                        loading="lazy">
+                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                         <div class="bg-white/90 backdrop-blur-md text-primary px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl scale-75 group-hover:scale-100 transition-all">
                             Preview
                         </div>
                     </div>
                 </div>
-                <div class="p-4 flex-1 flex flex-col">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-[8px] font-black text-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">${item.provider}</span>
-                        <span class="iconify text-gray-300" data-icon="${item.type === 'video' ? 'mdi:play-circle' : (item.type === 'sim' ? 'mdi:application-brackets' : 'mdi:image')}"></span>
+                <div class="p-3 md:p-4 flex-1 flex flex-col">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[7px] md:text-[8px] font-black text-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">${item.provider}</span>
+                        <span class="iconify text-gray-300 text-sm" data-icon="${item.type === 'video' ? 'mdi:play-circle' : (item.type === 'sim' ? 'mdi:application-brackets' : 'mdi:image')}"></span>
                     </div>
-                    <p class="text-xs font-bold text-gray-800 line-clamp-2 leading-snug mb-2" title="${item.title || ''}">${item.title || 'Untitled Artifact'}</p>
+                    <p class="text-[10px] md:text-xs font-bold text-gray-800 line-clamp-2 leading-tight mb-2" title="${item.title || ''}">${item.title || 'Untitled Artifact'}</p>
                     <div class="mt-auto pt-2 flex items-center justify-between border-t border-gray-50">
-                        <p class="text-[8px] text-gray-400 truncate max-w-[100px]">By ${item.author || item.provider}</p>
+                        <p class="text-[7px] text-gray-400 truncate max-w-[60px] md:max-w-[100px]">By ${item.author || item.provider}</p>
                         <button onclick="window.addMediaToPhenomenon(${itemJson})" 
-                            class="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-lg active:scale-95">
-                            Add Artifact
+                            class="px-2 md:px-3 py-1 bg-gray-900 text-white rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-md active:scale-95">
+                            Add
                         </button>
                     </div>
                 </div>
@@ -206,7 +211,11 @@ export function viewMediaDetail(idOrItem) {
     } else if (item.type === 'video') {
         mediaHtml = `<video src="${item.url}" controls autoplay class="max-w-full max-h-full shadow-2xl"></video>`;
     } else if (item.type === 'sim') {
-        mediaHtml = `<iframe src="${item.url}" class="w-full h-full bg-white md:rounded-3xl border-0 shadow-2xl" allowfullscreen></iframe>`;
+        mediaHtml = `
+            <div class="w-full h-full flex flex-col items-center justify-center p-4">
+                <iframe src="${item.url}" class="w-full h-full bg-white md:rounded-3xl border-0 shadow-2xl" allowfullscreen></iframe>
+            </div>
+        `;
     }
 
     modal.innerHTML = `

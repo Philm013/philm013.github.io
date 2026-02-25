@@ -11,8 +11,8 @@ import * as renderer from './ui/renderer.js';
 import * as sync from './core/sync.js';
 import * as utils from './ui/utils.js';
 import * as ngss from './core/ngss.js';
-import { renderNavigation, toggleSidebar, showStudentModule, showTeacherModule } from './ui/navigation.js';
-import { toast, copyCode, copyJoinLink, showJoinQR, closeQRCode, openSessionMenu, closeSessionMenu, leaveSession, exportSession, importSession, handleImportFile, saveCurrentSession } from './ui/utils.js';
+import { renderNavigation, toggleSidebar, showStudentModule, showTeacherModule, initTouchNavigation } from './ui/navigation.js';
+import { toast, copyCode, copyJoinLink, showJoinQR, closeQRCode, openSessionMenu, closeSessionMenu, leaveSession, exportSession, importSession, handleImportFile, saveCurrentSession, viewEvidence, closeEvidenceViewer } from './ui/utils.js';
 
 // Auth / Login
 import * as auth from './core/auth.js';
@@ -33,12 +33,12 @@ import * as viewer from './teacher/viewer.js';
 import * as noticeboard from './teacher/noticeboard.js';
 
 // IMMEDIATE: Expose functions to global window object
-// This MUST happen at the top level of the module so it is synchronous during script load.
 window.App = App;
 window.renderNavigation = renderNavigation;
 window.toggleSidebar = toggleSidebar;
 window.showStudentModule = showStudentModule;
 window.showTeacherModule = showTeacherModule;
+window.initTouchNavigation = initTouchNavigation;
 window.toast = toast;
 window.copyCode = copyCode;
 window.copyJoinLink = copyJoinLink;
@@ -52,6 +52,30 @@ window.importSession = importSession;
 window.handleImportFile = handleImportFile;
 window.saveCurrentSession = saveCurrentSession;
 window.searchSimulations = searchSimulations;
+window.viewEvidence = viewEvidence;
+window.closeEvidenceViewer = closeEvidenceViewer;
+
+/**
+ * Switches between top-level application views (login, app, docs, support).
+ * @param {string} viewId - ID of the view to show.
+ */
+window.showView = (viewId) => {
+    document.querySelectorAll('.view').forEach(v => {
+        v.classList.remove('active');
+        v.classList.add('hidden');
+        v.style.display = 'none';
+    });
+    
+    const target = document.getElementById(viewId);
+    if (target) {
+        target.classList.add('active');
+        target.classList.remove('hidden');
+        target.style.display = (viewId === 'appView') ? 'flex' : 'block';
+        if (viewId === 'loginView' || viewId === 'docsView' || viewId === 'supportView') {
+            target.scrollTo(0, 0);
+        }
+    }
+};
 
 import { openGenericInput, closeGenericInput, submitGenericInput } from './ui/utils.js';
 window.openGenericInput = openGenericInput;
@@ -59,29 +83,44 @@ window.closeGenericInput = closeGenericInput;
 window.submitGenericInput = submitGenericInput;
 
 // Explicitly expose new functions
-import { openIconPicker, closeIconPicker, searchIcons, selectIcon, selectIconForNode } from './modules/models.js';
-import { switchViewerModule, stopViewingStudent } from './teacher/viewer.js';
+import { openIconPicker, closeIconPicker, searchIcons, selectIcon, selectIconForNode, openNodeTagPicker, updateNodeColor } from './modules/models.js';
+import { switchViewerModule, stopViewingStudent, viewStudentWork } from './teacher/viewer.js';
 import { launchTemplate, applyTemplate, previewTemplate, previewPreset, closeLessonPreview } from './teacher/dashboard.js';
+import { addToPhenomenon, setNgssBrowserSection, setNgssFilter, toggleNgssDimFilter, filterNGSSResults, viewPeDetails, toggleNgssMobileFilters, clearAllNgssFilters, viewElementPes, clearNgssPeFocus, openNgssElementFilterModal, addNgssElementFilter, removeNgssElementFilter } from './core/ngss.js';
 
 window.openIconPicker = openIconPicker;
 window.closeIconPicker = closeIconPicker;
 window.searchIcons = searchIcons;
 window.selectIcon = selectIcon;
 window.selectIconForNode = selectIconForNode;
+window.openNodeTagPicker = openNodeTagPicker;
+window.updateNodeColor = updateNodeColor;
 window.switchViewerModule = switchViewerModule;
 window.stopViewingStudent = stopViewingStudent;
+window.viewStudentWork = viewStudentWork;
 window.previewTemplate = previewTemplate;
 window.previewPreset = previewPreset;
 window.closeLessonPreview = closeLessonPreview;
+window.launchTemplate = launchTemplate;
+window.applyTemplate = applyTemplate;
+window.addToPhenomenon = addToPhenomenon;
+window.setNgssBrowserSection = setNgssBrowserSection;
+window.setNgssFilter = setNgssFilter;
+window.toggleNgssDimFilter = toggleNgssDimFilter;
+window.filterNGSSResults = filterNGSSResults;
+window.viewPeDetails = viewPeDetails;
+window.toggleNgssMobileFilters = toggleNgssMobileFilters;
+window.clearAllNgssFilters = clearAllNgssFilters;
+window.viewElementPes = viewElementPes;
+window.clearNgssPeFocus = clearNgssPeFocus;
+window.openNgssElementFilterModal = openNgssElementFilterModal;
+window.addNgssElementFilter = addNgssElementFilter;
+window.removeNgssElementFilter = removeNgssElementFilter;
 
 import { editInquiryItem, addCustomItem, deleteCustomItem } from './modules/questions.js';
 window.editInquiryItem = editInquiryItem;
 window.addCustomItem = addCustomItem;
 window.deleteCustomItem = deleteCustomItem;
-import { viewStudentWork } from './teacher/viewer.js';
-window.viewStudentWork = viewStudentWork;
-window.launchTemplate = launchTemplate;
-window.applyTemplate = applyTemplate;
 
 import { clearAllPosts, toggleDefaultCategories } from './teacher/noticeboard.js';
 window.clearAllPosts = clearAllPosts;
@@ -132,39 +171,34 @@ Object.assign(window, dashboard);
 Object.assign(window, viewer);
 Object.assign(window, noticeboard);
 
-
-
 /**
  * Initializes the application.
  */
 async function init() {
     try {
         console.log('InquiryOS: Initializing...');
-        
-        // BACKGROUND: Storage and data
         await initDB();
         await loadNGSSData();
         await loadSimulationsData();
         
-        // Routing logic for Class Code from URL
         const urlParams = new URLSearchParams(window.location.search);
         const classCode = urlParams.get('class');
         if (classCode) {
             App.classCode = classCode.toUpperCase();
             const classInput = document.getElementById('loginClass');
             if (classInput) classInput.value = App.classCode;
-            
-            // Auto-select student role and move to step 2
             if (typeof window.selectRole === 'function') {
                 window.selectRole('student');
             }
-            
             toast(`Class code ${App.classCode} applied!`, 'info');
         }
 
-        // Initialize Avatar Picker if element exists
         if (typeof window.renderAvatarPicker === 'function') {
             window.renderAvatarPicker();
+        }
+        
+        if (typeof window.initTouchNavigation === 'function') {
+            window.initTouchNavigation();
         }
 
         console.log('InquiryOS: System Ready.');

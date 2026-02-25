@@ -59,7 +59,23 @@ export function renderQuestionsModule() {
                         <p class="text-lg text-gray-600 leading-relaxed font-medium">${p.description || 'Observe the provided scientific phenomenon and document your initial thoughts below.'}</p>
                         
                         <div class="flex flex-wrap gap-2 pt-2">
-                            ${(p.ngssStandards || []).map(s => `<span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase border border-blue-100">${s}</span>`).join('')}
+                            ${(p.ngssStandards || []).map(s => {
+                                const pe = App.ngssData?.peMap?.get(s);
+                                return `
+                                    <div class="relative group/pe">
+                                        <button onclick="window.viewPeDetails('${s}')" class="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all">
+                                            ${s}
+                                        </button>
+                                        ${pe ? `
+                                            <div class="absolute left-0 bottom-full mb-2 w-64 p-4 bg-gray-900 text-white text-[10px] rounded-2xl shadow-2xl opacity-0 group-hover/pe:opacity-100 pointer-events-none transition-all z-50 border border-white/10 scale-95 group-hover/pe:scale-100">
+                                                <p class="font-black text-blue-400 uppercase tracking-widest mb-1 border-b border-white/10 pb-1">NGSS PE</p>
+                                                <p class="font-bold text-xs mb-2">${s}</p>
+                                                <p class="leading-relaxed opacity-80">${pe.description}</p>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
 

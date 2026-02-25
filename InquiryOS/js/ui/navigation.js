@@ -171,3 +171,54 @@ export function renderNavigation() {
         console.error('Error rendering navigation:', e);
     }
 }
+
+/**
+ * Initializes touch gesture navigation for switching between modules on mobile.
+ */
+export function initTouchNavigation() {
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let touchStartY = 0;
+    let touchEndY = 0;
+    
+    const content = document.getElementById('mainContent');
+    if (!content) return;
+
+    const modules = [
+        'questions', 'models', 'investigation', 'analysis', 
+        'math', 'explanations', 'argument', 'communication'
+    ];
+
+    content.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    content.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        touchEndY = e.changedTouches[0].screenY;
+        handleSwipe();
+    }, { passive: true });
+
+    function handleSwipe() {
+        if (App.mode !== 'student' || window.innerWidth > 768) return;
+        
+        // Don't swipe if we are in specific modules that need touch (like models or data editing)
+        if (App.currentModule === 'models' || App.currentModule === 'analysis') return;
+
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        
+        // Ensure it's a horizontal swipe and not vertical scrolling
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 100) {
+            const currentIndex = modules.indexOf(App.currentModule);
+            if (deltaX < 0 && currentIndex < modules.length - 1) {
+                // Swipe Left -> Next Module
+                showStudentModule(modules[currentIndex + 1]);
+            } else if (deltaX > 0 && currentIndex > 0) {
+                // Swipe Right -> Previous Module
+                showStudentModule(modules[currentIndex - 1]);
+            }
+        }
+    }
+}

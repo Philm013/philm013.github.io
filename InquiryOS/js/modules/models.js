@@ -222,6 +222,23 @@ export function renderModelsModule() {
 function renderModelContextBar(availableIcons, emojis) {
     const tool = App.modelState.currentTool;
     const showMore = App.teacherSettings.showAllIcons;
+    const selectedNode = App.modelState.selectedItems.length === 1 && App.modelState.selectedItems[0].type === 'node' ? 
+        App.work.modelNodes.find(n => n.id === App.modelState.selectedItems[0].id) : null;
+
+    if (tool === 'select' && selectedNode) {
+        return `
+            <span class="text-xs font-bold text-gray-400 uppercase ml-2">Node Options:</span>
+            <div class="flex gap-2 items-center">
+                <button onclick="window.openNodeTagPicker('${selectedNode.id}')" 
+                    class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 border border-blue-100 flex items-center gap-2">
+                    <span class="iconify" data-icon="mdi:tag-plus"></span>
+                    ${selectedNode.ngssTag ? 'Change Tag: ' + selectedNode.ngssTag : 'Add NGSS Tag'}
+                </button>
+                <div class="h-6 w-px bg-gray-200 mx-1"></div>
+                <input type="color" value="${selectedNode.color}" onchange="window.updateNodeColor('${selectedNode.id}', this.value)" class="w-8 h-8 rounded-lg cursor-pointer border-none p-0 bg-transparent">
+            </div>
+        `;
+    }
 
     if (tool === 'node' || tool === 'stamp') {
         return `
@@ -365,6 +382,8 @@ function updateNodeElement(el, node, isSelected) {
     const iconEl = el.querySelector('.node-icon');
     const labelInput = el.querySelector('.node-label-input');
     if (labelInput.value !== node.label) labelInput.value = node.label;
+    
+    // Render Icon/Emoji
     const isEmoji = !node.icon?.includes(':');
     if (isEmoji) {
         iconEl.innerHTML = node.icon || '❓';
@@ -372,6 +391,19 @@ function updateNodeElement(el, node, isSelected) {
     } else {
         iconEl.innerHTML = `<span class="iconify" data-icon="${node.icon}"></span>`;
         iconEl.style.color = node.color;
+    }
+
+    // Render NGSS Tag
+    let tagEl = el.querySelector('.node-ngss-tag');
+    if (node.ngssTag) {
+        if (!tagEl) {
+            tagEl = document.createElement('div');
+            tagEl.className = 'node-ngss-tag absolute -bottom-3 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-full shadow-lg border border-white whitespace-nowrap z-20';
+            el.appendChild(tagEl);
+        }
+        tagEl.textContent = node.ngssTag;
+    } else if (tagEl) {
+        tagEl.remove();
     }
 }
 
@@ -1074,6 +1106,33 @@ export async function deleteModelElement(type, id) {
         renderStudentContent(); 
     }
 }
+export async function updateNodeColor(id, color) {
+    const node = App.work.modelNodes.find(n => n.id === id);
+    if (node) {
+        node.color = color;
+        await saveAndBroadcast('modelNodes', App.work.modelNodes);
+        renderModelElements();
+    }
+}
+
+export function openNodeTagPicker(nodeId) {
+    const node = App.work.modelNodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    // We'll use a simplified version of the NGSS browser or just a list of common practices/concepts
+    // For now, let's reuse the openGenericInput to let them type or select from a few presets
+    const presets = ['SEP1', 'SEP2', 'SEP3', 'SEP4', 'SEP5', 'SEP6', 'SEP7', 'SEP8', 'CCC1', 'CCC2', 'CCC3', 'CCC4', 'CCC5', 'CCC6', 'CCC7'];
+    
+    window.openGenericInput('Tag Concept', 'Enter NGSS Code (e.g. SEP2, PS1.A)...', node.ngssTag || '', async (tag) => {
+        if (tag !== null) {
+            node.ngssTag = tag.toUpperCase().trim();
+            await saveAndBroadcast('modelNodes', App.work.modelNodes);
+            renderModelElements();
+            toast(`Tagged as ${node.ngssTag}`, 'success');
+        }
+    });
+}
+
 export async function deleteExplanationPoint(id) { App.work.modelExplanations = App.work.modelExplanations.filter(i => i.id !== id); await saveAndBroadcast('modelExplanations', App.work.modelExplanations); renderStudentContent(); }
 
 /**

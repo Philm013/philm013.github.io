@@ -102,18 +102,13 @@ export function updateModeUI() {
         const appHeader = document.getElementById('appHeader');
         if (appHeader) appHeader.className = `${isTeacher ? 'bg-red-50' : 'bg-white'} shadow-sm border-b flex-shrink-0`;
         
-        const studentBtn = document.getElementById('studentModeBtn');
-        if (studentBtn) studentBtn.className = `mode-btn px-4 py-2 rounded-lg text-sm font-medium ${!isTeacher ? 'bg-white shadow text-primary' : 'text-gray-600 hover:bg-white/50'}`;
-        
-        const teacherBtn = document.getElementById('teacherModeBtn');
-        if (teacherBtn) teacherBtn.className = `mode-btn px-4 py-2 rounded-lg text-sm font-medium ${isTeacher ? 'bg-white shadow text-teacher' : 'text-gray-600 hover:bg-white/50'}`;
-        
         const eb = document.getElementById('evidenceBank');
         if (eb) eb.style.display = (isTeacher && !App.viewingStudentId) ? 'none' : 'block';
         
         // Update bottom nav for mobile
         const bottomNav = document.getElementById('bottomNav');
         if (bottomNav && window.innerWidth <= 768) {
+            const isTeacher = App.mode === 'teacher';
             const centerContent = isTeacher ? `
                 <button onclick="window.showTeacherModule('overview')" class="flex flex-col items-center justify-center h-full ${App.teacherModule === 'overview' ? 'text-teacher' : 'text-gray-400'}">
                     <span class="iconify text-2xl" data-icon="mdi:view-dashboard"></span>
@@ -151,19 +146,13 @@ export function updateModeUI() {
             `;
 
             bottomNav.innerHTML = `
-                <button onclick="window.scrollSnap('prev')" class="nav-snap-btn border-r">
-                    <span class="iconify text-2xl" data-icon="mdi:chevron-left"></span>
-                </button>
-                <div class="bottom-nav-center flex-1 flex justify-around items-center">
+                <div class="flex-1 flex justify-around items-center h-full w-full">
                     ${centerContent}
                     <button onclick="window.toggleSidebar()" class="flex flex-col items-center justify-center h-full text-gray-400">
                         <span class="iconify text-2xl" data-icon="mdi:menu"></span>
-                        <span class="text-[9px] font-bold uppercase tracking-tighter">Menu</span>
+                        <span class="text-[9px] font-bold uppercase tracking-tighter">More</span>
                     </button>
                 </div>
-                <button onclick="window.scrollSnap('next')" class="nav-snap-btn border-l">
-                    <span class="iconify text-2xl" data-icon="mdi:chevron-right"></span>
-                </button>
             `;
         }
 
@@ -175,150 +164,6 @@ export function updateModeUI() {
         }
     } catch (e) {
         console.error('Error updating UI:', e);
-    }
-}
-
-/**
- * Wraps content into snappable cards for mobile if it contains data-card-title attributes.
- */
-function wrapInSnapCards(html) {
-    if (window.innerWidth > 768) return html;
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
-    const sections = doc.querySelectorAll('[data-card-title]');
-    
-    if (sections.length === 0) return html;
-
-    const isVertical = App.teacherModule === 'lessons';
-
-    const cards = Array.from(sections).map((section, i) => {
-        const title = section.getAttribute('data-card-title');
-        section.removeAttribute('data-card-title');
-        return `
-            <div class="snap-card" id="card-${i}">
-                <div class="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="p-3 border-b bg-gray-50 flex items-center justify-between shrink-0">
-                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${title}</h3>
-                        <span class="text-[9px] font-bold text-gray-300">${i + 1}/${sections.length}</span>
-                    </div>
-                    <div class="flex-1 overflow-y-auto p-3" data-card-content>
-                        ${section.outerHTML}
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    const dots = Array.from(sections).map((_, i) => `<div class="dot ${i === 0 ? 'active' : ''}" data-index="${i}"></div>`).join('');
-
-    return `
-        <div class="snap-container ${isVertical ? 'snap-vertical' : ''}" id="snapContainer">
-            ${cards}
-        </div>
-        <div class="pagination-dots ${isVertical ? 'hidden' : ''}">
-            ${dots}
-        </div>
-    `;
-}
-
-/**
- * Initializes listeners for the snap container.
- */
-function initSnapNavigation() {
-    const container = document.getElementById('snapContainer');
-    if (!container) return;
-
-    let startX = 0;
-    let startY = 0;
-    let isMoving = false;
-
-    // Reset switch lock
-    window.isModuleSwitching = false;
-
-    container.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        isMoving = true;
-    }, { passive: true });
-
-    container.addEventListener('touchmove', (e) => {
-        if (!isMoving || window.isModuleSwitching) return;
-        
-        const diffX = startX - e.touches[0].clientX;
-        const diffY = startY - e.touches[0].clientY;
-        
-        // Only trigger if horizontal movement is dominant
-        if (Math.abs(diffX) > Math.abs(diffY)) {
-            const isVertical = container.classList.contains('snap-vertical');
-            if (isVertical) return;
-
-            const scroll = container.scrollLeft;
-            const maxScroll = container.scrollWidth - container.offsetWidth;
-
-            if (diffX > 50 && scroll >= maxScroll - 5) {
-                window.isModuleSwitching = true;
-                isMoving = false;
-                navigateModule(1);
-            } else if (diffX < -50 && scroll <= 5) {
-                window.isModuleSwitching = true;
-                isMoving = false;
-                navigateModule(-1);
-            }
-        }
-    }, { passive: true });
-
-    container.addEventListener('touchend', () => {
-        isMoving = false;
-    });
-
-    container.addEventListener('scroll', () => {
-        const isVertical = container.classList.contains('snap-vertical');
-        const scroll = isVertical ? container.scrollTop : container.scrollLeft;
-        const size = isVertical ? container.offsetHeight : container.offsetWidth;
-        const index = Math.round(scroll / size);
-        
-        const dots = document.querySelectorAll('.pagination-dots .dot');
-        dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
-    }, { passive: true });
-
-    window.scrollSnap = (dir) => {
-        const isVertical = container.classList.contains('snap-vertical');
-        const step = isVertical ? container.offsetHeight : container.offsetWidth;
-        const current = isVertical ? container.scrollTop : container.scrollLeft;
-        const maxScroll = (container.children.length - 1) * step;
-
-        if (dir === 'next' && current >= maxScroll - 5) {
-            navigateModule(1);
-        } else if (dir === 'prev' && current <= 5) {
-            navigateModule(-1);
-        } else {
-            container.scrollTo({
-                [isVertical ? 'top' : 'left']: dir === 'next' ? current + step : current - step,
-                behavior: 'smooth'
-            });
-        }
-    };
-}
-
-/**
- * Gracefully navigates to the next or previous module.
- */
-function navigateModule(dir) {
-    const modules = App.mode === 'teacher' ? 
-        ['overview', 'lessons', 'snapshots', 'students', 'noticeboard', 'access', 'settings'] :
-        ['questions', 'models', 'investigation', 'analysis', 'math', 'explanations', 'argument', 'communication'];
-    
-    const current = App.mode === 'teacher' ? App.teacherModule : App.currentModule;
-    let idx = modules.indexOf(current);
-    let nextIdx = idx + dir;
-
-    if (nextIdx >= 0 && nextIdx < modules.length) {
-        if (App.mode === 'teacher') {
-            window.showTeacherModule(modules[nextIdx]);
-        } else {
-            window.showStudentModule(modules[nextIdx]);
-        }
     }
 }
 
@@ -367,15 +212,12 @@ export function renderStudentContent() {
     
     const html = renderers[App.currentModule]?.() || '<p>Module not found</p>';
     
-    // Wrap in Snappable Cards for Mobile
-    const wrappedHtml = wrapInSnapCards(html);
-    
     if (App.isViewingExemplar) {
         content.innerHTML = `
             <div class="relative min-h-full">
                 <div class="absolute inset-0 z-[150] bg-white/10 pointer-events-auto cursor-not-allowed"></div>
                 <div class="pointer-events-none opacity-80 filter grayscale-[0.2] h-full">
-                    ${wrappedHtml}
+                    ${html}
                 </div>
                 <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[160] bg-purple-600 text-white px-6 py-3 rounded-full shadow-2xl font-bold flex items-center gap-3 whitespace-nowrap">
                     <span class="iconify text-xl" data-icon="mdi:eye"></span>
@@ -385,10 +227,8 @@ export function renderStudentContent() {
             </div>
         `;
     } else {
-        content.innerHTML = wrappedHtml;
+        content.innerHTML = html;
     }
-    
-    initSnapNavigation();
     
     setTimeout(() => {
         if (App.currentModule === 'models') initModelCanvas();
@@ -439,8 +279,7 @@ export async function renderTeacherContent() {
     if (renderer) {
         const result = await renderer();
         if (typeof result === 'string') {
-            content.innerHTML = wrapInSnapCards(result);
-            initSnapNavigation();
+            content.innerHTML = result;
         }
     } else {
         content.innerHTML = '<p>Module not found</p>';
