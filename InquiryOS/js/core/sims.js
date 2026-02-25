@@ -25,6 +25,21 @@ export async function loadSimulationsData() {
 
         const sims = [];
 
+        /**
+         * Sanitizes thumbnail URLs to ensure HTTPS and fix deprecated Concord domains.
+         */
+        const sanitizeThumbUrl = (url) => {
+            if (!url) return null;
+            let s = url.trim();
+            // Upgrade to HTTPS
+            if (s.startsWith('http://')) s = s.replace('http://', 'https://');
+            // Fix deprecated screenshots domain
+            if (s.includes('screenshots.lab.concord.org')) {
+                s = s.replace('screenshots.lab.concord.org', 'lab.concord.org/screenshots');
+            }
+            return s;
+        };
+
         // 1. Process CODAP Data
         if (codap.sample_docs) {
             codap.sample_docs.forEach(doc => {
@@ -55,13 +70,17 @@ export async function loadSimulationsData() {
         if (interactives.interactives) {
             interactives.interactives.forEach(item => {
                 const title = item.title || 'Untitled Concord';
+                
+                // Sanitize screenshot URL
+                const thumb = sanitizeThumbUrl(item.screenshot) || 'https://lab.concord.org/favicon.ico';
+
                 sims.push({
                     id: 'concord_' + title.replace(/\s+/g, '_') + '_' + Math.random().toString(36).substr(2, 5),
                     title: title,
                     description: item.subtitle || (Array.isArray(item.about) ? item.about.join(' ') : item.about) || '',
                     // Pattern: #path
                     url: `https://lab.concord.org/embeddable.html#${item.path || ''}`,
-                    thumb: item.screenshot || 'https://lab.concord.org/favicon.ico',
+                    thumb: thumb,
                     provider: 'Concord Lab',
                     tags: [item.category, item.subCategory].filter(Boolean),
                     categories: [item.category].filter(Boolean),
@@ -101,7 +120,7 @@ export async function loadSimulationsData() {
             search.results.forEach(res => {
                 if (res.materials) {
                     res.materials.forEach(mat => {
-                        const iconUrl = mat.icon?.url || '';
+                        const iconUrl = sanitizeThumbUrl(mat.icon?.url);
                         // Pattern: eresources/{id}.run_resource_html
                         const runUrl = mat.id ? `https://learn.concord.org/eresources/${mat.id}.run_resource_html` : '';
                         

@@ -1,0 +1,48 @@
+export function renderModuleHeader(title, icon, sep, customButtons = '') {
+    const isFullscreen = !!document.fullscreenElement;
+    const sepData = ngssData.elements3D?.dimensions?.find(d => d.code === 'SEP')?.elements?.find(el => el.id === sep);
+    const hasExemplar = !!App.teacherSettings.exemplars?.[App.currentModule];
+    
+    return `
+        <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                        <span class="iconify text-white text-xl" data-icon="${icon}"></span>
+                    </span>
+                    ${title}
+                </h2>
+                ${sep ? `
+                    <div class="relative group">
+                        <span class="ngss-tag ngss-sep cursor-help">${sep}</span>
+                        ${sepData ? `
+                            <div class="absolute left-0 top-full mt-2 w-64 p-4 bg-white rounded-xl shadow-2xl border border-blue-100 z-[1000] hidden group-hover:block animate-in fade-in slide-in-from-top-2">
+                                <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Practice: ${sep}</p>
+                                <p class="text-xs font-bold text-gray-900 mb-2">${sepData.name}</p>
+                                <p class="text-[11px] text-gray-600 leading-relaxed">${sepData.description || ''}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+            <div class="flex items-center gap-2">
+                ${hasExemplar && App.mode === 'student' ? `
+                    <button onclick="window.toggleExemplarView()" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm font-bold flex items-center gap-2 transition-all">
+                        <span class="iconify" data-icon="mdi:lightbulb-on"></span>
+                        <span class="hidden sm:inline">${App.isViewingExemplar ? 'Back to My Work' : 'View Example'}</span>
+                    </button>
+                ` : ''}
+                ${customButtons}
+                <button onclick="window.toggleModuleFullscreen()" class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+                    <span class="iconify" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Renders the class status banner (Forced modules, feedback alerts, exemplars).
+ */
+export function renderStatusBanner() {
+    const banner = document.getElementById('statusBanner');

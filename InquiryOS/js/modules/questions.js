@@ -91,7 +91,7 @@ export function renderQuestionsModule() {
                                 ${p.media.map(m => `
                                     <button onclick="window.viewMediaDetail('${m.id}')" 
                                         class="group relative aspect-video bg-white rounded-2xl overflow-hidden border-2 border-white shadow-md hover:ring-4 hover:ring-amber-400 transition-all flex-shrink-0">
-                                        <img src="${m.thumb}" class="w-full h-full object-cover">
+                                        <img src="${m.thumb}" class="w-full h-full object-cover" loading="lazy">
                                         <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors flex items-center justify-center">
                                             <div class="bg-white/90 backdrop-blur-sm text-amber-600 p-2 rounded-full scale-0 group-hover:scale-100 transition-transform shadow-xl">
                                                 <span class="iconify text-xl" data-icon="mdi:magnify-plus"></span>

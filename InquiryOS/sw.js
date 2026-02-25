@@ -1,6 +1,7 @@
-const CACHE_NAME = 'inquiryos-v1';
+const CACHE_NAME = 'inquiryos-v2';
 const ASSETS = [
   './index.html',
+  './css/style.css',
   './js/main.js',
   './js/core/state.js',
   './js/core/storage.js',
@@ -16,6 +17,10 @@ const ASSETS = [
   './JSON/Concord_Interactives.json',
   './JSON/FULL_CONCORD_SEARCH.json',
   './JSON/PHET_simulations.json',
+  'https://philm013.github.io/JSON/ngss3DElements.json',
+  'https://philm013.github.io/JSON/ngssK5.json',
+  'https://philm013.github.io/JSON/ngss68.json',
+  'https://philm013.github.io/JSON/ngss912.json',
   './js/modules/questions.js',
   './js/modules/models.js',
   './js/modules/investigation.js',
@@ -46,6 +51,7 @@ self.addEventListener('install', (event) => {
       );
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -56,9 +62,33 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Strategy: Stale-While-Revalidate for JSON and Media results
+  if (url.pathname.endsWith('.json') || 
+      url.hostname.includes('unsplash.com') || 
+      url.hostname.includes('pexels.com') ||
+      url.hostname.includes('concord.org')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(event.request).then((cachedResponse) => {
+          const fetchedResponse = fetch(event.request).then((networkResponse) => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          }).catch(() => null);
+
+          return cachedResponse || fetchedResponse;
+        });
+      })
+    );
+    return;
+  }
+
+  // Strategy: Cache-First for local assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       return cachedResponse || fetch(event.request);

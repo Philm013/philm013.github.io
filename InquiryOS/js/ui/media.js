@@ -207,13 +207,13 @@ export function viewMediaDetail(idOrItem) {
     
     let mediaHtml = '';
     if (item.type === 'image') {
-        mediaHtml = `<img src="${item.url}" class="max-w-full max-h-full object-contain shadow-2xl">`;
+        mediaHtml = `<img src="${item.url}" class="max-w-full max-h-full object-contain shadow-2xl" loading="lazy">`;
     } else if (item.type === 'video') {
         mediaHtml = `<video src="${item.url}" controls autoplay class="max-w-full max-h-full shadow-2xl"></video>`;
     } else if (item.type === 'sim') {
         mediaHtml = `
             <div class="w-full h-full flex flex-col items-center justify-center p-4">
-                <iframe src="${item.url}" class="w-full h-full bg-white md:rounded-3xl border-0 shadow-2xl" allowfullscreen></iframe>
+                <iframe src="${item.url}" class="w-full h-full bg-white md:rounded-3xl border-0 shadow-2xl" allowfullscreen loading="lazy"></iframe>
             </div>
         `;
     }

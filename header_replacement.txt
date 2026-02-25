@@ -1,0 +1,143 @@
+/**
+ * Renders the consistent module header including Practice (SEP) tags, Coaching Tips, and fullscreen toggles.
+ * @param {string} title - The module title.
+ * @param {string} icon - Iconify icon ID.
+ * @param {string} sep - NGSS Science & Engineering Practice ID (e.g., 'SEP1').
+ * @param {string} [customButtons=''] - Additional HTML for action buttons.
+ * @returns {string} HTML content for the header.
+ */
+export function renderModuleHeader(title, icon, sep, customButtons = '') {
+    const isFullscreen = !!document.fullscreenElement;
+    const sepData = ngssData.elements3D?.dimensions?.find(d => d.code === 'SEP')?.elements?.find(el => el.id === sep);
+    const hasExemplar = !!App.teacherSettings.exemplars?.[App.currentModule];
+    
+    return `
+        <div class="mb-6 flex flex-col gap-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-3">
+                        <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                            <span class="iconify text-white text-xl" data-icon="${icon}"></span>
+                        </span>
+                        ${title}
+                    </h2>
+                    ${sep ? `
+                        <div class="relative group">
+                            <span class="ngss-tag ngss-sep cursor-help">${sep}</span>
+                            ${sepData ? `
+                                <div class="absolute left-0 top-full mt-2 w-64 p-4 bg-white rounded-xl shadow-2xl border border-blue-100 z-[1000] hidden group-hover:block animate-in fade-in slide-in-from-top-2">
+                                    <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Practice: ${sep}</p>
+                                    <p class="text-xs font-bold text-gray-900 mb-2">${sepData.name}</p>
+                                    <p class="text-[11px] text-gray-600 leading-relaxed">${sepData.description || ''}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="flex items-center gap-2">
+                    ${hasExemplar && App.mode === 'student' ? `
+                        <button onclick="window.toggleExemplarView()" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm font-bold flex items-center gap-2 transition-all">
+                            <span class="iconify" data-icon="mdi:lightbulb-on"></span>
+                            <span class="hidden sm:inline">${App.isViewingExemplar ? 'Back to My Work' : 'View Example'}</span>
+                        </button>
+                    ` : ''}
+                    ${customButtons}
+                    <button onclick="window.toggleModuleFullscreen()" class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
+                        <span class="iconify" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Coaching Tips Section (For Students) -->
+            ${App.mode === 'student' ? renderCoachingTips(sep) : ''}
+        </div>
+    `;
+}
+
+/**
+ * Generates sleek, domain-agnostic coaching tips for students based on the active SEP.
+ */
+function renderCoachingTips(sep) {
+    const tips = getCoachingTipsData(sep);
+    if (!tips) return '';
+
+    return `
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-4 shadow-sm">
+            <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0 border border-blue-50">
+                <span class="iconify text-xl" data-icon="mdi:comment-quote"></span>
+            </div>
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[9px] font-black text-primary uppercase tracking-widest">Coaching Tip: ${tips.label}</span>
+                    <span class="w-1 h-1 rounded-full bg-blue-300"></span>
+                    <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Growth Mindset</span>
+                </div>
+                <p class="text-xs font-medium text-gray-700 leading-relaxed italic">"${tips.text}"</p>
+                <div class="mt-2 flex items-center gap-4">
+                    <div class="flex items-center gap-1.5">
+                        <span class="iconify text-blue-400 text-xs" data-icon="mdi:brain"></span>
+                        <span class="text-[9px] font-bold text-gray-500 uppercase">${tips.mindset}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Repository of domain-agnostic scientific coaching tips and growth mindset prompts.
+ */
+function getCoachingTipsData(sep) {
+    const repository = {
+        'SEP1': {
+            label: 'Asking Questions',
+            text: 'Don't worry about having the "right" question yet. Focus on what makes you curious—every great discovery started with someone noticing a pattern and wondering "why?"',
+            mindset: 'Embrace Curiosity'
+        },
+        'SEP2': {
+            label: 'Developing Models',
+            text: 'Your model is a tool for thinking, not a finished piece of art! If your model feels "messy," that means you're working through the complex parts of the system. Keep iterating!',
+            mindset: 'Iteration is Key'
+        },
+        'SEP3': {
+            label: 'Planning Investigations',
+            text: 'Think about what you *can* control and what might change. A "failed" experiment is just data that tells you where to look next. How can we make our test more fair?',
+            mindset: 'Learning from Failure'
+        },
+        'SEP4': {
+            label: 'Analyzing Data',
+            text: 'Data can be noisy! Look for the "patterns" amidst the chaos. What do the numbers say when you step back? If the data is unexpected, that's where the real science begins.',
+            mindset: 'Evidence-Based Thinking'
+        },
+        'SEP5': {
+            label: 'Computational Thinking',
+            text: 'Math is the language we use to describe patterns in nature. Break the big problem into smaller pieces. Can you see a rule or relationship that stays the same?',
+            mindset: 'Precision & Logic'
+        },
+        'SEP6': {
+            label: 'Constructing Explanations',
+            text: 'Use your evidence like a lawyer! Connect what you *saw* (evidence) to *why* it happened (science ideas). It's okay if your initial idea changes as you learn more.',
+            mindset: 'Revising our Thinking'
+        },
+        'SEP7': {
+            label: 'Scientific Argument',
+            text: 'In science, we argue to get closer to the truth, not to "win." Listen to other ideas—they might help you see a gap in your own evidence that you can fix!',
+            mindset: 'Collaborative Growth'
+        },
+        'SEP8': {
+            label: 'Communicating Information',
+            text: 'How can you make your findings clear to someone who wasn't there? Use diagrams, labels, and clear language. Your voice helps our scientific community grow.',
+            mindset: 'Voice of Science'
+        }
+    };
+    return repository[sep] || {
+        label: 'Scientific Inquiry',
+        text: 'Science is a journey of making sense of the world. Every observation counts, and every mistake is a chance to learn something new about how systems work.',
+        mindset: 'Lifelong Learner'
+    };
+}
+
+/**
+ * Renders the class status banner (Forced modules, feedback alerts, exemplars).
+ */
+export function renderStatusBanner() {

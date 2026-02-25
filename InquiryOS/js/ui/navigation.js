@@ -11,6 +11,8 @@ import { renderStudentContent, renderTeacherContent, renderEvidenceBank } from '
  * Toggles the visibility of the sidebar on mobile devices.
  */
 export function toggleSidebar(forceState) {
+    if (window.innerWidth > 768) return; // Sidebar is fixed on desktop
+    
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     if (sidebar && overlay) {

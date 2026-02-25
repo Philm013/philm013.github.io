@@ -133,7 +133,7 @@ export async function renderTeacherOverview() {
                                     <div class="grid grid-cols-6 gap-2">
                                         ${(phenomenon.media || []).map(m => `
                                             <div class="group relative aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
-                                                <img src="${m.thumb}" class="w-full h-full object-cover" loading="lazy">
+                                                <img src="${m.thumb}" class="w-full h-full object-cover">
                                                 <button onclick="window.removeMediaFromPhenomenon('${m.id}')" class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                     <span class="iconify text-lg" data-icon="mdi:trash-can-outline"></span>
                                                 </button>
