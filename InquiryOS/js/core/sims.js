@@ -29,13 +29,20 @@ export async function loadSimulationsData() {
         if (codap.sample_docs) {
             codap.sample_docs.forEach(doc => {
                 const cats = Array.isArray(doc.categories) ? doc.categories : (doc.categories ? [doc.categories] : []);
+                // Process thumb: append image_path (relative to codap-data/) to the base URL
+                let thumbUrl = './resources/images/codap_logo.png';
+                if (doc.image_path) {
+                    const cleanImagePath = doc.image_path.startsWith('./') ? doc.image_path.substring(2) : doc.image_path;
+                    thumbUrl = `https://concord-consortium.github.io/codap-data/${cleanImagePath}`;
+                }
+
                 sims.push({
                     id: 'codap_' + doc.title.replace(/\s+/g, '_'),
                     title: doc.title,
                     description: doc.description,
                     // Pattern: codap-data/ + path
                     url: `https://codap.concord.org/releases/latest/static/dg/en/cert/index.html?url=https://concord-consortium.github.io/codap-data/${doc.path}`,
-                    thumb: doc.image_path ? (doc.image_path.startsWith('.') ? `./JSON/${doc.image_path.substring(2)}` : doc.image_path) : './resources/images/codap_logo.png',
+                    thumb: thumbUrl,
                     provider: 'Concord CODAP',
                     tags: doc.tag || [],
                     categories: cats,

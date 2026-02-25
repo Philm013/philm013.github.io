@@ -358,6 +358,7 @@ function renderNGSSContent(section) {
 
     if (section === 'pe') {
         const pes = Array.from(ngssData.peMap.values()).filter(pe => {
+            if (filters.specificElement && !pe.associatedSpecificCodes.has(filters.specificElement)) return false;
             if (filters.grade && filters.grade !== 'all' && pe.gradeLabel !== filters.grade) return false;
             
             if (filters.dims?.length > 0) {
@@ -378,6 +379,14 @@ function renderNGSSContent(section) {
             <div class="space-y-6">
                 <div class="flex items-center justify-between">
                     <h3 class="text-xl font-black text-gray-900 tracking-tight">${pes.length} Standards Found</h3>
+                    
+                    ${filters.specificElement ? `
+                        <div class="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black border border-blue-200">
+                            <span>Element: ${filters.specificElement}</span>
+                            <button onclick="window.setNgssFilter('specificElement', null)" class="hover:text-red-500">×</button>
+                        </div>
+                    ` : ''}
+
                     <div class="flex items-center gap-2">
                         <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Results Limit: 50</span>
                     </div>
@@ -501,7 +510,7 @@ export function toggleNgssMobileFilters() {
  * UI: Clears all current NGSS filters.
  */
 export function clearAllNgssFilters() {
-    App.ngssFilters = { dims: [], grade: 'all', search: '', progDim: 'SEP', elements: [] };
+    App.ngssFilters = { dims: [], grade: 'all', search: '', progDim: 'SEP', elements: [], specificElement: null, activePeFilter: null };
     const input = document.getElementById('ngssSearchInput');
     const mobileInput = document.getElementById('ngssSearchInputMobile');
     if (input) input.value = '';
@@ -729,6 +738,16 @@ export function viewPeDetails(peId) {
     });
 
     document.body.appendChild(modal);
+}
+
+/**
+ * UI: Switches to the PE browser and filters by a specific element code.
+ */
+export function viewElementPes(specificCode) {
+    if (!App.ngssFilters) App.ngssFilters = {};
+    App.ngssFilters.specificElement = specificCode;
+    App.ngssBrowserSection = 'pe';
+    renderTeacherContent();
 }
 
 /**
