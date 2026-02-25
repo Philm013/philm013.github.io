@@ -378,7 +378,7 @@ export async function saveChartAsEvidence() {
         title: 'Data Graph',
         description: `${chartType} chart showing relationships in data`,
         icon: 'mdi:chart-line',
-        data: { chartType, dataTable: deepClone(App.work.dataTable)) },
+        data: { chartType, dataTable: deepClone(App.work.dataTable) },
         author: App.user.name,
         time: Date.now()
     };

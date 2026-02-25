@@ -423,42 +423,42 @@ function getCoachingTipsData(sep) {
     const repository = {
         'SEP1': {
             label: 'Asking Questions',
-            text: 'Don't worry about having the "right" question yet. Focus on what makes you curious—every great discovery started with someone noticing a pattern and wondering "why?"',
+            text: "Don't worry about having the \"right\" question yet. Focus on what makes you curious—every great discovery started with someone noticing a pattern and wondering \"why?\"",
             mindset: 'Embrace Curiosity'
         },
         'SEP2': {
             label: 'Developing Models',
-            text: 'Your model is a tool for thinking, not a finished piece of art! If your model feels "messy," that means you're working through the complex parts of the system. Keep iterating!',
+            text: "Your model is a tool for thinking, not a finished piece of art! If your model feels \"messy,\" that means you're working through the complex parts of the system. Keep iterating!",
             mindset: 'Iteration is Key'
         },
         'SEP3': {
             label: 'Planning Investigations',
-            text: 'Think about what you *can* control and what might change. A "failed" experiment is just data that tells you where to look next. How can we make our test more fair?',
+            text: "Think about what you *can* control and what might change. A \"failed\" experiment is just data that tells you where to look next. How can we make our test more fair?",
             mindset: 'Learning from Failure'
         },
         'SEP4': {
             label: 'Analyzing Data',
-            text: 'Data can be noisy! Look for the "patterns" amidst the chaos. What do the numbers say when you step back? If the data is unexpected, that's where the real science begins.',
+            text: "Data can be noisy! Look for the \"patterns\" amidst the chaos. What do the numbers say when you step back? If the data is unexpected, that's where the real science begins.",
             mindset: 'Evidence-Based Thinking'
         },
         'SEP5': {
             label: 'Computational Thinking',
-            text: 'Math is the language we use to describe patterns in nature. Break the big problem into smaller pieces. Can you see a rule or relationship that stays the same?',
+            text: "Math is the language we use to describe patterns in nature. Break the big problem into smaller pieces. Can you see a rule or relationship that stays the same?",
             mindset: 'Precision & Logic'
         },
         'SEP6': {
             label: 'Constructing Explanations',
-            text: 'Use your evidence like a lawyer! Connect what you *saw* (evidence) to *why* it happened (science ideas). It's okay if your initial idea changes as you learn more.',
+            text: "Use your evidence like a lawyer! Connect what you *saw* (evidence) to *why* it happened (science ideas). It's okay if your initial idea changes as you learn more.",
             mindset: 'Revising our Thinking'
         },
         'SEP7': {
             label: 'Scientific Argument',
-            text: 'In science, we argue to get closer to the truth, not to "win." Listen to other ideas—they might help you see a gap in your own evidence that you can fix!',
+            text: "In science, we argue to get closer to the truth, not to \"win.\" Listen to other ideas—they might help you see a gap in your own evidence that you can fix!",
             mindset: 'Collaborative Growth'
         },
         'SEP8': {
             label: 'Communicating Information',
-            text: 'How can you make your findings clear to someone who wasn't there? Use diagrams, labels, and clear language. Your voice helps our scientific community grow.',
+            text: "How can you make your findings clear to someone who wasn't there? Use diagrams, labels, and clear language. Your voice helps our scientific community grow.",
             mindset: 'Voice of Science'
         }
     };
@@ -494,105 +494,15 @@ function getCccTipsData(cccId) {
     return cccMap[cccId];
 }
 
-/**
- * Renders the class status banner (Forced modules, feedback alerts, exemplars).
- */
-export function renderStatusBanner() {
-            </div>
 
-            <!-- Coaching Tips Section (For Students) -->
-            ${App.mode === 'student' ? renderCoachingTips(sep) : ''}
-        </div>
-    `;
-}
 
-/**
- * Generates sleek, domain-agnostic coaching tips for students based on the active SEP.
- */
-function renderCoachingTips(sep) {
-    const tips = getCoachingTipsData(sep);
-    if (!tips) return '';
 
-    return `
-        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-4 shadow-sm">
-            <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0 border border-blue-50">
-                <span class="iconify text-xl" data-icon="mdi:comment-quote"></span>
-            </div>
-            <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-[9px] font-black text-primary uppercase tracking-widest">Coaching Tip: ${tips.label}</span>
-                    <span class="w-1 h-1 rounded-full bg-blue-300"></span>
-                    <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Growth Mindset</span>
-                </div>
-                <p class="text-xs font-medium text-gray-700 leading-relaxed italic">"${tips.text}"</p>
-                <div class="mt-2 flex items-center gap-4">
-                    <div class="flex items-center gap-1.5">
-                        <span class="iconify text-blue-400 text-xs" data-icon="mdi:brain"></span>
-                        <span class="text-[9px] font-bold text-gray-500 uppercase">${tips.mindset}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Repository of domain-agnostic scientific coaching tips and growth mindset prompts.
- */
-function getCoachingTipsData(sep) {
-    const repository = {
-        'SEP1': {
-            label: 'Asking Questions',
-            text: 'Don't worry about having the "right" question yet. Focus on what makes you curious—every great discovery started with someone noticing a pattern and wondering "why?"',
-            mindset: 'Embrace Curiosity'
-        },
-        'SEP2': {
-            label: 'Developing Models',
-            text: 'Your model is a tool for thinking, not a finished piece of art! If your model feels "messy," that means you're working through the complex parts of the system. Keep iterating!',
-            mindset: 'Iteration is Key'
-        },
-        'SEP3': {
-            label: 'Planning Investigations',
-            text: 'Think about what you *can* control and what might change. A "failed" experiment is just data that tells you where to look next. How can we make our test more fair?',
-            mindset: 'Learning from Failure'
-        },
-        'SEP4': {
-            label: 'Analyzing Data',
-            text: 'Data can be noisy! Look for the "patterns" amidst the chaos. What do the numbers say when you step back? If the data is unexpected, that's where the real science begins.',
-            mindset: 'Evidence-Based Thinking'
-        },
-        'SEP5': {
-            label: 'Computational Thinking',
-            text: 'Math is the language we use to describe patterns in nature. Break the big problem into smaller pieces. Can you see a rule or relationship that stays the same?',
-            mindset: 'Precision & Logic'
-        },
-        'SEP6': {
-            label: 'Constructing Explanations',
-            text: 'Use your evidence like a lawyer! Connect what you *saw* (evidence) to *why* it happened (science ideas). It's okay if your initial idea changes as you learn more.',
-            mindset: 'Revising our Thinking'
-        },
-        'SEP7': {
-            label: 'Scientific Argument',
-            text: 'In science, we argue to get closer to the truth, not to "win." Listen to other ideas—they might help you see a gap in your own evidence that you can fix!',
-            mindset: 'Collaborative Growth'
-        },
-        'SEP8': {
-            label: 'Communicating Information',
-            text: 'How can you make your findings clear to someone who wasn't there? Use diagrams, labels, and clear language. Your voice helps our scientific community grow.',
-            mindset: 'Voice of Science'
-        }
-    };
-    return repository[sep] || {
-        label: 'Scientific Inquiry',
-        text: 'Science is a journey of making sense of the world. Every observation counts, and every mistake is a chance to learn something new about how systems work.',
-        mindset: 'Lifelong Learner'
-    };
-}
 
 /**
  * Renders the class status banner (Forced modules, feedback alerts, exemplars).
  */
 export function renderStatusBanner() {
+    const banner = document.getElementById('statusBanner');
     if (!banner || App.mode !== 'student') {
         if (banner) banner.classList.add('hidden');
         return;
@@ -706,8 +616,8 @@ export async function renderPresentationLayer() {
         const exemplar = App.teacherSettings.exemplars[pres.moduleId];
         if (exemplar) {
             // Temporarily swap work state to render the exemplar
-            const originalWork = deepClone(App.work));
-            App.work = deepClone(exemplar));
+            const originalWork = deepClone(App.work);
+            App.work = deepClone(exemplar);
             const container = document.getElementById('presentationContent');
             if (container) {
                 const renderers = {
@@ -729,7 +639,7 @@ export async function renderPresentationLayer() {
         const { dbGet, STORE_SESSIONS } = await import('../core/storage.js');
         const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + pres.visitorId);
         if (saved && saved.work) {
-            const originalWork = deepClone(App.work));
+            const originalWork = deepClone(App.work);
             App.work = saved.work;
             const container = document.getElementById('presentationContent');
             if (container) {
@@ -757,12 +667,12 @@ export async function toggleExemplarView() {
     App.isViewingExemplar = !App.isViewingExemplar;
     if (App.isViewingExemplar) {
         // Cache current work
-        App.studentWorkCache = deepClone(App.work));
+        App.studentWorkCache = deepClone(App.work);
         
         // Show exemplar
         const exemplar = App.teacherSettings.exemplars?.[App.currentModule];
         if (exemplar) {
-            App.work = deepClone(exemplar));
+            App.work = deepClone(exemplar);
         } else {
             App.work = getInitialWorkState();
         }
