@@ -117,13 +117,13 @@ export function selectRole(role) {
         desc.textContent = "Let's get you ready for your investigation.";
         classContainer.classList.remove('hidden');
         btn.querySelector('span').textContent = "Join the Class!";
-        btn.className = "w-full py-5 bg-gradient-to-r from-primary to-blue-500 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2";
+        btn.className = "w-full py-5 md:py-6 bg-gradient-to-r from-primary to-blue-500 text-white rounded-[1.5rem] md:rounded-[2rem] font-black shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 btn-interactive";
     } else {
         title.textContent = "Hi Teacher!";
         desc.textContent = "Let's set up your classroom headquarters.";
         classContainer.classList.add('hidden');
         btn.querySelector('span').textContent = "Open My Classroom";
-        btn.className = "w-full py-5 bg-gradient-to-r from-teacher to-orange-500 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2";
+        btn.className = "w-full py-5 md:py-6 bg-gradient-to-r from-teacher to-orange-500 text-white rounded-[1.5rem] md:rounded-[2rem] font-black shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 btn-interactive";
     }
     
     goToLoginStep(2);

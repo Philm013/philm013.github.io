@@ -21,6 +21,7 @@ const ASSETS = [
   'https://philm013.github.io/JSON/ngssK5.json',
   'https://philm013.github.io/JSON/ngss68.json',
   'https://philm013.github.io/JSON/ngss912.json',
+  './js/modules/overview.js',
   './js/modules/questions.js',
   './js/modules/models.js',
   './js/modules/investigation.js',

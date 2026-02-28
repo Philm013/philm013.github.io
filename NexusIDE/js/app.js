@@ -957,11 +957,7 @@ const Nexus = {
         this.bind('btn-close-sidebar', () => Nexus.setView('editor'));
         this.bind('btn-toggle-preview', () => Nexus.togglePreview());
         this.bind('btn-toggle-selection-mode', () => Nexus.toggleSelectionMode());
-        this.bind('btn-capture-preview', async () => {
-            Nexus.toggleAI(true);
-            Nexus.setAITab('chat');
-            await Nexus.sendChatForced("Take a screenshot of the current preview and explain what you see.");
-        });
+        this.bind('btn-capture-preview', () => Nexus.performCapture());
         this.bind('btn-close-output', () => Nexus.togglePreview(false));
         this.bind('btn-format', () => Nexus.formatCode());
         this.bind('btn-visual-mode', () => Nexus.toggleVisualMode());
@@ -1005,33 +1001,7 @@ const Nexus = {
             markupIconSearch.oninput = debounce((e) => this.performMarkupIconSearch(e.target.value), 300);
         }
 
-        this.bind('btn-capture', async () => {
-            const isMD = Nexus.state.currentFile.endsWith('.md');
-            const targetId = isMD ? 'markdown-render' : 'preview-frame';
-            const el = document.getElementById(targetId);
-            
-            if (!el) {
-                Nexus.modals.alert("Capture Error", `Target element #${targetId} not found.`);
-                return;
-            }
-
-            Nexus.togglePreview(true);
-            Nexus.updatePreview();
-            
-            await new Promise(r => setTimeout(r, 800));
-
-            console.log(`Nexus: Initiating capture of #${targetId}`);
-            try {
-                const data = await Nexus.capture.captureElement(targetId);
-                if (data) {
-                    Nexus.setView('markup');
-                } else {
-                    Nexus.modals.alert("Capture Failed", "Could not generate image data. The element might be empty or hidden.");
-                }
-            } catch (err) {
-                Nexus.modals.alert("Capture Error", err.message);
-            }
-        });
+        this.bind('btn-capture', () => Nexus.performCapture());
 
         this.bind('btn-markup-to-ai', () => {
             const data = Nexus.capture.getAnnotatedData();
@@ -1413,7 +1383,7 @@ const Nexus = {
         const visualBtn = document.getElementById('btn-visual-mode');
         if (visualBtn) visualBtn.classList.add('hidden');
 
-        Nexus.updatePreview();
+        await Nexus.updatePreview();
         Nexus.updateTabs();
         
         if (window.innerWidth < 768 && this.state.view !== 'editor') Nexus.setView('editor');
@@ -1515,9 +1485,26 @@ const Nexus = {
         }
     },
 
+    /**
+     * Resolves a relative path against a base path.
+     * @private
+     */
+    resolvePath(base, relative) {
+        if (!relative || relative.startsWith('http') || relative.startsWith('//') || relative.startsWith('data:')) return relative;
+        const baseParts = base.split('/').filter(p => p);
+        baseParts.pop();
+        const relParts = relative.split('/').filter(p => p);
+        for (const part of relParts) {
+            if (part === '.') continue;
+            if (part === '..') baseParts.pop();
+            else baseParts.push(part);
+        }
+        return baseParts.join('/');
+    },
+
     /** Updates the content of the preview iframe or markdown renderer. @private */
-    updatePreview() {
-        const val = Nexus.editor.getValue();
+    async updatePreview() {
+        let val = Nexus.editor.getValue();
         const path = Nexus.state.currentFile;
         const frame = document.getElementById('preview-frame');
         const render = document.getElementById('markdown-render');
@@ -1525,6 +1512,46 @@ const Nexus = {
         if (frame && render) {
             if (path.endsWith('.html')) {
                 frame.classList.remove('hidden'); render.classList.add('hidden');
+
+                // Resolve and Inline Local Resources
+                // 1. Scripts
+                const scriptTagRegex = /<script\b[^>]*src=["']([^"']+)["'][^>]*>([\s\S]*?)<\/script>/gi;
+                let scriptMatch;
+                const scriptsToInline = [];
+                while ((scriptMatch = scriptTagRegex.exec(val)) !== null) {
+                    const src = scriptMatch[1];
+                    const resolved = this.resolvePath(path, src);
+                    scriptsToInline.push({ fullTag: scriptMatch[0], src, resolved });
+                }
+                for (const item of scriptsToInline) {
+                    try {
+                        const content = await this.fs.readFile(item.resolved);
+                        if (content) {
+                            const typeMatch = item.fullTag.match(/type=["']([^"']+)["']/i);
+                            const typeAttr = typeMatch ? ` type="${typeMatch[1]}"` : '';
+                            val = val.replaceAll(item.fullTag, `<script${typeAttr}>/* Inlined: ${item.src} */\n${content}\n</script>`);
+                        }
+                    } catch (e) { console.warn(`Failed to inline script: ${item.src}`, e); }
+                }
+
+                // 2. Stylesheets
+                const linkTagRegex = /<link\b[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/gi;
+                let linkMatch;
+                const linksToInline = [];
+                while ((linkMatch = linkTagRegex.exec(val)) !== null) {
+                    const href = linkMatch[1];
+                    const resolved = this.resolvePath(path, href);
+                    linksToInline.push({ fullTag: linkMatch[0], href, resolved });
+                }
+                for (const item of linksToInline) {
+                    try {
+                        const content = await this.fs.readFile(item.resolved);
+                        if (content) {
+                            val = val.replaceAll(item.fullTag, `<style>/* Inlined: ${item.href} */\n${content}\n</style>`);
+                        }
+                    } catch (e) { console.warn(`Failed to inline style: ${item.href}`, e); }
+                }
+
                 const shim = `
                     <script>
                         var selectionMode = false;
@@ -1616,6 +1643,102 @@ const Nexus = {
                 render.innerHTML = marked.parse(val);
                 render.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => h.style.display = 'block');
             }
+        }
+    },
+
+    /**
+     * Unified capture utility that handles destination choice and processing.
+     * @param {string|null} [destination=null] - 'markup' | 'ai'. If null, prompts user.
+     * @param {string|null} [targetId=null] - Element ID to capture.
+     */
+    async performCapture(destination = null, targetId = null) {
+        if (!targetId) {
+            const isMD = Nexus.state.currentFile.endsWith('.md');
+            targetId = isMD ? 'markdown-render' : 'preview-frame';
+        }
+
+        const el = document.getElementById(targetId);
+        if (!el) {
+            Nexus.modals.alert("Capture Error", `Target element #${targetId} not found.`);
+            return;
+        }
+
+        if (!destination) {
+            destination = await Nexus.modals.choice("Capture Preview", "Where would you like to send this capture?", [
+                { id: 'markup', label: 'Drawing / Markup', icon: 'fa-pen-ruler' },
+                { id: 'ai', label: 'AI Assistant', icon: 'fa-robot' }
+            ]);
+            if (!destination) return;
+        }
+
+        Nexus.togglePreview(true);
+        await Nexus.updatePreview();
+        await new Promise(r => setTimeout(r, 1000));
+
+        try {
+            const data = await Nexus.capture.captureElement(targetId);
+            if (data) {
+                if (destination === 'markup') {
+                    Nexus.setView('markup');
+                } else if (destination === 'ai') {
+                    Nexus.addToContext({ type: 'image', content: data, thumb: data });
+                    Nexus.toggleAI(true);
+                    Nexus.setAITab('chat');
+                    await Nexus.sendChatForced("I've attached a screenshot of the current preview. Please analyze it and provide feedback or suggestions.");
+                }
+            }
+        } catch (err) {
+            console.error("Capture failed:", err);
+            Nexus.modals.alert("Capture Error", err.message);
+        }
+    },
+
+    /**
+     * Unified capture utility that handles destination choice and processing.
+     * @param {string|null} [destination=null] - 'markup' | 'ai'. If null, prompts user.
+     * @param {string|null} [targetId=null] - Element ID to capture.
+     */
+    async performCapture(destination = null, targetId = null) {
+        if (!targetId) {
+            const isMD = Nexus.state.currentFile.endsWith('.md');
+            targetId = isMD ? 'markdown-render' : 'preview-frame';
+        }
+
+        const el = document.getElementById(targetId);
+        if (!el) {
+            Nexus.modals.alert("Capture Error", `Target element #${targetId} not found.`);
+            return;
+        }
+
+        if (!destination) {
+            destination = await Nexus.modals.choice("Capture Preview", "Where would you like to send this capture?", [
+                { id: 'markup', label: 'Drawing / Markup', icon: 'fa-pen-ruler' },
+                { id: 'ai', label: 'AI Assistant', icon: 'fa-robot' }
+            ]);
+            if (!destination) return;
+        }
+
+        Nexus.togglePreview(true);
+        await Nexus.updatePreview();
+        
+        // Brief wait for any final layout/inlining effects
+        await new Promise(r => setTimeout(r, 1000));
+
+        try {
+            const data = await Nexus.capture.captureElement(targetId);
+            if (data) {
+                if (destination === 'markup') {
+                    Nexus.setView('markup');
+                } else if (destination === 'ai') {
+                    Nexus.addToContext({ type: 'image', content: data, thumb: data });
+                    Nexus.toggleAI(true);
+                    Nexus.setAITab('chat');
+                    await Nexus.sendChatForced("I've attached a screenshot of the current preview. Please analyze it and provide feedback or suggestions.");
+                }
+            }
+        } catch (err) {
+            console.error("Capture failed:", err);
+            Nexus.modals.alert("Capture Error", err.message);
         }
     },
 

@@ -7,11 +7,11 @@ import { App, getInitialWorkState } from '../core/state.js';
 import { dbGetByIndex, STORE_USERS } from '../core/storage.js';
 import { renderNavigation } from './navigation.js';
 import { saveToStorage } from '../core/sync.js';
-import { ngssData } from '../core/state.js';
-import { toast, deepClone } from './utils.js';
+import { toast, deepClone, renderInfoTip } from './utils.js';
 
 
 // Import Student Module Renderers
+import { renderOverviewModule } from '../modules/overview.js';
 import { renderQuestionsModule } from '../modules/questions.js';
 import { renderModelsModule, initModelCanvas } from '../modules/models.js';
 import { renderInvestigationModule } from '../modules/investigation.js';
@@ -21,7 +21,7 @@ import { renderExplanationsModule } from '../modules/explanations.js';
 import { renderArgumentModule } from '../modules/argument.js';
 import { renderCommunicationModule } from '../modules/communication.js';
 
-// Import Teacher Module Renderers (Consolidated)
+// Import Teacher Module Renderers
 import { 
     renderTeacherOverview, 
     renderTeacherSnapshots, 
@@ -29,15 +29,17 @@ import {
     renderTeacherLessons,
     renderTeacherStudents,
     renderTeacherAccess,
-    renderSessionSettings
+    renderSessionSettings,
+    forceAllToModule
 } from '../teacher/dashboard.js';
 import { renderTeacherNoticeBoard, renderModeration, renderCategoryManager } from '../teacher/noticeboard.js';
 import { renderLiveModels, renderLiveData, renderLiveGeneric, initViewerCanvas, renderIconManager } from '../teacher/viewer.js';
 import { renderNGSSBrowser } from '../core/ngss.js';
 
+window.forceAllToModule = forceAllToModule;
+
 /**
  * Switches the application between student and teacher modes.
- * @param {string} mode - 'student' | 'teacher'.
  */
 export function switchMode(mode) {
     App.mode = mode;
@@ -46,19 +48,27 @@ export function switchMode(mode) {
 }
 
 /**
- * Updates the global UI state, headers, and navigation based on the current mode and active student being viewed.
+ * Updates the global UI state, headers, and navigation.
  */
 export function updateModeUI() {
     try {
         const isTeacher = App.mode === 'teacher';
         const isFullscreen = App.modelState?.isFullscreen || false;
-        
         document.body.classList.toggle('view-fullscreen', isFullscreen);
         
-        let subtitle = isTeacher ? 'Teacher Mode' : 'Student Mode';
-        if (isTeacher && App.viewingStudentId) {
-            subtitle = 'Viewing Student Work';
+        const appView = document.getElementById('appView');
+        if (appView) {
+            appView.classList.toggle('view-student', !isTeacher);
+            appView.classList.toggle('view-teacher', isTeacher);
+            if (!isTeacher) {
+                appView.setAttribute('data-current-module', App.currentModule);
+            } else {
+                appView.removeAttribute('data-current-module');
+            }
         }
+
+        let subtitle = isTeacher ? 'Teacher Mode' : 'Student Mode';
+        if (isTeacher && App.viewingStudentId) subtitle = 'Viewing Student Work';
         
         const subtitleEl = document.getElementById('headerSubtitle');
         if (subtitleEl) subtitleEl.textContent = subtitle;
@@ -71,29 +81,21 @@ export function updateModeUI() {
 
         const presentationEl = document.getElementById('presentationStatus');
         if (presentationEl) {
-            const isPresenting = !!App.sharedData.currentPresentation;
-            presentationEl.classList.toggle('hidden', !isPresenting);
-            presentationEl.classList.toggle('flex', isPresenting);
+            presentationEl.classList.toggle('hidden', !App.sharedData.currentPresentation);
+            presentationEl.classList.toggle('flex', !!App.sharedData.currentPresentation);
         }
         
         const studentNavEl = document.getElementById('teacherStudentNav');
-        const viewingNameEl = document.getElementById('viewingName');
-        const viewingAvatarEl = document.getElementById('viewingAvatar');
-        
         if (isTeacher && App.viewingStudentId && studentNavEl) {
-            studentNavEl.classList.remove('hidden');
-            studentNavEl.classList.add('flex');
-            
+            studentNavEl.classList.remove('hidden'); studentNavEl.classList.add('flex');
             dbGetByIndex(STORE_USERS, 'classCode', App.classCode).then(users => {
                 const s = users.find(u => u.visitorId === App.viewingStudentId);
-                if (s && viewingNameEl && viewingAvatarEl) {
-                    viewingNameEl.textContent = s.name;
-                    viewingAvatarEl.textContent = s.avatar || s.name.charAt(0).toUpperCase();
-                }
+                const nameEl = document.getElementById('viewingName');
+                const avatarEl = document.getElementById('viewingAvatar');
+                if (s && nameEl && avatarEl) { nameEl.textContent = s.name; avatarEl.textContent = s.avatar || s.name.charAt(0).toUpperCase(); }
             });
         } else if (studentNavEl) {
-            studentNavEl.classList.add('hidden');
-            studentNavEl.classList.remove('flex');
+            studentNavEl.classList.add('hidden'); studentNavEl.classList.remove('flex');
         }
         
         const headerIcon = document.getElementById('headerIcon');
@@ -105,152 +107,159 @@ export function updateModeUI() {
         const eb = document.getElementById('evidenceBank');
         if (eb) eb.style.display = (isTeacher && !App.viewingStudentId) ? 'none' : 'block';
         
-        // Update bottom nav for mobile
+        // Mobile Bottom Nav
         const bottomNav = document.getElementById('bottomNav');
         if (bottomNav && window.innerWidth <= 768) {
-            const isTeacher = App.mode === 'teacher';
-            const centerContent = isTeacher ? `
-                <button onclick="window.showTeacherModule('overview')" class="flex flex-col items-center justify-center h-full ${App.teacherModule === 'overview' ? 'text-teacher' : 'text-gray-400'}">
-                    <span class="iconify text-2xl" data-icon="mdi:view-dashboard"></span>
-                    <span class="text-[9px] font-bold uppercase tracking-tighter">Home</span>
-                </button>
-                <button onclick="window.showTeacherModule('snapshots')" class="flex flex-col items-center justify-center h-full ${App.teacherModule === 'snapshots' ? 'text-teacher' : 'text-gray-400'}">
-                    <span class="iconify text-2xl" data-icon="mdi:camera-outline"></span>
-                    <span class="text-[9px] font-bold uppercase tracking-tighter">Snaps</span>
-                </button>
-                <button onclick="window.showTeacherModule('noticeboard')" class="flex flex-col items-center justify-center h-full ${App.teacherModule === 'noticeboard' ? 'text-teacher' : 'text-gray-400'}">
-                    <span class="iconify text-2xl" data-icon="mdi:bulletin-board"></span>
-                    <span class="text-[9px] font-bold uppercase tracking-tighter">Board</span>
-                </button>
-                <button onclick="window.showTeacherModule('students')" class="flex flex-col items-center justify-center h-full ${App.teacherModule === 'students' ? 'text-teacher' : 'text-gray-400'}">
-                    <span class="iconify text-2xl" data-icon="mdi:account-group"></span>
-                    <span class="text-[9px] font-bold uppercase tracking-tighter">Class</span>
-                </button>
-            ` : `
-                <button onclick="window.showStudentModule('questions')" class="flex flex-col items-center justify-center h-full ${App.currentModule === 'questions' ? 'text-primary' : 'text-gray-400'}">
-                    <span class="iconify text-2xl" data-icon="mdi:help-circle"></span>
-                    <span class="text-[9px] font-bold uppercase tracking-tighter">Quest</span>
-                </button>
-                <button onclick="window.showStudentModule('models')" class="flex flex-col items-center justify-center h-full ${App.currentModule === 'models' ? 'text-primary' : 'text-gray-400'}">
-                    <span class="iconify text-2xl" data-icon="mdi:cube-outline"></span>
-                    <span class="text-[9px] font-bold uppercase tracking-tighter">Model</span>
-                </button>
-                <button onclick="window.showStudentModule('analysis')" class="flex flex-col items-center justify-center h-full ${App.currentModule === 'analysis' ? 'text-primary' : 'text-gray-400'}">
-                    <span class="iconify text-2xl" data-icon="mdi:chart-line"></span>
-                    <span class="text-[9px] font-bold uppercase tracking-tighter">Data</span>
-                </button>
-                <button onclick="window.showStudentModule('explanations')" class="flex flex-col items-center justify-center h-full ${App.currentModule === 'explanations' ? 'text-primary' : 'text-gray-400'}">
-                    <span class="iconify text-2xl" data-icon="mdi:lightbulb-on"></span>
-                    <span class="text-[9px] font-bold uppercase tracking-tighter">CER</span>
-                </button>
-            `;
-
+            const navItems = isTeacher ? [
+                { id: 'overview', icon: 'mdi:view-dashboard', label: 'Home' },
+                { id: 'snapshots', icon: 'mdi:camera-outline', label: 'Snaps' },
+                { id: 'noticeboard', icon: 'mdi:bulletin-board', label: 'Board' },
+                { id: 'students', icon: 'mdi:account-group', label: 'Class' }
+            ] : [
+                { id: 'overview', icon: 'mdi:view-dashboard', label: 'Home' },
+                { id: 'questions', icon: 'mdi:help-circle', label: 'Quest' },
+                { id: 'models', icon: 'mdi:cube-outline', label: 'Model' },
+                { id: 'analysis', icon: 'mdi:chart-line', label: 'Data' },
+                { id: 'explanations', icon: 'mdi:lightbulb-on', label: 'CER' }
+            ];
+            const current = isTeacher ? App.teacherModule : App.currentModule;
+            const clickFn = isTeacher ? 'window.showTeacherModule' : 'window.showStudentModule';
             bottomNav.innerHTML = `
-                <div class="flex-1 flex justify-around items-center h-full w-full">
-                    ${centerContent}
-                    <button onclick="window.toggleSidebar()" class="flex flex-col items-center justify-center h-full text-gray-400">
-                        <span class="iconify text-2xl" data-icon="mdi:menu"></span>
-                        <span class="text-[9px] font-bold uppercase tracking-tighter">More</span>
-                    </button>
-                </div>
-            `;
+                <div class="flex justify-around items-center h-full w-full px-2">
+                    ${navItems.map(item => `
+                        <button onclick="${clickFn}('${item.id}')" class="flex flex-col items-center justify-center h-full transition-all ${current === item.id ? (isTeacher ? 'text-teacher scale-110' : 'text-primary scale-110') : 'text-gray-400'}">
+                            <span class="iconify text-xl" data-icon="${item.icon}"></span>
+                            <span class="text-[8px] font-black uppercase mt-1 tracking-tighter">${item.label}</span>
+                        </button>
+                    `).join('')}
+                    <button onclick="window.toggleSidebar()" class="flex flex-col items-center justify-center h-full text-gray-400"><span class="iconify text-xl" data-icon="mdi:menu"></span><span class="text-[8px] font-black uppercase mt-1 tracking-tighter">More</span></button>
+                </div>`;
         }
 
         renderNavigation();
-        if (isTeacher) {
-            renderTeacherContent();
-        } else {
-            renderStudentContent();
-        }
-    } catch (e) {
-        console.error('Error updating UI:', e);
-    }
+        if (isTeacher) renderTeacherContent(); else renderStudentContent();
+    } catch (e) { console.error('UI Error:', e); }
 }
 
 /**
- * Renders the content for the currently active student module.
+ * Renders all student modules in a continuous vertical stack.
  */
 export function renderStudentContent() {
-    if (App.mode === 'teacher' && (App.isExemplarMode || App.viewingStudentId)) {
-        renderTeacherContent();
-        return;
-    }
-
-    // Check for active presentation
-    if (App.mode === 'student' && App.sharedData.currentPresentation) {
-        renderPresentationLayer();
-        return;
-    }
-
+    if (App.mode === 'teacher' && (App.isExemplarMode || App.viewingStudentId)) { renderTeacherContent(); return; }
+    if (App.mode === 'student' && App.sharedData.currentPresentation) { renderPresentationLayer(); return; }
     renderStatusBanner();
     
-    // Force module if set by teacher
-    if (App.mode === 'student' && App.teacherSettings.forceModule && App.currentModule !== App.teacherSettings.forceModule) {
-        App.currentModule = App.teacherSettings.forceModule;
-        renderNavigation();
-    }
-
     const content = document.getElementById('mainContent');
     if (!content) return;
     
-    const appView = document.getElementById('appView');
-    if (appView) {
-        appView.className = 'view active ' + (App.mode === 'teacher' ? 'view-teacher' : 'view-student');
-        appView.classList.add('view-' + App.currentModule);
-    }
+    content.innerHTML = renderStudentContentHtml();
 
-    const renderers = {
-        questions: renderQuestionsModule,
-        models: renderModelsModule,
-        investigation: renderInvestigationModule,
-        analysis: renderAnalysisModule,
-        math: renderMathModule,
-        explanations: renderExplanationsModule,
-        argument: renderArgumentModule,
-        communication: renderCommunicationModule
-    };
-    
-    const html = renderers[App.currentModule]?.() || '<p>Module not found</p>';
-    
-    if (App.isViewingExemplar) {
-        content.innerHTML = `
-            <div class="relative min-h-full">
-                <div class="absolute inset-0 z-[150] bg-white/10 pointer-events-auto cursor-not-allowed"></div>
-                <div class="pointer-events-none opacity-80 filter grayscale-[0.2] h-full">
-                    ${html}
-                </div>
-                <div class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[160] bg-purple-600 text-white px-6 py-3 rounded-full shadow-2xl font-bold flex items-center gap-3 whitespace-nowrap">
-                    <span class="iconify text-xl" data-icon="mdi:eye"></span>
-                    TEACHER EXAMPLE
-                    <button onclick="window.toggleExemplarView()" class="ml-4 bg-white text-purple-600 px-4 py-1 rounded-full text-sm">Exit</button>
-                </div>
-            </div>
-        `;
-    } else {
-        content.innerHTML = html;
-    }
-    
     setTimeout(() => {
-        if (App.currentModule === 'models') initModelCanvas();
-        if (App.currentModule === 'analysis') initChart();
-        if (App.currentModule === 'investigation' && window.initDataTableSortable) {
-            window.initDataTableSortable();
+        initModelCanvas(); initChart(); if (window.initDataTableSortable) window.initDataTableSortable();
+        setupModuleObserver();
+        if (!App._isScrollingToModule) {
+            const target = document.querySelector(`[data-card-title="${App.currentModule === 'overview' ? 'The Mystery' : getModuleFirstPanelTitle(App.currentModule)}"]`);
+            if (target) { App._isScrollingToModule = true; target.scrollIntoView({ behavior: 'auto' }); setTimeout(() => { App._isScrollingToModule = false; }, 500); }
         }
     }, 50);
 }
 
 /**
- * Renders the content for the currently active teacher module.
+ * Returns the HTML for all student modules as a string.
+ */
+export function renderStudentContentHtml() {
+    const modules = ['overview', 'questions', 'models', 'investigation', 'analysis', 'math', 'explanations', 'argument', 'communication'];
+    const renderers = { overview: renderOverviewModule, questions: renderQuestionsModule, models: renderModelsModule, investigation: renderInvestigationModule, analysis: renderAnalysisModule, math: renderMathModule, explanations: renderExplanationsModule, argument: renderArgumentModule, communication: renderCommunicationModule };
+
+    return modules.map(id => {
+        const isLocked = !App.teacherSettings.moduleAccess[id] && id !== 'overview';
+        return isLocked ? '' : renderers[id]();
+    }).join('');
+}
+
+window.renderStudentContentHtml = renderStudentContentHtml;
+
+function getModuleFirstPanelTitle(moduleId) {
+    const map = { overview: 'The Mystery', questions: 'Phenomenon', models: 'Model Canvas', investigation: 'Experimental Variables', analysis: 'Chart Designer', math: 'Calculator', explanations: 'Evidence Bank', argument: 'Argument Board', communication: 'Poster Builder' };
+    return map[moduleId];
+}
+
+function setupModuleObserver() {
+    const content = document.getElementById('mainContent');
+    if (!content) return;
+    const observer = new IntersectionObserver((entries) => {
+        if (App._isScrollingToModule) return;
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const moduleId = findModuleByPanelTitle(entry.target.dataset.cardTitle);
+                if (moduleId && App.currentModule !== moduleId) { App.currentModule = moduleId; updateUIForActiveModule(moduleId); }
+            }
+        });
+    }, { root: content, rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+    content.querySelectorAll('[data-card-title]').forEach(panel => observer.observe(panel));
+}
+
+function findModuleByPanelTitle(title) {
+    const reverseMap = { 
+        'The Mystery': 'overview', 'Scientific Story': 'overview', 'Research Progress': 'overview', 'Quick Actions': 'overview', 
+        'Phenomenon': 'questions', 'Inquiry Board': 'questions', 'Driving Questions': 'questions', 
+        'Classroom Board': 'noticeboard',
+        'Model Canvas': 'models', 'Model Explanations': 'models', 
+        'Experimental Variables': 'investigation', 'Data Collection Table': 'investigation', 
+        'Chart Designer': 'analysis', 'Statistical Summary': 'analysis', 
+        'Calculator': 'math', 'Mathematical Assets': 'math', 'Unit Conversion': 'math', 'Computational Log': 'math', 
+        'Evidence Bank': 'explanations', 'Scientific Claim': 'explanations', 'Evidence Description': 'explanations', 'Reasoning': 'explanations', 
+        'Argument Board': 'argument', 
+        'Poster Builder': 'communication' 
+    };
+    return reverseMap[title];
+}
+
+function updateUIForActiveModule(moduleId) {
+    const header = document.querySelector('#appHeader h1');
+    if (header) {
+        const labels = { 
+            overview: 'Research Overview', 
+            questions: 'Asking Questions', 
+            models: 'Developing & Using Models', 
+            investigation: 'Planning Investigations', 
+            analysis: 'Analyzing & Interpreting Data', 
+            math: 'Using Math & Thinking', 
+            explanations: 'Constructing Explanations', 
+            argument: 'Argument from Evidence', 
+            communication: 'Communicating Information' 
+        };
+        header.textContent = labels[moduleId] || 'InquiryOS';
+    }
+
+    const appView = document.getElementById('appView');
+    if (appView && App.mode === 'student') {
+        appView.setAttribute('data-current-module', moduleId);
+    }
+    
+    // Toggle has-dots for scroll handle positioning on mobile
+    const modulesWithDots = ['questions'];
+    document.body.classList.toggle('has-dots', modulesWithDots.includes(moduleId) && window.innerWidth <= 768);
+
+    document.querySelectorAll('.nav-btn, #bottomNav button').forEach(btn => {
+        const btnModule = btn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        if (btnModule) {
+            const isActive = btnModule === moduleId;
+            btn.classList.toggle('active', isActive);
+            if (btn.querySelector('.iconify')) btn.classList.toggle('text-primary', isActive);
+        }
+    });
+}
+
+/**
+ * Renders all teacher modules in a continuous vertical stack.
  */
 export async function renderTeacherContent() {
     if (App.isExemplarMode) {
         const content = document.getElementById('mainContent');
         if (content) {
             content.innerHTML = await renderActivityDashboard();
-            setTimeout(() => {
-                if (App.currentModule === 'models') initModelCanvas();
-                if (App.currentModule === 'analysis') initChart();
-            }, 50);
+            setTimeout(() => { if (App.currentModule === 'models') initModelCanvas(); if (App.currentModule === 'analysis') initChart(); }, 50);
         }
         return;
     }
@@ -258,479 +267,215 @@ export async function renderTeacherContent() {
     const content = document.getElementById('mainContent');
     if (!content) return;
     
-    const renderers = {
-        overview: renderTeacherOverview,
-        lessons: renderTeacherLessons,
-        snapshots: renderTeacherSnapshots,
-        students: renderTeacherStudents,
-        access: renderTeacherAccess,
-        noticeboard: renderTeacherNoticeBoard,
-        livemodels: renderLiveModels,
-        livedata: renderLiveData,
-        livegeneric: renderLiveGeneric,
-        moderation: renderModeration,
-        categories: renderCategoryManager,
-        icons: renderIconManager,
-        ngss: renderNGSSBrowser,
-        settings: renderSessionSettings
-    };
-    
-    const renderer = renderers[App.teacherModule];
-    if (renderer) {
-        const result = await renderer();
-        if (typeof result === 'string') {
-            content.innerHTML = result;
-        }
-    } else {
-        content.innerHTML = '<p>Module not found</p>';
+    if (['livemodels', 'livedata', 'livegeneric'].includes(App.teacherModule) || App._editingAssetBank) {
+        content.style.scrollSnapType = 'none';
+        const liveRenderer = App._editingAssetBank ? renderIconManager : { livemodels: renderLiveModels, livedata: renderLiveData, livegeneric: renderLiveGeneric }[App.teacherModule];
+        content.innerHTML = await liveRenderer();
+        if (App.teacherModule === 'livemodels') setTimeout(() => initViewerCanvas(), 50);
+        return;
     }
-    
+
+    content.style.scrollSnapType = 'y mandatory';
+
+    const modules = ['overview', 'lessons', 'snapshots', 'students', 'access', 'noticeboard', 'moderation', 'categories', 'icons', 'ngss', 'settings'];
+    const renderers = { overview: renderTeacherOverview, lessons: renderTeacherLessons, snapshots: renderTeacherSnapshots, students: renderTeacherStudents, access: renderTeacherAccess, noticeboard: renderTeacherNoticeBoard, moderation: renderModeration, categories: renderCategoryManager, icons: renderIconManager, ngss: renderNGSSBrowser, settings: renderSessionSettings };
+
+    const stack = await Promise.all(modules.map(async id => {
+        const html = await renderers[id]();
+        return `<div class="teacher-section w-full" data-teacher-module="${id}">${html}</div>`;
+    }));
+
+    content.innerHTML = stack.join('');
+
     setTimeout(() => {
-        if (App.teacherModule === 'livemodels') initViewerCanvas();
+        setupTeacherModuleObserver();
+        if (!App._isScrollingToModule) {
+            const target = document.querySelector(`[data-teacher-module="${App.teacherModule}"]`);
+            if (target) { App._isScrollingToModule = true; target.scrollIntoView({ behavior: 'auto' }); setTimeout(() => { App._isScrollingToModule = false; }, 500); }
+        }
     }, 50);
 }
 
-/**
- * Renders the consistent module header including Practice (SEP) tags and fullscreen toggles.
- * @param {string} title - Module title.
- * @param {string} icon - Iconify icon ID.
- * @param {string} sep - NGSS Science & Engineering Practice ID (e.g., 'SEP1').
- * @param {string} [customButtons=''] - Additional HTML for action buttons.
- * @returns {string} HTML content for the header.
- */
-/**
- * Renders the consistent module header including Practice (SEP) tags, Coaching Tips, and fullscreen toggles.
- * @param {string} title - The module title.
- * @param {string} icon - Iconify icon ID.
- * @param {string} sep - NGSS Science & Engineering Practice ID (e.g., 'SEP1').
- * @param {string} [customButtons=''] - Additional HTML for action buttons.
- * @returns {string} HTML content for the header.
- */
-export function renderModuleHeader(title, icon, sep, customButtons = '') {
-    const isFullscreen = !!document.fullscreenElement;
-    const sepData = ngssData.elements3D?.dimensions?.find(d => d.code === 'SEP')?.elements?.find(el => el.id === sep);
-    const hasExemplar = !!App.teacherSettings.exemplars?.[App.currentModule];
-    
-    // Find active Crosscutting Concept (CCC) from teacher settings
-    const activeCcc = App.teacherSettings?.categories?.find(c => c.id.startsWith('cat_'));
-
-    return `
-        <div class="mb-6 flex flex-col gap-4">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <h2 class="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-3">
-                        <span class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
-                            <span class="iconify text-white text-xl" data-icon="${icon}"></span>
-                        </span>
-                        ${title}
-                    </h2>
-                    ${sep ? `
-                        <div class="relative group">
-                            <span class="ngss-tag ngss-sep cursor-help">${sep}</span>
-                            ${sepData ? `
-                                <div class="absolute left-0 top-full mt-2 w-64 p-4 bg-white rounded-xl shadow-2xl border border-blue-100 z-[1000] hidden group-hover:block animate-in fade-in slide-in-from-top-2">
-                                    <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Practice: ${sep}</p>
-                                    <p class="text-xs font-bold text-gray-900 mb-2">${sepData.name}</p>
-                                    <p class="text-[11px] text-gray-600 leading-relaxed">${sepData.description || ''}</p>
-                                </div>
-                            ` : ''}
-                        </div>
-                    ` : ''}
-                    ${activeCcc ? `
-                        <div class="relative group">
-                            <span class="ngss-tag ngss-ccc cursor-help uppercase">${activeCcc.name}</span>
-                        </div>
-                    ` : ''}
-                </div>
-                <div class="flex items-center gap-2">
-                    ${hasExemplar && App.mode === 'student' ? `
-                        <button onclick="window.toggleExemplarView()" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm font-bold flex items-center gap-2 transition-all">
-                            <span class="iconify" data-icon="mdi:lightbulb-on"></span>
-                            <span class="hidden sm:inline">${App.isViewingExemplar ? 'Back to My Work' : 'View Example'}</span>
-                        </button>
-                    ` : ''}
-                    ${customButtons}
-                    <button onclick="window.toggleModuleFullscreen()" class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
-                        <span class="iconify" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Coaching Tips Section (For Students) -->
-            ${App.mode === 'student' ? renderCoachingTips(sep, activeCcc) : ''}
-        </div>
-    `;
+function setupTeacherModuleObserver() {
+    const content = document.getElementById('mainContent');
+    if (!content || App.mode !== 'teacher') return;
+    const observer = new IntersectionObserver((entries) => {
+        if (App._isScrollingToModule) return;
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const moduleId = entry.target.dataset.teacherModule;
+                if (moduleId && App.teacherModule !== moduleId) { App.teacherModule = moduleId; updateUIForActiveTeacherModule(moduleId); }
+            }
+        });
+    }, { root: content, rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+    content.querySelectorAll('.teacher-section').forEach(section => observer.observe(section));
 }
 
-/**
- * Generates sleek, domain-agnostic coaching tips for students based on the active SEP and CCC.
- */
+function updateUIForActiveTeacherModule(moduleId) {
+    const header = document.querySelector('#appHeader h1');
+    if (header) {
+        const labels = { overview: 'Classroom Command', lessons: 'Lesson Designer', snapshots: 'Activity Snapshots', students: 'Student Management', access: 'Access Control', noticeboard: 'Inquiry Board', moderation: 'Class Moderation', categories: 'Category Architect', icons: 'Asset Architect', ngss: 'NGSS Navigator', settings: 'Session Settings' };
+        header.textContent = labels[moduleId] || 'InquiryOS';
+    }
+
+    // Toggle has-dots for scroll handle positioning on mobile
+    const modulesWithDots = ['noticeboard'];
+    document.body.classList.toggle('has-dots', modulesWithDots.includes(moduleId) && window.innerWidth <= 768);
+
+    document.querySelectorAll('.teacher-nav, #bottomNav button').forEach(btn => {
+        const btnModule = btn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        if (btnModule) {
+            const isActive = btnModule === moduleId;
+            btn.classList.toggle('active', isActive);
+            if (btn.querySelector('.iconify')) btn.classList.toggle('text-teacher', isActive);
+        }
+    });
+}
+
+export function renderModuleHeader(title, icon, sep, customButtons = '', infoTip = '') {
+    const isFullscreen = !!document.fullscreenElement;
+    const activeCcc = App.teacherSettings?.categories?.find(c => c.id.startsWith('cat_'));
+    return `
+        <div class="mb-0 md:mb-4 lg:mb-6 flex flex-col shrink-0 md:border-0 bg-white">
+            <div class="flex flex-row items-center justify-between gap-2 p-2 md:p-0 sticky top-0 md:relative z-[70] md:z-0 bg-white border-b md:border-0">
+                <div class="flex items-center gap-2 overflow-hidden">
+                    <div class="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-primary to-secondary rounded-lg md:rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all">
+                        <span class="iconify text-white text-lg md:text-xl lg:text-2xl" data-icon="${icon}"></span>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center md:gap-3 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-sm md:text-xl lg:text-3xl font-black text-gray-900 truncate tracking-tight leading-tight">${title}</h2>
+                            ${infoTip ? renderInfoTip(infoTip) : ''}
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-0.5 md:mt-0">
+                            ${sep ? `<span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-blue-50 text-blue-600 rounded text-[7px] md:text-[10px] lg:text-xs font-black border border-blue-100 uppercase tracking-widest">${sep}</span>` : ''}
+                            ${activeCcc ? `<span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-amber-50 text-amber-600 rounded text-[7px] md:text-[10px] lg:text-xs font-black border border-amber-100 uppercase tracking-widest">${activeCcc.name}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 md:gap-2">
+                    ${App.teacherSettings.exemplars?.[App.currentModule] && App.mode === 'student' ? `<button onclick="window.toggleExemplarView()" class="px-2 py-1.5 md:px-4 md:py-2 bg-purple-50 text-purple-600 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-purple-100 transition-all"><span class="iconify" data-icon="mdi:lightbulb-on"></span><span class="hidden sm:inline">Teacher Example</span></button>` : ''}
+                    ${customButtons}
+                    <button onclick="window.toggleModuleFullscreen()" class="p-2 text-gray-400 hover:text-gray-600 transition-colors"><span class="iconify text-xl" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span></button>
+                </div>
+            </div>
+            ${App.mode === 'student' ? renderCoachingTips(sep, activeCcc) : ''}
+        </div>`;
+}
+
 function renderCoachingTips(sep, ccc) {
     const sepTip = getCoachingTipsData(sep);
     const cccTip = ccc ? getCccTipsData(ccc.id) : null;
-    
     if (!sepTip && !cccTip) return '';
-
     return `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            ${sepTip ? `
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-4 shadow-sm group hover:shadow-md transition-all">
-                    <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0 border border-blue-50 group-hover:scale-110 transition-transform">
-                        <span class="iconify text-xl" data-icon="mdi:comment-quote"></span>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="text-[9px] font-black text-primary uppercase tracking-widest">Practice: ${sepTip.label}</span>
-                            <span class="w-1 h-1 rounded-full bg-blue-300"></span>
-                            <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Action Tip</span>
-                        </div>
-                        <p class="text-xs font-medium text-gray-700 leading-relaxed italic">"${sepTip.text}"</p>
-                        <div class="mt-2 flex items-center gap-1.5">
-                            <span class="iconify text-blue-400 text-xs" data-icon="mdi:brain"></span>
-                            <span class="text-[9px] font-bold text-gray-500 uppercase">${sepTip.mindset}</span>
-                        </div>
-                    </div>
-                </div>
-            ` : ''}
-            
-            ${cccTip ? `
-                <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-4 flex items-start gap-4 shadow-sm group hover:shadow-md transition-all">
-                    <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-orange-600 shadow-sm shrink-0 border border-amber-50 group-hover:scale-110 transition-transform">
-                        <span class="iconify text-xl" data-icon="mdi:telescope"></span>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="text-[9px] font-black text-orange-600 uppercase tracking-widest">Concept: ${cccTip.label}</span>
-                            <span class="w-1 h-1 rounded-full bg-orange-300"></span>
-                            <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Big Picture</span>
-                        </div>
-                        <p class="text-xs font-medium text-gray-700 leading-relaxed italic">"${cccTip.text}"</p>
-                        <div class="mt-2 flex items-center gap-1.5">
-                            <span class="iconify text-orange-400 text-xs" data-icon="mdi:lightbulb-on"></span>
-                            <span class="text-[9px] font-bold text-gray-500 uppercase">${cccTip.mindset}</span>
-                        </div>
-                    </div>
-                </div>
-            ` : ''}
-        </div>
-    `;
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 p-2 md:p-0 mt-3 md:mt-4">
+            ${sepTip ? `<div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl md:rounded-2xl p-3 md:p-4 flex items-start gap-3 shadow-sm group hover:shadow-md transition-all">
+                <div class="w-8 h-8 md:w-10 md:h-10 bg-white rounded-lg md:rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0 border border-blue-50"><span class="iconify text-lg md:text-xl" data-icon="mdi:comment-quote"></span></div>
+                <div class="flex-1 overflow-hidden"><div class="flex items-center gap-2 mb-0.5"><span class="text-[8px] md:text-[10px] font-black text-primary uppercase tracking-widest">${sepTip.label}</span></div><p class="text-[10px] md:text-xs text-gray-700 leading-relaxed italic line-clamp-2 md:line-clamp-none">"${sepTip.text}"</p></div>
+            </div>` : ''}
+            ${cccTip ? `<div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-xl md:rounded-2xl p-3 md:p-4 flex items-start gap-3 shadow-sm group hover:shadow-md transition-all">
+                <div class="w-8 h-8 md:w-10 md:h-10 bg-white rounded-lg md:rounded-xl flex items-center justify-center text-orange-600 shadow-sm shrink-0 border border-amber-50"><span class="iconify text-lg md:text-xl" data-icon="mdi:telescope"></span></div>
+                <div class="flex-1 overflow-hidden"><div class="flex items-center gap-2 mb-0.5"><span class="text-[8px] md:text-[10px] font-black text-orange-600 uppercase tracking-widest">${cccTip.label}</span></div><p class="text-[10px] md:text-xs text-gray-700 leading-relaxed italic line-clamp-2 md:line-clamp-none">"${cccTip.text}"</p></div>
+            </div>` : ''}
+        </div>`;
 }
 
-/**
- * Repository of domain-agnostic scientific coaching tips and growth mindset prompts.
- */
 function getCoachingTipsData(sep) {
     const repository = {
-        'SEP1': {
-            label: 'Asking Questions',
-            text: "Don't worry about having the \"right\" question yet. Focus on what makes you curious—every great discovery started with someone noticing a pattern and wondering \"why?\"",
-            mindset: 'Embrace Curiosity'
-        },
-        'SEP2': {
-            label: 'Developing Models',
-            text: "Your model is a tool for thinking, not a finished piece of art! If your model feels \"messy,\" that means you're working through the complex parts of the system. Keep iterating!",
-            mindset: 'Iteration is Key'
-        },
-        'SEP3': {
-            label: 'Planning Investigations',
-            text: "Think about what you *can* control and what might change. A \"failed\" experiment is just data that tells you where to look next. How can we make our test more fair?",
-            mindset: 'Learning from Failure'
-        },
-        'SEP4': {
-            label: 'Analyzing Data',
-            text: "Data can be noisy! Look for the \"patterns\" amidst the chaos. What do the numbers say when you step back? If the data is unexpected, that's where the real science begins.",
-            mindset: 'Evidence-Based Thinking'
-        },
-        'SEP5': {
-            label: 'Computational Thinking',
-            text: "Math is the language we use to describe patterns in nature. Break the big problem into smaller pieces. Can you see a rule or relationship that stays the same?",
-            mindset: 'Precision & Logic'
-        },
-        'SEP6': {
-            label: 'Constructing Explanations',
-            text: "Use your evidence like a lawyer! Connect what you *saw* (evidence) to *why* it happened (science ideas). It's okay if your initial idea changes as you learn more.",
-            mindset: 'Revising our Thinking'
-        },
-        'SEP7': {
-            label: 'Scientific Argument',
-            text: "In science, we argue to get closer to the truth, not to \"win.\" Listen to other ideas—they might help you see a gap in your own evidence that you can fix!",
-            mindset: 'Collaborative Growth'
-        },
-        'SEP8': {
-            label: 'Communicating Information',
-            text: "How can you make your findings clear to someone who wasn't there? Use diagrams, labels, and clear language. Your voice helps our scientific community grow.",
-            mindset: 'Voice of Science'
-        }
+        'SEP1': { label: 'Asking Questions', text: "Focus on what makes you curious—every great discovery started with a notice and wonder.", mindset: 'Embrace Curiosity' },
+        'SEP2': { label: 'Developing Models', text: "Your model is a tool for thinking. It's okay if it feels messy while you work!", mindset: 'Iteration is Key' },
+        'SEP3': { label: 'Investigations', text: "Think about what you can control. How can we make our test more fair?", mindset: 'Learning from Failure' },
+        'SEP4': { label: 'Analyzing Data', text: "Data can be noisy! Look for the patterns amidst the chaos.", mindset: 'Evidence-Based Thinking' },
+        'SEP5': { label: 'Math', text: "Math is the language of patterns. Break the big problem into smaller pieces.", mindset: 'Precision & Logic' },
+        'SEP6': { label: 'Explanations', text: "Use your evidence like a lawyer! Connect what you saw to why it happened.", mindset: 'Revising our Thinking' },
+        'SEP7': { label: 'Argument', text: "We argue to get closer to the truth. Listen to other ideas.", mindset: 'Collaborative Growth' },
+        'SEP8': { label: 'Communication', text: "How can you make your findings clear to someone who wasn't there?", mindset: 'Voice of Science' }
     };
     return repository[sep];
 }
 
-/**
- * Repository of Crosscutting Concept (CCC) coaching tips.
- */
 function getCccTipsData(cccId) {
     const cccMap = {
-        'cat_patterns': {
-            label: 'Patterns',
-            text: 'Look for things that repeat! Patterns help us predict what might happen next. Does this happen every time, or just under certain conditions?',
-            mindset: 'Predictive Thinking'
-        },
-        'cat_causes': {
-            label: 'Cause & Effect',
-            text: 'Every effect has a cause. When you change one thing, what else reacts? Sometimes the cause is hidden, and we have to dig deeper to find the mechanism.',
-            mindset: 'Logical Reasoning'
-        },
-        'cat_systems': {
-            label: 'Systems',
-            text: 'Nothing in science happens in isolation. How do the different parts of this system interact? What happens if you take one piece away?',
-            mindset: 'Systems Thinking'
-        },
-        'cat_energy': {
-            label: 'Energy & Matter',
-            text: 'Track the flow! Where is the energy coming from, and where does it go? Matter is never lost, it just changes form. Follow the cycle.',
-            mindset: 'Conservation Mindset'
-        }
+        'cat_patterns': { label: 'Patterns', text: 'Look for things that repeat! Patterns help us predict what might happen next.', mindset: 'Predictive Thinking' },
+        'cat_causes': { label: 'Cause & Effect', text: 'Every effect has a cause. When you change one thing, what else reacts?', mindset: 'Logical Reasoning' },
+        'cat_systems': { label: 'Systems', text: 'How do the different parts interact? What happens if you take one piece away?', mindset: 'Systems Thinking' },
+        'cat_energy': { label: 'Energy & Matter', text: 'Track the flow! Where is the energy coming from, and where does it go?', mindset: 'Conservation Mindset' }
     };
     return cccMap[cccId];
 }
 
-
-
-
-
-/**
- * Renders the class status banner (Forced modules, feedback alerts, exemplars).
- */
 export function renderStatusBanner() {
     const banner = document.getElementById('statusBanner');
-    if (!banner || App.mode !== 'student') {
-        if (banner) banner.classList.add('hidden');
-        return;
-    }
-    
+    if (!banner || App.mode !== 'student') { if (banner) banner.classList.add('hidden'); return; }
     let html = '';
-    
-    if (App.teacherSettings.forceModule) {
-        const isGuided = App.teacherSettings.guidedMode;
-        html += `
-            <div class="${isGuided ? 'bg-orange-500' : 'bg-teacher'} text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-bold animate-pulse">
-                <span class="iconify" data-icon="${isGuided ? 'mdi:map-marker-path' : 'mdi:lock'}"></span>
-                <span>${isGuided ? 'GUIDED LESSON IN PROGRESS:' : 'TEACHER HAS FOCUSED THE CLASS ON:'} ${App.teacherSettings.forceModule.toUpperCase()}</span>
-            </div>
-        `;
-    }
-    
-    if (App.teacherSettings.showFeedbackToStudents && (App.work.modelComments?.length > 0 || App.work.modelStickers?.length > 0)) {
-        html += `
-            <div class="bg-blue-600 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-bold border-t border-blue-500">
-                <span class="iconify" data-icon="mdi:comment-check"></span>
-                <span>Teacher feedback is available on your model!</span>
-                <button onclick="window.showStudentModule('models')" class="ml-2 px-2 py-0.5 bg-white text-blue-600 rounded text-xs">View Now</button>
-            </div>
-        `;
-    }
-
-    if (App.teacherSettings.exemplars?.[App.currentModule]) {
-        const isViewing = App.isViewingExemplar;
-        html += `
-            <div class="bg-purple-600 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-bold border-t border-purple-500">
-                <span class="iconify" data-icon="mdi:lightbulb-on"></span>
-                <span>${isViewing ? 'YOU ARE VIEWING THE TEACHER EXAMPLE' : 'THE TEACHER HAS PROVIDED AN EXAMPLE'}</span>
-                <button onclick="window.toggleExemplarView()" class="ml-2 px-3 py-0.5 bg-white text-purple-600 rounded-full text-xs">
-                    ${isViewing ? 'Back to My Work' : 'View Teacher Example'}
-                </button>
-            </div>
-        `;
-    }
-
-    if (html) {
-        banner.innerHTML = html;
-        banner.classList.remove('hidden');
-    } else {
-        banner.classList.add('hidden');
-    }
+    if (App.teacherSettings.forceModule) html += `<div class="bg-orange-500 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-bold animate-pulse"><span class="iconify" data-icon="mdi:map-marker-path"></span><span>GUIDED: ${App.teacherSettings.forceModule.toUpperCase()}</span></div>`;
+    if (App.teacherSettings.showFeedbackToStudents && (App.work.modelComments?.length > 0 || App.work.modelStickers?.length > 0)) html += `<div class="bg-blue-600 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-bold border-t border-blue-500"><span class="iconify" data-icon="mdi:comment-check"></span><span>New Teacher feedback!</span><button onclick="window.showStudentModule('models')" class="ml-2 px-2 py-0.5 bg-white text-blue-600 rounded text-xs">View</button></div>`;
+    if (App.teacherSettings.exemplars?.[App.currentModule]) html += `<div class="bg-purple-600 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-bold border-t border-purple-500"><span class="iconify" data-icon="mdi:lightbulb-on"></span><span>TEACHER EXAMPLE READY</span><button onclick="window.toggleExemplarView()" class="ml-2 px-3 py-0.5 bg-white text-purple-600 rounded-full text-xs">${App.isViewingExemplar ? 'Back' : 'View'}</button></div>`;
+    if (html) { banner.innerHTML = html; banner.classList.remove('hidden'); } else banner.classList.add('hidden');
 }
 
-/**
- * Renders the evidence bank list in the sidebar.
- */
 export function renderEvidenceBank() {
-    const list = document.getElementById('evidenceList');
-    if (!list) return;
-    
-    if (App.work.evidence.length === 0) {
-        list.innerHTML = '<p class="text-amber-600 italic">No evidence collected yet</p>';
-    } else {
-        list.innerHTML = App.work.evidence.map(e => `
-            <div class="p-2 bg-white rounded border border-amber-200 hover:border-amber-400 cursor-pointer" onclick="window.viewEvidence('${e.id}')">
-                <div class="flex items-center gap-2">
-                    <span class="iconify text-amber-600" data-icon="${e.icon || 'mdi:file-document'}"></span>
-                    <span class="font-medium truncate">${e.title}</span>
-                </div>
-            </div>
-        `).join('');
-    }
+    const list = document.getElementById('evidenceList'); if (!list) return;
+    if (App.work.evidence.length === 0) list.innerHTML = '<p class="text-amber-600 italic text-xs">Empty</p>';
+    else list.innerHTML = App.work.evidence.map(e => `<div class="p-2 bg-white rounded border border-amber-200" onclick="window.viewEvidence('${e.id}')"><div class="flex items-center gap-2 min-w-0"><span class="iconify text-amber-600" data-icon="${e.icon || 'mdi:file-document'}"></span><span class="text-xs font-medium truncate">${e.title}</span></div></div>`).join('');
 }
 
-/**
- * Renders the presentation overlay when a teacher is presenting work to the class.
- */
 export async function renderPresentationLayer() {
     const content = document.getElementById('mainContent');
     const pres = App.sharedData.currentPresentation;
     if (!content || !pres) return;
-
     content.innerHTML = `
         <div class="h-full flex flex-col -m-6 relative overflow-hidden bg-gray-900">
-            <div class="absolute inset-0 z-0 opacity-20">
-                <div class="w-full h-full bg-[radial-gradient(#ffffff_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-            </div>
-            
-            <div class="relative z-10 p-6 flex items-center justify-between bg-black/40 backdrop-blur-md border-b border-white/10">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                        <span class="iconify text-2xl" data-icon="mdi:presentation"></span>
-                    </div>
-                    <div>
-                        <h2 class="text-white font-black text-xl uppercase tracking-tighter">Class Presentation</h2>
-                        <p class="text-blue-400 text-xs font-bold uppercase tracking-widest mt-0.5">
-                            ${pres.type === 'exemplar' ? 'Teacher Exemplar' : `Viewing Work: ${pres.studentName || 'Peer'}`}
-                        </p>
-                    </div>
+            <div class="relative z-10 p-4 flex items-center justify-between bg-black/40 backdrop-blur-md border-b border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg"><span class="iconify text-xl" data-icon="mdi:presentation"></span></div>
+                    <div><h2 class="text-white font-black text-sm uppercase">Presentation</h2><p class="text-blue-400 text-[10px] font-bold uppercase">${pres.studentName || 'Peer'}</p></div>
                 </div>
-                <div class="px-4 py-2 bg-white/10 rounded-xl text-white text-[10px] font-black uppercase tracking-[0.2em]">
-                    Focus Mode Active
-                </div>
+                <div class="px-3 py-1 bg-white/10 rounded-lg text-white text-[8px] font-black uppercase">Focus Mode</div>
             </div>
-
             <div class="flex-1 relative overflow-hidden" id="presentationContainer">
-                <div id="presentationContent" class="w-full h-full p-8 flex items-center justify-center text-white/50 italic">
-                    Loading presented content...
-                </div>
+                <div id="presentationContent" class="w-full h-full p-4 flex items-center justify-center text-white/50 italic">Loading...</div>
             </div>
-        </div>
-    `;
+        </div>`;
 
-    // Load the specific content
-    if (pres.type === 'exemplar') {
-        const exemplar = App.teacherSettings.exemplars[pres.moduleId];
-        if (exemplar) {
-            // Temporarily swap work state to render the exemplar
-            const originalWork = deepClone(App.work);
-            App.work = deepClone(exemplar);
-            const container = document.getElementById('presentationContent');
-            if (container) {
-                const renderers = {
-                    questions: renderQuestionsModule,
-                    models: renderModelsModule,
-                    analysis: renderAnalysisModule,
-                    explanations: renderExplanationsModule
-                };
-                const html = renderers[pres.moduleId]?.() || '<p>Content not available</p>';
-                container.innerHTML = `<div class="w-full h-full overflow-auto p-8 bg-white rounded-[3rem] shadow-2xl relative">${html}<div class="readonly-overlay pointer-events-auto"></div></div>`;
-                
-                if (pres.moduleId === 'models') setTimeout(() => initModelCanvas(), 50);
-                if (pres.moduleId === 'analysis') setTimeout(() => initChart(), 50);
+    const { dbGet, STORE_SESSIONS } = await import('../core/storage.js');
+    const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + pres.visitorId);
+    if (saved && saved.work) {
+        const originalWork = deepClone(App.work); App.work = saved.work;
+        const container = document.getElementById('presentationContent');
+        if (container) {
+            if (pres.type === 'model') {
+                const { renderLiveModels, initViewerCanvas } = await import('../teacher/viewer.js');
+                container.innerHTML = `<div class="w-full h-full relative">${await renderLiveModels()}</div>`;
+                setTimeout(() => initViewerCanvas(), 50);
+            } else if (pres.type === 'data') {
+                const { renderLiveData } = await import('../teacher/viewer.js');
+                container.innerHTML = `<div class="w-full h-full overflow-auto bg-gray-50 rounded-[2rem] p-4">${await renderLiveData()}</div>`;
             }
-            App.work = originalWork;
         }
-    } else {
-        // Fetch student work
-        const { dbGet, STORE_SESSIONS } = await import('../core/storage.js');
-        const saved = await dbGet(STORE_SESSIONS, App.classCode + ':work:' + pres.visitorId);
-        if (saved && saved.work) {
-            const originalWork = deepClone(App.work);
-            App.work = saved.work;
-            const container = document.getElementById('presentationContent');
-            if (container) {
-                if (pres.type === 'model') {
-                    const { renderLiveModels, initViewerCanvas } = await import('../teacher/viewer.js');
-                    container.innerHTML = `<div class="w-full h-full relative">${await renderLiveModels()}</div>`;
-                    setTimeout(() => initViewerCanvas(), 50);
-                    // Hide the sub-header back button
-                    container.querySelector('button[onclick*="stopViewingStudent"]')?.classList.add('hidden');
-                } else if (pres.type === 'data') {
-                    const { renderLiveData } = await import('../teacher/viewer.js');
-                    container.innerHTML = `<div class="w-full h-full overflow-auto bg-gray-50 rounded-[3rem] p-8">${await renderLiveData()}</div>`;
-                    container.querySelector('button[onclick*="stopViewingStudent"]')?.classList.add('hidden');
-                }
-            }
-            App.work = originalWork;
-        }
+        App.work = originalWork;
     }
 }
 
-/**
- * Toggles the student's view between their own work and the teacher's exemplar.
- */
 export async function toggleExemplarView() {
     App.isViewingExemplar = !App.isViewingExemplar;
-    if (App.isViewingExemplar) {
-        // Cache current work
-        App.studentWorkCache = deepClone(App.work);
-        
-        // Show exemplar
-        const exemplar = App.teacherSettings.exemplars?.[App.currentModule];
-        if (exemplar) {
-            App.work = deepClone(exemplar);
-        } else {
-            App.work = getInitialWorkState();
-        }
-        
-        toast('Viewing Teacher Example', 'info');
-    } else {
-        // Restore work
-        if (App.studentWorkCache) App.work = App.studentWorkCache;
-        App.studentWorkCache = null;
-        toast('Returned to My Work', 'info');
-    }
-    renderNavigation();
-    renderStudentContent();
+    if (App.isViewingExemplar) { App.studentWorkCache = deepClone(App.work); const ex = App.teacherSettings.exemplars?.[App.currentModule]; App.work = ex ? deepClone(ex) : getInitialWorkState(); }
+    else { if (App.studentWorkCache) App.work = App.studentWorkCache; App.studentWorkCache = null; }
+    renderNavigation(); renderStudentContent();
 }
 
-/**
- * Renders a consistent empty state placeholder with optional QR code support.
- */
 export function renderEmptyState(title, message, icon = 'mdi:folder-open-outline', showQR = false) {
     return `
-        <div class="flex-1 flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in zoom-in duration-500 bg-gray-50/50 rounded-[3rem] border-2 border-dashed border-gray-100/50 m-4">
-            <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-gray-50">
-                <span class="iconify text-6xl text-gray-200" data-icon="${icon}"></span>
-            </div>
-            <h3 class="text-2xl font-black text-gray-400 uppercase tracking-tighter">${title}</h3>
-            <p class="text-gray-400 mt-2 max-w-md mx-auto leading-relaxed font-medium text-sm">${message}</p>
-            ${showQR ? `
-                <div class="mt-10 flex flex-col items-center gap-4">
-                    <button onclick="window.showJoinQR()" class="px-8 py-4 bg-primary text-white rounded-[2rem] font-black shadow-xl shadow-blue-100 hover:opacity-90 flex items-center gap-3 transition-all hover:-translate-y-1">
-                        <span class="iconify text-2xl" data-icon="mdi:qrcode"></span>
-                        Show Class QR Code
-                    </button>
-                    <div class="px-6 py-2 bg-white text-purple-600 rounded-xl border border-purple-100 font-mono font-black text-lg tracking-widest shadow-sm">
-                        ${App.classCode}
-                    </div>
-                </div>
-            ` : ''}
-        </div>
-    `;
+        <div class="flex-1 flex flex-col items-center justify-center py-12 px-6 text-center bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-100 m-4">
+            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm"><span class="iconify text-4xl text-gray-200" data-icon="${icon}"></span></div>
+            <h3 class="text-lg font-black text-gray-400 uppercase">${title}</h3>
+            <p class="text-gray-400 mt-1 max-w-md mx-auto text-xs font-medium">${message}</p>
+            ${showQR ? `<button onclick="window.showJoinQR()" class="mt-6 px-6 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase shadow-lg">Show QR</button>` : ''}
+        </div>`;
 }
 
-/**
- * Toggles fullscreen mode for the entire application container.
- */
 export function toggleModuleFullscreen() {
-    const el = document.getElementById('appView');
-    if (!el) return;
-    
-    if (!document.fullscreenElement) {
-        if (el.requestFullscreen) {
-            el.requestFullscreen().catch(err => {
-                console.error(`Error attempting to enable fullscreen: ${err.message}`);
-                toast('Fullscreen not supported', 'error');
-            });
-        }
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        }
-    }
+    const el = document.getElementById('appView'); if (!el) return;
+    if (!document.fullscreenElement) { if (el.requestFullscreen) el.requestFullscreen().catch(e => toast('Error', 'error')); }
+    else { if (document.exitFullscreen) document.exitFullscreen(); }
 }

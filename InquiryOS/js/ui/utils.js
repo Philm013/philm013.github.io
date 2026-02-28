@@ -395,3 +395,59 @@ export function calculateStudentProgress(work) {
         return 0;
     }
 }
+
+/**
+ * Renders an info tip trigger icon.
+ */
+export function renderInfoTip(content) {
+    const id = 'tip_' + Math.random().toString(36).substr(2, 9);
+    const escaped = content.replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+    return `<button id="${id}" class="info-tip-trigger" onclick="window.toggleInfoTip(event, '${escaped}')">
+        <span class="iconify" data-icon="mdi:information-variant"></span>
+    </button>`;
+}
+
+/**
+ * Toggles the visibility of an info popover.
+ */
+window.toggleInfoTip = (event, content) => {
+    event.stopPropagation();
+    let popover = document.getElementById('globalInfoPopover');
+    if (!popover) {
+        popover = document.createElement('div');
+        popover.id = 'globalInfoPopover';
+        popover.className = 'info-popover';
+        document.body.appendChild(popover);
+    }
+
+    if (popover.classList.contains('is-visible') && popover.dataset.triggerId === event.currentTarget.id) {
+        window.closeInfoTip();
+        return;
+    }
+
+    popover.innerHTML = content;
+    popover.classList.add('is-visible');
+    
+    const triggerRect = event.currentTarget.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    
+    // Position logic
+    let left = triggerRect.left + (triggerRect.width / 2) - (popoverRect.width / 2);
+    let top = triggerRect.top - popoverRect.height - 12;
+    
+    // Boundary checks
+    if (left < 10) left = 10;
+    if (left + popoverRect.width > window.innerWidth - 10) left = window.innerWidth - popoverRect.width - 10;
+    if (top < 10) top = triggerRect.bottom + 12;
+
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+    popover.dataset.triggerId = event.currentTarget.id;
+};
+
+window.closeInfoTip = () => {
+    document.getElementById('globalInfoPopover')?.classList.remove('is-visible');
+};
+
+document.addEventListener('click', () => window.closeInfoTip());
+document.addEventListener('scroll', () => window.closeInfoTip(), true);

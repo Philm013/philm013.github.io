@@ -10,21 +10,54 @@ import { toast } from './utils.js';
 
 let currentMediaType = 'image';
 let searchDebounceTimer = null;
+let currentSearchResults = [];
+let resultsShownCount = 0;
+const RESULTS_BATCH_SIZE = 12;
 
 export function openMediaPicker() {
     const modal = document.getElementById('mediaPickerModal');
-    if (modal) {
+    const backdrop = modal?.querySelector('.modal-backdrop');
+    const drawer = modal?.querySelector('.modal-bottom-drawer');
+    const resultsArea = document.getElementById('mediaResults');
+    
+    if (modal && backdrop && drawer) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        
+        // Force reflow for transitions
+        void modal.offsetWidth;
+        
+        backdrop.classList.add('is-visible');
+        drawer.classList.add('is-visible');
+        
         window.setMediaType('image');
+
+        // Add scroll listener for lazy loading
+        if (resultsArea) {
+            resultsArea.onscroll = () => {
+                const threshold = 100;
+                if (resultsArea.scrollTop + resultsArea.clientHeight >= resultsArea.scrollHeight - threshold) {
+                    loadMoreResults();
+                }
+            };
+        }
     }
 }
 
 export function closeMediaPicker() {
     const modal = document.getElementById('mediaPickerModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+    const backdrop = modal?.querySelector('.modal-backdrop');
+    const drawer = modal?.querySelector('.modal-bottom-drawer');
+    
+    if (modal && backdrop && drawer) {
+        backdrop.classList.remove('is-visible');
+        drawer.classList.remove('is-visible');
+        
+        // Wait for animation to finish before hiding
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 400);
     }
 }
 
@@ -32,13 +65,16 @@ export function setMediaType(type) {
     currentMediaType = type;
     document.querySelectorAll('.media-tab').forEach(btn => {
         const isActive = btn.id === `mediaTab_${type}`;
-        btn.className = `media-tab px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-            isActive ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:bg-white/50'
-        }`;
+        btn.classList.toggle('bg-white', isActive);
+        btn.classList.toggle('shadow-sm', isActive);
+        btn.classList.toggle('text-primary', isActive);
+        btn.classList.toggle('border', isActive);
+        btn.classList.toggle('text-gray-500', !isActive);
     });
 
-    const simPanel = document.getElementById('simInputPanel');
-    if (simPanel) simPanel.classList.toggle('hidden', type !== 'sim');
+    // Reset results count
+    resultsShownCount = 0;
+    currentSearchResults = [];
     
     window.searchMedia();
 }
@@ -51,14 +87,13 @@ export async function searchMedia() {
 }
 
 async function executeSearch() {
-    const query = document.getElementById('mediaSearchInput')?.value.trim();
-    const category = document.getElementById('mediaCategorySelect')?.value || '';
+    const queryInput = document.getElementById('mediaSearchInput');
+    const query = queryInput?.value.trim();
     
-    // Default to 'science' if query is empty for images/videos
-    if (!query && !category && currentMediaType !== 'sim') {
-        await searchUnsplash('science');
-        return;
-    }
+    // Update active filter button styling
+    document.querySelectorAll('.slim-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.innerText.toLowerCase() === query?.toLowerCase());
+    });
 
     const resultsContainer = document.getElementById('mediaResults');
     if (!resultsContainer) return;
@@ -67,11 +102,13 @@ async function executeSearch() {
 
     try {
         if (currentMediaType === 'image') {
-            await searchUnsplash(query || category || 'science');
+            await searchUnsplash(query || 'science');
         } else if (currentMediaType === 'video') {
-            await searchPexels(query || category || 'science');
+            await searchPexels(query || 'science');
         } else if (currentMediaType === 'sim') {
-            await searchSimsLocal(query, category);
+            await searchSimsLocal(query);
+        } else if (currentMediaType === 'data') {
+            await searchDataLocal(query);
         }
     } catch (e) {
         console.error(e);
@@ -79,13 +116,51 @@ async function executeSearch() {
     }
 }
 
-async function searchSimsLocal(query, category) {
+async function searchSimsLocal(query) {
     if (typeof window.searchSimulations !== 'function') {
         throw new Error('Simulation library not loaded');
     }
     
-    const results = window.searchSimulations(query, category);
-    renderMediaResults(results);
+    // Simulations already has a local dataset
+    const results = window.searchSimulations(query);
+    currentSearchResults = results;
+    renderMediaResults(results.slice(0, RESULTS_BATCH_SIZE));
+    resultsShownCount = Math.min(results.length, RESULTS_BATCH_SIZE);
+}
+
+async function searchDataLocal(query) {
+    // Fetch CODAP data if not already present
+    let datasets = [];
+    try {
+        const res = await fetch('JSON/CONCORD_CODAP_DATA.json');
+        if (res.ok) {
+            const data = await res.json();
+            datasets = data.sample_docs || [];
+        }
+    } catch (e) {
+        console.error('Failed to load CODAP data', e);
+    }
+
+    const filtered = query ? datasets.filter(d => 
+        (d.title && d.title.toLowerCase().includes(query.toLowerCase())) || 
+        (d.description && d.description.toLowerCase().includes(query.toLowerCase())) ||
+        (d.tag && d.tag.some(t => t.toLowerCase().includes(query.toLowerCase())))
+    ) : datasets;
+
+    const results = filtered.map(d => ({
+        id: 'codap_' + (d.title ? d.title.replace(/\s+/g, '_') : Math.random().toString(36).substr(2, 9)),
+        type: 'data',
+        thumb: 'https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/database.svg',
+        url: `https://codap.concord.org/releases/latest/static/dg/en/cert/index.html?url=https://concord-consortium.github.io/codap-data/${d.path}`,
+        provider: 'CODAP',
+        author: 'Concord Consortium',
+        title: d.title || 'Untitled Dataset',
+        description: d.description || ''
+    }));
+
+    currentSearchResults = results;
+    renderMediaResults(results.slice(0, RESULTS_BATCH_SIZE));
+    resultsShownCount = Math.min(results.length, RESULTS_BATCH_SIZE);
 }
 
 async function searchUnsplash(query) {
@@ -96,10 +171,11 @@ async function searchUnsplash(query) {
         return;
     }
 
-    const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=30&client_id=${key}`);
+    const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=50&client_id=${key}`);
     if (!res.ok) throw new Error('Unsplash API error');
     const data = await res.json();
-    renderMediaResults(data.results.map(img => ({
+    
+    const results = data.results.map(img => ({
         id: img.id,
         type: 'image',
         thumb: img.urls.small,
@@ -107,7 +183,11 @@ async function searchUnsplash(query) {
         provider: 'Unsplash',
         author: img.user.name,
         title: img.alt_description || img.description || 'Scientific Image'
-    })));
+    }));
+
+    currentSearchResults = results;
+    renderMediaResults(results.slice(0, RESULTS_BATCH_SIZE));
+    resultsShownCount = Math.min(results.length, RESULTS_BATCH_SIZE);
 }
 
 async function searchPexels(query) {
@@ -118,14 +198,13 @@ async function searchPexels(query) {
         return;
     }
 
-    // Pexels v1 search returns photos by default, for videos use /videos/search
-    const videoRes = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=30`, {
+    const videoRes = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=50`, {
         headers: { Authorization: key }
     });
     if (!videoRes.ok) throw new Error('Pexels API error');
     const videoData = await videoRes.json();
 
-    renderMediaResults(videoData.videos.map(vid => ({
+    const results = videoData.videos.map(vid => ({
         id: vid.id,
         type: 'video',
         thumb: vid.image,
@@ -133,7 +212,24 @@ async function searchPexels(query) {
         provider: 'Pexels',
         author: vid.user.name,
         title: 'Scientific Video'
-    })));
+    }));
+
+    currentSearchResults = results;
+    renderMediaResults(results.slice(0, RESULTS_BATCH_SIZE));
+    resultsShownCount = Math.min(results.length, RESULTS_BATCH_SIZE);
+}
+
+function loadMoreResults() {
+    if (resultsShownCount >= currentSearchResults.length) return;
+    
+    const nextBatch = currentSearchResults.slice(resultsShownCount, resultsShownCount + RESULTS_BATCH_SIZE);
+    resultsShownCount += nextBatch.length;
+    
+    const container = document.getElementById('mediaResults');
+    if (container) {
+        const html = nextBatch.map(item => renderItemCard(item)).join('');
+        container.insertAdjacentHTML('beforeend', html);
+    }
 }
 
 function renderMediaResults(items) {
@@ -151,44 +247,52 @@ function renderMediaResults(items) {
         return;
     }
 
-    container.innerHTML = items.map(item => {
-        // Create a unique temporary ID if none exists for detail viewing
-        if (!item.id) item.id = 'temp_' + Math.random().toString(36).substr(2, 9);
-        const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
-        
-        const isSim = item.type === 'sim';
-        const thumbUrl = item.thumb || (isSim ? 'https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/application-brackets-outline.svg' : 'https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/image-off-outline.svg');
+    container.innerHTML = items.map(item => renderItemCard(item)).join('');
+}
 
-        return `
-            <div class="media-card group relative flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all">
-                <div class="img-container cursor-pointer bg-gray-50 flex items-center justify-center relative overflow-hidden min-h-[140px] md:min-h-[180px]" onclick="window.previewMediaItem(${itemJson})">
-                    <img src="${thumbUrl}" 
-                        onerror="this.src='https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/image-off-outline.svg'; this.style.opacity='0.2';"
-                        class="${isSim ? 'w-16 h-16 object-contain opacity-50' : 'w-full h-full object-cover'} transition-transform duration-500 group-hover:scale-110" 
-                        loading="lazy">
-                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                        <div class="bg-white/90 backdrop-blur-md text-primary px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl scale-75 group-hover:scale-100 transition-all">
-                            Preview
-                        </div>
-                    </div>
-                </div>
-                <div class="p-3 md:p-4 flex-1 flex flex-col">
-                    <div class="flex items-center justify-between mb-1.5">
-                        <span class="text-[7px] md:text-[8px] font-black text-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">${item.provider}</span>
-                        <span class="iconify text-gray-300 text-sm" data-icon="${item.type === 'video' ? 'mdi:play-circle' : (item.type === 'sim' ? 'mdi:application-brackets' : 'mdi:image')}"></span>
-                    </div>
-                    <p class="text-[10px] md:text-xs font-bold text-gray-800 line-clamp-2 leading-tight mb-2" title="${item.title || ''}">${item.title || 'Untitled Artifact'}</p>
-                    <div class="mt-auto pt-2 flex items-center justify-between border-t border-gray-50">
-                        <p class="text-[7px] text-gray-400 truncate max-w-[60px] md:max-w-[100px]">By ${item.author || item.provider}</p>
-                        <button onclick="window.addMediaToPhenomenon(${itemJson})" 
-                            class="px-2 md:px-3 py-1 bg-gray-900 text-white rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-md active:scale-95">
-                            Add
-                        </button>
+function renderItemCard(item) {
+    if (!item.id) item.id = 'temp_' + Math.random().toString(36).substr(2, 9);
+    const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+    
+    const isSim = item.type === 'sim';
+    const isData = item.type === 'data';
+    
+    let thumbUrl = item.thumb;
+    if (!thumbUrl) {
+        if (isSim) thumbUrl = 'https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/application-brackets-outline.svg';
+        else if (isData) thumbUrl = 'https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/database.svg';
+        else thumbUrl = 'https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/image-off-outline.svg';
+    }
+
+    return `
+        <div class="media-card group relative flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all">
+            <div class="img-container cursor-pointer bg-gray-50 flex items-center justify-center relative overflow-hidden min-h-[140px] md:min-h-[180px]" onclick="window.previewMediaItem(${itemJson})">
+                <img src="${thumbUrl}" 
+                    onerror="this.src='https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/image-off-outline.svg'; this.style.opacity='0.2';"
+                    class="${isSim || isData ? 'w-16 h-16 object-contain opacity-50' : 'w-full h-full object-cover'} transition-transform duration-500 group-hover:scale-110" 
+                    loading="lazy">
+                <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                    <div class="bg-white/90 backdrop-blur-md text-primary px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl scale-75 group-hover:scale-100 transition-all">
+                        Preview
                     </div>
                 </div>
             </div>
-        `;
-    }).join('');
+            <div class="p-3 md:p-4 flex-1 flex flex-col">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[7px] md:text-[8px] font-black text-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">${item.provider}</span>
+                    <span class="iconify text-gray-300 text-sm" data-icon="${item.type === 'video' ? 'mdi:play-circle' : (item.type === 'sim' ? 'mdi:application-brackets' : (item.type === 'data' ? 'mdi:database' : 'mdi:image'))}"></span>
+                </div>
+                <p class="text-[10px] md:text-xs font-bold text-gray-800 line-clamp-2 leading-tight mb-2" title="${item.title || ''}">${item.title || 'Untitled Artifact'}</p>
+                <div class="mt-auto pt-2 flex items-center justify-between border-t border-gray-50">
+                    <p class="text-[7px] text-gray-400 truncate max-w-[60px] md:max-w-[100px]">By ${item.author || item.provider}</p>
+                    <button onclick="window.addMediaToPhenomenon(${itemJson})" 
+                        class="px-2 md:px-3 py-1 bg-gray-900 text-white rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-md active:scale-95">
+                        Add
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 export function viewMediaDetail(idOrItem) {

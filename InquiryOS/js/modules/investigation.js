@@ -8,51 +8,77 @@
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
 import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
-import { toast, deepClone } from '../ui/utils.js';
+import { toast, deepClone, renderInfoTip } from '../ui/utils.js';
 
 export function renderInvestigationModule() {
-    const dt = App.work.dataTable || { columns: [], rows: [] };
     return `
-        <div class="max-w-5xl mx-auto">
-            ${renderModuleHeader('Planning & Carrying Out Investigations', 'mdi:microscope', 'SEP3')}
-            
-            <div class="bg-white rounded-xl shadow-sm border p-6 mb-6" data-card-title="Experimental Variables">
-                <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    Experimental Variables
-                    <span class="ngss-tag ngss-ccc">CCC2</span>
-                </h3>
-                <div class="grid md:grid-cols-3 gap-4 mb-4">
-                    ${['independent', 'dependent', 'controlled'].map(type => renderVariableDropZone(type)).join('')}
+        <div class="panels-container">
+            <!-- Variables Panel -->
+            <div class="bg-white border-b flex flex-col" data-card-title="Experimental Variables">
+                <div class="p-2 md:p-0">
+                    ${renderModuleHeader('Planning Investigations', 'mdi:microscope', 'SEP3', '', 'In a "fair test," you change one variable (Independent), measure the results (Dependent), and keep everything else the same (Controlled).')}
                 </div>
-                ${renderVariableBank()}
+
+                <div class="panel-content space-y-6 md:space-y-8 md:!p-6 md:justify-start">
+                    <div class="grid grid-cols-1 md:grid-cols-1 gap-4 lg:gap-6">
+                        ${['independent', 'dependent', 'controlled'].map(type => renderVariableDropZone(type)).join('')}
+                    </div>
+                    ${renderVariableBank()}
+                </div>
             </div>
             
-            <div class="bg-white rounded-xl shadow-sm border p-6" data-card-title="Data Collection Table">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-semibold text-gray-900">Data Collection Table</h3>
-                    <div class="flex gap-2">
-                        <button onclick="window.addDataColumn()" class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition-colors">
-                            <span class="iconify mr-1" data-icon="mdi:table-column-plus-after"></span> Add Column
-                        </button>
-                        <button onclick="window.addDataRow()" class="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition-colors">
-                            <span class="iconify mr-1" data-icon="mdi:table-row-plus-after"></span> Add Row
-                        </button>
-                        <button onclick="window.saveDataAsEvidence()" class="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200 transition-colors">
-                            <span class="iconify mr-1" data-icon="mdi:bookmark"></span> Save as Evidence
-                        </button>
-                        <button onclick="window.exportToCSV()" class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors" title="Export as CSV">
-                            <span class="iconify mr-1" data-icon="mdi:file-export"></span> CSV
-                        </button>
+            <!-- Data Table Panel -->
+            <div class="bg-white border-b flex flex-col" data-card-title="Data Collection Table">
+                <div class="sticky-panel-header md:hidden">
+                    <div class="flex items-center justify-between w-full">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-green-50 text-green-600 shrink-0 border border-green-100/50">
+                                <span class="iconify text-base" data-icon="mdi:table"></span>
+                            </div>
+                            <h3>Data Collection</h3>
+                            ${renderInfoTip('Carefully record your measurements and observations here. You can add columns for different variables and rows for multiple trials!')}
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="window.addDataRow()" class="p-1.5 bg-green-100 text-green-700 rounded-lg"><span class="iconify" data-icon="mdi:table-row-plus-after"></span></button>
+                            <button onclick="window.addDataColumn()" class="p-1.5 bg-blue-100 text-blue-700 rounded-lg"><span class="iconify" data-icon="mdi:table-column-plus-after"></span></button>
+                        </div>
                     </div>
                 </div>
-                ${renderDataTable()}
                 
-                <div class="mt-8 pt-6 border-t border-gray-100">
-                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Table Analysis & Notes</label>
-                    <textarea onchange="window.saveTableComment(this.value)" 
-                        placeholder="Document any observations about your data collection process or unusual results here..."
-                        class="w-full px-6 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-sm font-medium text-gray-700 focus:border-primary focus:bg-white focus:outline-none transition-all placeholder:text-gray-300"
-                        rows="3">${App.work.dataTable?.comment || ''}</textarea>
+                <div class="hidden md:flex items-center justify-between p-6 border-b bg-gray-50/30">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center shadow-sm border border-white">
+                            <span class="iconify text-2xl" data-icon="mdi:table"></span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-black text-gray-900 uppercase tracking-tight">Data Collection Table</h3>
+                            <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Practice 3: Measurement Log</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="window.addDataColumn()" class="px-4 py-2 bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-100 hover:scale-105 transition-all">Add Column</button>
+                        <button onclick="window.addDataRow()" class="px-4 py-2 bg-green-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-green-100 hover:scale-105 transition-all">Add Row</button>
+                        <button onclick="window.saveDataAsEvidence()" class="px-4 py-2 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-purple-100 hover:scale-105 transition-all">Save Evidence</button>
+                    </div>
+                </div>
+
+                <div class="panel-content !p-0 flex-1 min-h-0 flex flex-col">
+                    <div class="flex-1 overflow-auto custom-scrollbar bg-white">
+                        <div class="min-w-full inline-block align-middle">
+                            ${renderDataTable()}
+                        </div>
+                    </div>
+                    
+                    <div class="p-6 bg-gray-50 border-t flex flex-col gap-3 md:gap-4 shrink-0">
+                        <div class="flex items-center gap-2">
+                            <span class="iconify text-gray-400" data-icon="mdi:comment-text-outline"></span>
+                            <label class="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-widest">Observations & Notes</label>
+                        </div>
+                        <textarea onchange="window.saveTableComment(this.value)" 
+                            placeholder="Document any observations, anomalies, or reflections on the investigation process..."
+                            class="w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-2xl text-sm md:text-base font-medium text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all shadow-inner"
+                            rows="3">${App.work.dataTable?.comment || ''}</textarea>
+                    </div>
                 </div>
             </div>
         </div>
@@ -64,7 +90,6 @@ export async function saveTableComment(val) {
     App.work.dataTable.comment = val;
     await saveAndBroadcast('dataTable.comment', val);
 }
-
 
 function renderVariableDropZone(type) {
     const colors = { independent: 'blue', dependent: 'green', controlled: 'gray' };
@@ -115,296 +140,52 @@ function renderVariableBank() {
     `;
 }
 
-
 function renderDataTable() {
     const dt = App.work.dataTable || { columns: [], rows: [] };
     const vars = App.work.variables || [];
     const showFeedback = App.teacherSettings.showFeedbackToStudents || App.mode === 'teacher';
-    
     return `
         <div class="overflow-x-auto">
             <table class="w-full border-collapse">
                 <thead>
                     <tr class="bg-gray-100">
-                        <th class="border p-2 w-10"></th>
-                        <th class="border p-2 w-8"></th>
-                        ${(dt.columns || []).map((col, i) => `
-                            <th class="border p-0 min-w-40 group/col relative">
-                                <div class="p-2 space-y-2">
-                                    <div class="flex items-center gap-2">
-                                        <input type="text" value="${col.name}" 
-                                            onchange="window.updateColumnName('${col.id}', this.value)"
-                                            class="flex-1 font-bold text-sm bg-transparent border-none focus:outline-none placeholder:text-gray-300"
-                                            placeholder="Label...">
-                                        ${i > 0 ? `<button onclick="window.deleteColumn('${col.id}')" class="text-red-300 hover:text-red-500 transition-colors">
-                                            <span class="iconify" data-icon="mdi:close-circle"></span>
-                                        </button>` : ''}
-                                    </div>
-                                    
-                                    <div class="flex flex-col gap-1.5">
-                                        <div class="flex items-center gap-1">
-                                            <span class="iconify text-[10px] text-gray-400" data-icon="mdi:link-variant"></span>
-                                            <select onchange="window.linkColumnToVariable('${col.id}', this.value)" 
-                                                class="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 w-full font-medium">
-                                                <option value="">No Variable Link</option>
-                                                ${vars.filter(v => v.type).map(v => `
-                                                    <option value="${v.id}" ${col.variableId === v.id ? 'selected' : ''}>${v.name}</option>
-                                                `).join('')}
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="flex items-center gap-1">
-                                            <select onchange="window.updateColumnType('${col.id}', this.value)" 
-                                                class="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 font-bold">
-                                                <option value="text" ${col.type === 'text' ? 'selected' : ''}>TXT</option>
-                                                <option value="number" ${col.type === 'number' ? 'selected' : ''}>NUM</option>
-                                            </select>
-                                            ${col.type === 'number' ? `<input type="text" value="${col.unit || ''}" placeholder="Unit" onchange="window.updateColumnUnit('${col.id}', this.value)" class="text-[10px] w-full border border-gray-200 rounded px-1.5 py-0.5">` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            </th>
-                        `).join('')}
-                        ${showFeedback ? '<th class="border p-2 w-16 text-center text-[10px] font-black uppercase text-gray-400 tracking-widest">Feedback</th>' : ''}
-                        <th class="border p-2 w-10"></th>
+                        <th class="border p-2 w-10"></th><th class="border p-2 w-8"></th>
+                        ${(dt.columns || []).map((col, i) => `<th class="border p-0 min-w-40 group/col relative"><div class="p-2 space-y-2"><div class="flex items-center gap-2"><input type="text" value="${col.name}" onchange="window.updateColumnName('${col.id}', this.value)" class="flex-1 font-bold text-sm bg-transparent border-none focus:outline-none placeholder:text-gray-300" placeholder="Label...">${i > 0 ? `<button onclick="window.deleteColumn('${col.id}')" class="text-red-300 hover:text-red-500 transition-colors"><span class="iconify" data-icon="mdi:close-circle"></span></button>` : ''}</div><div class="flex flex-col gap-1.5"><div class="flex items-center gap-1"><span class="iconify text-[10px] text-gray-400" data-icon="mdi:link-variant"></span><select onchange="window.linkColumnToVariable('${col.id}', this.value)" class="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 w-full font-medium"><option value="">No Link</option>${vars.filter(v => v.type).map(v => `<option value="${v.id}" ${col.variableId === v.id ? 'selected' : ''}>${v.name}</option>`).join('')}</select></div><div class="flex items-center gap-1"><select onchange="window.updateColumnType('${col.id}', this.value)" class="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 font-bold"><option value="text" ${col.type === 'text' ? 'selected' : ''}>TXT</option><option value="number" ${col.type === 'number' ? 'selected' : ''}>NUM</option></select>${col.type === 'number' ? `<input type="text" value="${col.unit || ''}" placeholder="Unit" onchange="window.updateColumnUnit('${col.id}', this.value)" class="text-[10px] w-full border border-gray-200 rounded px-1.5 py-0.5">` : ''}</div></div></div></th>`).join('')}
+                        ${showFeedback ? '<th class="border p-2 w-16 text-center text-[10px] font-black uppercase text-gray-400">Feedback</th>' : ''}<th class="border p-2 w-10"></th>
                     </tr>
                 </thead>
                 <tbody id="dataTableBody">
-                    ${(dt.rows || []).map((row, ri) => `
-                        <tr class="data-row hover:bg-gray-50 transition-colors" data-id="${ri}">
-                            <td class="border p-2 text-center text-gray-400 text-[10px] font-bold">${ri + 1}</td>
-                            <td class="border p-2 text-center">
-                                <span class="row-drag-handle iconify text-gray-300 cursor-grab" data-icon="mdi:drag-vertical"></span>
-                            </td>
-                            ${(dt.columns || []).map(col => `
-                                <td class="border p-0">
-                                    <input type="${col.type === 'number' ? 'number' : 'text'}"
-                                        value="${row[col.id] || ''}"
-                                        onchange="window.updateCell(${ri}, '${col.id}', this.value)"
-                                        class="data-cell w-full p-3 border-none focus:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
-                                        step="${col.type === 'number' ? '0.01' : ''}"
-                                        placeholder="...">
-                                </td>
-                            `).join('')}
-                            <td class="border p-2 text-center">
-                                <div class="relative group/note inline-block">
-                                    <button onclick="window.toggleRowNote(${ri})" class="p-1.5 rounded-lg hover:bg-gray-100 transition-all ${row.note ? 'text-primary' : 'text-gray-300'}">
-                                        <span class="iconify" data-icon="${row.note ? 'mdi:note-text' : 'mdi:note-plus-outline'}"></span>
-                                    </button>
-                                    ${row.note ? `
-                                        <div class="absolute right-full mr-3 top-1/2 -translate-y-1/2 w-56 p-4 bg-gray-900 text-white text-[11px] rounded-2xl shadow-2xl opacity-0 group-hover/note:opacity-100 pointer-events-none transition-all z-50 border border-white/10 scale-95 group-hover/note:scale-100">
-                                            <p class="font-black text-blue-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Row Note</p>
-                                            ${row.note}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            </td>
-                            ${showFeedback ? `
-                                <td class="border p-2 text-center bg-blue-50/20 min-w-[60px]">
-                                    <div class="relative group/feedback inline-block">
-                                        <span class="text-2xl">${dt.feedback?.[ri]?.sticker || ''}</span>
-                                        ${dt.feedback?.[ri]?.text ? `
-                                            <div class="absolute right-full mr-3 top-1/2 -translate-y-1/2 w-64 p-4 bg-blue-600 text-white text-xs rounded-2xl shadow-2xl opacity-0 group-hover/feedback:opacity-100 pointer-events-none transition-all z-50 border border-blue-400 scale-95 group-hover/feedback:scale-100">
-                                                <p class="font-black text-blue-200 uppercase tracking-widest mb-2 border-b border-blue-500 pb-1">Teacher Comment</p>
-                                                ${dt.feedback[ri].text}
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                </td>
-                            ` : ''}
-                            <td class="border p-2 text-center">
-                                <button onclick="window.deleteDataRow(${ri})" class="p-1.5 text-gray-300 hover:text-red-500 transition-colors">
-                                    <span class="iconify" data-icon="mdi:trash-can-outline"></span>
-                                </button>
-                            </td>
-                        </tr>
-                    `).join('')}
-                    ${(dt.rows || []).length === 0 ? `
-                        <tr>
-                            <td colspan="100%" class="p-12 text-center bg-gray-50/50">
-                                <div class="flex flex-col items-center opacity-30">
-                                    <span class="iconify text-4xl mb-2" data-icon="mdi:table-off"></span>
-                                    <p class="text-[10px] font-black uppercase tracking-widest">No data rows added</p>
-                                    <button onclick="window.addDataRow()" class="mt-4 text-xs font-bold text-primary hover:underline">Add first row</button>
-                                </div>
-                            </td>
-                        </tr>
-                    ` : ''}
+                    ${(dt.rows || []).map((row, ri) => `<tr class="data-row hover:bg-gray-50 transition-colors" data-id="${ri}"><td class="border p-2 text-center text-gray-400 text-[10px] font-bold">${ri + 1}</td><td class="border p-2 text-center"><span class="row-drag-handle iconify text-gray-300 cursor-grab" data-icon="mdi:drag-vertical"></span></td>${(dt.columns || []).map(col => `<td class="border p-0"><input type="${col.type === 'number' ? 'number' : 'text'}" value="${row[col.id] || ''}" onchange="window.updateCell(${ri}, '${col.id}', this.value)" class="data-cell w-full p-3 border-none focus:bg-blue-50 text-sm font-medium text-gray-700 transition-colors" step="${col.type === 'number' ? '0.01' : ''}" placeholder="..."></td>`).join('')}<td class="border p-2 text-center"><div class="relative group/note inline-block"><button onclick="window.toggleRowNote(${ri})" class="p-1.5 rounded-lg hover:bg-gray-100 transition-all ${row.note ? 'text-primary' : 'text-gray-300'}"><span class="iconify" data-icon="${row.note ? 'mdi:note-text' : 'mdi:note-plus-outline'}"></span></button>${row.note ? `<div class="absolute right-full mr-3 top-1/2 -translate-y-1/2 w-56 p-4 bg-gray-900 text-white text-[11px] rounded-2xl shadow-2xl opacity-0 group-hover/note:opacity-100 pointer-events-none transition-all z-50 border border-white/10 scale-95 group-hover/note:scale-100"><p class="font-black text-blue-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Row Note</p>${row.note}</div>` : ''}</div></td>${showFeedback ? `<td class="border p-2 text-center bg-blue-50/20 min-w-[60px]"><div class="relative group/feedback inline-block"><span class="text-2xl">${dt.feedback?.[ri]?.sticker || ''}</span>${dt.feedback?.[ri]?.text ? `<div class="absolute right-full mr-3 top-1/2 -translate-y-1/2 w-64 p-4 bg-blue-600 text-white text-xs rounded-2xl shadow-2xl opacity-0 group-hover/feedback:opacity-100 pointer-events-none transition-all z-50 border border-blue-400 scale-95 group-hover/feedback:scale-100"><p class="font-black text-blue-200 uppercase tracking-widest mb-2 border-b border-blue-500 pb-1">Feedback</p>${dt.feedback[ri].text}</div>` : ''}</div></td>` : ''}<td class="border p-2 text-center"><button onclick="window.deleteDataRow(${ri})" class="p-1.5 text-gray-300 hover:text-red-500 transition-colors"><span class="iconify" data-icon="mdi:trash-can-outline"></span></button></td></tr>`).join('')}
+                    ${(dt.rows || []).length === 0 ? `<tr><td colspan="100%" class="p-12 text-center bg-gray-50/50"><div class="flex flex-col items-center opacity-30"><span class="iconify text-4xl mb-2" data-icon="mdi:table-off"></span><p class="text-[10px] font-black uppercase tracking-widest">No data rows added</p><button onclick="window.addDataRow()" class="mt-4 text-xs font-bold text-primary hover:underline">Add first row</button></div></td></tr>` : ''}
                 </tbody>
             </table>
         </div>
     `;
 }
 
-/**
- * Initializes SortableJS on the data table.
- */
 export function initDataTableSortable() {
-    const el = document.getElementById('dataTableBody');
-    if (!el || typeof Sortable === 'undefined') return;
-    
-    Sortable.create(el, {
-        animation: 150,
-        handle: '.row-drag-handle',
-        ghostClass: 'bg-blue-50',
-        delay: 50, // Mobile optimization: small delay to allow scrolling
-        delayOnTouchOnly: true,
-        touchStartThreshold: 5,
-        onEnd: async (evt) => {
-            const rows = App.work.dataTable.rows;
-            const item = rows.splice(evt.oldIndex, 1)[0];
-            rows.splice(evt.newIndex, 0, item);
-            
-            // Also need to move feedback if it exists
-            if (App.work.dataTable.feedback) {
-                const feedback = App.work.dataTable.feedback;
-                const fItem = feedback[evt.oldIndex];
-                feedback.splice(evt.oldIndex, 1);
-                feedback.splice(evt.newIndex, 0, fItem);
-            }
-            
-            await saveAndBroadcast('dataTable', App.work.dataTable);
-            renderStudentContent();
-        }
-    });
+    const el = document.getElementById('dataTableBody'); if (!el || typeof Sortable === 'undefined') return;
+    Sortable.create(el, { animation: 150, handle: '.row-drag-handle', ghostClass: 'bg-blue-50', delay: 50, delayOnTouchOnly: true, touchStartThreshold: 5, onEnd: async (evt) => { const rows = App.work.dataTable.rows; const item = rows.splice(evt.oldIndex, 1)[0]; rows.splice(evt.newIndex, 0, item); if (App.work.dataTable.feedback) { const feedback = App.work.dataTable.feedback; const fItem = feedback[evt.oldIndex]; feedback.splice(evt.oldIndex, 1); feedback.splice(evt.newIndex, 0, fItem); } await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); } });
 }
 
-export async function toggleRowNote(index) {
-    window.openRowNoteModal(index);
-}
-
-
-
-export async function addVariable() {
-    const input = document.getElementById('newVarInput'); if (!input?.value.trim()) return;
-    App.work.variables.push({ id: 'var_' + Date.now(), name: input.value.trim(), type: null });
-    input.value = ''; await saveAndBroadcast('variables', App.work.variables); renderStudentContent();
-}
-
+export async function toggleRowNote(index) { window.openRowNoteModal(index); }
+export async function addVariable() { const input = document.getElementById('newVarInput'); if (!input?.value.trim()) return; App.work.variables.push({ id: 'var_' + Date.now(), name: input.value.trim(), type: null }); input.value = ''; await saveAndBroadcast('variables', App.work.variables); renderStudentContent(); }
 window.dragVarStart = (e, id) => { e.dataTransfer.setData('text/plain', id); e.target.style.opacity = '0.5'; };
 window.dragOver = (e) => { e.preventDefault(); e.currentTarget.classList.add('bg-opacity-50', 'ring-4', 'ring-primary/20'); };
 window.dragLeave = (e) => { e.currentTarget.classList.remove('bg-opacity-50', 'ring-4', 'ring-primary/20'); };
-
-export async function dropVar(event) {
-    event.preventDefault(); event.currentTarget.classList.remove('bg-opacity-50', 'ring-4', 'ring-primary/20');
-    const varId = event.dataTransfer.getData('text/plain');
-    if (varId) {
-        const type = event.currentTarget.dataset.type;
-        const v = App.work.variables.find(x => x.id === varId);
-        if (v) { v.type = type; await saveAndBroadcast('variables', App.work.variables); renderStudentContent(); }
-    }
-}
-
-export async function removeVariable(id) {
-    const v = App.work.variables.find(x => x.id === id); if (v) v.type = null;
-    await saveAndBroadcast('variables', App.work.variables); renderStudentContent();
-}
-
-export async function linkColumnToVariable(colId, varId) {
-    const col = App.work.dataTable.columns.find(c => c.id === colId);
-    if (col) {
-        col.variableId = varId;
-        const v = App.work.variables.find(x => x.id === varId);
-        if (v && !col.name) col.name = v.name;
-        await saveAndBroadcast('dataTable', App.work.dataTable);
-        renderStudentContent();
-    }
-}
-
+export async function dropVar(event) { event.preventDefault(); event.currentTarget.classList.remove('bg-opacity-50', 'ring-4', 'ring-primary/20'); const varId = event.dataTransfer.getData('text/plain'); if (varId) { const type = event.currentTarget.dataset.type; const v = App.work.variables.find(x => x.id === varId); if (v) { v.type = type; await saveAndBroadcast('variables', App.work.variables); renderStudentContent(); } } }
+export async function removeVariable(id) { const v = App.work.variables.find(x => x.id === id); if (v) v.type = null; await saveAndBroadcast('variables', App.work.variables); renderStudentContent(); }
+export async function linkColumnToVariable(colId, varId) { const col = App.work.dataTable.columns.find(c => c.id === colId); if (col) { col.variableId = varId; const v = App.work.variables.find(x => x.id === varId); if (v && !col.name) col.name = v.name; await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); } }
 export async function updateColumnName(colId, name) { const col = App.work.dataTable.columns.find(c => c.id === colId); if (col) col.name = name; await saveAndBroadcast('dataTable', App.work.dataTable); }
-
-export async function addDataColumn() { 
-    window.openGenericInput('Add Data Column', 'Enter column name...', 'New Column', async (name) => {
-        if (!name) return;
-        const colId = 'col_' + Date.now(); 
-        App.work.dataTable.columns.push({ id: colId, name, type: 'number', unit: '', variableId: '' }); 
-        await saveAndBroadcast('dataTable', App.work.dataTable); 
-        renderStudentContent();
-    });
-}
+export async function addDataColumn() { window.openGenericInput('Add Data Column', 'Enter column name...', 'New Column', async (name) => { if (!name) return; const colId = 'col_' + Date.now(); App.work.dataTable.columns.push({ id: colId, name, type: 'number', unit: '', variableId: '' }); await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); }); }
 export async function updateColumnType(colId, type) { const col = App.work.dataTable.columns.find(c => c.id === colId); if (col) col.type = type; await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); }
 export async function updateColumnUnit(colId, unit) { const col = App.work.dataTable.columns.find(c => c.id === colId); if (col) col.unit = unit; await saveAndBroadcast('dataTable', App.work.dataTable); }
 export async function deleteColumn(colId) { if (confirm('Delete column?')) { App.work.dataTable.columns = App.work.dataTable.columns.filter(c => c.id !== colId); App.work.dataTable.rows.forEach(row => delete row[colId]); await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); } }
 export async function addDataRow() { const row = {}; App.work.dataTable.columns.forEach(col => row[col.id] = ''); App.work.dataTable.rows.push(row); await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); }
 export async function updateCell(rowIndex, colId, value) { App.work.dataTable.rows[rowIndex][colId] = value; await saveAndBroadcast('dataTable', App.work.dataTable); }
-export async function deleteDataRow(index) { 
-    App.work.dataTable.rows.splice(index, 1); 
-    await saveAndBroadcast('dataTable', App.work.dataTable); 
-    renderStudentContent(); 
-}
-
-/**
- * UI: Opens the row note modal.
- */
-export function openRowNoteModal(index) {
-    App.editingRowIndex = index;
-    const modal = document.getElementById('rowNoteModal');
-    const input = document.getElementById('rowNoteText');
-    if (modal && input) {
-        input.value = App.work.dataTable.rows[index].note || '';
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        input.focus();
-    }
-}
-
-/**
- * UI: Closes the row note modal.
- */
-export function closeRowNoteModal() {
-    const modal = document.getElementById('rowNoteModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-    App.editingRowIndex = null;
-}
-
-/**
- * Persists the row note from the modal.
- */
-export async function saveRowNote() {
-    const index = App.editingRowIndex;
-    const val = document.getElementById('rowNoteText')?.value.trim();
-    if (index !== null && index !== undefined) {
-        App.work.dataTable.rows[index].note = val || '';
-        await saveAndBroadcast('dataTable', App.work.dataTable);
-        closeRowNoteModal();
-        renderStudentContent();
-        toast('Note saved', 'success');
-    }
-}
-
-export async function saveDataAsEvidence() {
-    if (!App.work.dataTable.rows.some(r => Object.values(r).some(v => v))) { toast('Add some data first!', 'warning'); return; }
-    const evidence = { id: 'ev_' + Date.now(), type: 'data', title: 'Data Table', description: `${App.work.dataTable.rows.length} rows, ${App.work.dataTable.columns.length} columns`, icon: 'mdi:table', data: deepClone(App.work.dataTable), author: App.user.name, time: Date.now() };
-    App.work.evidence.push(evidence); await saveAndBroadcast('evidence', App.work.evidence); toast('Data saved!', 'success');
-}
-
-/**
- * Exports the data table as a CSV file.
- */
-export function exportToCSV() {
-    const dt = App.work.dataTable;
-    if (!dt.rows.length) {
-        toast('No data to export', 'warning');
-        return;
-    }
-
-    const headers = dt.columns.map(c => `"${c.name}${c.unit ? ' (' + c.unit + ')' : ''}"`).join(',');
-    const rows = dt.rows.map(row => {
-        return dt.columns.map(col => `"${row[col.id] || ''}"`).join(',');
-    });
-
-    const csvContent = [headers, ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `InquiryOS_Data_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast('CSV Exported!', 'success');
-}
+export async function deleteDataRow(index) { App.work.dataTable.rows.splice(index, 1); await saveAndBroadcast('dataTable', App.work.dataTable); renderStudentContent(); }
+export function openRowNoteModal(index) { App.editingRowIndex = index; const modal = document.getElementById('rowNoteModal'), input = document.getElementById('rowNoteText'); if (modal && input) { input.value = App.work.dataTable.rows[index].note || ''; modal.classList.remove('hidden'); modal.classList.add('flex'); input.focus(); } }
+export function closeRowNoteModal() { const modal = document.getElementById('rowNoteModal'); if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); } App.editingRowIndex = null; }
+export async function saveRowNote() { const index = App.editingRowIndex, val = document.getElementById('rowNoteText')?.value.trim(); if (index !== null && index !== undefined) { App.work.dataTable.rows[index].note = val || ''; await saveAndBroadcast('dataTable', App.work.dataTable); closeRowNoteModal(); renderStudentContent(); toast('Note saved', 'success'); } }
+export async function saveDataAsEvidence() { if (!App.work.dataTable.rows.some(r => Object.values(r).some(v => v))) { toast('Add some data first!', 'warning'); return; } const evidence = { id: 'ev_' + Date.now(), type: 'data', title: 'Data Table', description: `${App.work.dataTable.rows.length} rows, ${App.work.dataTable.columns.length} columns`, icon: 'mdi:table', data: deepClone(App.work.dataTable), author: App.user.name, time: Date.now() }; App.work.evidence.push(evidence); await saveAndBroadcast('evidence', App.work.evidence); toast('Data saved!', 'success'); }
+export function exportToCSV() { const dt = App.work.dataTable; if (!dt.rows.length) { toast('No data to export', 'warning'); return; } const headers = dt.columns.map(c => `"${c.name}${c.unit ? ' (' + c.unit + ')' : ''}"`).join(','), rows = dt.rows.map(row => { return dt.columns.map(col => `"${row[col.id] || ''}"`).join(','); }); const csvContent = [headers, ...rows].join('\n'), blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }), url = URL.createObjectURL(blob), link = document.createElement('a'); link.setAttribute('href', url); link.setAttribute('download', `InquiryOS_Data_${new Date().toISOString().split('T')[0]}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link); toast('CSV Exported!', 'success'); }

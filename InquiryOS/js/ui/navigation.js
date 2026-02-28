@@ -7,6 +7,145 @@ import { App } from '../core/state.js';
 import { toast, calculateStudentProgress } from './utils.js';
 import { renderStudentContent, renderTeacherContent, renderEvidenceBank } from './renderer.js';
 
+// Accessibility Utilities State
+let holdTimer = null;
+const HOLD_DURATION = 600;
+
+/**
+ * Initializes accessibility utilities for mobile navigation.
+ */
+export function initAccessibilityUtilities() {
+    const handle = document.getElementById('globalScrollHandle');
+    if (!handle) return;
+
+    handle.classList.remove('hidden');
+
+    handle.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        handle.classList.add('is-holding');
+        holdTimer = setTimeout(() => {
+            handle.classList.remove('is-holding');
+            window.openQuickJump();
+        }, HOLD_DURATION);
+    });
+
+    handle.addEventListener('pointerup', () => {
+        if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+            if (handle.classList.contains('is-holding')) {
+                handle.classList.remove('is-holding');
+                window.scrollToNextPanel();
+            }
+        }
+    });
+
+    handle.addEventListener('pointerleave', () => {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+        handle.classList.remove('is-holding');
+    });
+}
+
+/**
+ * Scrolls the main content to the next snapped panel.
+ */
+window.scrollToNextPanel = () => {
+    const container = document.getElementById('mainContent');
+    if (!container) return;
+    
+    const panels = Array.from(container.querySelectorAll('[data-card-title]'));
+    const currentScroll = container.scrollTop;
+    const nextPanel = panels.find(p => p.offsetTop > currentScroll + 10);
+    
+    if (nextPanel) {
+        nextPanel.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        // Wrap around to top if at end
+        panels[0]?.scrollIntoView({ behavior: 'smooth' });
+    }
+};
+
+/**
+ * Opens the 3/4 height Quick Jump menu.
+ */
+window.openQuickJump = () => {
+    const drawer = document.getElementById('quickJumpDrawer');
+    const overlay = document.getElementById('quickJumpOverlay');
+    const content = document.getElementById('quickJumpContent');
+    if (!drawer || !overlay || !content) return;
+
+    const isTeacher = App.mode === 'teacher';
+    const modules = isTeacher ? [
+        { id: 'overview', icon: 'mdi:view-dashboard', label: 'Classroom Overview' },
+        { id: 'lessons', icon: 'mdi:book-plus', label: 'Lesson Designer' },
+        { id: 'snapshots', icon: 'mdi:camera-outline', label: 'Student Snapshots' },
+        { id: 'access', icon: 'mdi:lock-open-variant', label: 'Access Controls' },
+        { id: 'noticeboard', icon: 'mdi:bulletin-board', label: 'Inquiry Board' },
+        { id: 'moderation', icon: 'mdi:shield-check', label: 'Moderation' },
+        { id: 'ngss', icon: 'mdi:school', label: 'NGSS Navigator' },
+        { id: 'settings', icon: 'mdi:cog', label: 'Settings' }
+    ] : [
+        { id: 'overview', icon: 'mdi:view-dashboard', label: 'Research Overview' },
+        { id: 'questions', icon: 'mdi:help-circle', label: 'SEP1: Questions' },
+        { id: 'models', icon: 'mdi:cube-outline', label: 'SEP2: Models' },
+        { id: 'investigation', icon: 'mdi:microscope', label: 'SEP3: Investigations' },
+        { id: 'analysis', icon: 'mdi:chart-line', label: 'SEP4: Analysis' },
+        { id: 'math', icon: 'mdi:calculator', label: 'SEP5: Math' },
+        { id: 'explanations', icon: 'mdi:lightbulb-on', label: 'SEP6: CER' },
+        { id: 'argument', icon: 'mdi:forum', label: 'SEP7: Argument' },
+        { id: 'communication', icon: 'mdi:share-variant', label: 'SEP8: Communication' }
+    ];
+
+    content.innerHTML = `
+        <h3 class="text-xl font-black text-gray-900 uppercase mb-6 tracking-tight">Quick Jump</h3>
+        <div class="grid grid-cols-1 gap-3">
+            ${modules.map(m => `
+                <button onclick="window.closeQuickJump(); ${isTeacher ? 'window.showTeacherModule' : 'window.showStudentModule'}('${m.id}')" 
+                    class="w-full flex items-center gap-4 p-5 bg-gray-50 rounded-2xl active:bg-primary active:text-white transition-all group">
+                    <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-primary group-active:bg-white/20 group-active:text-white shadow-sm">
+                        <span class="iconify text-xl" data-icon="${m.icon}"></span>
+                    </div>
+                    <span class="text-sm font-black uppercase tracking-tight">${m.label}</span>
+                </button>
+            `).join('')}
+        </div>
+    `;
+
+    drawer.classList.add('is-visible');
+    overlay.classList.add('is-visible');
+};
+
+/**
+ * Closes the Quick Jump menu.
+ */
+window.closeQuickJump = () => {
+    document.getElementById('quickJumpDrawer')?.classList.remove('is-visible');
+    document.getElementById('quickJumpOverlay')?.classList.remove('is-visible');
+};
+
+/**
+ * Handles dot navigation for horizontal swipers.
+ */
+window.jumpToInquiryTab = (tabId) => {
+    window.switchInquiryTab(tabId);
+};
+
+/**
+ * Syncs swipe dots with horizontal scroll position.
+ */
+export function updateSwipeDots(container, dotContainerId) {
+    const dots = document.getElementById(dotContainerId);
+    if (!dots) return;
+    
+    const width = container.offsetWidth;
+    const index = Math.round(container.scrollLeft / width);
+    
+    dots.querySelectorAll('.swipe-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+    });
+}
+
 /**
  * Toggles the visibility of the sidebar on mobile devices.
  */
@@ -41,7 +180,7 @@ export function closeSidebar() {
  * @param {string} moduleId - ID of the module to show.
  */
 export async function showStudentModule(moduleId) {
-    if (!App.teacherSettings.moduleAccess[moduleId]) {
+    if (!App.teacherSettings.moduleAccess[moduleId] && moduleId !== 'overview') {
         toast('This module is locked by your teacher', 'warning');
         return;
     }
@@ -58,8 +197,26 @@ export async function showStudentModule(moduleId) {
     }
 
     App.currentModule = moduleId;
-    renderNavigation();
-    renderStudentContent();
+    
+    // Check if we are already in the continuous scroll view
+    const firstPanelTitle = {
+        overview: 'The Mystery', questions: 'Phenomenon', models: 'Model Canvas',
+        investigation: 'Experimental Variables', analysis: 'Chart Designer',
+        math: 'Calculator', explanations: 'Evidence Bank',
+        argument: 'Argument Board', communication: 'Poster Builder'
+    }[moduleId];
+
+    const target = document.querySelector(`[data-card-title="${firstPanelTitle}"]`);
+    if (target) {
+        App._isScrollingToModule = true;
+        target.scrollIntoView({ behavior: 'smooth' });
+        renderNavigation();
+        setTimeout(() => { App._isScrollingToModule = false; }, 800);
+    } else {
+        // Fallback for first load or teacher mode switching
+        renderNavigation();
+        renderStudentContent();
+    }
 }
 
 /**
@@ -72,8 +229,28 @@ export function showTeacherModule(moduleId) {
     }
     
     App.teacherModule = moduleId;
-    renderNavigation();
-    renderTeacherContent();
+    App._editingAssetBank = null;
+
+    // Check if we are already in the continuous scroll view
+    const firstPanelTitle = {
+        overview: 'Lesson Focus', lessons: 'NGSS Blueprints', snapshots: 'Activity Snapshots',
+        students: 'Students', access: 'Guided Mode', noticeboard: 'Inquiry Board',
+        moderation: 'Class Moderation', categories: 'Global Settings', icons: 'Curated Set',
+        ngss: 'NGSS Navigator', settings: 'API Configurations'
+    }[moduleId];
+
+    const target = document.querySelector(`[data-teacher-module="${moduleId}"]`) || 
+                   document.querySelector(`[data-card-title="${firstPanelTitle}"]`);
+                   
+    if (target && !['livemodels', 'livedata', 'livegeneric'].includes(moduleId)) {
+        App._isScrollingToModule = true;
+        target.scrollIntoView({ behavior: 'smooth' });
+        renderNavigation();
+        setTimeout(() => { App._isScrollingToModule = false; }, 800);
+    } else {
+        renderNavigation();
+        renderTeacherContent();
+    }
 }
 
 /**
@@ -99,7 +276,7 @@ export function renderNavigation() {
                         { id: 'livedata', icon: 'mdi:table', label: 'View: Data Tables' },
                         { id: 'moderation', icon: 'mdi:shield-check', label: 'Moderation' },
                         { id: 'categories', icon: 'mdi:folder-multiple', label: 'Categories' },
-                        { id: 'icons', icon: 'mdi:emoticon', label: 'Icon Library' },
+                        { id: 'icons', icon: 'mdi:emoticon', label: 'Asset Architect' },
                         { id: 'ngss', icon: 'mdi:school', label: 'NGSS Standards' },
                         { id: 'settings', icon: 'mdi:cog', label: 'Settings' }
                     ].map(m => `
@@ -128,6 +305,7 @@ export function renderNavigation() {
             `;
         } else {
             const modules = [
+                { id: 'overview', icon: 'mdi:view-dashboard', label: 'Overview' },
                 { id: 'questions', icon: 'mdi:help-circle', label: '1. Questions' },
                 { id: 'models', icon: 'mdi:cube-outline', label: '2. Models' },
                 { id: 'investigation', icon: 'mdi:microscope', label: '3. Investigation' },
@@ -179,15 +357,13 @@ export function renderNavigation() {
  */
 export function initTouchNavigation() {
     let touchStartX = 0;
-    let touchEndX = 0;
     let touchStartY = 0;
-    let touchEndY = 0;
     
     const content = document.getElementById('mainContent');
     if (!content) return;
 
     const modules = [
-        'questions', 'models', 'investigation', 'analysis', 
+        'overview', 'questions', 'models', 'investigation', 'analysis', 
         'math', 'explanations', 'argument', 'communication'
     ];
 
@@ -197,30 +373,23 @@ export function initTouchNavigation() {
     }, { passive: true });
 
     content.addEventListener('touchend', e => {
-        touchEndX = e.changedTouches[0].screenX;
-        touchEndY = e.changedTouches[0].screenY;
-        handleSwipe();
-    }, { passive: true });
-
-    function handleSwipe() {
-        if (App.mode !== 'student' || window.innerWidth > 768) return;
+        const touchEndX = e.changedTouches[0].screenX;
+        const touchEndY = e.changedTouches[0].screenY;
         
-        // Don't swipe if we are in specific modules that need touch (like models or data editing)
-        if (App.currentModule === 'models' || App.currentModule === 'analysis') return;
-
         const deltaX = touchEndX - touchStartX;
         const deltaY = touchEndY - touchStartY;
         
-        // Ensure it's a horizontal swipe and not vertical scrolling
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 100) {
+        if (App.mode !== 'student' || window.innerWidth > 768) return;
+        if (['models', 'analysis', 'investigation'].includes(App.currentModule)) return;
+
+        // Ensure it's a SIGNIFICANT horizontal swipe and NOT a vertical scroll
+        if (Math.abs(deltaX) > Math.abs(deltaY) * 2 && Math.abs(deltaX) > 100) {
             const currentIndex = modules.indexOf(App.currentModule);
             if (deltaX < 0 && currentIndex < modules.length - 1) {
-                // Swipe Left -> Next Module
                 showStudentModule(modules[currentIndex + 1]);
             } else if (deltaX > 0 && currentIndex > 0) {
-                // Swipe Right -> Previous Module
                 showStudentModule(modules[currentIndex - 1]);
             }
         }
-    }
+    }, { passive: true });
 }

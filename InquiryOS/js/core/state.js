@@ -15,7 +15,7 @@ export const App = {
         avatar: '' 
     },
     classCode: '',
-    currentModule: 'questions',
+    currentModule: 'overview',
     teacherModule: 'overview',
     iconSearchResults: [],
     iconSearchQuery: '',
@@ -27,6 +27,9 @@ export const App = {
     isExemplarMode: false,
     isViewingExemplar: false,
     studentWorkCache: null,
+    _editingAssetBank: null, // 'icon' | 'emoji'
+    _emojiCategoryFilter: 'all',
+    _assetSearchTimer: null,
     
     sharedData: {
         debatePosts: [],
@@ -44,6 +47,7 @@ export const App = {
         activeDomains: ['general'], // ['life', 'physical', 'earth', 'chemistry', 'engineering']
         studentStatus: {}, // Maps visitorId -> { currentModule, status: 'not-started'|'in-progress'|'complete' }
         moduleAccess: {
+            overview: true,
             questions: true, 
             models: true, 
             investigation: true, 
@@ -81,8 +85,12 @@ export const App = {
         defaultCategoriesEnabled: true,
         anonymousMode: false,
         allowStudentReplies: true,
+        defaultIcons: ['mdi:atom', 'mdi:leaf', 'mdi:water', 'mdi:fire', 'mdi:weather-sunny', 'mdi:flower', 'mdi:bacteria', 'mdi:flask-outline', 'mdi:microscope', 'mdi:dna', 'mdi:earth', 'mdi:mountain', 'mdi:magnet', 'mdi:battery-high', 'mdi:cog', 'mdi:human', 'mdi:heart', 'mdi:brain', 'mdi:lungs', 'mdi:skeleton', 'mdi:home', 'mdi:factory', 'mdi:car', 'mdi:bicycle', 'mdi:bus', 'mdi:train', 'mdi:airplane'],
+        defaultEmojis: ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '⚙️', '⚖️', '🔬', '🧬', '🌍', '🔭', '🏗️', '🌉', '🔨', '📏'],
+        showDefaultIcons: true,
+        showDefaultEmojis: true,
         lessonIcons: [],
-        lessonEmojis: ['🌡️', '💧', '☀️', '🌱', '🦠', '🧪', '💨', '⚡', '🔋', '🧱', '⚙️', '⚖️', '🔬', '🧬', '🌍', '🔭', '🏗️', '🌉', '🔨', '📏'],
+        lessonEmojis: [],
         showAllIcons: true
     },
     

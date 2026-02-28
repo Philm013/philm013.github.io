@@ -82,6 +82,40 @@ export class ModalService {
     }
 
     /**
+     * Displays a dialog with multiple choice buttons.
+     * @param {string} title 
+     * @param {string} message 
+     * @param {Array<{id: string, label: string, icon?: string}>} options 
+     * @returns {Promise<string|null>} Resolves to the selected option ID or null if cancelled.
+     */
+    async choice(title, message, options) {
+        return new Promise(resolve => {
+            this.show(title, message);
+            this.actions.innerHTML = options.map(opt => `
+                <button class="flex-1 bg-slate-800 hover:bg-indigo-600 text-white py-3 rounded-xl font-bold flex flex-col items-center justify-center gap-1 transition-colors" data-id="${opt.id}">
+                    ${opt.icon ? `<i class="fa-solid ${opt.icon}"></i>` : ''}
+                    <span class="text-[10px] uppercase tracking-widest">${opt.label}</span>
+                </button>
+            `).join('') + `
+                <button id="choice-cancel" class="w-12 bg-slate-900 text-slate-500 rounded-xl flex items-center justify-center hover:text-white transition-all"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            
+            this.actions.querySelectorAll('[data-id]').forEach(btn => {
+                btn.onclick = () => {
+                    const id = btn.dataset.id;
+                    this.hide();
+                    resolve(id);
+                };
+            });
+            
+            document.getElementById('choice-cancel').onclick = () => {
+                this.hide();
+                resolve(null);
+            };
+        });
+    }
+
+    /**
      * Internal method to display the modal base.
      * @private
      */

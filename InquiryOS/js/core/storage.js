@@ -100,8 +100,12 @@ export function dbPut(storeName, data) {
             const request = store.put(data);
             
             request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            request.onerror = (event) => {
+                console.error(`dbPut error for store "${storeName}":`, event.target.error, data);
+                reject(event.target.error);
+            };
         } catch (e) {
+            console.error(`dbPut exception for store "${storeName}":`, e, data);
             reject(e);
         }
     });
@@ -125,11 +129,22 @@ export function dbPutMany(storeName, dataArray) {
             const transaction = db.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
             
-            dataArray.forEach(data => store.put(data));
+            dataArray.forEach(data => {
+                try {
+                    store.put(data);
+                } catch (err) {
+                    console.error(`Error putting item in dbPutMany for store "${storeName}":`, err, data);
+                    throw err;
+                }
+            });
             
             transaction.oncomplete = () => resolve();
-            transaction.onerror = () => reject(transaction.error);
+            transaction.onerror = (event) => {
+                console.error(`dbPutMany transaction error for store "${storeName}":`, event.target.error);
+                reject(event.target.error);
+            };
         } catch (e) {
+            console.error(`dbPutMany exception for store "${storeName}":`, e);
             reject(e);
         }
     });

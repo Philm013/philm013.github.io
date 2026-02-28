@@ -18,6 +18,7 @@ import { toast, copyCode, copyJoinLink, showJoinQR, closeQRCode, openSessionMenu
 import * as auth from './core/auth.js';
 
 // Student Practices
+import * as overview from './modules/overview.js';
 import * as questions from './modules/questions.js';
 import * as models from './modules/models.js';
 import * as investigation from './modules/investigation.js';
@@ -57,7 +58,6 @@ window.closeEvidenceViewer = closeEvidenceViewer;
 
 /**
  * Switches between top-level application views (login, app, docs, support).
- * @param {string} viewId - ID of the view to show.
  */
 window.showView = (viewId) => {
     document.querySelectorAll('.view').forEach(v => {
@@ -88,7 +88,7 @@ window.submitGenericInput = submitGenericInput;
 // Explicitly expose new functions
 import { openIconPicker, closeIconPicker, searchIcons, selectIcon, selectIconForNode, openNodeTagPicker, updateNodeColor } from './modules/models.js';
 import { switchViewerModule, stopViewingStudent, viewStudentWork } from './teacher/viewer.js';
-import { launchTemplate, applyTemplate, previewTemplate, previewPreset, closeLessonPreview } from './teacher/dashboard.js';
+import { launchTemplate, applyTemplate, previewTemplate, previewPreset, closeLessonPreview, saveCurrentAsLesson, deleteLesson, launchLesson, applyLessonToCurrent } from './teacher/dashboard.js';
 import { addToPhenomenon, setNgssBrowserSection, setNgssFilter, toggleNgssDimFilter, filterNGSSResults, viewPeDetails, toggleNgssMobileFilters, clearAllNgssFilters, viewElementPes, clearNgssPeFocus, openNgssElementFilterModal, addNgssElementFilter, removeNgssElementFilter } from './core/ngss.js';
 
 window.openIconPicker = openIconPicker;
@@ -107,6 +107,11 @@ window.closeLessonPreview = closeLessonPreview;
 window.launchTemplate = launchTemplate;
 window.applyTemplate = applyTemplate;
 window.addToPhenomenon = addToPhenomenon;
+window.saveCurrentAsLesson = saveCurrentAsLesson;
+window.deleteLesson = deleteLesson;
+window.launchLesson = launchLesson;
+window.applyLessonToCurrent = applyLessonToCurrent;
+
 window.setNgssBrowserSection = setNgssBrowserSection;
 window.setNgssFilter = setNgssFilter;
 window.toggleNgssDimFilter = toggleNgssDimFilter;
@@ -120,10 +125,11 @@ window.openNgssElementFilterModal = openNgssElementFilterModal;
 window.addNgssElementFilter = addNgssElementFilter;
 window.removeNgssElementFilter = removeNgssElementFilter;
 
-import { editInquiryItem, addCustomItem, deleteCustomItem } from './modules/questions.js';
+import { editInquiryItem, showTagPicker, toggleContributionTag, deleteInquiryItem } from './modules/questions.js';
 window.editInquiryItem = editInquiryItem;
-window.addCustomItem = addCustomItem;
-window.deleteCustomItem = deleteCustomItem;
+window.showTagPicker = showTagPicker;
+window.toggleContributionTag = toggleContributionTag;
+window.deleteInquiryItem = deleteInquiryItem;
 
 import { clearAllPosts, toggleDefaultCategories } from './teacher/noticeboard.js';
 window.clearAllPosts = clearAllPosts;
@@ -162,6 +168,7 @@ Object.assign(window, renderer);
 Object.assign(window, sync);
 Object.assign(window, utils);
 Object.assign(window, ngss);
+Object.assign(window, overview);
 Object.assign(window, questions);
 Object.assign(window, models);
 Object.assign(window, investigation);
@@ -207,6 +214,10 @@ async function init() {
         if (typeof window.initTouchNavigation === 'function') {
             window.initTouchNavigation();
         }
+
+        // Initialize Accessibility Utilities
+        const { initAccessibilityUtilities } = await import('./ui/navigation.js');
+        initAccessibilityUtilities();
 
         console.log('InquiryOS: System Ready.');
     } catch (e) {

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a1a">
+    
+    <title>Gemini Visual Knowledge Tool</title>
+    
+    <!-- External Libraries -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+   
+    <!-- Application Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Landing Page: Initial view for creating/loading maps -->
+    <div id="landing-page">
+        <div class="landing-content">
+            <div class="landing-header">
+                <h1>Visual Knowledge Tool</h1>
+                <p>A Gemini-Powered Mind Mapping and Research Assistant</p>
+            </div>
+            <div class="landing-section">
+                <h2>Create New</h2>
+                <div class="new-map-actions" style="margin-bottom: 20px;">
+                    <button id="new-blank-map-btn" class="primary-button">Start Blank</button>
+                    <button id="import-json-btn" class="secondary-button">Import from File</button>
+                    <button id="import-clipboard-btn" class="secondary-button">Import from Clipboard</button>
+                </div>
+                <h4>Or, Generate with AI</h4>
+                <div class="ai-group">
+                    <select id="landing-ai-map-type" class="ai-input">
+                        <option value="mindmap">Mind Map</option>
+                        <option value="flowchart">Flowchart</option>
+                    </select>
+                    <div id="landing-ai-research-options" class="hidden" style="margin: 10px 0; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="landing-ai-research-toggle" checked style="width: 18px; height: 18px; margin: 0;">
+                        <label for="landing-ai-research-toggle" style="font-weight: normal; font-size: 14px; margin-bottom: 0;">Auto-research each step</label>
+                    </div>
+                    <input type="text" id="landing-ai-topic-input" class="ai-input" placeholder="e.g., The History of Space Exploration">
+                    <button id="landing-ai-generate-btn" class="primary-button">Generate New Map</button>
+                </div>
+            </div>
+            <div class="landing-section">
+                <h2>Start from a Template</h2>
+                <div id="template-library"></div>
+            </div>
+            <div class="landing-section">
+                <h2>Your Maps</h2>
+                <ul id="map-list"></ul>
+                <div id="no-maps-message" class="hidden"><p>You have no saved maps. Create one to get started!</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Container: Hidden until a map is loaded -->
+    <div id="app-container" class="hidden">
+        <!-- Graph Container: Where the D3.js graph is rendered -->
+        <div id="graph-container">
+            <svg id="graph-canvas" width="100%" height="100%"></svg>
+        </div>
+        <!-- Toolbar: Main navigation and action buttons -->
+        <div id="toolbar">
+            <button class="tool-button" id="homeBtn" title="Back to My Maps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></button>
+            <button class="tool-button" id="saveBtn" title="Save Map (Right-click to Save as Template)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M7 21v-8h10v8M7 3v5h8"/></svg></button>
+            <button class="tool-button" id="exportBtn" title="Export Map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
+            <button class="tool-button" id="selectModeBtn" title="Select Tool (for Mobile)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4 2" fill="none" /></svg></button>
+            <button class="tool-button" id="addNodeBtn" title="Add Node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14" /></svg></button>
+            <button class="tool-button" id="layoutBtn" title="Cycle Layout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6l3 6h12l3-6H3zm0 12h18M9 6V3m6 3V3"/></svg></button>
+            <button class="tool-button" id="linkStyleBtn" title="Cycle Link Style"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 12h8M12 12l4 4M12 12l4-4M12 4v16"/></svg></button>
+            <button class="tool-button" id="aiPanelBtn" title="AI Assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a10 10 0 00-3.53 19.47A10 10 0 0012 2zm0 18a8 8 0 110-16 8 8 0 010 16z"/><path d="M12 12a2 2 0 11-2-2 2 2 0 012 2zM8 12a2 2 0 11-2-2 2 2 0 012 2zM16 12a2 2 0 11-2-2 2 2 0 012 2z"/></svg></button>
+            <button class="tool-button" id="settingsBtn" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+            <button class="tool-button" id="helpBtn" title="Help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></button>
+        </div>
+    </div>
+
+    <!-- Side Panels -->
+    <div id="ai-panel" class="side-panel">
+        <div class="side-panel-header"><span>AI Assistant</span><span id="ai-panel-close" class="side-panel-close">×</span></div>
+        <div class="side-panel-content">
+            <div id="ai-chat-history"></div>
+            <div class="ai-input-area">
+                <input type="text" id="ai-chat-input" class="ai-input" placeholder="Ask me to research or build...">
+                <button id="ai-chat-send-btn" class="primary-button">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="node-detail-panel" class="side-panel">
+        <div id="node-detail-header" class="side-panel-header"><span id="node-detail-title">Node Details</span><span id="node-detail-close" class="side-panel-close">×</span></div>
+        <div id="node-detail-content" class="side-panel-content">
+            <div id="rte-toolbar" class="rte-toolbar">
+                <button class="rte-button" data-command="bold" title="Bold"><b>B</b></button>
+                <button class="rte-button" data-command="italic" title="Italic"><i>I</i></button>
+                <button class="rte-button" data-command="underline" title="Underline"><u>U</u></button>
+                <button class="rte-button" data-command="insertUnorderedList" title="Bullet List">●</button>
+                <button class="rte-button" data-command="insertOrderedList" title="Numbered List">1.</button>
+            </div>
+            <div id="node-detail-area" class="editable-content" contenteditable="true" placeholder="Add notes, links, or more information here..."></div>
+            <button id="generate-details-btn" class="primary-button">Enrich Details with AI ✨</button>
+        </div>
+    </div>
+
+    <!-- Popups and Context Menus -->
+    <div id="context-menu" class="popup-menu hidden">
+        <div class="context-menu-item" data-action="details">View/Edit Details</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="expand">Expand with AI...</div>
+        <div class="context-menu-item" data-action="rephrase">Rephrase with AI...</div>
+        <div id="group-actions-menu">
+            <div class="context-menu-divider"></div>
+            <div class="context-menu-item" data-action="group">Group Selected Nodes</div>
+            <div class="context-menu-item" data-action="ungroup">Ungroup Node</div>
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="settings">Appearance...</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="copy-map">Copy Map JSON to Clipboard</div>
+        <div class="context-menu-item danger" data-action="delete">Delete Node</div>
+    </div>
+    <div id="canvas-context-menu" class="popup-menu hidden">
+        <div class="context-menu-item" data-action="add-node">Add Node Here</div>
+        <div class="context-menu-item" data-action="paste">Paste Selection</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="force-mindmap">Set Layout to Mind Map</div>
+        <div class="context-menu-item" data-action="force-flowchart">Set Layout to Flowchart</div>
+    </div>
+    <div id="link-context-menu" class="popup-menu hidden">
+        <div class="context-menu-item" data-action="edit-label">Edit Label</div>
+        <div class="context-menu-item" data-action="insert-node">Insert Node Here</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item danger" data-action="delete">Delete Link</div>
+    </div>
+    <div id="node-settings-palette" class="popup-menu hidden">
+        <div class="palette-section" id="palette-colors"></div>
+        <div class="palette-section" id="palette-shapes"></div>
+    </div>
+
+    <!-- Modals -->
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Settings</h2><button class="modal-close-btn">×</button></div>
+            <div class="modal-body">
+                <h3>API Key Settings</h3>
+                <p>Keys are saved in your browser's local storage and are required for AI features.</p>
+                <div class="form-group"><label for="gemini-key">Google Gemini API Key</label><input type="password" id="gemini-key"></div>
+                <div class="form-group"><label for="hf-key">Hugging Face API Token</label><input type="password" id="hf-key"></div>
+                <div class="form-group"><label for="newsapi-key">NewsAPI Key</label><input type="password" id="newsapi-key"></div>
+                <div class="form-group"><label for="finnhub-key">Finnhub API Key</label><input type="password" id="finnhub-key"></div>
+                <div class="form-group"><label for="wolfram-key">WolframAlpha AppID</label><input type="password" id="wolfram-key"></div>
+                
+                <div class="context-menu-divider" style="margin: 20px 0;"></div>
+                <h3>AI Model Selection</h3>
+                <p>Choose which models to use for different tasks. "Flash" is faster and cheaper, "Pro" is more powerful.</p>
+                <div class="form-group">
+                    <label for="tool-model-select">Tool Calling & Chat Model</label>
+                    <select id="tool-model-select" class="ai-input"></select>
+                </div>
+                <div class="form-group">
+                    <label for="content-model-select">Content Generation Model (Research, Summaries)</label>
+                    <select id="content-model-select" class="ai-input"></select>
+                </div>
+
+                <button id="save-settings-btn" class="primary-button">Save and Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="help-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header"><h2>Help & Information</h2><button class="modal-close-btn">×</button></div>
+            <div class="modal-body">
+                <h3>Layouts & Map Types</h3>
+                <ul>
+                    <li><b>Mind Map & Sunburst:</b> These layouts work best for tree-like structures (one parent per node).</li>
+                    <li><b>Flowchart:</b> This layout is for processes and can have nodes with multiple parents (e.g., merging paths).</li>
+                    <li><b>Forcing a Layout:</b> If you've edited a map and can no longer switch to a Mind Map view, you can <b>right-click the canvas background</b> and select "Set Layout to Mind Map" to override the automatic check.</li>
+                </ul>
+                <h3>Desktop Controls</h3>
+                <ul>
+                    <li><b>Pan:</b> Click and drag the background.</li>
+                    <li><b>Zoom:</b> Use the mouse wheel.</li>
+                    <li><b>Multi-Select (Lasso):</b> Hold <b>Shift</b> and drag on the canvas.</li>
+                    <li><b>Multi-Select (Click):</b> Hold <b>Ctrl</b> (or <b>Cmd</b> on Mac) and click nodes.</li>
+                    <li><b>Copy/Paste Selection:</b> Use <b>Ctrl/Cmd + C</b> to copy and <b>Ctrl/Cmd + V</b> to paste.</li>
+                    <li><b>Context Menu:</b> Right-click on a node, link, or the canvas.</li>
+                </ul>
+                <h3>Mobile / Touch Controls</h3>
+                 <ul>
+                    <li><b>Pan:</b> Touch and drag the background.</li>
+                    <li><b>Zoom:</b> Pinch to zoom.</li>
+                    <li><b>Multi-Select:</b> Tap the <b>Select Tool</b> in the toolbar to enter Select Mode. In this mode, tap nodes to add/remove them from your selection. Tap the tool again to exit.</li>
+                    <li><b>Context Menu:</b> Long-press on a node or link.</li>
+                </ul>
+
+                <h3>Primary AI Tools</h3>
+                <p>These are the main tools the AI uses to build your map.</p>
+                <ul>
+                    <li><code>research_and_add_node(topic, parentNodeId)</code>: <strong>This is the primary tool.</strong> It researches a topic, synthesizes the information into a detailed report, and creates a new node with that report in its details panel. Use this for adding any new concept to the map.</li>
+                    <li><code>add_simple_node(label, parentNodeId)</code>: Adds a new node without any research. Use this for structural elements like "Pros", "Cons", or "My Ideas".</li>
+                    <li><code>expandNodeWithAI(nodeId, instruction)</code>: Adds several new child nodes based on a topic, researching each one as it's created.</li>
+                    <li><code>connectNodesById(sourceNodeId, targetNodeId)</code>: Creates a link between two nodes.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="export-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="width: 500px;">
+            <div class="modal-header">
+                <h2>Export Map</h2>
+                <button class="modal-close-btn">×</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <h3>Interactive Web Viewer</h3>
+                    <p>A single, self-contained HTML file with a read-only, interactive view of your map. Good for sharing and presenting.</p>
+                    <button id="export-interactive-btn" class="primary-button">Export Viewer</button>
+                </div>
+                <div style="border-top: 1px solid var(--border-color); padding-top: 15px;">
+                    <h3>Printable Document</h3>
+                    <p>A linear HTML document containing all node titles and their detailed notes. Ideal for printing or converting to PDF.</p>
+                    <button id="export-printable-btn" class="primary-button">Export Document</button>
+                </div>
+                <div style="border-top: 1px solid var(--border-color); padding-top: 15px;">
+                    <h3>JSON Data</h3>
+                    <p>A JSON file containing the raw graph data. Use this for backups or to re-import the map into this tool later.</p>
+                    <button id="export-json-btn" class="primary-button">Export as JSON</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Research Progress Overlay -->
+    <div id="research-progress-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="research-progress-title">Researching...</h2>
+            </div>
+            <div class="modal-body">
+                <ul id="research-checklist"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Utility Elements -->
+    <div id="toast"></div>
+    <div id="text-measurer" style="position:absolute; visibility:hidden; height:auto; width:auto; white-space:pre-wrap; font-size:14px; font-weight:600; line-height:1.3; padding: 8px; text-align:center;"></div>
+    
+    <!-- Application Scripts -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
