@@ -1,3 +1,4 @@
+/* global db, Panzoom, pdfjsLib, GoogleGenerativeAI */
 /**
  * Flipbook Anything (FBA) Script - Revised v3.2
  * Fixes: Replaced panzoomInstance.dispose() with panzoomInstance.destroy()
@@ -10,7 +11,21 @@ if (pdfjsLib) {
     console.error("FATAL: pdfjsLib is not defined.");
 }
 
+// ... rest of imports ...
+
+async function refreshCurrentPdfListView() {
+    if (!pdfsList) return;
+    const allPdfs = await db.getAllPdfs();
+    if (currentSelectedCollectionId === 'all') renderPdfList(pdfsList, 'All PDFs', allPdfs);
+    else {
+        const selected = await db.getAllCollections().then(cols => cols.find(c => c.id === currentSelectedCollectionId));
+        if (selected) renderPdfList(pdfsList, `PDFs in "${selected.name}"`, allPdfs.filter(p => selected.pdfIds.includes(p.id)));
+        else { currentSelectedCollectionId = 'all'; renderPdfList(pdfsList, 'All PDFs', allPdfs); }
+    }
+}
+
 // --- Global State Variables ---
+const THEME_KEY = 'flipbook_theme_preference';
 let pdfDoc = null;
 let pageNum = 1;
 let pageRendering = false;
@@ -82,6 +97,15 @@ function linkifyPageNumbers(htmlString) {
         }
         return match;
     });
+}
+
+function applyTheme(theme) {
+    const ts = document.getElementById('theme-style');
+    if (!ts) return;
+    const isDark = theme === 'dark';
+    ts.href = isDark ? 'fbai_dark.css' : 'fbai_light.css';
+    if (themeToggle) themeToggle.innerHTML = isDark ? '☀️' : '🌑';
+    localStorage.setItem(THEME_KEY, theme);
 }
 
 // ==========================================================================
@@ -832,56 +856,252 @@ function changeSpreadMode(mode) {
 // ==========================================================================
 async function openBookshelf() { currentSelectedCollectionId = 'all'; await populateBookshelf(); if (bookshelfModal) bookshelfModal.style.display = 'flex'; }
 function closeBookshelf() { if (bookshelfModal) bookshelfModal.style.display = 'none'; hidePdfContextMenu(); }
+
 function renderPdfList(target, title, pdfsToRender) {
     target.innerHTML = `<h3>${escapeHtml(title)}</h3>`;
     if (pdfsToRender.length === 0) { target.innerHTML += '<p>No PDFs found.</p>'; return; }
-    const ul = document.createElement('ul'); ul.className = 'bookshelf-item-list';
+    const ul = document.createElement('ul'); 
+    ul.className = 'bookshelf-item-list';
+    ul.setAttribute('role', 'list');
+    
     pdfsToRender.sort((a, b) => a.name.localeCompare(b.name)).forEach(pdf => {
-        const li = document.createElement('li'); li.dataset.id = pdf.id;
-        li.innerHTML = `<span class="item-name">${escapeHtml(pdf.name)}</span><div class="item-actions"><button class="open-pdf" data-id="${pdf.id}">Open</button><button class="delete-pdf" data-id="${pdf.id}">Delete</button></div>`;
+        const li = document.createElement('li'); 
+        li.dataset.id = pdf.id;
+        li.setAttribute('draggable', 'true');
+        li.setAttribute('role', 'listitem');
+        li.setAttribute('aria-label', `PDF: ${pdf.name}`);
+        
+        li.innerHTML = `
+            <span class="item-name">${escapeHtml(pdf.name)}</span>
+            <div class="item-actions">
+                <button class="open-pdf" data-id="${pdf.id}" title="Open PDF">Open</button>
+                <button class="more-options" data-id="${pdf.id}" title="More options">...</button>
+            </div>`;
+            
+        // Drag Events
+        li.addEventListener('dragstart', handlePdfDragStart);
+        li.addEventListener('dragend', handlePdfDragEnd);
+        
         ul.appendChild(li);
     });
     target.appendChild(ul);
 }
+
 async function populateBookshelf() {
     if (!collectionsList || !pdfsList) return;
     try {
         const allCollections = await db.getAllCollections();
         collectionsList.innerHTML = '<h3>Collections</h3>';
-        const collectionsUl = document.createElement('ul'); collectionsUl.className = 'bookshelf-item-list';
-        const allPdfsLi = document.createElement('li'); allPdfsLi.innerHTML = `<span class="item-name">All PDFs</span>`; allPdfsLi.dataset.id = 'all';
+        const collectionsUl = document.createElement('ul'); 
+        collectionsUl.className = 'bookshelf-item-list';
+        collectionsUl.setAttribute('role', 'list');
+
+        const allPdfsLi = document.createElement('li'); 
+        allPdfsLi.innerHTML = `<span class="item-name">All PDFs</span>`; 
+        allPdfsLi.dataset.id = 'all';
+        allPdfsLi.setAttribute('role', 'listitem');
         if (currentSelectedCollectionId === 'all') allPdfsLi.classList.add('active');
+        
+        // Collection Drop Zone
+        setupCollectionDropZone(allPdfsLi);
+        
         collectionsUl.appendChild(allPdfsLi);
+
         allCollections.forEach(col => {
-            const li = document.createElement('li'); li.dataset.id = col.id; if (currentSelectedCollectionId === col.id) li.classList.add('active');
-            li.innerHTML = `<span class="item-name">${escapeHtml(col.name)}</span><div class="item-actions"><button class="delete-collection" data-id="${col.id}">Delete</button></div>`;
+            const li = document.createElement('li'); 
+            li.dataset.id = col.id; 
+            li.setAttribute('role', 'listitem');
+            if (currentSelectedCollectionId === col.id) li.classList.add('active');
+            
+            li.innerHTML = `
+                <span class="item-name">${escapeHtml(col.name)}</span>
+                <div class="item-actions">
+                    <button class="more-options-collection" data-id="${col.id}" title="More options">...</button>
+                </div>`;
+            
+            setupCollectionDropZone(li);
             collectionsUl.appendChild(li);
         });
         collectionsList.appendChild(collectionsUl);
         await refreshCurrentPdfListView();
     } catch (e) { collectionsList.innerHTML = '<h3>Error</h3>'; }
 }
-async function refreshCurrentPdfListView() {
-    if (!pdfsList) return;
-    const allPdfs = await db.getAllPdfs();
-    if (currentSelectedCollectionId === 'all') renderPdfList(pdfsList, 'All PDFs', allPdfs);
-    else {
-        const selected = await db.getAllCollections().then(cols => cols.find(c => c.id === currentSelectedCollectionId));
-        if (selected) renderPdfList(pdfsList, `PDFs in "${selected.name}"`, allPdfs.filter(p => selected.pdfIds.includes(p.id)));
-        else { currentSelectedCollectionId = 'all'; renderPdfList(pdfsList, 'All PDFs', allPdfs); }
-    }
+
+// --- Drag & Drop Handlers ---
+function handlePdfDragStart(e) {
+    e.dataTransfer.setData('text/plain', e.target.dataset.id);
+    e.target.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
 }
-async function showPdfContextMenu(pdfId, x, y) {
-    if (!pdfContextMenu) return;
-    pdfContextMenu.style.display = 'block'; pdfContextMenu.style.left = `${x}px`; pdfContextMenu.style.top = `${y}px`; pdfContextMenu.dataset.pdfId = pdfId;
-    const submenu = pdfContextMenu.querySelector('.context-submenu'); submenu.innerHTML = '';
-    const removeItem = document.createElement('div'); removeItem.className = 'context-submenu-item'; removeItem.textContent = 'Remove from current'; removeItem.dataset.collectionId = 'remove'; submenu.appendChild(removeItem); submenu.appendChild(document.createElement('hr'));
-    const collections = await db.getAllCollections();
-    if (collections.length === 0) submenu.innerHTML += '<div class="context-submenu-item" style="font-style:italic">(No collections)</div>';
-    else collections.forEach(col => {
-        const item = document.createElement('div'); item.className = 'context-submenu-item'; item.textContent = escapeHtml(col.name); item.dataset.collectionId = col.id; submenu.appendChild(item);
+
+function handlePdfDragEnd(e) {
+    e.target.classList.remove('dragging');
+    const dropZones = document.querySelectorAll('.bookshelf-item-list li');
+    dropZones.forEach(dz => dz.classList.remove('drag-over'));
+}
+
+function setupCollectionDropZone(li) {
+    li.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        li.classList.add('drag-over');
+    });
+    li.addEventListener('dragleave', () => {
+        li.classList.remove('drag-over');
+    });
+    li.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        li.classList.remove('drag-over');
+        const pdfId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        const targetCollectionId = li.dataset.id === 'all' ? 'remove' : parseInt(li.dataset.id, 10);
+        
+        if (!isNaN(pdfId)) {
+            await movePdfToCollection(pdfId, targetCollectionId);
+        }
     });
 }
+
+// --- Operations Menu Logic ---
+async function showPdfContextMenu(pdfId, x, y, isFromButton = false) {
+    if (!pdfContextMenu) return;
+    pdfContextMenu.style.display = 'block'; 
+    pdfContextMenu.dataset.pdfId = pdfId;
+    
+    // Position
+    if (isFromButton) {
+        // Position below the button
+        pdfContextMenu.style.left = `${x}px`;
+        pdfContextMenu.style.top = `${y}px`;
+    } else {
+        pdfContextMenu.style.left = `${x}px`; 
+        pdfContextMenu.style.top = `${y}px`;
+    }
+
+    const submenu = pdfContextMenu.querySelector('.context-submenu'); 
+    submenu.innerHTML = '';
+    
+    // Rename PDF
+    const renameItem = document.createElement('div');
+    renameItem.className = 'context-submenu-item';
+    renameItem.textContent = 'Rename PDF';
+    renameItem.addEventListener('click', () => renamePdf(pdfId));
+    
+    // Delete PDF
+    const deleteItem = document.createElement('div');
+    deleteItem.className = 'context-submenu-item';
+    deleteItem.textContent = 'Delete PDF';
+    deleteItem.style.color = '#dc3545';
+    deleteItem.addEventListener('click', () => deletePdfById(pdfId));
+
+    // Move to Collection (Current Submenu logic)
+    const moveItem = document.createElement('div');
+    moveItem.className = 'context-menu-item';
+    moveItem.innerHTML = '<span>Move to ▶</span>';
+    const moveSubmenu = document.createElement('div');
+    moveSubmenu.className = 'context-submenu';
+    
+    const removeItem = document.createElement('div'); 
+    removeItem.className = 'context-submenu-item'; 
+    removeItem.textContent = 'Remove from current'; 
+    removeItem.dataset.collectionId = 'remove'; 
+    moveSubmenu.appendChild(removeItem); 
+    moveSubmenu.appendChild(document.createElement('hr'));
+    
+    const collections = await db.getAllCollections();
+    if (collections.length === 0) moveSubmenu.innerHTML += '<div class="context-submenu-item" style="font-style:italic">(No collections)</div>';
+    else collections.forEach(col => {
+        const item = document.createElement('div'); 
+        item.className = 'context-submenu-item'; 
+        item.textContent = escapeHtml(col.name); 
+        item.dataset.collectionId = col.id; 
+        moveSubmenu.appendChild(item);
+    });
+    
+    moveItem.appendChild(moveSubmenu);
+
+    const mainContainer = document.createElement('div');
+    mainContainer.appendChild(renameItem);
+    mainContainer.appendChild(moveItem);
+    mainContainer.appendChild(document.createElement('hr'));
+    mainContainer.appendChild(deleteItem);
+    
+    // Replace old content
+    pdfContextMenu.innerHTML = '';
+    pdfContextMenu.appendChild(mainContainer);
+}
+
+// --- New Context Menu for Collections ---
+async function showCollectionContextMenu(colId, x, y) {
+    if (!pdfContextMenu) return;
+    pdfContextMenu.style.display = 'block';
+    pdfContextMenu.style.left = `${x}px`;
+    pdfContextMenu.style.top = `${y}px`;
+    
+    const menu = document.createElement('div');
+    
+    const renameCol = document.createElement('div');
+    renameCol.className = 'context-submenu-item';
+    renameCol.textContent = 'Rename Collection';
+    renameCol.addEventListener('click', () => renameCollection(colId));
+    
+    const deleteCol = document.createElement('div');
+    deleteCol.className = 'context-submenu-item';
+    deleteCol.textContent = 'Delete Collection';
+    deleteCol.style.color = '#dc3545';
+    deleteCol.addEventListener('click', () => deleteCollectionById(colId));
+    
+    menu.appendChild(renameCol);
+    menu.appendChild(deleteCol);
+    
+    pdfContextMenu.innerHTML = '';
+    pdfContextMenu.appendChild(menu);
+}
+
+// --- CRUD Actions ---
+async function renamePdf(pdfId) {
+    const pdf = await db.getPdf(pdfId);
+    if (!pdf) return;
+    const newName = prompt("Enter new name for PDF:", pdf.name);
+    if (newName && newName.trim() && newName !== pdf.name) {
+        pdf.name = newName.trim();
+        await db.updatePdf(pdf);
+        await populateBookshelf();
+        if (currentPdfId === pdfId) pdfTitle.textContent = pdf.name;
+    }
+    hidePdfContextMenu();
+}
+
+async function deletePdfById(pdfId) {
+    if (confirm("Are you sure you want to delete this PDF?")) {
+        await db.deletePdf(pdfId);
+        if (currentPdfId === pdfId) resetViewerState();
+        await populateBookshelf();
+    }
+    hidePdfContextMenu();
+}
+
+async function renameCollection(colId) {
+    const collections = await db.getAllCollections();
+    const col = collections.find(c => c.id === colId);
+    if (!col) return;
+    const newName = prompt("Enter new name for Collection:", col.name);
+    if (newName && newName.trim() && newName !== col.name) {
+        col.name = newName.trim();
+        await db.updateCollection(col);
+        await populateBookshelf();
+    }
+    hidePdfContextMenu();
+}
+
+async function deleteCollectionById(colId) {
+    if (confirm("Delete this collection? (PDFs will not be deleted)")) {
+        await db.deleteCollection(colId);
+        if (currentSelectedCollectionId === colId) currentSelectedCollectionId = 'all';
+        await populateBookshelf();
+    }
+    hidePdfContextMenu();
+}
+
 function hidePdfContextMenu() { if (pdfContextMenu) pdfContextMenu.style.display = 'none'; }
 async function movePdfToCollection(pdfId, targetCollectionId) {
     try {
@@ -959,18 +1179,31 @@ function setupEventListeners() {
     // Bookshelf Clicks
     if (bookshelfModal) {
         bookshelfModal.addEventListener('click', async (e) => {
-            hidePdfContextMenu();
             const target = e.target;
-            const pdfAction = target.closest('.open-pdf, .delete-pdf');
-            const collectionAction = target.closest('.delete-collection');
+            const moreOptionsPdf = target.closest('.more-options');
+            const moreOptionsCol = target.closest('.more-options-collection');
+            const openPdfBtn = target.closest('.open-pdf');
             const collectionItem = target.closest('#collections-list li');
-            if (pdfAction) {
-                const id = parseInt(pdfAction.dataset.id, 10);
-                if (pdfAction.classList.contains('open-pdf')) { try { const pdf = await db.getPdf(id); if (pdf) { await loadPDF(pdf.data, pdf.name, pdf.id); closeBookshelf(); } } catch (e) {} }
-                else if (pdfAction.classList.contains('delete-pdf')) { if (confirm("Delete PDF?")) { try { await db.deletePdf(id); if (currentPdfId === id) resetViewerState(); await populateBookshelf(); } catch (e) {} } }
-            } else if (collectionAction) {
-                const id = parseInt(collectionAction.dataset.id, 10); if (confirm("Delete Collection?")) { try { await db.deleteCollection(id); if (currentSelectedCollectionId === id) currentSelectedCollectionId = 'all'; await populateBookshelf(); } catch (e) {} }
-            } else if (collectionItem) {
+            
+            // Hide menu if clicking elsewhere in modal
+            if (!moreOptionsPdf && !moreOptionsCol && !pdfContextMenu.contains(target)) {
+                hidePdfContextMenu();
+            }
+
+            if (moreOptionsPdf) {
+                e.stopPropagation();
+                const id = parseInt(moreOptionsPdf.dataset.id, 10);
+                const rect = moreOptionsPdf.getBoundingClientRect();
+                showPdfContextMenu(id, rect.left, rect.bottom, true);
+            } else if (moreOptionsCol) {
+                e.stopPropagation();
+                const id = parseInt(moreOptionsCol.dataset.id, 10);
+                const rect = moreOptionsCol.getBoundingClientRect();
+                showCollectionContextMenu(id, rect.left, rect.bottom);
+            } else if (openPdfBtn) {
+                const id = parseInt(openPdfBtn.dataset.id, 10);
+                try { const pdf = await db.getPdf(id); if (pdf) { await loadPDF(pdf.data, pdf.name, pdf.id); closeBookshelf(); } } catch (err) {}
+            } else if (collectionItem && !moreOptionsCol) {
                 currentSelectedCollectionId = (collectionItem.dataset.id === 'all') ? 'all' : parseInt(collectionItem.dataset.id, 10);
                 await populateBookshelf();
             }
@@ -980,13 +1213,19 @@ function setupEventListeners() {
             e.preventDefault(); showPdfContextMenu(parseInt(pdfLi.dataset.id, 10), e.pageX, e.pageY);
         });
     }
-    if (pdfContextMenu) pdfContextMenu.addEventListener('click', (e) => {
-        const target = e.target.closest('.context-submenu-item');
-        if (target?.dataset.collectionId) {
-            movePdfToCollection(parseInt(pdfContextMenu.dataset.pdfId, 10), target.dataset.collectionId === 'remove' ? 'remove' : parseInt(target.dataset.collectionId, 10));
-            hidePdfContextMenu();
-        }
-    });
+
+    if (pdfContextMenu) {
+        pdfContextMenu.addEventListener('click', async (e) => {
+            const target = e.target.closest('.context-submenu-item');
+            if (target && target.dataset.collectionId) {
+                e.stopPropagation();
+                const pdfId = parseInt(pdfContextMenu.dataset.pdfId, 10);
+                const targetColId = target.dataset.collectionId === 'remove' ? 'remove' : parseInt(target.dataset.collectionId, 10);
+                await movePdfToCollection(pdfId, targetColId);
+                hidePdfContextMenu();
+            }
+        });
+    }
 
     // Chat Context
     if (manageContextBtn) manageContextBtn.addEventListener('click', openContextSelector);
@@ -1005,7 +1244,12 @@ function setupEventListeners() {
     if (prevButton) prevButton.addEventListener('click', () => goToPage(onPrevPage(pageNum)));
     if (nextButton) nextButton.addEventListener('click', () => goToPage(onNextPage(pageNum)));
     if (toggleButton) toggleButton.addEventListener('click', () => { const modes = ['single', 'double-odd', 'double-even']; changeSpreadMode(modes[(modes.indexOf(spreadMode) + 1) % modes.length]); });
-    if (themeToggle) themeToggle.addEventListener('click', () => { const ts = document.getElementById('theme-style'); if(!ts) return; const isDark = ts.href.includes('dark'); ts.href = isDark ? 'fbai_light.css' : 'fbai_dark.css'; themeToggle.innerHTML = isDark ? '🌑' : '☀️'; });
+    if (themeToggle) themeToggle.addEventListener('click', () => { 
+        const ts = document.getElementById('theme-style');
+        if (!ts) return;
+        const currentTheme = ts.href.includes('dark') ? 'dark' : 'light';
+        applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    });
     if (zoomInButton) zoomInButton.addEventListener('click', () => adjustZoom(0.25));
     if (zoomOutButton) zoomOutButton.addEventListener('click', () => adjustZoom(-0.25));
     if (zoomSlider) zoomSlider.addEventListener('input', function() { snapAndSetZoom(parseFloat(this.value)); });
@@ -1078,6 +1322,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else { secondTextLayer = document.getElementById('second-text-layer'); }
 
     try { await db.initDB(); } catch (e) { console.error("DB Init Failed"); return; }
+
+    const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+    applyTheme(savedTheme);
 
     await openBookshelf();
     resetViewerState();

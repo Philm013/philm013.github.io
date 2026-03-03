@@ -28,6 +28,7 @@ export const App = {
     isViewingExemplar: false,
     studentWorkCache: null,
     _editingAssetBank: null, // 'icon' | 'emoji'
+    _isScrollingToModule: false,
     _emojiCategoryFilter: 'all',
     _assetSearchTimer: null,
     
@@ -79,8 +80,11 @@ export const App = {
         categories: [
             { id: 'cat_patterns', name: 'Patterns', color: '#3b82f6' },
             { id: 'cat_causes', name: 'Cause & Effect', color: '#22c55e' },
-            { id: 'cat_systems', name: 'Systems', color: '#a855f7' },
-            { id: 'cat_energy', name: 'Energy', color: '#f59e0b' }
+            { id: 'cat_scale', name: 'Scale & Proportion', color: '#f59e0b' },
+            { id: 'cat_systems', name: 'Systems & Models', color: '#a855f7' },
+            { id: 'cat_energy', name: 'Energy & Matter', color: '#ef4444' },
+            { id: 'cat_structure', name: 'Structure & Function', color: '#06b6d4' },
+            { id: 'cat_stability', name: 'Stability & Change', color: '#ec4899' }
         ],
         defaultCategoriesEnabled: true,
         anonymousMode: false,
@@ -91,7 +95,21 @@ export const App = {
         showDefaultEmojis: true,
         lessonIcons: [],
         lessonEmojis: [],
-        showAllIcons: true
+        showAllIcons: true,
+        activeTips: {
+            'SEP1': 'sep1_explanatory',
+            'SEP2': 'sep2_reasoning',
+            'SEP3': 'sep3_purpose',
+            'SEP4': 'sep4_patterns',
+            'SEP5': 'sep5_relationships',
+            'SEP6': 'sep6_mechanism',
+            'SEP7': 'sep7_support',
+            'SEP8': 'sep8_multimodal'
+        },
+        customTips: [],
+        randomCoachingTips: true,
+        showSepTips: true,
+        showCccTips: true
     },
     
     /**

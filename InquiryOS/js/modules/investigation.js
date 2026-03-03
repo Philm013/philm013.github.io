@@ -8,18 +8,16 @@
 import { App } from '../core/state.js';
 import { saveAndBroadcast } from '../core/sync.js';
 import { renderStudentContent, renderModuleHeader } from '../ui/renderer.js';
-import { toast, deepClone, renderInfoTip } from '../ui/utils.js';
+import { toast, deepClone } from '../ui/utils.js';
 
 export function renderInvestigationModule() {
     return `
         <div class="panels-container">
             <!-- Variables Panel -->
-            <div class="bg-white border-b flex flex-col" data-card-title="Experimental Variables">
-                <div class="p-2 md:p-0">
-                    ${renderModuleHeader('Planning Investigations', 'mdi:microscope', 'SEP3', '', 'In a "fair test," you change one variable (Independent), measure the results (Dependent), and keep everything else the same (Controlled).')}
-                </div>
+            <div class="bg-white border-b flex flex-col h-full" data-card-title="Experimental Variables">
+                ${renderModuleHeader('Experimental Variables', 'mdi:microscope', 'SEP3', '', 'In a "fair test," you change one variable (Independent) and measure the results (Dependent).')}
 
-                <div class="panel-content space-y-6 md:space-y-8 md:!p-6 md:justify-start">
+                <div class="panel-content space-y-6 md:space-y-8 md:!p-6 md:justify-start overflow-y-auto">
                     <div class="grid grid-cols-1 md:grid-cols-1 gap-4 lg:gap-6">
                         ${['independent', 'dependent', 'controlled'].map(type => renderVariableDropZone(type)).join('')}
                     </div>
@@ -28,41 +26,20 @@ export function renderInvestigationModule() {
             </div>
             
             <!-- Data Table Panel -->
-            <div class="bg-white border-b flex flex-col" data-card-title="Data Collection Table">
-                <div class="sticky-panel-header md:hidden">
-                    <div class="flex items-center justify-between w-full">
-                        <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-green-50 text-green-600 shrink-0 border border-green-100/50">
-                                <span class="iconify text-base" data-icon="mdi:table"></span>
-                            </div>
-                            <h3>Data Collection</h3>
-                            ${renderInfoTip('Carefully record your measurements and observations here. You can add columns for different variables and rows for multiple trials!')}
-                        </div>
-                        <div class="flex gap-1">
-                            <button onclick="window.addDataRow()" class="p-1.5 bg-green-100 text-green-700 rounded-lg"><span class="iconify" data-icon="mdi:table-row-plus-after"></span></button>
-                            <button onclick="window.addDataColumn()" class="p-1.5 bg-blue-100 text-blue-700 rounded-lg"><span class="iconify" data-icon="mdi:table-column-plus-after"></span></button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="hidden md:flex items-center justify-between p-6 border-b bg-gray-50/30">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center shadow-sm border border-white">
-                            <span class="iconify text-2xl" data-icon="mdi:table"></span>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-black text-gray-900 uppercase tracking-tight">Data Collection Table</h3>
-                            <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Practice 3: Measurement Log</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="window.addDataColumn()" class="px-4 py-2 bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-100 hover:scale-105 transition-all">Add Column</button>
-                        <button onclick="window.addDataRow()" class="px-4 py-2 bg-green-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-green-100 hover:scale-105 transition-all">Add Row</button>
-                        <button onclick="window.saveDataAsEvidence()" class="px-4 py-2 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-purple-100 hover:scale-105 transition-all">Save Evidence</button>
-                    </div>
-                </div>
+            <div class="bg-white border-b flex flex-col h-full" data-card-title="Data Collection Table">
+                ${renderModuleHeader('Data Collection', 'mdi:table', 'SEP3', `
+                    <button onclick="window.addDataColumn()" class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all" title="Add Column">
+                        <span class="iconify" data-icon="mdi:table-column-plus-after" data-width="18" data-height="18"></span>
+                    </button>
+                    <button onclick="window.addDataRow()" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all" title="Add Row">
+                        <span class="iconify" data-icon="mdi:table-row-plus-after" data-width="18" data-height="18"></span>
+                    </button>
+                    <button onclick="window.saveDataAsEvidence()" class="p-2 text-amber-500 hover:bg-amber-50 rounded-lg transition-all" title="Save Evidence">
+                        <span class="iconify" data-icon="mdi:star-outline" data-width="18" data-height="18"></span>
+                    </button>
+                `, 'Carefully record your measurements and observations here.')}
 
-                <div class="panel-content !p-0 flex-1 min-h-0 flex flex-col">
+                <div class="panel-content !p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
                     <div class="flex-1 overflow-auto custom-scrollbar bg-white">
                         <div class="min-w-full inline-block align-middle">
                             ${renderDataTable()}
@@ -71,12 +48,12 @@ export function renderInvestigationModule() {
                     
                     <div class="p-6 bg-gray-50 border-t flex flex-col gap-3 md:gap-4 shrink-0">
                         <div class="flex items-center gap-2">
-                            <span class="iconify text-gray-400" data-icon="mdi:comment-text-outline"></span>
+                            <span class="iconify text-gray-400" data-icon="mdi:comment-text-outline" data-width="14" data-height="14"></span>
                             <label class="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-widest">Observations & Notes</label>
                         </div>
                         <textarea onchange="window.saveTableComment(this.value)" 
-                            placeholder="Document any observations, anomalies, or reflections on the investigation process..."
-                            class="w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-2xl text-sm md:text-base font-medium text-gray-700 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all shadow-inner"
+                            placeholder="Document any observations or reflections..."
+                            class="w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-2xl text-sm font-medium text-gray-700 focus:border-primary outline-none transition-all shadow-inner"
                             rows="3">${App.work.dataTable?.comment || ''}</textarea>
                     </div>
                 </div>
@@ -96,7 +73,7 @@ function renderVariableDropZone(type) {
     const labels = { independent: 'Independent (Change)', dependent: 'Dependent (Measure)', controlled: 'Controlled (Keep Same)' };
     const vars = (App.work.variables || []).filter(v => v.type === type);
     return `
-        <div class="p-5 bg-${colors[type]}-50/50 rounded-2xl border-2 border-dashed border-${colors[type]}-200 drop-zone min-h-32 transition-all"
+        <div class="p-5 bg-${colors[type]}-50/50 rounded-2xl border-2 border-dashed border-${colors[type]}-200 drop-zone min-h-32 transition-all shrink-0"
             data-type="${type}" ondragover="window.dragOver(event)" ondragleave="window.dragLeave(event)" ondrop="window.dropVar(event)">
             <h4 class="font-black text-${colors[type]}-700 text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-${colors[type]}-500"></span>
@@ -107,7 +84,7 @@ function renderVariableDropZone(type) {
                     <div class="p-3 bg-white rounded-xl border border-${colors[type]}-100 text-sm font-bold text-gray-700 flex justify-between items-center group shadow-sm animate-in zoom-in-95 duration-200">
                         <span>${v.name}</span>
                         <button onclick="window.removeVariable('${v.id}')" class="text-gray-300 hover:text-red-500 transition-colors">
-                            <span class="iconify" data-icon="mdi:close-circle"></span>
+                            <span class="iconify" data-icon="mdi:close-circle" data-width="16" data-height="16"></span>
                         </button>
                     </div>
                 `).join('')}
@@ -120,7 +97,7 @@ function renderVariableDropZone(type) {
 function renderVariableBank() {
     const unassigned = (App.work.variables || []).filter(v => !v.type);
     return `
-        <div class="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+        <div class="p-6 bg-gray-50 rounded-2xl border border-gray-100 shrink-0">
             <h4 class="font-black text-gray-400 text-[10px] uppercase tracking-widest mb-4">Variable Inventory</h4>
             <div class="flex flex-wrap gap-2 mb-6 min-h-[40px]">
                 ${unassigned.map(v => `
@@ -128,13 +105,13 @@ function renderVariableBank() {
                         class="px-4 py-2 bg-white rounded-xl border-2 border-gray-100 text-sm font-bold text-gray-600 cursor-grab hover:border-primary hover:text-primary hover:shadow-md transition-all active:cursor-grabbing">
                         ${v.name}
                     </div>
-                `).join('') || '<p class="text-xs text-gray-400 italic py-2">Add your experimental variables below</p>'}
+                `).join('') || '<p class="text-xs text-gray-400 italic py-2">Add your variables below</p>'}
             </div>
             <div class="flex gap-2">
-                <input type="text" id="newVarInput" placeholder="e.g. Temperature, Time, Growth..." 
+                <input type="text" id="newVarInput" placeholder="e.g. Temperature..." 
                     class="flex-1 px-5 py-3 bg-white border-2 border-gray-100 rounded-2xl text-sm font-medium focus:border-primary focus:outline-none transition-all" 
                     onkeypress="if(event.key==='Enter')window.addVariable()">
-                <button onclick="window.addVariable()" class="px-6 py-3 bg-gray-900 text-white rounded-2xl text-sm font-black hover:bg-black transition-all shadow-lg">Add to Bank</button>
+                <button onclick="window.addVariable()" class="px-6 py-3 bg-gray-900 text-white rounded-2xl text-sm font-black hover:bg-black transition-all shadow-lg uppercase tracking-widest">Add</button>
             </div>
         </div>
     `;
@@ -155,8 +132,8 @@ function renderDataTable() {
                     </tr>
                 </thead>
                 <tbody id="dataTableBody">
-                    ${(dt.rows || []).map((row, ri) => `<tr class="data-row hover:bg-gray-50 transition-colors" data-id="${ri}"><td class="border p-2 text-center text-gray-400 text-[10px] font-bold">${ri + 1}</td><td class="border p-2 text-center"><span class="row-drag-handle iconify text-gray-300 cursor-grab" data-icon="mdi:drag-vertical"></span></td>${(dt.columns || []).map(col => `<td class="border p-0"><input type="${col.type === 'number' ? 'number' : 'text'}" value="${row[col.id] || ''}" onchange="window.updateCell(${ri}, '${col.id}', this.value)" class="data-cell w-full p-3 border-none focus:bg-blue-50 text-sm font-medium text-gray-700 transition-colors" step="${col.type === 'number' ? '0.01' : ''}" placeholder="..."></td>`).join('')}<td class="border p-2 text-center"><div class="relative group/note inline-block"><button onclick="window.toggleRowNote(${ri})" class="p-1.5 rounded-lg hover:bg-gray-100 transition-all ${row.note ? 'text-primary' : 'text-gray-300'}"><span class="iconify" data-icon="${row.note ? 'mdi:note-text' : 'mdi:note-plus-outline'}"></span></button>${row.note ? `<div class="absolute right-full mr-3 top-1/2 -translate-y-1/2 w-56 p-4 bg-gray-900 text-white text-[11px] rounded-2xl shadow-2xl opacity-0 group-hover/note:opacity-100 pointer-events-none transition-all z-50 border border-white/10 scale-95 group-hover/note:scale-100"><p class="font-black text-blue-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Row Note</p>${row.note}</div>` : ''}</div></td>${showFeedback ? `<td class="border p-2 text-center bg-blue-50/20 min-w-[60px]"><div class="relative group/feedback inline-block"><span class="text-2xl">${dt.feedback?.[ri]?.sticker || ''}</span>${dt.feedback?.[ri]?.text ? `<div class="absolute right-full mr-3 top-1/2 -translate-y-1/2 w-64 p-4 bg-blue-600 text-white text-xs rounded-2xl shadow-2xl opacity-0 group-hover/feedback:opacity-100 pointer-events-none transition-all z-50 border border-blue-400 scale-95 group-hover/feedback:scale-100"><p class="font-black text-blue-200 uppercase tracking-widest mb-2 border-b border-blue-500 pb-1">Feedback</p>${dt.feedback[ri].text}</div>` : ''}</div></td>` : ''}<td class="border p-2 text-center"><button onclick="window.deleteDataRow(${ri})" class="p-1.5 text-gray-300 hover:text-red-500 transition-colors"><span class="iconify" data-icon="mdi:trash-can-outline"></span></button></td></tr>`).join('')}
-                    ${(dt.rows || []).length === 0 ? `<tr><td colspan="100%" class="p-12 text-center bg-gray-50/50"><div class="flex flex-col items-center opacity-30"><span class="iconify text-4xl mb-2" data-icon="mdi:table-off"></span><p class="text-[10px] font-black uppercase tracking-widest">No data rows added</p><button onclick="window.addDataRow()" class="mt-4 text-xs font-bold text-primary hover:underline">Add first row</button></div></td></tr>` : ''}
+                    ${(dt.rows || []).map((row, ri) => `<tr class="data-row hover:bg-gray-50 transition-colors" data-id="${ri}"><td class="border p-2 text-center text-gray-400 text-[10px] font-bold">${ri + 1}</td><td class="border p-2 text-center"><span class="row-drag-handle iconify text-gray-300 cursor-grab" data-icon="mdi:drag-vertical" data-width="16" data-height="16"></span></td>${(dt.columns || []).map(col => `<td class="border p-0"><input type="${col.type === 'number' ? 'number' : 'text'}" value="${row[col.id] || ''}" onchange="window.updateCell(${ri}, '${col.id}', this.value)" class="data-cell w-full p-3 border-none focus:bg-blue-50 text-sm font-medium text-gray-700 transition-colors" step="${col.type === 'number' ? '0.01' : ''}" placeholder="..."></td>`).join('')}<td class="border p-2 text-center"><div class="relative group/note inline-block"><button onclick="window.toggleRowNote(${ri})" class="p-1.5 rounded-lg hover:bg-gray-100 transition-all ${row.note ? 'text-primary' : 'text-gray-300'}"><span class="iconify" data-icon="${row.note ? 'mdi:note-text' : 'mdi:note-plus-outline'}" data-width="18" data-height="18"></span></button>${row.note ? `<div class="absolute right-full mr-3 top-1/2 -translate-y-1/2 w-56 p-4 bg-gray-900 text-white text-[11px] rounded-2xl shadow-2xl opacity-0 group-hover/note:opacity-100 pointer-events-none transition-all z-50 border border-white/10 scale-95 group-hover/note:scale-100"><p class="font-black text-blue-400 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Row Note</p>${row.note}</div>` : ''}</div></td>${showFeedback ? `<td class="border p-2 text-center bg-blue-50/20 min-w-[60px]"><div class="relative group/feedback inline-block"><span class="text-2xl">${dt.feedback?.[ri]?.sticker || ''}</span>${dt.feedback?.[ri]?.text ? `<div class="absolute right-full mr-3 top-1/2 -translate-y-1/2 w-64 p-4 bg-blue-600 text-white text-xs rounded-2xl shadow-2xl opacity-0 group-hover/feedback:opacity-100 pointer-events-none transition-all z-50 border border-blue-400 scale-95 group-hover/feedback:scale-100"><p class="font-black uppercase tracking-widest mb-2 border-b border-white/20 pb-1">Teacher Says</p>${dt.feedback[ri].text}</div>` : ''}</div></td>` : ''}<td class="border p-2 text-center"><button onclick="window.deleteDataRow(${ri})" class="p-1.5 text-gray-200 hover:text-red-500 transition-all"><span class="iconify" data-icon="mdi:trash-can-outline" data-width="16" data-height="16"></span></button></td></tr>`).join('')}
+                    ${(dt.rows || []).length === 0 ? `<tr><td colspan="100%" class="p-12 text-center bg-gray-50/50"><div class="flex flex-col items-center opacity-30"><span class="iconify text-4xl mb-2" data-icon="mdi:table-off" data-width="40" data-height="40"></span><p class="text-[10px] font-black uppercase tracking-widest">No data rows added</p><button onclick="window.addDataRow()" class="mt-4 text-xs font-bold text-primary hover:underline">Add first row</button></div></td></tr>` : ''}
                 </tbody>
             </table>
         </div>
@@ -187,5 +164,5 @@ export async function deleteDataRow(index) { App.work.dataTable.rows.splice(inde
 export function openRowNoteModal(index) { App.editingRowIndex = index; const modal = document.getElementById('rowNoteModal'), input = document.getElementById('rowNoteText'); if (modal && input) { input.value = App.work.dataTable.rows[index].note || ''; modal.classList.remove('hidden'); modal.classList.add('flex'); input.focus(); } }
 export function closeRowNoteModal() { const modal = document.getElementById('rowNoteModal'); if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); } App.editingRowIndex = null; }
 export async function saveRowNote() { const index = App.editingRowIndex, val = document.getElementById('rowNoteText')?.value.trim(); if (index !== null && index !== undefined) { App.work.dataTable.rows[index].note = val || ''; await saveAndBroadcast('dataTable', App.work.dataTable); closeRowNoteModal(); renderStudentContent(); toast('Note saved', 'success'); } }
-export async function saveDataAsEvidence() { if (!App.work.dataTable.rows.some(r => Object.values(r).some(v => v))) { toast('Add some data first!', 'warning'); return; } const evidence = { id: 'ev_' + Date.now(), type: 'data', title: 'Data Table', description: `${App.work.dataTable.rows.length} rows, ${App.work.dataTable.columns.length} columns`, icon: 'mdi:table', data: deepClone(App.work.dataTable), author: App.user.name, time: Date.now() }; App.work.evidence.push(evidence); await saveAndBroadcast('evidence', App.work.evidence); toast('Data saved!', 'success'); }
+export async function saveDataAsEvidence() { if (!App.work.dataTable?.rows?.some(r => Object.values(r).some(v => v))) { toast('Add some data first!', 'warning'); return; } const evidence = { id: 'ev_' + Date.now(), type: 'data', title: 'Data Table', description: `${App.work.dataTable.rows.length} rows, ${App.work.dataTable.columns.length} columns`, icon: 'mdi:table', data: deepClone(App.work.dataTable), author: App.user.name, time: Date.now() }; App.work.evidence.push(evidence); await saveAndBroadcast('evidence', App.work.evidence); toast('Data saved!', 'success'); }
 export function exportToCSV() { const dt = App.work.dataTable; if (!dt.rows.length) { toast('No data to export', 'warning'); return; } const headers = dt.columns.map(c => `"${c.name}${c.unit ? ' (' + c.unit + ')' : ''}"`).join(','), rows = dt.rows.map(row => { return dt.columns.map(col => `"${row[col.id] || ''}"`).join(','); }); const csvContent = [headers, ...rows].join('\n'), blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }), url = URL.createObjectURL(blob), link = document.createElement('a'); link.setAttribute('href', url); link.setAttribute('download', `InquiryOS_Data_${new Date().toISOString().split('T')[0]}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link); toast('CSV Exported!', 'success'); }

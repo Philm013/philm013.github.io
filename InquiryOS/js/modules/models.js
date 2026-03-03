@@ -26,7 +26,6 @@ export function renderModelsModule() {
         activeSets.forEach(set => {
             if (App.teacherSettings.emojiSets[set]) availableEmojis = [...availableEmojis, ...App.teacherSettings.emojiSets[set]];
         });
-        // Also add the defaultEmojis specifically mentioned in the requirement if not redundant
         if (App.teacherSettings.defaultEmojis) availableEmojis = [...new Set([...availableEmojis, ...App.teacherSettings.defaultEmojis])];
     }
     const lessonEmojis = App.teacherSettings.lessonEmojis || [];
@@ -37,22 +36,26 @@ export function renderModelsModule() {
     return `
         <div class="panels-container">
             <!-- Canvas Panel -->
-            <div class="bg-white border-b flex flex-col" data-card-title="Model Canvas">
-                <div class="p-2 md:p-0">
-                    ${renderModuleHeader(isFullscreen ? 'Models' : 'Developing Models', 'mdi:cube-outline', 'SEP2', `
-                        <button onclick="window.toggleCanvasFullscreen()" class="p-2 text-primary hover:bg-blue-50 rounded-lg transition-all" title="Fullscreen Canvas">
-                            <span class="iconify" data-icon="mdi:arrow-expand-all"></span>
-                        </button>
-                    `, 'A scientific model is not just a drawing. It shows components and how they interact to explain why something happens.')}
-                </div>
+            <div class="bg-white border-b flex flex-col h-full" data-card-title="Model Canvas">
+                ${renderModuleHeader(isFullscreen ? 'Models' : 'Developing Models', 'mdi:cube-outline', 'SEP2', `
+                    <button onclick="window.clearAllModelElements()" class="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all" title="Clear Canvas">
+                        <span class="iconify" data-icon="mdi:trash-can-outline" data-width="18" data-height="18"></span>
+                    </button>
+                    <button onclick="window.saveModelAsEvidence()" class="p-2 text-amber-500 hover:bg-amber-50 rounded-lg transition-all" title="Save Evidence">
+                        <span class="iconify" data-icon="mdi:star-outline" data-width="18" data-height="18"></span>
+                    </button>
+                    <button onclick="window.toggleCanvasFullscreen()" class="p-2 text-primary hover:bg-blue-50 rounded-lg transition-all" title="Fullscreen Canvas">
+                        <span class="iconify" data-icon="mdi:arrow-expand-all" data-width="18" data-height="18"></span>
+                    </button>
+                `, 'A scientific model shows components and how they interact to explain why something happens.')}
 
                 <div id="modelContextBar" class="bg-white border-b p-1.5 md:p-2 flex items-center gap-3 md:gap-4 overflow-x-auto min-h-[48px] md:min-h-[56px] flex-nowrap scrollbar-hide touch-pan-x shrink-0">
                     ${renderModelContextBar(availableIcons, availableEmojis)}
                 </div>
 
                 <div class="flex-1 relative overflow-hidden bg-slate-50 min-h-0">
-                    <!-- Floating Palette -->
-                    <div class="absolute left-3 top-3 z-[60] flex flex-col gap-2 md:hidden">
+                    <!-- Floating Palette - Now Always Visible on both mobile and desktop if not overlapping -->
+                    <div class="absolute left-3 top-3 z-[60] flex flex-col gap-2">
                         <button onclick="window.toggleToolDrawer()" class="w-10 h-10 bg-primary text-white rounded-full shadow-lg flex items-center justify-center">
                             <span class="iconify" data-icon="${App.modelState.drawerOpen ? 'mdi:close' : 'mdi:pencil'}"></span>
                         </button>
@@ -84,28 +87,10 @@ export function renderModelsModule() {
             </div>
 
             <!-- Explanation Panel -->
-            <div class="bg-white border-b flex flex-col" data-card-title="Model Explanations">
-                <div class="sticky-panel-header md:hidden">
-                    <div class="flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-purple-50 text-purple-600 shrink-0 border border-purple-100/50">
-                            <span class="iconify text-base" data-icon="mdi:comment-quote"></span>
-                        </div>
-                        <h3>Model Explanations</h3>
-                        ${renderInfoTip('Use this space to write down exactly how the relationships in your model explain the phenomenon.')}
-                    </div>
-                </div>
+            <div class="bg-white border-b flex flex-col h-full" data-card-title="Model Explanations">
+                ${renderModuleHeader('Model Explanations', 'mdi:comment-quote', 'SEP2', '', 'Use this space to write down exactly how the relationships in your model explain the phenomenon.')}
                 
-                <div class="hidden md:flex p-6 border-b bg-gray-50/50 items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-100 text-purple-600 shadow-sm border border-white">
-                        <span class="iconify text-xl" data-icon="mdi:comment-quote"></span>
-                    </div>
-                    <div>
-                        <h4 class="font-black text-sm uppercase text-gray-700 tracking-tight">Model Explanations</h4>
-                        <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Scientific Storytelling</p>
-                    </div>
-                </div>
-
-                <div class="panel-content space-y-6 md:space-y-8 md:!p-6">
+                <div class="panel-content space-y-6 md:space-y-8 md:!p-6 overflow-y-auto">
                     <div class="space-y-2">
                         <label class="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-widest ml-1">The Big Picture</label>
                         <textarea onchange="window.saveGeneralExplanation(this.value)" 
@@ -451,7 +436,7 @@ export function startConnection(event, nodeId, handle) {
     event.stopPropagation(); App.modelState.connecting = { from: nodeId, fromHandle: handle };
     const allObjects = [...App.work.modelNodes, ...App.work.modelShapes, ...App.work.modelNotes, ...App.work.modelStickers];
     document.onpointermove = (e) => { const coords = getCanvasCoords(e), fromObj = allObjects.find(n => n.id === nodeId), start = getHandlePosition(fromObj, handle), tempSvg = document.getElementById('tempConnectionSvg'); if (tempSvg) tempSvg.innerHTML = `<line x1="${start.x}" y1="${start.y}" x2="${coords.x}" y2="${coords.y}" stroke="#3b82f6" stroke-width="3" stroke-dasharray="6" />`; };
-    document.onpointerup = (e) => { const targetEl = e.target.closest('.model-node, .model-shape, .note-shape, [group/sticker]'), handleEl = e.target.closest('.node-handle'), targetParent = targetEl || handleEl?.closest('.model-node, .model-shape, .note-shape, [group/sticker]'), toId = targetParent?.dataset.id, toHandle = handleEl ? Array.from(handleEl.classList).find(c => ['top', 'bottom', 'left', 'right'].includes(c)) : 'center'; if (toId && toId !== nodeId) { App.work.modelConnections.push({ id: 'conn_' + Date.now(), from: nodeId, fromHandle: handle, to: toId, toHandle: toHandle }); saveAndBroadcast('modelConnections', App.work.modelConnections); } document.onpointermove = document.onpointerup = null; const tempSvg = document.getElementById('tempConnectionSvg'); if (tempSvg) tempSvg.innerHTML = ''; renderModelElements(); };
+    document.onpointerup = (e) => { const targetEl = e.target.closest('.model-node, .model-shape, .note-shape, .model-sticker'), handleEl = e.target.closest('.node-handle'), targetParent = targetEl || handleEl?.closest('.model-node, .model-shape, .note-shape, .model-sticker'), toId = targetParent?.dataset.id, toHandle = handleEl ? Array.from(handleEl.classList).find(c => ['top', 'bottom', 'left', 'right'].includes(c)) : 'center'; if (toId && toId !== nodeId) { App.work.modelConnections.push({ id: 'conn_' + Date.now(), from: nodeId, fromHandle: handle, to: toId, toHandle: toHandle }); saveAndBroadcast('modelConnections', App.work.modelConnections); } document.onpointermove = document.onpointerup = null; const tempSvg = document.getElementById('tempConnectionSvg'); if (tempSvg) tempSvg.innerHTML = ''; renderModelElements(); };
 }
 
 export async function modelCanvasMouseDown(event) {
@@ -460,7 +445,7 @@ export async function modelCanvasMouseDown(event) {
     else if (App.modelState.currentTool === 'stamp' && App.modelState.selectedIcon) { const size = 60, sticker = { id: 's_' + Date.now(), emoji: App.modelState.selectedIcon, x: x - size / 2, y: y - size / 2, width: size, height: size, rotation: 0 }; App.work.modelStickers.push(sticker); await saveAndBroadcast('modelStickers', App.work.modelStickers); renderModelElements(); App.modelState.selectedItems = [{ type: 'stamp', id: sticker.id }]; renderSelectionOverlay(); }
     else if (App.modelState.currentTool === 'explain') { const point = { id: 'ex_' + Date.now(), x, y, text: '' }; App.work.modelExplanations.push(point); await saveAndBroadcast('modelExplanations', App.work.modelExplanations); renderModelElements(); }
     else if (App.modelState.currentTool === 'pen') App.modelState.currentPath = [{ x, y }];
-    else if (App.modelState.currentTool === 'select' && !event.target.closest('.model-node, .model-shape, .note-shape, .group/sticker')) { if (!event.shiftKey) App.modelState.selectedItems = []; renderModelElements(); }
+    else if (App.modelState.currentTool === 'select' && !event.target.closest('.model-node, .model-shape, .note-shape, .model-sticker')) { if (!event.shiftKey) App.modelState.selectedItems = []; renderModelElements(); }
 }
 
 export function modelCanvasMouseMove(event) {
@@ -513,7 +498,7 @@ export async function searchIcons() {
         } else if (prefix) { const response = await fetch(`https://api.iconify.design/collection?prefix=${prefix}`), data = await response.json(); if (data.uncategorized) icons = data.uncategorized.slice(0, 150).map(name => `${prefix}:${name}`); else if (data.categories) Object.values(data.categories).forEach(catIcons => { if (icons.length < 150) icons = [...icons, ...catIcons.slice(0, 30).map(name => `${prefix}:${name}`)]; }); }
         if (countDisplay) countDisplay.textContent = `${icons.length} icons found`; status?.classList.add('hidden');
         grid.innerHTML = icons.map(icon => `<button onclick="window.selectIcon('${icon}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-primary hover:bg-blue-50 transition-all flex flex-col items-center justify-center group gap-1" title="${icon}"><span class="iconify text-3xl text-gray-600 group-hover:text-primary group-hover:scale-110 transition-all" data-icon="${icon}"></span><span class="text-[7px] text-gray-400 uppercase tracking-tighter truncate w-full group-hover:text-primary">${icon.split(':')[0]}</span></button>`).join('');
-    } catch (e) { status?.classList.add('hidden'); toast('Search unavailable', 'error'); }
+    } catch { status?.classList.add('hidden'); toast('Search unavailable', 'error'); }
 }
 export function selectIcon(icon) { App.modelState.selectedIcon = icon; closeIconPicker(); renderStudentContent(); toast(`Icon selected: ${icon.split(':').pop()}`, 'success'); }
 export function selectIconForNode(icon) { App.modelState.selectedIcon = icon; renderStudentContent(); }

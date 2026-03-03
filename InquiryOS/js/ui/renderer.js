@@ -7,8 +7,8 @@ import { App, getInitialWorkState } from '../core/state.js';
 import { dbGetByIndex, STORE_USERS } from '../core/storage.js';
 import { renderNavigation } from './navigation.js';
 import { saveToStorage } from '../core/sync.js';
-import { toast, deepClone, renderInfoTip } from './utils.js';
-
+import { toast, deepClone } from './utils.js';
+import { getSeptipById, SEPTipsLibrary, getCccTipById } from '../core/tips_library.js';
 
 // Import Student Module Renderers
 import { renderOverviewModule } from '../modules/overview.js';
@@ -30,6 +30,7 @@ import {
     renderTeacherStudents,
     renderTeacherAccess,
     renderSessionSettings,
+    renderCoachingManager,
     forceAllToModule
 } from '../teacher/dashboard.js';
 import { renderTeacherNoticeBoard, renderModeration, renderCategoryManager } from '../teacher/noticeboard.js';
@@ -144,45 +145,135 @@ export function updateModeUI() {
 /**
  * Renders all student modules in a continuous vertical stack.
  */
+export function renderDesktopNav() {
+    if (window.innerWidth <= 768 || App.mode !== 'student') return '';
+    
+    const modules = [
+        { id: 'overview', icon: 'mdi:view-dashboard' },
+        { id: 'questions', icon: 'mdi:help-circle' },
+        { id: 'models', icon: 'mdi:cube-outline' },
+        { id: 'investigation', icon: 'mdi:microscope' },
+        { id: 'analysis', icon: 'mdi:chart-line' },
+        { id: 'math', icon: 'mdi:calculator' },
+        { id: 'explanations', icon: 'mdi:lightbulb-on' },
+        { id: 'argument', icon: 'mdi:forum' },
+        { id: 'communication', icon: 'mdi:share-variant' }
+    ];
+    
+    const currentIndex = modules.findIndex(m => m.id === App.currentModule);
+    
+    return `
+        <div class="desktop-nav-container" role="navigation" aria-label="Quick Practice Navigation">
+            <button onclick="window.navigateModule(-1)" class="nav-arrow-btn" ${currentIndex === 0 ? 'disabled opacity-30' : ''} aria-label="Previous Practice">
+                <span class="iconify" data-icon="mdi:chevron-up" aria-hidden="true" data-width="20" data-height="20"></span>
+            </button>
+            <div class="nav-dot-container">
+                ${modules.map((m, i) => {
+                    const locked = !App.teacherSettings.moduleAccess[m.id] && m.id !== 'overview';
+                    const isActive = App.currentModule === m.id;
+                    return `
+                        <button onclick="${locked ? '' : `window.showStudentModule('${m.id}')`}" 
+                            class="desktop-nav-dot ${isActive ? 'active' : ''} ${locked ? 'opacity-20' : ''}" 
+                            title="${m.id.toUpperCase()}"
+                            aria-label="Go to ${m.id}"
+                            aria-current="${isActive ? 'step' : 'false'}"
+                            ${locked ? 'aria-disabled="true"' : ''}></button>
+                    `;
+                }).join('')}
+            </div>
+            <button onclick="window.navigateModule(1)" class="nav-arrow-btn" ${currentIndex === modules.length - 1 ? 'disabled opacity-30' : ''} aria-label="Next Practice">
+                <span class="iconify" data-icon="mdi:chevron-down" aria-hidden="true" data-width="20" data-height="20"></span>
+            </button>
+        </div>
+    `;
+}
+
 export function renderStudentContent() {
-    if (App.mode === 'teacher' && (App.isExemplarMode || App.viewingStudentId)) { renderTeacherContent(); return; }
+    if (App.mode === 'teacher' && (App.viewingStudentId || App.isExemplarMode)) { renderTeacherContent(); return; }
     if (App.mode === 'student' && App.sharedData.currentPresentation) { renderPresentationLayer(); return; }
     renderStatusBanner();
-    
+
     const content = document.getElementById('mainContent');
     if (!content) return;
-    
-    content.innerHTML = renderStudentContentHtml();
+
+    const isMobile = window.innerWidth <= 768;
+
+    // Desktop Nav Overlay
+    if (!isMobile) {
+        let navContainer = document.getElementById('desktopNavOverlay');
+        if (!navContainer) {
+            navContainer = document.createElement('div');
+            navContainer.id = 'desktopNavOverlay';
+            document.body.appendChild(navContainer);
+        }
+        navContainer.innerHTML = renderDesktopNav();
+    } else {
+        document.getElementById('desktopNavOverlay')?.remove();
+    }
+
+    if (isMobile) {
+        // Mobile: Full continuous stack for gesture navigation
+        const scrollPos = content.scrollTop;
+        content.innerHTML = renderStudentContentHtml();
+        content.scrollTop = scrollPos;
+        content.style.scrollSnapType = 'y mandatory';
+    } else {
+        // Desktop: Dashboard style - ONLY active module
+        content.innerHTML = renderActiveModuleHtml();
+        content.style.scrollSnapType = 'none'; // Grid handles layout
+    }
 
     setTimeout(() => {
         initModelCanvas(); initChart(); if (window.initDataTableSortable) window.initDataTableSortable();
-        setupModuleObserver();
-        if (!App._isScrollingToModule) {
-            const target = document.querySelector(`[data-card-title="${App.currentModule === 'overview' ? 'The Mystery' : getModuleFirstPanelTitle(App.currentModule)}"]`);
-            if (target) { App._isScrollingToModule = true; target.scrollIntoView({ behavior: 'auto' }); setTimeout(() => { App._isScrollingToModule = false; }, 500); }
-        }
+        if (isMobile) setupModuleObserver();
+        updateUIForActiveModule(App.currentModule);
     }, 50);
 }
 
 /**
- * Returns the HTML for all student modules as a string.
+ * Renders ONLY the currently active module for Desktop Dashboard view.
+ * Now allows CSS Grid to handle multi-panel layouts (Explanations side-by-side with Canvas, etc.)
+ */
+export function renderActiveModuleHtml() {
+    const renderers = { overview: renderOverviewModule, questions: renderQuestionsModule, models: renderModelsModule, investigation: renderInvestigationModule, analysis: renderAnalysisModule, math: renderMathModule, explanations: renderExplanationsModule, argument: renderArgumentModule, communication: renderCommunicationModule };
+    const seps = { overview: '', questions: 'SEP1', models: 'SEP2', investigation: 'SEP3', analysis: 'SEP4', math: 'SEP5', explanations: 'SEP6', argument: 'SEP7', communication: 'SEP8' };
+    
+    const id = App.currentModule || 'overview';
+    
+    return `
+        <div class="module-view-section active-dashboard" data-module-id="${id}">
+            <div class="dashboard-content">
+                ${renderCoachingBar(seps[id])}
+                <div class="flex-1 min-h-0 overflow-hidden h-full">
+                    ${renderers[id]()}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Returns the HTML for all student modules as a string (Mobile Stack).
  */
 export function renderStudentContentHtml() {
     const modules = ['overview', 'questions', 'models', 'investigation', 'analysis', 'math', 'explanations', 'argument', 'communication'];
     const renderers = { overview: renderOverviewModule, questions: renderQuestionsModule, models: renderModelsModule, investigation: renderInvestigationModule, analysis: renderAnalysisModule, math: renderMathModule, explanations: renderExplanationsModule, argument: renderArgumentModule, communication: renderCommunicationModule };
+    const seps = { overview: '', questions: 'SEP1', models: 'SEP2', investigation: 'SEP3', analysis: 'SEP4', math: 'SEP5', explanations: 'SEP6', argument: 'SEP7', communication: 'SEP8' };
 
     return modules.map(id => {
         const isLocked = !App.teacherSettings.moduleAccess[id] && id !== 'overview';
-        return isLocked ? '' : renderers[id]();
+        if (isLocked) return '';
+        const label = id.charAt(0).toUpperCase() + id.slice(1);
+        return `
+            <section class="module-view-section" data-module-id="${id}" aria-label="${label} Practice" role="region">
+                ${renderCoachingBar(seps[id])}
+                ${renderers[id]()}
+            </section>
+        `;
     }).join('');
 }
 
 window.renderStudentContentHtml = renderStudentContentHtml;
-
-function getModuleFirstPanelTitle(moduleId) {
-    const map = { overview: 'The Mystery', questions: 'Phenomenon', models: 'Model Canvas', investigation: 'Experimental Variables', analysis: 'Chart Designer', math: 'Calculator', explanations: 'Evidence Bank', argument: 'Argument Board', communication: 'Poster Builder' };
-    return map[moduleId];
-}
 
 function setupModuleObserver() {
     const content = document.getElementById('mainContent');
@@ -191,28 +282,18 @@ function setupModuleObserver() {
         if (App._isScrollingToModule) return;
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                const moduleId = findModuleByPanelTitle(entry.target.dataset.cardTitle);
-                if (moduleId && App.currentModule !== moduleId) { App.currentModule = moduleId; updateUIForActiveModule(moduleId); }
+                let moduleId = entry.target.dataset.moduleId;
+                if (moduleId && App.currentModule !== moduleId) { 
+                    App.currentModule = moduleId; 
+                    updateUIForActiveModule(moduleId); 
+                    const nav = document.getElementById('desktopNavOverlay');
+                    if (nav) nav.innerHTML = renderDesktopNav();
+                }
             }
         });
     }, { root: content, rootMargin: '-20% 0px -70% 0px', threshold: 0 });
-    content.querySelectorAll('[data-card-title]').forEach(panel => observer.observe(panel));
-}
-
-function findModuleByPanelTitle(title) {
-    const reverseMap = { 
-        'The Mystery': 'overview', 'Scientific Story': 'overview', 'Research Progress': 'overview', 'Quick Actions': 'overview', 
-        'Phenomenon': 'questions', 'Inquiry Board': 'questions', 'Driving Questions': 'questions', 
-        'Classroom Board': 'noticeboard',
-        'Model Canvas': 'models', 'Model Explanations': 'models', 
-        'Experimental Variables': 'investigation', 'Data Collection Table': 'investigation', 
-        'Chart Designer': 'analysis', 'Statistical Summary': 'analysis', 
-        'Calculator': 'math', 'Mathematical Assets': 'math', 'Unit Conversion': 'math', 'Computational Log': 'math', 
-        'Evidence Bank': 'explanations', 'Scientific Claim': 'explanations', 'Evidence Description': 'explanations', 'Reasoning': 'explanations', 
-        'Argument Board': 'argument', 
-        'Poster Builder': 'communication' 
-    };
-    return reverseMap[title];
+    
+    content.querySelectorAll('.module-view-section').forEach(el => observer.observe(el));
 }
 
 function updateUIForActiveModule(moduleId) {
@@ -255,18 +336,22 @@ function updateUIForActiveModule(moduleId) {
  * Renders all teacher modules in a continuous vertical stack.
  */
 export async function renderTeacherContent() {
-    if (App.isExemplarMode) {
+    if (App.isExemplarMode && !App.viewingStudentId) {
         const content = document.getElementById('mainContent');
         if (content) {
+            const scrollPos = content.scrollTop;
             content.innerHTML = await renderActivityDashboard();
-            setTimeout(() => { if (App.currentModule === 'models') initModelCanvas(); if (App.currentModule === 'analysis') initChart(); }, 50);
+            content.scrollTop = scrollPos;
+            setTimeout(() => { if (App.currentModule === 'models') initModelCanvas(); if (App.currentModule === 'analysis') initChart(); content.scrollTop = scrollPos; }, 50);
         }
         return;
     }
 
     const content = document.getElementById('mainContent');
     if (!content) return;
-    
+
+    const scrollPos = content.scrollTop;
+
     if (['livemodels', 'livedata', 'livegeneric'].includes(App.teacherModule) || App._editingAssetBank) {
         content.style.scrollSnapType = 'none';
         const liveRenderer = App._editingAssetBank ? renderIconManager : { livemodels: renderLiveModels, livedata: renderLiveData, livegeneric: renderLiveGeneric }[App.teacherModule];
@@ -277,8 +362,8 @@ export async function renderTeacherContent() {
 
     content.style.scrollSnapType = 'y mandatory';
 
-    const modules = ['overview', 'lessons', 'snapshots', 'students', 'access', 'noticeboard', 'moderation', 'categories', 'icons', 'ngss', 'settings'];
-    const renderers = { overview: renderTeacherOverview, lessons: renderTeacherLessons, snapshots: renderTeacherSnapshots, students: renderTeacherStudents, access: renderTeacherAccess, noticeboard: renderTeacherNoticeBoard, moderation: renderModeration, categories: renderCategoryManager, icons: renderIconManager, ngss: renderNGSSBrowser, settings: renderSessionSettings };
+    const modules = ['overview', 'lessons', 'snapshots', 'students', 'access', 'noticeboard', 'coaching', 'moderation', 'categories', 'icons', 'ngss', 'settings'];
+    const renderers = { overview: renderTeacherOverview, lessons: renderTeacherLessons, snapshots: renderTeacherSnapshots, students: renderTeacherStudents, access: renderTeacherAccess, noticeboard: renderTeacherNoticeBoard, coaching: renderCoachingManager, moderation: renderModeration, categories: renderCategoryManager, icons: renderIconManager, ngss: renderNGSSBrowser, settings: renderSessionSettings };
 
     const stack = await Promise.all(modules.map(async id => {
         const html = await renderers[id]();
@@ -286,16 +371,18 @@ export async function renderTeacherContent() {
     }));
 
     content.innerHTML = stack.join('');
-
-    setTimeout(() => {
-        setupTeacherModuleObserver();
-        if (!App._isScrollingToModule) {
-            const target = document.querySelector(`[data-teacher-module="${App.teacherModule}"]`);
-            if (target) { App._isScrollingToModule = true; target.scrollIntoView({ behavior: 'auto' }); setTimeout(() => { App._isScrollingToModule = false; }, 500); }
-        }
-    }, 50);
+    
+    // Only restore scroll position if we are not explicitly navigating/scrolling to a module
+    if (!App._isScrollingToModule) {
+        content.scrollTop = scrollPos;
+        setTimeout(() => {
+            setupTeacherModuleObserver();
+            if (!App._isScrollingToModule) content.scrollTop = scrollPos;
+        }, 50);
+    } else {
+        setTimeout(() => setupTeacherModuleObserver(), 50);
+    }
 }
-
 function setupTeacherModuleObserver() {
     const content = document.getElementById('mainContent');
     if (!content || App.mode !== 'teacher') return;
@@ -314,7 +401,7 @@ function setupTeacherModuleObserver() {
 function updateUIForActiveTeacherModule(moduleId) {
     const header = document.querySelector('#appHeader h1');
     if (header) {
-        const labels = { overview: 'Classroom Command', lessons: 'Lesson Designer', snapshots: 'Activity Snapshots', students: 'Student Management', access: 'Access Control', noticeboard: 'Inquiry Board', moderation: 'Class Moderation', categories: 'Category Architect', icons: 'Asset Architect', ngss: 'NGSS Navigator', settings: 'Session Settings' };
+        const labels = { overview: 'Classroom Command', lessons: 'Lesson Designer', snapshots: 'Activity Snapshots', students: 'Student Management', access: 'Access Control', noticeboard: 'Inquiry Board', coaching: 'Coaching Tips', moderation: 'Class Moderation', categories: 'Category Architect', icons: 'Asset Architect', ngss: 'NGSS Navigator', settings: 'Session Settings' };
         header.textContent = labels[moduleId] || 'InquiryOS';
     }
 
@@ -334,74 +421,99 @@ function updateUIForActiveTeacherModule(moduleId) {
 
 export function renderModuleHeader(title, icon, sep, customButtons = '', infoTip = '') {
     const isFullscreen = !!document.fullscreenElement;
+    const isTeacher = App.mode === 'teacher';
     const activeCcc = App.teacherSettings?.categories?.find(c => c.id.startsWith('cat_'));
+    
     return `
-        <div class="mb-0 md:mb-4 lg:mb-6 flex flex-col shrink-0 md:border-0 bg-white">
-            <div class="flex flex-row items-center justify-between gap-2 p-2 md:p-0 sticky top-0 md:relative z-[70] md:z-0 bg-white border-b md:border-0">
-                <div class="flex items-center gap-2 overflow-hidden">
-                    <div class="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-primary to-secondary rounded-lg md:rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all">
-                        <span class="iconify text-white text-lg md:text-xl lg:text-2xl" data-icon="${icon}"></span>
-                    </div>
-                    <div class="flex flex-col md:flex-row md:items-center md:gap-3 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <h2 class="text-sm md:text-xl lg:text-3xl font-black text-gray-900 truncate tracking-tight leading-tight">${title}</h2>
-                            ${infoTip ? renderInfoTip(infoTip) : ''}
-                        </div>
-                        <div class="flex items-center gap-1.5 mt-0.5 md:mt-0">
-                            ${sep ? `<span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-blue-50 text-blue-600 rounded text-[7px] md:text-[10px] lg:text-xs font-black border border-blue-100 uppercase tracking-widest">${sep}</span>` : ''}
-                            ${activeCcc ? `<span class="px-1.5 py-0.5 md:px-2 md:py-1 bg-amber-50 text-amber-600 rounded text-[7px] md:text-[10px] lg:text-xs font-black border border-amber-100 uppercase tracking-widest">${activeCcc.name}</span>` : ''}
-                        </div>
-                    </div>
+        <div class="sticky top-0 z-[80] flex flex-row items-center justify-between gap-2 p-3 bg-white/95 backdrop-blur-md border-b border-gray-100 shrink-0">
+            <div class="flex items-center gap-2.5 overflow-hidden">
+                <div class="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                    <span class="iconify text-white text-lg md:text-xl" data-icon="${icon}" data-width="20" data-height="20"></span>
                 </div>
-                <div class="flex items-center gap-1 md:gap-2">
-                    ${App.teacherSettings.exemplars?.[App.currentModule] && App.mode === 'student' ? `<button onclick="window.toggleExemplarView()" class="px-2 py-1.5 md:px-4 md:py-2 bg-purple-50 text-purple-600 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-purple-100 transition-all"><span class="iconify" data-icon="mdi:lightbulb-on"></span><span class="hidden sm:inline">Teacher Example</span></button>` : ''}
-                    ${customButtons}
-                    <button onclick="window.toggleModuleFullscreen()" class="p-2 text-gray-400 hover:text-gray-600 transition-colors"><span class="iconify text-xl" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}"></span></button>
+                <div class="flex flex-col min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-xs md:text-sm font-black text-gray-900 truncate tracking-tight uppercase">${title}</h2>
+                        ${sep ? `<span class="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[7px] md:text-[8px] font-black border border-blue-100 uppercase tracking-widest">${sep}</span>` : ''}
+                    </div>
+                    ${activeCcc ? `
+                        <div class="flex items-center gap-1">
+                            <span class="text-[7px] md:text-[8px] font-black text-amber-600 uppercase tracking-widest truncate">${activeCcc.name}</span>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
-            ${App.mode === 'student' ? renderCoachingTips(sep, activeCcc) : ''}
+            
+            <div class="flex items-center gap-1.5 md:gap-2">
+                ${App.teacherSettings.exemplars?.[App.currentModule] && App.mode === 'student' ? `
+                    <button onclick="window.toggleExemplarView()" class="p-2 md:px-3 md:py-1.5 bg-purple-50 text-purple-600 rounded-lg text-[8px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 hover:bg-purple-100 transition-all">
+                        <span class="iconify" data-icon="mdi:lightbulb-on" data-width="14" data-height="14"></span>
+                        <span class="hidden sm:inline">Exemplar</span>
+                    </button>
+                ` : ''}
+                
+                ${customButtons}
+                
+                ${infoTip ? `
+                    <button onclick="window.toast('${infoTip}', 'info')" class="p-2 text-blue-400 hover:text-primary transition-colors">
+                        <span class="iconify text-lg" data-icon="mdi:information-outline" data-width="18" data-height="18"></span>
+                    </button>
+                ` : ''}
+
+                <button onclick="window.toggleModuleFullscreen()" class="p-2 text-gray-300 hover:text-gray-600 transition-colors">
+                    <span class="iconify text-lg md:text-xl" data-icon="${isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'}" data-width="18" data-height="18"></span>
+                </button>
+            </div>
         </div>`;
 }
 
-function renderCoachingTips(sep, ccc) {
-    const sepTip = getCoachingTipsData(sep);
-    const cccTip = ccc ? getCccTipsData(ccc.id) : null;
-    if (!sepTip && !cccTip) return '';
+export function renderCoachingBar(sepId) {
+    const settings = App.teacherSettings;
+    if (!settings.showSepTips && !settings.showCccTips) return '';
+    if (App.mode !== 'student') return '';
+
+    const activeCcc = App.teacherSettings?.categories?.find(c => c.id.startsWith('cat_'));
+    
+    let sepTip = null;
+    const activeSepTipId = settings.activeTips?.[sepId];
+    if (settings.showSepTips && activeSepTipId !== 'none') {
+        sepTip = getSeptipById(activeSepTipId);
+        if (!sepTip && settings.randomCoachingTips) {
+            const elements = SEPTipsLibrary[sepId]?.elements || [];
+            if (elements.length) sepTip = elements[Math.floor(Math.random() * elements.length)];
+        }
+    }
+
+    let cccTip = null;
+    const activeCccTipId = activeCcc ? settings.activeTips?.[activeCcc.id] : null;
+    if (settings.showCccTips && activeCccTipId !== 'none') {
+        cccTip = getCccTipById(activeCccTipId);
+        if (!cccTip && activeCcc) cccTip = getCccTipById(activeCcc.id);
+    }
+
+    const tips = [];
+    if (sepTip) tips.push({ type: 'Practice', ...sepTip });
+    if (cccTip) tips.push({ type: 'Concept', ...cccTip });
+
+    if (tips.length === 0) return '';
+
     return `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 p-2 md:p-0 mt-3 md:mt-4">
-            ${sepTip ? `<div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl md:rounded-2xl p-3 md:p-4 flex items-start gap-3 shadow-sm group hover:shadow-md transition-all">
-                <div class="w-8 h-8 md:w-10 md:h-10 bg-white rounded-lg md:rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0 border border-blue-50"><span class="iconify text-lg md:text-xl" data-icon="mdi:comment-quote"></span></div>
-                <div class="flex-1 overflow-hidden"><div class="flex items-center gap-2 mb-0.5"><span class="text-[8px] md:text-[10px] font-black text-primary uppercase tracking-widest">${sepTip.label}</span></div><p class="text-[10px] md:text-xs text-gray-700 leading-relaxed italic line-clamp-2 md:line-clamp-none">"${sepTip.text}"</p></div>
-            </div>` : ''}
-            ${cccTip ? `<div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-xl md:rounded-2xl p-3 md:p-4 flex items-start gap-3 shadow-sm group hover:shadow-md transition-all">
-                <div class="w-8 h-8 md:w-10 md:h-10 bg-white rounded-lg md:rounded-xl flex items-center justify-center text-orange-600 shadow-sm shrink-0 border border-amber-50"><span class="iconify text-lg md:text-xl" data-icon="mdi:telescope"></span></div>
-                <div class="flex-1 overflow-hidden"><div class="flex items-center gap-2 mb-0.5"><span class="text-[8px] md:text-[10px] font-black text-orange-600 uppercase tracking-widest">${cccTip.label}</span></div><p class="text-[10px] md:text-xs text-gray-700 leading-relaxed italic line-clamp-2 md:line-clamp-none">"${cccTip.text}"</p></div>
-            </div>` : ''}
-        </div>`;
-}
-
-function getCoachingTipsData(sep) {
-    const repository = {
-        'SEP1': { label: 'Asking Questions', text: "Focus on what makes you curious—every great discovery started with a notice and wonder.", mindset: 'Embrace Curiosity' },
-        'SEP2': { label: 'Developing Models', text: "Your model is a tool for thinking. It's okay if it feels messy while you work!", mindset: 'Iteration is Key' },
-        'SEP3': { label: 'Investigations', text: "Think about what you can control. How can we make our test more fair?", mindset: 'Learning from Failure' },
-        'SEP4': { label: 'Analyzing Data', text: "Data can be noisy! Look for the patterns amidst the chaos.", mindset: 'Evidence-Based Thinking' },
-        'SEP5': { label: 'Math', text: "Math is the language of patterns. Break the big problem into smaller pieces.", mindset: 'Precision & Logic' },
-        'SEP6': { label: 'Explanations', text: "Use your evidence like a lawyer! Connect what you saw to why it happened.", mindset: 'Revising our Thinking' },
-        'SEP7': { label: 'Argument', text: "We argue to get closer to the truth. Listen to other ideas.", mindset: 'Collaborative Growth' },
-        'SEP8': { label: 'Communication', text: "How can you make your findings clear to someone who wasn't there?", mindset: 'Voice of Science' }
-    };
-    return repository[sep];
-}
-
-function getCccTipsData(cccId) {
-    const cccMap = {
-        'cat_patterns': { label: 'Patterns', text: 'Look for things that repeat! Patterns help us predict what might happen next.', mindset: 'Predictive Thinking' },
-        'cat_causes': { label: 'Cause & Effect', text: 'Every effect has a cause. When you change one thing, what else reacts?', mindset: 'Logical Reasoning' },
-        'cat_systems': { label: 'Systems', text: 'How do the different parts interact? What happens if you take one piece away?', mindset: 'Systems Thinking' },
-        'cat_energy': { label: 'Energy & Matter', text: 'Track the flow! Where is the energy coming from, and where does it go?', mindset: 'Conservation Mindset' }
-    };
-    return cccMap[cccId];
+        <aside class="coaching-bar" aria-label="Scientific Coaching">
+            <h3 class="coaching-bar-label">Coach's Corner</h3>
+            <div class="flex gap-4 flex-1 min-w-0">
+                ${tips.map(tip => `
+                    <div class="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100 min-w-0 max-w-md shadow-sm" role="note">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center ${tip.type === 'Practice' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'} shrink-0">
+                            <span class="iconify" data-icon="${tip.icon || (tip.type === 'Practice' ? 'mdi:comment-quote' : 'mdi:telescope')}" aria-hidden="true"></span>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[8px] font-black uppercase text-gray-400 tracking-widest">${tip.type}: ${tip.label}</p>
+                            <p class="text-xs text-gray-700 italic truncate" title="${tip.text}">"${tip.text}"</p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </aside>
+    `;
 }
 
 export function renderStatusBanner() {

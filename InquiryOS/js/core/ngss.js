@@ -62,65 +62,64 @@ export function processAndLinkPeText(text, peId) {
 export function renderNGSSBrowser() {
     const activeSection = App.ngssBrowserSection || 'pe';
     return `
-        <div class="h-full flex flex-col">
-            <div class="shrink-0 md:p-6 hidden md:block">
-                <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">NGSS Navigator</h2>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Science Standards & 3D Elements</p>
+        <div class="h-full flex flex-col -m-6 bg-white overflow-hidden">
+            <!-- Header -->
+            <div class="p-4 md:p-6 bg-white border-b flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 shrink-0 shadow-sm z-50">
+                <div class="flex items-center gap-4 md:gap-6">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-blue-50 rounded-xl md:rounded-2xl flex items-center justify-center text-xl md:text-2xl text-primary border border-blue-100">
+                        <span class="iconify" data-icon="mdi:school"></span>
+                    </div>
+                    <div>
+                        <h2 class="text-gray-900 font-black text-lg md:text-2xl uppercase tracking-tighter">NGSS Navigator</h2>
+                        <p class="text-[8px] md:text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">Standards & 3D Progression</p>
+                    </div>
+                </div>
+                <div class="flex-1 md:max-w-xl w-full">
+                    <div class="relative">
+                        <input type="text" id="ngssSearchInput" placeholder="Search standard ID or description..." 
+                            value="${App.ngssFilters?.search || ''}" oninput="window.filterNGSSResults()"
+                            class="w-full pl-10 md:pl-12 pr-4 py-3 md:py-4 bg-gray-50 border border-gray-200 rounded-xl md:rounded-2xl text-gray-900 text-sm md:text-base font-bold focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all">
+                        <span class="iconify absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg md:text-xl" data-icon="mdi:magnify"></span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-200 shrink-0">
+                    <button onclick="window.setNgssBrowserSection('pe')" class="px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${activeSection === 'pe' ? 'bg-white text-primary shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}">Standards</button>
+                    <button onclick="window.setNgssBrowserSection('3d')" class="px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${activeSection === '3d' ? 'bg-white text-primary shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}">3D Progression</button>
+                </div>
             </div>
 
-            <div class="panels-container lg:block flex-1">
-                <div class="bg-white border-b flex flex-col h-full" data-card-title="Standards Browser">
-                    <div class="sticky-panel-header md:hidden">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 bg-blue-900 text-white rounded-lg flex items-center justify-center shrink-0 border border-blue-800">
-                                <span class="iconify" data-icon="mdi:school"></span>
-                            </div>
-                            <h3>NGSS Navigator</h3>
-                            ${renderInfoTip('Browse and search the Next Generation Science Standards. Use the "Link" button to connect specific standards to your lesson focus.')}
-                        </div>
-                    </div>
-                    
-                    <div class="panel-content !p-0 flex flex-col h-full">
-                        <div class="p-4 bg-gray-50 border-b flex flex-wrap items-center gap-3">
-                            <div class="relative flex-1 min-w-[200px]">
-                                <span class="iconify absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" data-icon="mdi:magnify"></span>
-                                <input type="text" id="ngssSearchInput" placeholder="Search code or text..." 
-                                    value="${App.ngssFilters?.search || ''}" oninput="window.filterNGSSResults()"
-                                    class="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:border-primary outline-none">
-                            </div>
-                            <div class="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200">
-                                <button onclick="window.setNgssBrowserSection('pe')" class="px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${activeSection === 'pe' ? 'bg-primary text-white shadow-sm' : 'text-gray-400'}">Standards</button>
-                                <button onclick="window.setNgssBrowserSection('3d')" class="px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${activeSection === '3d' ? 'bg-primary text-white shadow-sm' : 'text-gray-400'}">3D Progression</button>
-                            </div>
-                            <button onclick="window.toggleNgssMobileFilters()" class="p-2 bg-white border border-gray-200 rounded-xl md:hidden">
-                                <span class="iconify text-xl text-gray-600" data-icon="mdi:filter-variant"></span>
-                            </button>
-                        </div>
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Sidebar Filters -->
+                <div class="hidden md:flex w-72 border-r border-gray-100 overflow-y-auto p-6 flex-col gap-8 bg-gray-50/50">
+                    ${renderNGSSFilters(activeSection)}
+                </div>
 
-                        <div class="flex-1 flex overflow-hidden">
-                            <div class="hidden md:block w-64 bg-gray-50 border-r border-gray-200 overflow-y-auto p-6 space-y-8 shrink-0">
-                                ${renderNGSSFilters(activeSection)}
-                            </div>
-                            <div id="ngssResultsArea" class="flex-1 overflow-auto p-4 md:p-8 custom-scrollbar">
-                                ${renderNGSSContent(activeSection)}
-                            </div>
-                        </div>
+                <!-- Results Area -->
+                <div class="flex-1 flex flex-col bg-white p-4 md:p-8 overflow-hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Standards Results</h3>
+                        <button onclick="window.toggleNgssMobileFilters()" class="p-2 bg-gray-50 border border-gray-200 rounded-xl md:hidden text-gray-600">
+                            <span class="iconify text-xl" data-icon="mdi:filter-variant"></span>
+                        </button>
+                    </div>
+                    <div id="ngssResultsArea" class="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                        ${renderNGSSContent(activeSection)}
                     </div>
                 </div>
             </div>
 
             <!-- Mobile Filter Modal -->
             <div id="ngssMobileFilters" class="fixed inset-0 z-[100] hidden flex-col bg-white animate-in slide-in-from-bottom duration-300">
-                <div class="p-6 border-b flex items-center justify-between shrink-0">
-                    <h3 class="font-black text-xl uppercase tracking-tighter">Standards Filters</h3>
+                <div class="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <h3 class="font-black text-gray-900 text-xl uppercase tracking-tighter">Standards Filters</h3>
                     <button onclick="window.toggleNgssMobileFilters()" class="p-2 hover:bg-gray-100 rounded-xl transition-all">
-                        <span class="iconify text-2xl" data-icon="mdi:close"></span>
+                        <span class="iconify text-gray-600 text-2xl" data-icon="mdi:close"></span>
                     </button>
                 </div>
-                <div class="flex-1 overflow-y-auto p-6 space-y-8">${renderNGSSFilters(activeSection)}</div>
-                <div class="p-6 border-t bg-gray-50">
+                <div class="flex-1 overflow-y-auto p-6 space-y-8 bg-gray-50">${renderNGSSFilters(activeSection)}</div>
+                <div class="p-6 border-t border-gray-100 bg-white">
                     <button onclick="window.clearAllNgssFilters()" class="w-full py-4 text-red-600 font-black text-xs uppercase tracking-widest border-2 border-red-100 rounded-2xl mb-3">Clear All</button>
-                    <button onclick="window.toggleNgssMobileFilters()" class="w-full py-4 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl">Apply Filters</button>
+                    <button onclick="window.toggleNgssMobileFilters()" class="w-full py-4 bg-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg">Apply Filters</button>
                 </div>
             </div>
         </div>
@@ -132,19 +131,34 @@ function hasActiveFilters() { const f = App.ngssFilters; return f && (f.grade &&
 function renderNGSSFilters(section) {
     if (section === 'pe') {
         return `
-            <div><label class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Grade Level</label>
-                <div class="grid grid-cols-1 gap-1.5"><button onclick="window.setNgssFilter('grade', 'all')" class="ngss-filter-btn px-4 py-2 rounded-lg text-left text-[10px] font-black uppercase border transition-all ${!App.ngssFilters?.grade || App.ngssFilters.grade === 'all' ? 'bg-primary text-white shadow-sm' : 'bg-white text-gray-400'}">All Grades</button>
-                    ${ngssData.sortedGradeLabels.map(g => `<button onclick="window.setNgssFilter('grade', '${g}')" class="ngss-filter-btn px-4 py-2 rounded-lg text-left text-[10px] font-black uppercase border transition-all ${App.ngssFilters?.grade === g ? 'bg-primary text-white shadow-sm' : 'bg-white text-gray-400'}">${g}</button>`).join('')}
+            <div class="space-y-4">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 block">Grade Level</label>
+                <div class="flex flex-col gap-1.5">
+                    <button onclick="window.setNgssFilter('grade', 'all')" class="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${!App.ngssFilters?.grade || App.ngssFilters.grade === 'all' ? 'bg-primary text-white shadow-md' : 'bg-white text-gray-400 border border-gray-100 hover:border-gray-200'}">All Grades</button>
+                    ${ngssData.sortedGradeLabels.map(g => `<button onclick="window.setNgssFilter('grade', '${g}')" class="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${App.ngssFilters?.grade === g ? 'bg-primary text-white shadow-md' : 'bg-white text-gray-400 border border-gray-100 hover:border-gray-200'}">${g}</button>`).join('')}
                 </div>
             </div>
-            <div><label class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Dimensions</label>
-                <div class="space-y-1">
-                    ${['SEP', 'DCI', 'CCC'].map(dim => { const isActive = App.ngssFilters?.dims?.includes(dim); return `<button onclick="window.toggleNgssDimFilter('${dim}')" class="w-full px-4 py-2 rounded-lg text-left text-[10px] font-black uppercase border transition-all ${isActive ? 'bg-primary text-white' : 'bg-white text-gray-400'} flex items-center justify-between"><span>${dim}</span><span class="iconify" data-icon="${isActive ? 'mdi:check' : 'mdi:plus'}"></span></button>`; }).join('')}
+            <div class="space-y-4">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 block">Dimensions</label>
+                <div class="flex flex-col gap-1.5">
+                    ${['SEP', 'DCI', 'CCC'].map(dim => { 
+                        const isActive = App.ngssFilters?.dims?.includes(dim); 
+                        return `<button onclick="window.toggleNgssDimFilter('${dim}')" class="w-full px-4 py-3 rounded-xl text-left text-[10px] font-black uppercase transition-all ${isActive ? 'bg-blue-50 text-primary border border-primary/20' : 'bg-white text-gray-400 border border-gray-100 hover:border-gray-200'} flex items-center justify-between"><span>${dim}</span><span class="iconify" data-icon="${isActive ? 'mdi:check' : 'mdi:plus'}"></span></button>`; 
+                    }).join('')}
                 </div>
             </div>
         `;
     } else if (section === '3d') {
-        return `<div><label class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Focus Dimension</label><div class="grid grid-cols-1 gap-2">${['SEP', 'DCI', 'CCC'].map(dim => { const isActive = (App.ngssFilters?.progDim || 'SEP') === dim; return `<button onclick="window.setNgssFilter('progDim', '${dim}')" class="px-4 py-3 rounded-xl text-left text-[10px] font-black uppercase border transition-all ${isActive ? 'bg-primary text-white shadow-md' : 'bg-white text-gray-400'} flex items-center justify-between"><span>${dim === 'SEP' ? 'Practices' : (dim === 'DCI' ? 'Core Ideas' : 'Crosscutting')}</span><span class="opacity-50">${dim}</span></button>`; }).join('')}</div></div>`;
+        return `
+            <div class="space-y-4">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 block">Focus Dimension</label>
+                <div class="flex flex-col gap-2">
+                    ${['SEP', 'DCI', 'CCC'].map(dim => { 
+                        const isActive = (App.ngssFilters?.progDim || 'SEP') === dim; 
+                        return `<button onclick="window.setNgssFilter('progDim', '${dim}')" class="w-full px-4 py-4 rounded-xl text-left text-[10px] font-black uppercase transition-all ${isActive ? 'bg-primary text-white shadow-md border border-primary' : 'bg-white text-gray-400 border border-gray-100 hover:border-gray-200'} flex items-center justify-between"><span>${dim === 'SEP' ? 'Practices' : (dim === 'DCI' ? 'Core Ideas' : 'Crosscutting')}</span><span class="opacity-50">${dim}</span></button>`; 
+                    }).join('')}
+                </div>
+            </div>`;
     }
     return '';
 }

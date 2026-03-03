@@ -63,12 +63,74 @@ html, body {
     scroll-behavior: smooth;
 }
 
-/* Fixed layout for science practices */
-.view-student #mainContent, .view-teacher #mainContent {
-    flex: 1;
+/* Continuous Practice Layout (Mobile) */
+.module-view-section {
+    width: 100%;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-main);
+}
+
+/* ==================== DESKTOP DASHBOARD OVERHAUL (Single Panel Grids) ==================== */
+@media (min-width: 769px) {
+    .view-student #mainContent {
+        background: #f1f5f9; /* Slate 100 */
+        padding: 0.75rem !important;
+        overflow: hidden !important;
+        height: calc(100dvh - var(--header-height));
+    }
+
+    .active-dashboard {
+        height: 100% !important;
+        width: 100% !important;
+        background: transparent !important;
+    }
+
+    .panels-container {
+        display: grid !important;
+        gap: 0.75rem;
+        height: 100%;
+        width: 100%;
+        grid-template-columns: repeat(12, 1fr);
+        padding: 0;
+    }
+
+    /* All panels should look like integrated workspace cards */
+    .panels-container > div {
+        display: flex !important;
+        background: white !important;
+        border-radius: 1rem !important;
+        border: 1px solid var(--border-color) !important;
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1) !important;
+        overflow: hidden;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    /* 1. Questions (SEP1) */
+    [data-module-id="questions"] .panels-container > [data-card-title="Phenomenon"] { grid-column: span 3; }
+    [data-module-id="questions"] .panels-container > [data-card-title="Inquiry Board"] { grid-column: span 6; }
+    [data-module-id="questions"] .panels-container > [data-card-title="Driving Questions"] { grid-column: span 3; }
+
+    /* 2. Models (SEP2) */
+    [data-module-id="models"] .panels-container > [data-card-title="Model Canvas"] { grid-column: span 8; }
+    [data-module-id="models"] .panels-container > [data-card-title="Model Explanations"] { grid-column: span 4; }
+
+    /* 3. Investigation (SEP3) */
+    [data-module-id="investigation"] .panels-container > [data-card-title="Experimental Variables"] { grid-column: span 4; }
+    [data-module-id="investigation"] .panels-container > [data-card-title="Data Collection Table"] { grid-column: span 8; }
+
+    /* 4. Analysis (SEP4) */
+    [data-module-id="analysis"] .panels-container > [data-card-title="Chart Designer"] { grid-column: span 8; }
+    [data-module-id="analysis"] .panels-container > [data-card-title="Statistical Summary"] { grid-column: span 4; }
+
+    /* 5. Math (SEP5) */
+    [data-module-id="math"] .panels-container > [data-card-title="Math Workspace"] { grid-column: span 12; }
+
+    /* 6. Explanations (SEP6) */
+    [data-module-id="explanations"] .panels-container > [data-card-title="CER Workspace"] { grid-column: span 12; }
 }
 
 .nav-btn.active { background: var(--primary-gradient); color: white; }
@@ -159,7 +221,6 @@ html, body {
         top: 0;
         z-index: 60;
         background: rgb(255, 255, 255, 0.95);
-        backdrop-filter: blur(16px);
         backdrop-filter: blur(16px);
         border-bottom: 1px solid rgb(0, 0, 0, 0.08);
         padding: 0 var(--panel-padding) !important;
@@ -279,7 +340,6 @@ html, body {
         height: 20px;
         background: var(--bg-card);
         backdrop-filter: blur(16px);
-        backdrop-filter: blur(16px);
         border: 1px solid var(--border-color);
         border-bottom: none;
         border-radius: 12px 12px 0 0;
@@ -366,83 +426,197 @@ html, body {
 /* ==================== DESKTOP PREMIUM LAYOUT ==================== */
 @media (min-width: 769px) {
     #appView {
-        height: 100vh;
+        height: 100dvh;
         overflow: hidden;
     }
 
     #mainContent {
-        height: calc(100vh - var(--header-height));
+        height: calc(100dvh - var(--header-height));
         padding: 0 !important;
         overflow-y: scroll !important;
-        scroll-snap-type: y mandatory;
-        scrollbar-width: thin;
-        scrollbar-color: var(--border-color) transparent;
+        scroll-snap-type: y proximity;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
         background: var(--bg-main);
     }
+    #mainContent::-webkit-scrollbar { display: none; }
 
-    /* Section snapping - each module takes full viewport */
+    /* Section layout - all modules are full-bleed on desktop */
     #mainContent > * {
-        min-height: calc(100vh - var(--header-height)) !important;
+        min-height: calc(100dvh - var(--header-height)) !important;
         scroll-snap-align: start;
-        scroll-snap-stop: always;
         display: flex;
         flex-direction: column;
         background: var(--bg-main);
-        padding: var(--spacing-lg) !important;
+        padding: 0 !important; /* Remove module-level padding */
         box-sizing: border-box;
+    }
+    .desktop-nav-container {
+        position: fixed;
+        right: 1.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        z-index: 200;
+        padding: 1rem 0.5rem;
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(12px);
+        border-radius: 3rem;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+    
+    .nav-dot-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .desktop-nav-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text-muted);
+        opacity: 0.3;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .desktop-nav-dot:hover {
+        opacity: 0.6;
+        transform: scale(1.2);
+    }
+
+    .desktop-nav-dot.active {
+        background: var(--primary);
+        opacity: 1;
+        height: 20px;
+        border-radius: 4px;
+    }
+    
+    .nav-arrow-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: white;
+        border: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+    }
+    .nav-arrow-btn:hover:not(:disabled) { 
+        background: var(--primary); 
+        color: white;
+        border-color: var(--primary);
+        transform: scale(1.1); 
+    }
+    .nav-arrow-btn:disabled {
+        opacity: 0.1;
+        cursor: not-allowed;
+    }
+
+    /* Hide the mobile scroll handle on desktop */
+    #globalScrollHandle {
+        display: none !important;
+    }
+
+    /* Coach's Corner Bar Style */
+    .coaching-bar {
+        background: white;
+        border-bottom: 1px solid var(--border-color);
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        overflow-x: auto;
+        flex-shrink: 0;
+        min-height: 64px;
+    }
+    
+    .coaching-bar-label {
+        font-size: 0.7rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        white-space: nowrap;
+        padding-right: 1rem;
+        border-right: 1px solid var(--border-color);
     }
 
     .panels-container {
         display: grid;
-        gap: var(--spacing-lg);
+        gap: 0 !important; /* Remove gaps between panels for full-bleed look */
         flex: 1;
         min-height: 0;
         width: 100%;
         max-width: 100%;
-        margin: 0 auto;
+        margin: 0;
     }
 
-    /* Individual Panel behavior on Desktop */
+    /* All panels are full-bleed on Desktop by default now */
     .panels-container > * {
+        min-height: 0 !important;
         height: 100%;
-        min-height: 0 !important; /* Allow panel to be smaller than screen if in grid */
         background: var(--bg-card);
-        border-radius: var(--radius-xl);
-        border: 1px solid var(--border-color);
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        border-radius: 0 !important; /* No rounded corners */
+        border: none !important;
+        border-right: 1px solid var(--border-color) !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        box-shadow: none !important;
         display: flex !important;
         flex-direction: column !important;
         overflow: hidden !important;
         padding: 0 !important;
         position: relative;
+        transition: none !important; /* Remove hover lift for cleaner dashboard feel */
+    }
+    
+    .panels-container > *:last-child {
+        border-right: none !important;
     }
 
     .panel-content {
         flex: 1;
         overflow-y: auto !important;
-        padding: var(--panel-padding) !important;
+        padding: 2rem !important; /* Standardized internal padding */
         scrollbar-width: thin;
         scrollbar-color: var(--border-color) transparent;
         display: flex;
         flex-direction: column;
     }
 
-    /* Fixed Panel Headers on Desktop (No longer sticky-mobile) */
+    /* Sticky headers are relative but styled as bars on desktop */
     .sticky-panel-header {
         position: relative !important;
         top: auto !important;
-        background: var(--bg-card) !important;
+        background: var(--bg-main) !important;
         border-bottom: 1px solid var(--border-color) !important;
-        padding: 0.75rem var(--panel-padding) !important;
+        padding: 0.75rem 2rem !important;
         height: auto !important;
         min-height: 48px;
         backdrop-filter: none !important;
         flex-shrink: 0;
+        display: flex !important;
+        align-items: center;
     }
 
     .sticky-panel-header h3 {
-        font-size: 0.75rem !important;
-        font-weight: 800 !important;
+        font-size: 0.85rem !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.15em !important;
+        color: var(--text-muted);
     }
 
     /* Module-Specific Desktop Grid Layouts */
@@ -497,7 +671,9 @@ html, body {
     [data-card-title="Reasoning"] { grid-area: reasoning; }
 
     /* Desktop typography adjustments */
-    .text-\[10px\], .text-\[9px\] { font-size: 0.75rem !important; }
+    .text-\[10px\], .text-\[9px\] { font-size: 0.85rem !important; font-weight: 800 !important; }
+    h2.text-sm { font-size: 2.25rem !important; line-height: 2.5rem !important; }
+    .text-xs { font-size: 0.95rem !important; }
 
     /* Desktop Accessibility Handle Positioning */
     .global-scroll-handle {
@@ -517,9 +693,259 @@ html, body {
     .has-dots .global-scroll-handle {
         bottom: 2rem;
     }
+
+    /* Landing Pages Desktop Fix */
+    #loginView.active, #docsView.active, #supportView.active {
+        display: block !important;
+        height: 100% !important;
+        overflow-y: auto !important;
+    }
+    
+    #loginView section {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    /* Desktop Quick Jump Modal */
+    .quick-jump-drawer {
+        position: fixed;
+        bottom: auto;
+        top: 50%;
+        left: 50%;
+        right: auto;
+        width: 400px;
+        height: auto;
+        max-height: 80vh;
+        transform: translate(-50%, -50%) scale(0.9);
+        border-radius: 2.5rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .quick-jump-drawer.is-visible { 
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+        pointer-events: auto;
+    }
 }
 
-/* Info Tip Styles */
+/* ==================== QUICK JUMP SHARED STYLES ==================== */
+.quick-jump-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgb(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 390;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.quick-jump-overlay.is-visible { 
+    display: block;
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .quick-jump-drawer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+        height: 75vh;
+        background: white;
+        z-index: 400;
+        border-top-left-radius: 2.5rem;
+        border-top-right-radius: 2.5rem;
+        box-shadow: 0 -20px 50px -10px rgb(0, 0, 0, 0.2);
+        transform: translateY(100%);
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-height: none;
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .quick-jump-drawer.is-visible { 
+        transform: translateY(0);
+    }
+}
+
+/* ==================== COACHING TIPS PREMIUM STYLING ==================== */
+.coaching-section {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+}
+
+.coaching-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    border-radius: 2rem;
+    border: 2px solid transparent;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    margin: 0.25rem;
+}
+
+.coaching-card:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.coaching-sep {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-color: #bfdbfe;
+}
+
+.coaching-ccc {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border-color: #fde68a;
+}
+
+.coaching-icon-wrapper {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.75rem;
+    background: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.coaching-sep .coaching-icon-wrapper { color: #2563eb; border: 1px solid #bfdbfe; }
+.coaching-ccc .coaching-icon-wrapper { color: #d97706; border: 1px solid #fde68a; }
+
+.coaching-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.coaching-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+    gap: 0.5rem;
+}
+
+.coaching-label {
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+}
+
+.coaching-sep .coaching-label { color: #1e40af; }
+.coaching-ccc .coaching-label { color: #92400e; }
+
+.coaching-mindset {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: rgba(0, 0, 0, 0.4);
+    letter-spacing: 0.05em;
+    font-style: italic;
+}
+
+.coaching-text {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #1e293b;
+}
+
+@media (min-width: 769px) {
+    .coaching-card { padding: 1.5rem; gap: 1.5rem; }
+    .coaching-icon-wrapper { width: 4rem; height: 4rem; font-size: 2rem; }
+    .coaching-text { font-size: 1.1rem; }
+    .coaching-label { font-size: 0.85rem; }
+}
+
+/* Horizontal Swiper Support */
+.horizontal-snap-container {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+}
+
+@media (min-width: 769px) {
+    .horizontal-snap-container.md\:grid-cols-2 {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-md);
+        overflow: hidden;
+    }
+    .horizontal-snap-container.md\:grid-cols-4 {
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--spacing-md);
+        overflow: hidden;
+    }
+    .horizontal-snap-container.md\:grid-cols-2 .horizontal-snap-item,
+    .horizontal-snap-container.md\:grid-cols-4 .horizontal-snap-item {
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 100%;
+        display: flex !important;
+        flex-direction: column !important;
+        border-right: 1px solid var(--border-color);
+    }
+    .horizontal-snap-container.md\:grid-cols-2 .horizontal-snap-item:last-child,
+    .horizontal-snap-container.md\:grid-cols-4 .horizontal-snap-item:last-child {
+        border-right: none;
+    }
+}
+
+.horizontal-snap-item {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Swipe Dots */
+.swipe-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+.swipe-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: #e2e8f0;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+}
+
+.swipe-dot.active {
+    background: var(--primary);
+    width: 1.5rem;
+    border-radius: 1rem;
+}
+
+/* ==================== COACHING TIPS PREMIUM STYLING ==================== */
 .info-tip-trigger {
     display: inline-flex;
     align-items: center;

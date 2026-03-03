@@ -269,7 +269,7 @@ function renderItemCard(item) {
             <div class="img-container cursor-pointer bg-gray-50 flex items-center justify-center relative overflow-hidden min-h-[140px] md:min-h-[180px]" onclick="window.previewMediaItem(${itemJson})">
                 <img src="${thumbUrl}" 
                     onerror="this.src='https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/image-off-outline.svg'; this.style.opacity='0.2';"
-                    class="${isSim || isData ? 'w-16 h-16 object-contain opacity-50' : 'w-full h-full object-cover'} transition-transform duration-500 group-hover:scale-110" 
+                    class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
                     loading="lazy">
                 <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                     <div class="bg-white/90 backdrop-blur-md text-primary px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl scale-75 group-hover:scale-100 transition-all">

@@ -184,6 +184,23 @@ const db = (() => {
         });
     }
 
+    /**
+     * Updates a PDF record (e.g., renaming).
+     * @param {object} pdf - The PDF object to update (must include id).
+     * @returns {Promise<void>}
+     */
+    function updatePdf(pdf) {
+        return new Promise((resolve, reject) => {
+            if (!pdf.id) return reject("PDF ID is required for update.");
+            const transaction = dbInstance.transaction([PDF_STORE], 'readwrite');
+            const store = transaction.objectStore(PDF_STORE);
+            const request = store.put(pdf);
+
+            request.onsuccess = () => resolve();
+            request.onerror = (event) => reject("Error updating PDF: " + event.target.error);
+        });
+    }
+
     // Expose the public API
     return {
         initDB,
@@ -191,6 +208,7 @@ const db = (() => {
         getPdf,
         getAllPdfs,
         deletePdf,
+        updatePdf,
         addCollection,
         getAllCollections,
         updateCollection,

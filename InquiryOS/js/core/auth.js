@@ -8,15 +8,17 @@ import { loadFromStorage, registerUser, startSync } from './sync.js';
 import { updateModeUI } from '../ui/renderer.js';
 import { generateCode, toast } from '../ui/utils.js';
 
-import { dbPut, dbGet, dbGetByIndex, dbGetAll, STORE_SESSIONS, STORE_USERS, isDBReady } from './storage.js';
+import { dbGet, dbGetByIndex, dbGetAll, STORE_SESSIONS, STORE_USERS, isDBReady } from './storage.js';
 
 /**
- * Populates the 'Recent Sessions' list on the login screen.
+ * Populates the 'Recent Sessions' list on the login screen and landing page.
  */
 export async function loadRecentSessions() {
-    const container = document.getElementById('sessionLibrary');
-    const list = document.getElementById('sessionList');
-    if (!container || !list || !isDBReady()) return;
+    const landingList = document.getElementById('landingSessionList');
+    const loginList = document.getElementById('sessionList');
+    const loginContainer = document.getElementById('sessionLibrary');
+    
+    if (!isDBReady()) return;
 
     try {
         const allData = await dbGetAll(STORE_SESSIONS);
@@ -29,30 +31,207 @@ export async function loadRecentSessions() {
                 timestamp: d.timestamp
             }))
             .sort((a, b) => b.timestamp - a.timestamp)
-            .slice(0, 5); // Show last 5
+            .slice(0, 6); // Show more on landing
 
-        if (sessions.length > 0) {
-            list.innerHTML = sessions.map(s => `
-                <button onclick="window.resumeSession('${s.code}')" class="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl hover:border-primary hover:shadow-md transition-all group">
-                    <div class="flex items-center gap-4 text-left">
-                        <div class="w-10 h-10 bg-blue-50 text-primary rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <span class="iconify" data-icon="mdi:history"></span>
-                        </div>
-                        <div>
-                            <p class="font-bold text-sm text-gray-800">${s.title}</p>
-                            <p class="text-[10px] font-mono text-primary font-black uppercase tracking-widest">${s.code}</p>
+        const sessionHtml = sessions.map(s => `
+            <button onclick="window.resumeSession('${s.code}')" class="w-full flex items-center justify-between p-5 bg-white border border-gray-100 rounded-2xl hover:border-primary hover:shadow-xl transition-all group text-left">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-blue-50 text-primary rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm border border-blue-100">
+                        <span class="iconify text-xl" data-icon="mdi:history"></span>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-black text-sm text-gray-800 truncate">${s.title}</p>
+                        <div class="flex items-center gap-2">
+                            <p class="text-[9px] font-mono text-primary font-black uppercase tracking-widest">${s.code}</p>
+                            <span class="text-[8px] text-gray-400 font-bold uppercase tracking-tighter">${new Date(s.timestamp).toLocaleDateString()}</span>
                         </div>
                     </div>
-                    <span class="iconify text-gray-300 group-hover:text-primary transition-colors" data-icon="mdi:chevron-right"></span>
-                </button>
-            `).join('');
-            container.classList.remove('hidden');
-        } else {
-            container.classList.add('hidden');
+                </div>
+                <span class="iconify text-gray-200 group-hover:text-primary transition-colors" data-icon="mdi:chevron-right"></span>
+            </button>
+        `).join('');
+
+        if (landingList) {
+            landingList.innerHTML = sessionHtml || `
+                <div class="col-span-full py-12 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-100">
+                    <p class="text-[10px] font-black text-gray-300 uppercase tracking-widest">No recent sessions found</p>
+                </div>
+            `;
+        }
+
+        if (loginList && loginContainer) {
+            if (sessions.length > 0) {
+                loginList.innerHTML = sessionHtml;
+                loginContainer.classList.remove('hidden');
+            } else {
+                loginContainer.classList.add('hidden');
+            }
         }
     } catch (e) {
         console.error('Failed to load recent sessions:', e);
     }
+}
+
+/**
+ * Displays the Landing Page for returning users.
+ */
+export async function showLandingPage() {
+    const hero = document.getElementById('heroPanel');
+    const landing = document.getElementById('landingPanel');
+    const features = document.getElementById('featuresPanel');
+
+    if (!landing) return;
+
+    // returning users should not see the initial landing page information first
+    if (hero) hero.classList.add('hidden');
+    if (features) features.classList.add('hidden');
+    landing.classList.remove('hidden');
+    landing.classList.add('flex');
+
+    // Populate User Data
+    const nameEl = document.getElementById('landingUserName');
+    const roleEl = document.getElementById('landingUserRole');
+    const avatarEl = document.getElementById('landingAvatar');
+
+    if (nameEl) nameEl.textContent = App.user.name || 'Researcher';
+    if (roleEl) roleEl.textContent = (App.mode || 'Student').toUpperCase();
+    if (avatarEl && App.user.avatar) {
+        avatarEl.innerHTML = `<span class="iconify" data-icon="${App.user.avatar}"></span>`;
+    }
+
+    // Populate Active Session
+    const activeCard = document.getElementById('activeSessionCard');
+    const activeCode = document.getElementById('activeSessionCode');
+    const activeRole = document.getElementById('activeSessionRole');
+    const activeTitle = document.getElementById('activeSessionTitle');
+
+    const persisted = localStorage.getItem('inquiryos_active_session');
+    if (persisted) {
+        const data = JSON.parse(persisted);
+        if (activeCard) activeCard.classList.remove('hidden');
+        if (activeCode) activeCode.textContent = data.classCode;
+        if (activeRole) activeRole.textContent = data.mode.toUpperCase();
+        
+        // Try to get title from DB
+        const settings = await dbGet(STORE_SESSIONS, data.classCode + ':settings');
+        if (activeTitle) activeTitle.textContent = settings?.teacherSettings?.phenomenon?.title || 'Current Investigation';
+    } else {
+        if (activeCard) activeCard.classList.add('hidden');
+    }
+
+    // Initialize Panel Navigation for login view
+    initPanelNavigation();
+
+    // Load recent sessions
+    await loadRecentSessions();
+}
+
+/**
+ * Resets to the initial role selection screen.
+ */
+export function startNewInquiry() {
+    const hero = document.getElementById('heroPanel');
+    const landing = document.getElementById('landingPanel');
+    const features = document.getElementById('featuresPanel');
+    const roles = document.getElementById('rolesPanel');
+    
+    if (landing) {
+        landing.classList.add('hidden');
+        landing.classList.remove('flex');
+    }
+    if (hero) hero.classList.remove('hidden');
+    if (features) features.classList.remove('hidden');
+    if (roles) {
+        roles.classList.remove('hidden');
+        window.scrollToPanel('rolesPanel');
+    }
+    
+    // Refresh dots
+    initPanelNavigation();
+    
+    // Go to step 1
+    goToLoginStep(1);
+}
+
+/**
+ * Panel Navigation Logic for #loginView
+ */
+export function initPanelNavigation() {
+    const container = document.getElementById('loginView');
+    const dotContainer = document.getElementById('loginDotContainer');
+    if (!container || !dotContainer) return;
+
+    // Find all visible panels
+    const panels = Array.from(container.querySelectorAll('.snap-panel:not(.hidden)'));
+    
+    // Render dots
+    dotContainer.innerHTML = panels.map((p, i) => `
+        <button onclick="window.scrollToPanel('${p.id}')" 
+            class="desktop-nav-dot ${i === 0 ? 'active' : ''}" 
+            data-panel="${p.id}" 
+            aria-label="Scroll to ${p.id.replace('Panel', '')}">
+        </button>
+    `).join('');
+
+    // Setup Intersection Observer to update dots on scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const dots = document.querySelectorAll('.desktop-nav-dot');
+                dots.forEach(dot => {
+                    dot.classList.toggle('active', dot.dataset.panel === entry.target.id);
+                });
+                
+                // Update Arrows State
+                const idx = panels.findIndex(p => p.id === entry.target.id);
+                const prevBtn = document.getElementById('loginPrevBtn');
+                const nextBtn = document.getElementById('loginNextBtn');
+                if (prevBtn) prevBtn.disabled = (idx === 0);
+                if (nextBtn) nextBtn.disabled = (idx === panels.length - 1);
+            }
+        });
+    }, {
+        root: container,
+        threshold: 0.5
+    });
+
+    panels.forEach(p => observer.observe(p));
+}
+
+/**
+ * Smoothly scrolls to a specific panel by ID.
+ */
+export function scrollToPanel(panelId) {
+    const el = document.getElementById(panelId);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+/**
+ * Scrolls to next/prev panel in the login flow.
+ */
+export function scrollLoginPanel(dir) {
+    const container = document.getElementById('loginView');
+    if (!container) return;
+    
+    const panels = Array.from(container.querySelectorAll('.snap-panel:not(.hidden)'));
+    const currentIdx = panels.findIndex(p => {
+        const rect = p.getBoundingClientRect();
+        return rect.top >= -50 && rect.top <= 50;
+    });
+
+    let nextIdx = dir === 'next' ? currentIdx + 1 : currentIdx - 1;
+    if (nextIdx >= 0 && nextIdx < panels.length) {
+        scrollToPanel(panels[nextIdx].id);
+    }
+}
+
+/**
+ * Resumes the active session stored in localStorage.
+ */
+export async function resumeActiveSession() {
+    await restorePersistedSession(true); // pass true to force immediate app view
 }
 
 /**
@@ -63,8 +242,8 @@ window.resumeSession = async (code) => {
     // For resumption, we need to know the role. 
     // We'll try to find if this user has a profile for this class.
     const users = await dbGetByIndex(STORE_USERS, 'classCode', code);
-    // This is a bit simplified, ideally we'd store the last used visitorId
-    const lastUser = users[0]; 
+    // Find a matching visitorId if we have one in state, else take the first
+    const lastUser = users.find(u => u.visitorId === App.user.visitorId) || users[0]; 
     
     if (lastUser) {
         App.user.name = lastUser.name;
@@ -77,7 +256,17 @@ window.resumeSession = async (code) => {
         // Fallback to onboarding but with class code filled
         const classInput = document.getElementById('loginClass');
         if (classInput) classInput.value = code;
+        
+        const landing = document.getElementById('landingSection');
+        if (landing) {
+            landing.classList.add('hidden');
+            landing.classList.remove('flex');
+        }
+        const roles = document.getElementById('rolesSection');
+        if (roles) roles.classList.remove('hidden');
+        
         toast('Session found. Please enter your name to join.', 'info');
+        goToLoginStep(2);
     }
 };
 
@@ -109,6 +298,16 @@ export function selectRole(role) {
     const desc = document.getElementById('step2Desc');
     const classContainer = document.getElementById('classCodeContainer');
     const btn = document.getElementById('finalStartBtn');
+    const hero = document.getElementById('heroSection');
+    const features = document.querySelector('.view#loginView > section:nth-of-type(2)');
+    const landing = document.getElementById('landingSection');
+
+    if (landing) {
+        landing.classList.add('hidden');
+        landing.classList.remove('flex');
+    }
+    if (hero) hero.classList.add('hidden');
+    if (features) features.classList.add('hidden');
     
     if (!title || !desc || !classContainer || !btn) return;
 
@@ -130,46 +329,39 @@ export function selectRole(role) {
 }
 
 /**
- * Renders the Iconify-based avatar selection grid.
+ * Renders the Emoji-based avatar selection grid.
  */
 export function renderAvatarPicker() {
     const container = document.getElementById('avatarPicker');
     if (!container) return;
     
-    const icons = [
-        'mdi:microscope', 'mdi:flask-outline', 'mdi:dna', 'mdi:earth', 
-        'mdi:telescope', 'mdi:leaf', 'mdi:battery-charging', 'mdi:thermometer', 
-        'mdi:robot', 'mdi:rocket-launch', 'mdi:brain', 'mdi:volcano', 
-        'mdi:whale', 'mdi:bee', 'mdi:sun-wireless', 'mdi:weather-tornado'
+    const emojis = [
+        '🧬', '🧪', '🔬', '🌍', '🔭', '🌱', '🔋', '🌡️', 
+        '🤖', '🚀', '🧠', '🌋', '🐋', '🐝', '☀️', '🌪️'
     ];
     
-    container.innerHTML = icons.map((icon, idx) => `
-        <button onclick="window.selectLoginAvatar('${icon}')" 
-            class="avatar-option w-12 h-12 flex items-center justify-center rounded-xl border-2 border-transparent hover:bg-blue-50 transition-all ${idx === 0 ? 'selected ring-2 ring-primary border-primary bg-blue-50' : ''}" 
-            data-icon="${icon}">
-            <span class="iconify text-2xl ${idx === 0 ? 'text-primary' : 'text-gray-500'}" data-icon="${icon}"></span>
+    container.innerHTML = emojis.map((emoji, idx) => `
+        <button onclick="window.selectLoginAvatar('${emoji}')" 
+            class="avatar-option w-12 h-12 flex items-center justify-center rounded-xl border-2 border-transparent hover:bg-blue-50 transition-all text-2xl ${idx === 0 ? 'selected ring-2 ring-primary border-primary bg-blue-50' : ''}" 
+            data-emoji="${emoji}">
+            ${emoji}
         </button>
     `).join('');
     
     // Set initial selection in state
-    if (!App.user.avatar) App.user.avatar = icons[0];
+    if (!App.user.avatar) App.user.avatar = emojis[0];
 }
 
 /**
- * Handles the selection of a user avatar icon.
- * @param {string} icon 
+ * Handles the selection of a user avatar emoji.
+ * @param {string} emoji 
  */
-export function selectLoginAvatar(icon) {
-    App.user.avatar = icon;
+export function selectLoginAvatar(emoji) {
+    App.user.avatar = emoji;
     document.querySelectorAll('.avatar-option').forEach(btn => {
         btn.classList.remove('selected', 'ring-2', 'ring-primary', 'border-primary', 'bg-blue-50');
-        btn.querySelector('.iconify')?.classList.remove('text-primary');
-        btn.querySelector('.iconify')?.classList.add('text-gray-500');
-        
-        if (btn.dataset.icon === icon) {
+        if (btn.dataset.emoji === emoji) {
             btn.classList.add('selected', 'ring-2', 'ring-primary', 'border-primary', 'bg-blue-50');
-            btn.querySelector('.iconify')?.classList.add('text-primary');
-            btn.querySelector('.iconify')?.classList.remove('text-gray-500');
         }
     });
 }
@@ -204,7 +396,7 @@ export async function finishOnboarding() {
     // Default avatar if none selected
     if (!App.user.avatar) {
         const selected = document.querySelector('.avatar-option.selected');
-        App.user.avatar = selected ? selected.dataset.emoji : '🔬';
+        App.user.avatar = selected ? selected.dataset.emoji : '🧬';
     }
 
     await initializeApp();
@@ -213,20 +405,22 @@ export async function finishOnboarding() {
 /**
  * Switches from login view to main app view.
  */
-async function initializeApp() {
-    const loginView = document.getElementById('loginView');
-    const appView = document.getElementById('appView');
-    
-    if (loginView) {
-        loginView.classList.remove('active');
-        // Force display none if classes aren't enough
-        loginView.style.setProperty('display', 'none', 'important');
-    }
-    
-    if (appView) {
-        appView.classList.add('active');
-        // Force display flex if classes aren't enough
-        appView.style.setProperty('display', 'flex', 'important');
+export async function initializeApp(skipPersistence = false) {
+    if (typeof window.showView === 'function') {
+        window.showView('appView');
+    } else {
+        const loginView = document.getElementById('loginView');
+        const appView = document.getElementById('appView');
+        
+        if (loginView) {
+            loginView.classList.remove('active');
+            loginView.style.setProperty('display', 'none', 'important');
+        }
+        
+        if (appView) {
+            appView.classList.add('active');
+            appView.style.setProperty('display', 'flex', 'important');
+        }
     }
     
     const userNameEl = document.getElementById('userName');
@@ -234,11 +428,12 @@ async function initializeApp() {
     
     const avatarEl = document.getElementById('userAvatar');
     if (avatarEl) {
-        const avatar = App.user.avatar || 'mdi:account-circle';
+        const avatar = App.user.avatar || '🧬';
         if (avatar.includes(':')) {
             avatarEl.innerHTML = `<span class="iconify" data-icon="${avatar}"></span>`;
         } else {
             avatarEl.textContent = avatar;
+            avatarEl.innerHTML = avatar; // Handle pure emoji
         }
     }
     
@@ -250,9 +445,63 @@ async function initializeApp() {
         await registerUser();
         startSync();
         updateModeUI();
+        
+        if (!skipPersistence) persistSession();
+        
         toast(`Welcome, ${App.user.name}!`, 'success');
     } catch (e) {
         console.error('App init error:', e);
         updateModeUI();
     }
+}
+
+/**
+ * Persists the current session to localStorage.
+ */
+export function persistSession() {
+    if (App.user.name && App.classCode) {
+        const session = {
+            user: App.user,
+            classCode: App.classCode,
+            mode: App.mode,
+            currentModule: App.currentModule,
+            teacherModule: App.teacherModule
+        };
+        localStorage.setItem('inquiryos_active_session', JSON.stringify(session));
+    }
+}
+
+/**
+ * Clears the persisted session from localStorage.
+ */
+export function clearPersistedSession() {
+    localStorage.removeItem('inquiryos_active_session');
+}
+
+/**
+ * Attempts to restore a session from localStorage.
+ */
+export async function restorePersistedSession(forceAppView = false) {
+    const persisted = localStorage.getItem('inquiryos_active_session');
+    if (persisted) {
+        try {
+            const data = JSON.parse(persisted);
+            App.user = data.user;
+            App.classCode = data.classCode;
+            App.mode = data.mode;
+            App.currentModule = data.currentModule || 'overview';
+            App.teacherModule = data.teacherModule || 'overview';
+            
+            if (forceAppView) {
+                await initializeApp(true);
+            } else {
+                await showLandingPage();
+            }
+            return true;
+        } catch (e) {
+            console.error('Failed to restore session:', e);
+            clearPersistedSession();
+        }
+    }
+    return false;
 }

@@ -204,13 +204,17 @@
             color: var(--text-dim);
         }
 
-        @media (max-width: 1024px) {
-            .landing-stats-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-lg); }
-        }
+        .hidden-mobile { display: none !important; }
+        .hidden-desktop { display: none !important; }
 
         @media (max-width: 768px) {
-            .landing-stats-grid { grid-template-columns: 1fr; }
-            .landing-title-group h1 { font-size: 22px; }
+            .hidden-desktop { display: flex !important; }
+            .hidden-mobile { display: none !important; }
+        }
+
+        @media (min-width: 769px) {
+            .hidden-desktop { display: none !important; }
+            .hidden-mobile { display: flex !important; }
         }
 
         .notes-panel {
@@ -318,10 +322,6 @@
         }
         
         .note-actions {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: var(--space-sm);
-        }
             display: flex;
             justify-content: flex-end;
             margin-top: var(--space-sm);
@@ -924,9 +924,9 @@
         .view-btn.active { background: var(--accent); color: white; box-shadow: var(--shadow-sm); }
         
         .url-bar, .markup-bar {
+            display: none;
             width: 100%;
             max-width: 700px;
-            display: flex;
             gap: var(--space-sm);
             align-items: center;
             animation: fadeIn 0.3s ease-out;
@@ -1018,11 +1018,11 @@
         .tool-group.compact { padding: 2px; }
         
         .tool-btn {
-            width: 32px;
-            height: 32px;
-            border: none;
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border);
             border-radius: var(--radius-md);
-            background: transparent;
+            background: var(--bg-surface);
             color: var(--text-muted);
             cursor: pointer;
             display: flex;
@@ -1030,17 +1030,21 @@
             justify-content: center;
             font-size: 16px;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-sm);
         }
         
         .tool-btn:hover { 
             background: var(--bg-elevated); 
             color: var(--text);
-            transform: scale(1.05);
+            border-color: var(--text-dim);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
         }
         
         .tool-btn.active { 
             background: var(--accent); 
             color: white;
+            border-color: var(--accent);
             box-shadow: 0 4px 12px var(--accent-dim);
         }
         
@@ -1612,6 +1616,105 @@
         .nav-item span { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
         .nav-item.active { color: var(--accent); }
 
+        /* Mobile UI Components (Aesthetics) */
+        .floating-trigger {
+            width: 56px;
+            height: 56px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: var(--radius-full);
+            box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 4500;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            touch-action: none;
+            cursor: pointer;
+        }
+        .floating-trigger:active { transform: scale(0.9); }
+
+        .bottom-tray {
+            background: var(--bg-panel);
+            border-radius: 24px 24px 0 0;
+            z-index: 6000;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            max-height: 85vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid var(--border);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .tray-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            z-index: 5999;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .tray-overlay.active { display: block; }
+
+        .tray-handle {
+            width: 40px; height: 4px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-full);
+            margin: 12px auto;
+            flex-shrink: 0;
+        }
+
+        .tray-content {
+            padding: 0 20px 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .tray-section {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-dim);
+        }
+        .tray-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 16px;
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .tray-tool-btn {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            color: var(--text);
+            font-size: 18px;
+            transition: all 0.2s;
+            cursor: pointer;
+            padding: 8px;
+        }
+        .tray-tool-btn:hover { background: var(--bg-elevated); border-color: var(--text-dim); }
+        .tray-tool-btn span { font-size: 10px; font-weight: 700; color: var(--text-muted); }
+        .tray-tool-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+        .tray-tool-btn.active span { color: var(--accent); }
+        .tray-tool-btn:active { transform: scale(0.95); }
+
         /* Mobile Overhaul */
         @media (max-width: 768px) {
             :root {
@@ -1690,7 +1793,6 @@
                 color: var(--text);
                 box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             }
-            .sidebar.open { transform: translateY(0); }
             
             .sidebar-grabber { display: block; }
 
@@ -1867,24 +1969,11 @@
                 padding: 8px;
             }
 
-            /* Floating Trigger & Bottom Tray */
+            /* Floating Trigger & Bottom Tray Layout */
             .floating-trigger {
                 position: fixed;
                 bottom: calc(var(--nav-h) + 20px);
                 right: 20px;
-                width: 56px;
-                height: 56px;
-                background: var(--accent);
-                color: white;
-                border: none;
-                border-radius: var(--radius-full);
-                box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 4500;
-                transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-                touch-action: none;
             }
 
             .floating-trigger.pos-top {
@@ -1896,8 +1985,11 @@
                 bottom: calc(var(--nav-h) + 16px);
             }
 
-            .floating-trigger.pos-floating {
-                /* Defaults cover this, but ensures classes can reset if needed */
+            .bottom-tray {
+                position: fixed;
+                bottom: 0; left: 0; right: 0;
+                transform: translateY(100%);
+                padding-bottom: env(safe-area-inset-bottom);
             }
 
             .bottom-tray.pos-top {
@@ -1913,108 +2005,11 @@
                 transform: translateY(0);
             }
 
-            .floating-trigger:active { transform: scale(0.9); }
-            
-            .bottom-tray {
-                position: fixed;
-                bottom: 0; left: 0; right: 0;
-                background: var(--bg-panel);
-                border-radius: 24px 24px 0 0;
-                z-index: 6000;
-                transform: translateY(100%);
-                transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-                box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
-                padding-bottom: env(safe-area-inset-bottom);
-                max-height: 85vh;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-                border-top: 1px solid #3f3f46;
-            }
             .bottom-tray.open { transform: translateY(0); }
             
             .tray-overlay {
                 position: fixed; inset: 0;
-                background: rgba(0,0,0,0.7);
-                backdrop-filter: blur(4px);
-                z-index: 5999;
-                display: none;
-                animation: fadeIn 0.3s ease;
             }
-            .tray-overlay.active { display: block; }
-
-            .tray-handle {
-                width: 40px; height: 4px;
-                background: var(--bg-elevated);
-                border-radius: var(--radius-full);
-                margin: 12px auto;
-                flex-shrink: 0;
-            }
-
-            .tray-content {
-                padding: 0 20px 20px;
-                overflow-y: auto;
-                flex: 1;
-            }
-
-            .tray-section {
-                margin-bottom: 24px;
-                padding-bottom: 20px;
-                border-bottom: 1px solid #3f3f46;
-            }
-            .tray-label {
-                display: block;
-                font-size: 11px;
-                font-weight: 800;
-                color: var(--text-dim);
-                text-transform: uppercase;
-                letter-spacing: 0.1em;
-                margin-bottom: 16px;
-            }
-
-            .tool-grid {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 12px;
-            }
-
-            .tray-tool-btn {
-                background: var(--bg-surface);
-                border: 1px solid #3f3f46;
-                border-radius: 12px;
-                aspect-ratio: 1;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 4px;
-                color: var(--text);
-                font-size: 18px;
-                transition: all 0.2s;
-            }
-            .tray-tool-btn span { font-size: 10px; font-weight: 700; color: var(--text-muted); }
-            .tray-tool-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-            .tray-tool-btn:active { transform: scale(0.95); }
-
-            /* Panel Close Buttons */
-            .panel-close-btn {
-                position: absolute;
-                top: 8px; right: 8px;
-                width: 28px; height: 28px;
-                border-radius: var(--radius-full);
-                background: var(--danger);
-                color: white;
-                border: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 18px;
-                font-weight: 700;
-                cursor: pointer;
-                z-index: 100;
-                box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
-            }
-            .panel-close-btn.static { position: relative; top: 0; right: 0; }
 
             /* Notes Panel as Bottom Tray on Mobile */
             .notes-panel {
@@ -2034,76 +2029,57 @@
             }
             .notes-panel.open { transform: translateY(0); }
             
-            /* Settings Modal Full View Fix */
+            /* Settings Modal Mobile View */
             .settings-modal {
                 position: fixed;
                 inset: 0 !important;
                 width: 100% !important;
-                max-width: none !important;
+                max-width: 100vw !important;
                 height: 100% !important;
-                max-height: none !important;
+                max-height: 100% !important;
                 border-radius: 0 !important;
                 margin: 0 !important;
                 display: flex;
                 flex-direction: column;
-                z-index: 7000;
-            }
-
-            .settings-sidebar { 
-                height: auto !important; 
-                padding: 16px !important;
-                border-bottom: 1px solid var(--border);
-                flex-shrink: 0;
-            }
-            
-            .settings-content-area { 
-                flex: 1; 
-                overflow-y: auto; 
-                padding-bottom: 80px; /* Space for footer */
-            }
-
-            .settings-footer {
-                position: absolute;
-                bottom: 0; left: 0; right: 0;
-                background: var(--bg-panel);
-                border-top: 1px solid var(--border);
-                padding: 16px 20px;
-                display: flex !important;
-                gap: 12px;
-                z-index: 10;
-            }
-            .settings-footer .btn { flex: 1; height: 48px; }
-
-            .tool-btn { width: 44px; height: 44px; font-size: 20px; }
-                flex-direction: column;
-                width: 100% !important;
-                max-width: 100vw !important;
-                height: 100% !important;
-                max-height: 100% !important;
-                border-radius: 0;
-                margin: 0;
-                position: fixed;
-                inset: 0;
                 z-index: 10000;
             }
             
             .settings-sidebar {
-                width: 100%; border-right: none; border-bottom: 1px solid var(--border);
-                padding: var(--space-lg) 0 0;
+                width: 100% !important; 
+                height: auto !important;
+                border-right: none !important; 
+                border-bottom: 1px solid var(--border) !important;
+                padding: var(--space-lg) 0 0 !important;
+                flex-shrink: 0 !important;
             }
             
             .settings-nav {
-                display: flex; overflow-x: auto; padding: 0 var(--space-md) var(--space-sm);
+                display: flex !important; 
+                overflow-x: auto !important; 
+                padding: 0 var(--space-md) var(--space-sm) !important;
                 -webkit-overflow-scrolling: touch;
                 scrollbar-width: none;
             }
             .settings-nav::-webkit-scrollbar { display: none; }
             
-            .settings-nav-item { flex-shrink: 0; margin-bottom: 0; margin-right: 8px; white-space: nowrap; padding: 8px 16px; }
-            .settings-header-title { padding: var(--space-md) var(--space-lg); font-size: 18px; margin-bottom: 0; }
-            .settings-content { padding: var(--space-xl) var(--space-lg); }
-            .settings-footer { padding: var(--space-md) var(--space-lg); flex-wrap: wrap; gap: var(--space-sm); }
-            .settings-footer .btn { flex: 1; min-width: 120px; }
+            .settings-nav-item { flex-shrink: 0 !important; margin-bottom: 0 !important; margin-right: 8px !important; white-space: nowrap !important; padding: 8px 16px !important; }
+            .settings-header-title { padding: var(--space-md) var(--space-lg) !important; font-size: 18px !important; margin-bottom: 0 !important; }
+            .settings-content { padding: var(--space-xl) var(--space-lg) !important; }
+            
+            .settings-footer { 
+                position: absolute !important;
+                bottom: 0; left: 0; right: 0;
+                padding: var(--space-md) var(--space-lg) !important; 
+                flex-wrap: wrap !important; 
+                gap: var(--space-sm) !important; 
+                background: var(--bg-panel) !important;
+                border-top: 1px solid var(--border) !important;
+                z-index: 10;
+                display: flex !important;
+            }
+            .settings-footer .btn { flex: 1 !important; min-width: 120px !important; height: 48px !important; }
+
+            .tool-btn { width: 44px; height: 44px; font-size: 20px; }
         }
 
         @media (max-width: 480px) {

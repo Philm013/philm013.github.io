@@ -601,8 +601,22 @@ Span.bookmark-page {
     background-color: #2c2c2c;
     border-radius: 4px;
     margin-bottom: 5px;
-    transition: background-color 0.2s;
-    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    cursor: grab;
+    position: relative;
+    border: 2px solid transparent;
+}
+.bookshelf-item-list li:active {
+    cursor: grabbing;
+}
+.bookshelf-item-list li.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+    background-color: #444;
+}
+.bookshelf-item-list li.drag-over {
+    border-color: #007bff;
+    background-color: #333;
 }
 .bookshelf-item-list li:hover {
     background-color: #3c3c3c;
@@ -617,7 +631,7 @@ Span.bookmark-page {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    pointer-events: none; /* Clicks should be handled by li */
+    pointer-events: none;
 }
 .item-actions {
     display: flex;
@@ -632,6 +646,20 @@ Span.bookmark-page {
     color: white;
     border-radius: 3px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.item-actions button.more-options {
+    font-weight: bold;
+    font-size: 16px;
+    padding: 2px 8px;
+    background-color: transparent;
+    color: #aaa;
+}
+.item-actions button.more-options:hover {
+    color: #fff;
+    background-color: #444;
 }
 .item-actions button.open-pdf { background-color: #007bff; }
 .item-actions button.delete-pdf, .item-actions button.delete-collection { background-color: #dc3545; }

@@ -230,10 +230,17 @@ export function closeEvidenceViewer() {
 /**
  * Returns the user to the login screen.
  */
-export function leaveSession() {
+export async function leaveSession() {
     if (confirm('Are you sure you want to leave? Your progress is saved locally.')) {
         if (App.syncState.syncInterval) clearInterval(App.syncState.syncInterval);
-        window.location.reload(); // Hard reset for safety
+        
+        // Return to landing page instead of hard reload if possible
+        if (typeof window.showLandingPage === 'function') {
+            window.showView('loginView');
+            await window.showLandingPage();
+        } else {
+            window.location.reload(); 
+        }
     }
     closeSessionMenu();
 }
@@ -265,8 +272,25 @@ export function copyJoinLink() {
 export function openGenericInput(title, placeholder, initialValue, callback) {
     const modal = document.getElementById('genericInputModal');
     const titleEl = document.getElementById('genericInputTitle');
+    const contentEl = document.getElementById('genericInputContent');
+    const actionEl = document.getElementById('genericInputActions');
+    
+    if (!modal) return;
+
+    // Restore default structure if it was modified by other features (like custom tips)
+    if (contentEl && !document.getElementById('genericInputField')) {
+        contentEl.innerHTML = `<input type="text" id="genericInputField" class="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-primary focus:bg-white focus:outline-none transition-all text-lg font-bold" placeholder="Type here...">`;
+    }
+    
+    if (actionEl && actionEl.children.length === 1) { // If only the custom button exists
+        actionEl.innerHTML = `
+            <button onclick="window.closeGenericInput()" class="px-6 py-3 text-gray-500 font-black text-xs uppercase tracking-widest hover:bg-gray-100 rounded-xl transition-all">Cancel</button>
+            <button onclick="window.submitGenericInput()" class="px-8 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:opacity-90 transition-all">Confirm</button>
+        `;
+    }
+
     const input = document.getElementById('genericInputField');
-    if (!modal || !input) return;
+    if (!input) return;
 
     if (titleEl) titleEl.textContent = title;
     input.placeholder = placeholder || 'Type here...';

@@ -4,7 +4,7 @@
 
 import { GoogleGenAI } from "https://esm.run/@google/genai";
 
-const API_KEY = "AIzaSyD6bubws1SVpBdtfp4F-Ie9n1Niwg1PPmM"; // <<< IMPORTANT: REPLACE WITH YOUR ACTUAL GEMINI API KEY
+const API_KEY = ""; // <<< IMPORTANT: REPLACE WITH YOUR ACTUAL GEMINI API KEY
 
 let ai;
 

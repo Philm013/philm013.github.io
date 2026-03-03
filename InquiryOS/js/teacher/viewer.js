@@ -155,7 +155,7 @@ export async function renderLiveGeneric() {
             <div class="flex-1 overflow-auto bg-gray-50 p-8 custom-scrollbar">
                 <div class="max-w-7xl mx-auto h-full bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 relative overflow-hidden">
                     <div class="readonly-overlay pointer-events-auto"></div>
-                    <div class="pointer-events-none opacity-80 filter grayscale-[0.2]">
+                    <div class="pointer-events-none opacity-90">
                         ${window.renderStudentContentHtml()}
                     </div>
                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
@@ -318,7 +318,7 @@ export async function renderIconManager() {
                             ${showDefIcons ? `
                                 <div>
                                     <label class="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block ml-1">Global Defaults (Active)</label>
-                                    <div class="flex flex-wrap gap-2 opacity-60">
+                                    <div class="flex flex-wrap gap-2">
                                         ${App.teacherSettings.defaultIcons?.map(icon => `<div class="p-2 bg-gray-50 rounded-lg border border-gray-100"><span class="iconify text-lg text-gray-400" data-icon="${icon}"></span></div>`).join('')}
                                     </div>
                                 </div>
@@ -365,8 +365,8 @@ export async function renderIconManager() {
                             ${showDefEmojis ? `
                                 <div>
                                     <label class="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block ml-1">Global Defaults (Active)</label>
-                                    <div class="flex flex-wrap gap-2 opacity-60">
-                                        ${App.teacherSettings.defaultEmojis?.map(e => `<div class="p-1 text-xl grayscale">${e}</div>`).join('')}
+                                    <div class="flex flex-wrap gap-2">
+                                        ${App.teacherSettings.defaultEmojis?.map(e => `<div class="p-1 text-xl cursor-pointer hover:scale-125 transition-transform" onclick="window.selectFeedbackSticker('${e}')">${e}</div>`).join('')}
                                     </div>
                                 </div>
                             ` : ''}
@@ -404,51 +404,51 @@ export async function renderIconManager() {
     }, 100);
 
     return `
-        <div class="h-full flex flex-col -m-6 bg-gray-900 overflow-hidden">
-            <div class="p-4 md:p-6 bg-gray-900 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 shrink-0 shadow-2xl z-50">
+        <div class="h-full flex flex-col -m-6 bg-white overflow-hidden">
+            <div class="p-4 md:p-6 bg-white border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 shrink-0 shadow-sm z-50">
                 <div class="flex items-center gap-4 md:gap-6">
-                    <button onclick="window.stopEditingBank()" class="w-10 h-10 md:w-12 md:h-12 bg-white/10 hover:bg-white/20 rounded-xl md:rounded-2xl flex items-center justify-center transition-all">
-                        <span class="iconify text-xl md:text-2xl text-white" data-icon="mdi:arrow-left"></span>
+                    <button onclick="window.stopEditingBank()" class="w-10 h-10 md:w-12 md:h-12 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl md:rounded-2xl flex items-center justify-center transition-all">
+                        <span class="iconify text-xl md:text-2xl text-gray-600" data-icon="mdi:arrow-left"></span>
                     </button>
                     <div>
-                        <h2 class="text-white font-black text-lg md:text-2xl uppercase tracking-tighter">${isIcon ? 'Icon' : 'Emoji'} Architect</h2>
-                        <p class="text-[8px] md:text-xs text-blue-400 font-bold uppercase tracking-widest mt-0.5">Lesson Curation</p>
+                        <h2 class="text-gray-900 font-black text-lg md:text-2xl uppercase tracking-tighter">${isIcon ? 'Icon' : 'Emoji'} Architect</h2>
+                        <p class="text-[8px] md:text-xs text-blue-600 font-bold uppercase tracking-widest mt-0.5">Lesson Curation</p>
                     </div>
                 </div>
                 <div class="flex-1 md:max-w-xl w-full">
                     <div class="relative">
                         <input type="text" id="assetSearchInput" placeholder="Search ${isIcon ? '200k+ icons...' : 'universal symbols...'}" 
                             oninput="window.debouncedAssetSearch()"
-                            class="w-full pl-10 md:pl-12 pr-4 py-3 md:py-4 bg-white/5 border border-white/10 rounded-xl md:rounded-2xl text-white text-sm md:text-base font-bold focus:bg-white/10 outline-none transition-all placeholder:text-white/20">
-                        <span class="iconify absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-white/30 text-lg md:text-xl" data-icon="mdi:magnify"></span>
+                            class="w-full pl-10 md:pl-12 pr-4 py-3 md:py-4 bg-gray-50 border border-gray-200 rounded-xl md:rounded-2xl text-gray-900 text-sm md:text-base font-bold focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all">
+                        <span class="iconify absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg md:text-xl" data-icon="mdi:magnify"></span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between md:justify-end gap-3">
                     <div class="text-left md:text-right">
-                        <p class="text-[8px] md:text-[10px] font-black text-white/40 uppercase tracking-widest">Lesson Pool</p>
-                        <p class="text-xs md:text-sm font-black text-white">${(isIcon ? App.teacherSettings.lessonIcons : App.teacherSettings.lessonEmojis)?.length || 0} Items</p>
+                        <p class="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Lesson Pool</p>
+                        <p class="text-xs md:text-sm font-black text-gray-900">${(isIcon ? App.teacherSettings.lessonIcons : App.teacherSettings.lessonEmojis)?.length || 0} Items</p>
                     </div>
-                    <button onclick="window.stopEditingBank()" class="px-6 md:px-8 py-2 md:py-3 bg-primary text-white rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase shadow-lg hover:scale-105 active:scale-95 transition-all">Done</button>
+                    <button onclick="window.stopEditingBank()" class="px-6 md:px-8 py-2 md:py-3 bg-gray-900 text-white rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase shadow-lg hover:scale-105 active:scale-95 transition-all">Done</button>
                 </div>
             </div>
 
             <div class="flex-1 flex overflow-hidden">
-                <!-- Sidebar Filters (Horizontal on small, Vertical on md+) -->
-                <div class="hidden md:flex w-72 border-r border-white/10 overflow-y-auto p-6 flex-col gap-8 bg-gray-900/50">
+                <!-- Sidebar Filters -->
+                <div class="hidden md:flex w-72 border-r border-gray-100 overflow-y-auto p-6 flex-col gap-8 bg-gray-50/50">
                     ${isIcon ? `
                         <div class="space-y-4">
-                            <label class="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Icon Sources</label>
-                            <select id="managerCategorySelect" onchange="window.onManagerCategoryChange()" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-white outline-none">
+                            <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 block">Icon Sources</label>
+                            <select id="managerCategorySelect" onchange="window.onManagerCategoryChange()" class="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-primary">
                                 <option value="">Main Collections</option>
                                 ${Object.keys(App.iconCategories || {}).sort().map(cat => `<option value="${cat}">${cat}</option>`).join('')}
                             </select>
-                            <div id="managerCollectionsList" class="flex flex-col gap-1 pr-2 custom-scrollbar-dark max-h-[400px] overflow-y-auto"></div>
+                            <div id="managerCollectionsList" class="flex flex-col gap-1 pr-2 custom-scrollbar max-h-[400px] overflow-y-auto"></div>
                         </div>
                     ` : `
                         <div class="space-y-4">
-                            <label class="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Emoji Categories</label>
+                            <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 block">Emoji Categories</label>
                             <div class="flex flex-col gap-1">
-                                <button onclick="window.setEmojiFilter('all')" class="emoji-filter-btn w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all bg-primary text-white shadow-lg" data-category="all">All Symbols</button>
+                                <button onclick="window.setEmojiFilter('all')" class="emoji-filter-btn w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all bg-primary text-white shadow-md" data-category="all">All Symbols</button>
                                 ${[
                                     { id: 'life', label: 'Life Science' },
                                     { id: 'physical', label: 'Physical' },
@@ -457,24 +457,24 @@ export async function renderIconManager() {
                                     { id: 'food', label: 'Food & Growth' },
                                     { id: 'objects', label: 'Tools & Objects' },
                                     { id: 'symbols', label: 'Math & Symbols' }
-                                ].map(c => `<button onclick="window.setEmojiFilter('${c.id}')" class="emoji-filter-btn w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all text-white/40 hover:bg-white/5" data-category="${c.id}">${c.label}</button>`).join('')}
+                                ].map(c => `<button onclick="window.setEmojiFilter('${c.id}')" class="emoji-filter-btn w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all text-gray-400 hover:bg-white border border-transparent hover:border-gray-100" data-category="${c.id}">${c.label}</button>`).join('')}
                             </div>
                         </div>
                     `}
                 </div>
 
                 <!-- Results Grid -->
-                <div class="flex-1 flex flex-col bg-black/20 p-4 md:p-6 overflow-hidden">
+                <div class="flex-1 flex flex-col bg-gray-50 p-4 md:p-6 overflow-hidden">
                     <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-4 shrink-0">
                         ${presets.map(p => `
                             <button onclick="${isIcon ? `window.applyAssetPreset('${p.query}')` : `window.setEmojiFilter('${p.category}', '${p.query}')`}" 
-                                class="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[9px] md:text-[10px] font-black text-white/60 uppercase hover:bg-white/10 hover:text-white transition-all shrink-0 whitespace-nowrap">
+                                class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-[9px] md:text-[10px] font-black text-gray-500 uppercase hover:text-primary hover:border-primary transition-all shrink-0 whitespace-nowrap shadow-sm">
                                 <span class="iconify" data-icon="${p.icon}"></span>
                                 ${p.label}
                             </button>
                         `).join('')}
                     </div>
-                    <div id="assetManagerGrid" class="flex-1 grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 md:gap-4 overflow-y-auto pr-2 custom-scrollbar-dark content-start">
+                    <div id="assetManagerGrid" class="flex-1 grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 md:gap-4 overflow-y-auto pr-2 custom-scrollbar content-start">
                         <!-- Populated via loadIconsForManager or renderEmojiLibrary -->
                     </div>
                 </div>

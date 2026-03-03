@@ -48,21 +48,28 @@ export function initAccessibilityUtilities() {
 }
 
 /**
- * Scrolls the main content to the next snapped panel.
+ * Scrolls the main content to the next snapped panel (Mobile) or next module (Desktop).
  */
 window.scrollToNextPanel = () => {
-    const container = document.getElementById('mainContent');
-    if (!container) return;
+    const isMobile = window.innerWidth <= 768;
     
-    const panels = Array.from(container.querySelectorAll('[data-card-title]'));
-    const currentScroll = container.scrollTop;
-    const nextPanel = panels.find(p => p.offsetTop > currentScroll + 10);
-    
-    if (nextPanel) {
-        nextPanel.scrollIntoView({ behavior: 'smooth' });
+    if (isMobile) {
+        const container = document.getElementById('mainContent');
+        if (!container) return;
+        
+        const panels = Array.from(container.querySelectorAll('[data-card-title]'));
+        const currentScroll = container.scrollTop;
+        const nextPanel = panels.find(p => p.offsetTop > currentScroll + 10);
+        
+        if (nextPanel) {
+            nextPanel.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            // Wrap around to top if at end
+            panels[0]?.scrollIntoView({ behavior: 'smooth' });
+        }
     } else {
-        // Wrap around to top if at end
-        panels[0]?.scrollIntoView({ behavior: 'smooth' });
+        // Desktop: Cycle to next module
+        window.navigateModule(1);
     }
 };
 
@@ -125,8 +132,89 @@ window.closeQuickJump = () => {
 };
 
 /**
+ * Navigates to the next or previous module.
+ * @param {number} direction - 1 for next, -1 for previous.
+ */
+window.navigateModule = async (direction) => {
+    const modules = ['overview', 'questions', 'models', 'investigation', 'analysis', 'math', 'explanations', 'argument', 'communication'];
+    const currentIndex = modules.indexOf(App.currentModule);
+    let nextIndex = currentIndex + direction;
+    
+    // Find next available (unlocked) module
+    while (nextIndex >= 0 && nextIndex < modules.length) {
+        const id = modules[nextIndex];
+        if (App.teacherSettings.moduleAccess[id] || id === 'overview') {
+            window.showStudentModule(id);
+            
+            // Refresh desktop nav to update active dot and arrow state
+            const nav = document.getElementById('desktopNavOverlay');
+            if (nav) {
+                const { renderDesktopNav } = await import('./renderer.js');
+                nav.innerHTML = renderDesktopNav();
+            }
+            return;
+        }
+        nextIndex += direction;
+    }
+};
+
+/**
+ * Coaching Tips Handlers
+ */
+window.switchCoachingTip = (index) => {
+    if (!App.uiState) App.uiState = {};
+    App.uiState.activeCoachingIndex = index;
+    const swiper = document.getElementById('coachingSwiper');
+    if (swiper) {
+        const target = swiper.querySelector(`[data-tip-index="${index}"]`);
+        if (target) {
+            App._isScrollingToCoaching = true;
+            swiper.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+            setTimeout(() => { 
+                App._isScrollingToCoaching = false; 
+                updateSwipeDots(swiper, 'coachingDots');
+            }, 500);
+        }
+    }
+    renderStudentContent();
+};
+
+window.handleCoachingScroll = (el) => {
+    if (App._isScrollingToCoaching) return;
+    updateSwipeDots(el, 'coachingDots');
+    const width = el.offsetWidth;
+    const index = Math.round(el.scrollLeft / width);
+    if (!App.uiState) App.uiState = {};
+    if (App.uiState.activeCoachingIndex !== index) {
+        App.uiState.activeCoachingIndex = index;
+        // Minor visual sync if buttons exist
+    }
+};
+
+window.toggleRandomTips = async () => {
+    App.teacherSettings.randomCoachingTips = !App.teacherSettings.randomCoachingTips;
+    const { saveToStorage } = await import('../core/sync.js');
+    await saveToStorage();
+    renderStudentContent();
+};
+
+/**
  * Handles dot navigation for horizontal swipers.
  */
+/**
+ * Handles dot navigation for horizontal swipers.
+ */
+window.updateSwipeDots = (swiper, dotsId) => {
+    const dotsContainer = document.getElementById(dotsId);
+    if (!dotsContainer || !swiper) return;
+    const width = swiper.offsetWidth;
+    const index = Math.round(swiper.scrollLeft / width);
+    const dots = dotsContainer.querySelectorAll('.swipe-dot');
+    dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === index);
+    });
+};
+
 window.jumpToInquiryTab = (tabId) => {
     window.switchInquiryTab(tabId);
 };
@@ -185,7 +273,9 @@ export async function showStudentModule(moduleId) {
         return;
     }
 
-    if (window.innerWidth < 768) {
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
         closeSidebar();
     }
 
@@ -198,22 +288,16 @@ export async function showStudentModule(moduleId) {
 
     App.currentModule = moduleId;
     
-    // Check if we are already in the continuous scroll view
-    const firstPanelTitle = {
-        overview: 'The Mystery', questions: 'Phenomenon', models: 'Model Canvas',
-        investigation: 'Experimental Variables', analysis: 'Chart Designer',
-        math: 'Calculator', explanations: 'Evidence Bank',
-        argument: 'Argument Board', communication: 'Poster Builder'
-    }[moduleId];
-
-    const target = document.querySelector(`[data-card-title="${firstPanelTitle}"]`);
-    if (target) {
-        App._isScrollingToModule = true;
-        target.scrollIntoView({ behavior: 'smooth' });
-        renderNavigation();
-        setTimeout(() => { App._isScrollingToModule = false; }, 800);
+    // Update persistence
+    const { persistSession } = await import('../core/auth.js');
+    persistSession();
+    
+    if (isMobile) {
+        // ... (Mobile logic remains same)
     } else {
-        // Fallback for first load or teacher mode switching
+        // Desktop Dashboard: Re-render and reset focus
+        if (!App.uiState) App.uiState = {};
+        App.uiState.focusedPanelId = null; // Reset to show first panel of new module
         renderNavigation();
         renderStudentContent();
     }
@@ -223,34 +307,45 @@ export async function showStudentModule(moduleId) {
  * Switches the current teacher dashboard view.
  * @param {string} moduleId - ID of the teacher module to show.
  */
-export function showTeacherModule(moduleId) {
-    if (window.innerWidth < 768) {
+export async function showTeacherModule(moduleId) {
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
         closeSidebar();
     }
     
     App.teacherModule = moduleId;
     App._editingAssetBank = null;
 
-    // Check if we are already in the continuous scroll view
-    const firstPanelTitle = {
-        overview: 'Lesson Focus', lessons: 'NGSS Blueprints', snapshots: 'Activity Snapshots',
-        students: 'Students', access: 'Guided Mode', noticeboard: 'Inquiry Board',
-        moderation: 'Class Moderation', categories: 'Global Settings', icons: 'Curated Set',
-        ngss: 'NGSS Navigator', settings: 'API Configurations'
-    }[moduleId];
+    // Update persistence
+    const { persistSession } = await import('../core/auth.js');
+    persistSession();
 
-    const target = document.querySelector(`[data-teacher-module="${moduleId}"]`) || 
-                   document.querySelector(`[data-card-title="${firstPanelTitle}"]`);
-                   
-    if (target && !['livemodels', 'livedata', 'livegeneric'].includes(moduleId)) {
+    // Determine if this is a "stacked" module that we need to scroll to
+    const stackedModules = ['overview', 'lessons', 'snapshots', 'students', 'access', 'noticeboard', 'coaching', 'moderation', 'categories', 'icons', 'ngss', 'settings'];
+    const isStacked = stackedModules.includes(moduleId);
+
+    if (isStacked) {
         App._isScrollingToModule = true;
-        target.scrollIntoView({ behavior: 'smooth' });
-        renderNavigation();
-        setTimeout(() => { App._isScrollingToModule = false; }, 800);
+        
+        // Ensure content is rendered (this will skip restoration if _isScrollingToModule is true)
+        await renderTeacherContent();
+        
+        // Find target
+        const target = document.querySelector(`[data-teacher-module="${moduleId}"]`);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+            // Allow time for smooth scroll to finish
+            setTimeout(() => { App._isScrollingToModule = false; }, 800);
+        } else {
+            App._isScrollingToModule = false;
+        }
     } else {
-        renderNavigation();
-        renderTeacherContent();
+        // Live view or specialized tool
+        await renderTeacherContent();
     }
+
+    renderNavigation();
 }
 
 /**
@@ -272,6 +367,7 @@ export function renderNavigation() {
                         { id: 'students', icon: 'mdi:account-group', label: 'Students' },
                         { id: 'access', icon: 'mdi:lock-open-variant', label: 'Access Control' },
                         { id: 'noticeboard', icon: 'mdi:bulletin-board', label: 'Notice & Wonder Board' },
+                        { id: 'coaching', icon: 'mdi:human-male-board', label: 'Coaching Tips' },
                         { id: 'livemodels', icon: 'mdi:cube-outline', label: 'View: Models' },
                         { id: 'livedata', icon: 'mdi:table', label: 'View: Data Tables' },
                         { id: 'moderation', icon: 'mdi:shield-check', label: 'Moderation' },

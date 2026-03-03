@@ -18,6 +18,59 @@ Thumbs.db
 .idea/
 TEMP/
 
+# Security & Local Environment
+.env
+.env.*
+*.key
+*.cert
+*.pem
+local.properties
+
+# Build & Output
+**/build/
+**/dist/
+**/out/
+**/.gradle/
+**/target/
+**/bin/
+**/obj/
+**/coverage/
+.parcel-cache/
+.next/
+.serverless/
+.output/
+
+# Common OS & Tool Files
+.history/
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.pnpm-store/
+.npm/
+.node_repl_history
+
+# Archives & Large Files
+*.zip
+*.7z
+*.tar.gz
+*.rar
+*.iso
+*.dmg
+*.bin
+
+# Project Scratchpads & Temporary Versions
+*_new.js
+*_final.js
+*_replacement*.txt
+*_to_replace.txt
+overview_*.txt
+OLD.html
+DEV.html
+
 # Global Linting & Tooling
 .htmlhintrc
 .stylelintrc.json

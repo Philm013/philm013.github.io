@@ -59,9 +59,18 @@ export function renderOverviewModule() {
                     </div>
                 </div>
                 <div class="panel-content space-y-6">
-                    ${renderStoryStep('Modeling Status', App.work.modelNodes?.length > 0 ? `Identified <strong>${App.work.modelNodes.length}</strong> components.` : 'Not started.', App.work.modelNodes?.length > 0, 'mdi:cube-outline', 'blue')}
-                    ${renderStoryStep('Claim & Evidence', App.work.claim ? `Current claim: <span class="italic">"${App.work.claim}"</span>` : 'Gathering evidence...', !!App.work.claim, 'mdi:lightbulb-on', 'green')}
-                    ${renderStoryStep('Evidence Bank', App.work.evidence?.length > 0 ? `Archived <strong>${App.work.evidence.length}</strong> items.` : 'Bank is empty.', App.work.evidence?.length > 0, 'mdi:folder-star', 'amber')}
+                    <div class="space-y-6 flex-1">
+                        ${renderStoryStep('Modeling Status', App.work.modelNodes?.length > 0 ? `Identified <strong>${App.work.modelNodes.length}</strong> components.` : 'Not started.', App.work.modelNodes?.length > 0, 'mdi:cube-outline', 'blue')}
+                        ${renderStoryStep('Claim & Evidence', App.work.claim ? `Current claim: <span class="italic">"${App.work.claim}"</span>` : 'Gathering evidence...', !!App.work.claim, 'mdi:lightbulb-on', 'green')}
+                        ${renderStoryStep('Evidence Bank', App.work.evidence?.length > 0 ? `Archived <strong>${App.work.evidence.length}</strong> items.` : 'Bank is empty.', App.work.evidence?.length > 0, 'mdi:folder-star', 'amber')}
+                    </div>
+                    
+                    <div class="pt-6 border-t border-gray-50">
+                        <button onclick="window.showStudentModule('questions')" class="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3">
+                            <span>Enter Workspace</span>
+                            <span class="iconify text-lg" data-icon="mdi:arrow-right"></span>
+                        </button>
+                    </div>
                 </div>
             </div>
 

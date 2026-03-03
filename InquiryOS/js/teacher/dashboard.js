@@ -9,6 +9,16 @@ import { saveToStorage, registerUser, saveAndBroadcast } from '../core/sync.js';
 import { renderTeacherContent, updateModeUI, renderEmptyState } from '../ui/renderer.js';
 import { toast, generateCode, calculateStudentProgress, deepClone, renderInfoTip } from '../ui/utils.js';
 import { getNGSSTemplates } from '../core/ngss.js';
+import { SEPTipsLibrary, CCCTipsLibrary } from '../core/tips_library.js';
+
+export async function removeFromPhenomenon(peId) {
+    if (App.teacherSettings.phenomenon.ngssStandards) {
+        App.teacherSettings.phenomenon.ngssStandards = App.teacherSettings.phenomenon.ngssStandards.filter(id => id !== peId);
+        await saveToStorage();
+        renderTeacherContent();
+        toast(`Removed ${peId}`, 'info');
+    }
+}
 
 export async function resetClassSession() {
     if (confirm('Reset all focus, access controls, and active presentations for the whole class?')) {
@@ -34,16 +44,74 @@ export async function stopPresentation() {
 export async function renderTeacherOverview() {
     const phenomenon = App.teacherSettings?.phenomenon || { title: '', description: '', tags: [], ngssStandards: [] };
     const stats = App.classStats || { notices: 0, wonders: 0, nodes: 0, posts: 0 };
+    
+    // Fetch active student count for more informative stats
+    const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
+    const activeStudents = allUsers.filter(u => u.mode === 'student' && (Date.now() - u.lastSeen < 30000));
 
     return `
         <div class="h-full flex flex-col">
-            <div class="shrink-0 md:p-6 hidden md:block">
-                <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Classroom Command</h2>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Real-time lesson control</p>
+            <div class="shrink-0 md:p-6 p-4 hidden md:block">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Classroom Command</h2>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Real-time lesson control</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="px-4 py-2 bg-green-50 text-green-600 rounded-xl border border-green-100 flex items-center gap-3">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            <span class="text-[10px] font-black uppercase tracking-widest">${activeStudents.length} Students Online</span>
+                        </div>
+                        <div class="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 flex items-center gap-2">
+                            <span class="iconify" data-icon="mdi:sync"></span>
+                            <span class="text-[10px] font-black uppercase tracking-widest">Auto-Sync Active</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="panels-container lg:grid lg:grid-cols-12 gap-6 flex-1">
-                <div class="lg:col-span-7 flex flex-col" data-card-title="Lesson Focus">
+            <!-- Quick Stats Row -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 px-4 md:px-6 mb-6">
+                <div class="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                    <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl">
+                        <span class="iconify" data-icon="mdi:eye"></span>
+                    </div>
+                    <div>
+                        <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">Notices</p>
+                        <p class="text-xl font-black text-gray-900">${stats.notices}</p>
+                    </div>
+                </div>
+                <div class="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                    <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-xl">
+                        <span class="iconify" data-icon="mdi:lightbulb"></span>
+                    </div>
+                    <div>
+                        <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">Wonders</p>
+                        <p class="text-xl font-black text-gray-900">${stats.wonders}</p>
+                    </div>
+                </div>
+                <div class="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                    <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-xl">
+                        <span class="iconify" data-icon="mdi:cube-outline"></span>
+                    </div>
+                    <div>
+                        <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">Model Nodes</p>
+                        <p class="text-xl font-black text-gray-900">${stats.nodes}</p>
+                    </div>
+                </div>
+                <div class="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+                    <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+                        <span class="iconify" data-icon="mdi:forum"></span>
+                    </div>
+                    <div>
+                        <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">Discussion</p>
+                        <p class="text-xl font-black text-gray-900">${stats.posts}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panels-container lg:grid lg:grid-cols-12 gap-6 flex-1 px-4 md:px-6 pb-6">
+                <div class="lg:col-span-7 flex flex-col h-full" data-card-title="Lesson Focus">
                     <div class="sticky-panel-header md:hidden">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 bg-amber-500 text-white rounded-lg flex items-center justify-center shrink-0 border border-amber-400">
@@ -53,73 +121,85 @@ export async function renderTeacherOverview() {
                             ${renderInfoTip('Set the stage for your lesson! Update the title, description, and scientific media that students will see in their "Mystery" section.')}
                         </div>
                     </div>
-                    <div class="panel-content space-y-6">
+                    <div class="panel-content space-y-6 flex-1 min-h-0">
                         <div class="space-y-4">
                             <div>
-                                <div class="flex items-center justify-between mb-1.5">
-                                    <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 block">Title</label>
-                                    <div class="hidden md:block">${renderInfoTip('Define the name of the scientific mystery or unit.')}</div>
-                                </div>
+                                <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 block mb-1.5">Mystery Title</label>
                                 <input type="text" id="phenomTitle" value="${phenomenon.title || ''}" onchange="window.updatePhenomenon()"
-                                    placeholder="Title..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold outline-none focus:border-amber-500">
+                                    placeholder="Enter Title..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-black outline-none focus:border-amber-500 focus:bg-white transition-all shadow-inner">
                             </div>
                             <div>
-                                <div class="flex items-center justify-between mb-1.5">
-                                    <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 block">Description</label>
-                                    <div class="hidden md:block">${renderInfoTip('Provide context or instructions for students to read during their initial observation.')}</div>
-                                </div>
+                                <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 block mb-1.5">Contextual Description</label>
                                 <textarea id="phenomDesc" onchange="window.updatePhenomenon()"
-                                    placeholder="Description..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium outline-none focus:border-amber-500 transition-all resize-none min-h-[100px]">${phenomenon.description || ''}</textarea>
+                                    placeholder="Provide background info..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium outline-none focus:border-amber-500 focus:bg-white transition-all resize-none min-h-[120px] shadow-inner">${phenomenon.description || ''}</textarea>
                             </div>
                             <div class="space-y-3">
                                 <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2">
-                                        <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Media</h4>
-                                        <div class="hidden md:block">${renderInfoTip('Attach images, videos, or simulations from the library to enrich the phenomenon.')}</div>
-                                    </div>
-                                    <button onclick="window.openMediaPicker()" class="px-3 py-1 bg-amber-50 text-amber-600 rounded-lg text-[9px] font-black uppercase">Add</button>
+                                    <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phenomenon Media</h4>
+                                    <button onclick="window.openMediaPicker()" class="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[9px] font-black uppercase hover:bg-black transition-all">Add Media</button>
                                 </div>
-                                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner">
                                     ${(phenomenon.media || []).map(m => `
-                                        <div class="group relative aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                                        <div class="group relative aspect-square bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                                             <img src="${m.thumb}" class="w-full h-full object-cover" loading="lazy">
-                                            <button onclick="window.removeMediaFromPhenomenon('${m.id}')" class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center"><span class="iconify" data-icon="mdi:trash-can-outline"></span></button>
-                                        </div>`).join('')}
+                                            <div class="absolute inset-0 bg-red-500/90 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                <button onclick="window.removeMediaFromPhenomenon('${m.id}')" class="p-2 text-white"><span class="iconify text-xl" data-icon="mdi:trash-can-outline"></span></button>
+                                            </div>
+                                        </div>`).join('') || `
+                                        <div class="col-span-full py-8 text-center">
+                                            <span class="iconify text-3xl text-gray-200 mx-auto mb-2" data-icon="mdi:image-plus-outline"></span>
+                                            <p class="text-[9px] font-black text-gray-300 uppercase">No Media Attached</p>
+                                        </div>
+                                    `}
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="lg:col-span-5 flex flex-col" data-card-title="Alignment & Stats">
+                <div class="lg:col-span-5 flex flex-col h-full" data-card-title="Alignment & Controls">
                     <div class="sticky-panel-header md:hidden">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center shrink-0 border border-blue-500">
                                 <span class="iconify" data-icon="mdi:school"></span>
                             </div>
-                            <h3>Academic Alignment</h3>
-                            ${renderInfoTip('Monitor live engagement stats and manage linked NGSS standards for this session.')}
+                            <h3>Standards Alignment</h3>
                         </div>
                     </div>
-                    <div class="panel-content space-y-6">
-                        <div class="hidden md:flex items-center justify-between mb-4 border-b pb-4">
-                            <h3 class="font-black text-gray-900 uppercase text-sm">Academic Alignment</h3>
-                            ${renderInfoTip('Monitor live engagement stats and manage linked NGSS standards for this session.')}
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center"><p class="text-[8px] font-black text-blue-400 uppercase tracking-widest">Notices</p><span class="text-2xl font-black text-blue-600">${stats.notices}</span></div>
-                            <div class="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center"><p class="text-[8px] font-black text-amber-400 uppercase tracking-widest">Wonders</p><span class="text-2xl font-black text-amber-600">${stats.wonders}</span></div>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between px-1"><h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Linked Standards</h4><button onclick="window.showTeacherModule('ngss')" class="text-[9px] font-black text-blue-600 uppercase">Browse</button></div>
-                            <div class="space-y-2">
+                    <div class="panel-content space-y-6 flex-1 min-h-0">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Class Focus Standards</h4>
+                                <button onclick="window.showTeacherModule('ngss')" class="text-[9px] font-black text-blue-600 uppercase hover:underline">Browse Library</button>
+                            </div>
+                            <div class="space-y-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
                                 ${phenomenon.ngssStandards?.length > 0 ? phenomenon.ngssStandards.map(peId => {
                                     const pe = App.ngssData?.peMap?.get(peId);
-                                    return `<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden"><span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[8px] font-black font-mono border border-blue-200 shrink-0">${peId}</span><p class="text-[10px] font-bold text-gray-700 truncate">${pe?.description || 'Loading...'}</p></div>`;
-                                }).join('') : `<div class="py-10 text-center opacity-30 border-2 border-dashed rounded-2xl"><p class="text-[9px] font-black uppercase">No Standards Linked</p></div>`}
+                                    return `
+                                        <div class="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 shadow-sm group">
+                                            <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[9px] font-black font-mono border border-blue-200 shrink-0">${peId}</span>
+                                            <p class="text-[10px] font-bold text-gray-700 truncate flex-1">${pe?.description || 'Loading...'}</p>
+                                            <button onclick="window.removeFromPhenomenon('${peId}')" class="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-all p-1">
+                                                <span class="iconify" data-icon="mdi:close"></span>
+                                            </button>
+                                        </div>`;
+                                }).join('') : `<div class="py-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100"><p class="text-[10px] font-black text-gray-300 uppercase">Link standards to guide inquiry</p></div>`}
                             </div>
                         </div>
-                        <div class="pt-4"><button onclick="window.showTeacherModule('noticeboard')" class="w-full py-4 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">Open Inquiry Board</button></div>
+                        
+                        <div class="pt-4 border-t border-gray-100 space-y-3">
+                            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">Quick Actions</label>
+                            <div class="grid grid-cols-1 gap-2">
+                                <button onclick="window.showTeacherModule('noticeboard')" class="w-full py-4 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-black transition-all flex items-center justify-center gap-3">
+                                    <span class="iconify text-lg" data-icon="mdi:bulletin-board"></span>
+                                    Open Inquiry Board
+                                </button>
+                                <button onclick="window.showTeacherModule('access')" class="w-full py-4 bg-orange-50 text-orange-600 border border-orange-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-100 transition-all flex items-center justify-center gap-3">
+                                    <span class="iconify text-lg" data-icon="mdi:lock-open-variant"></span>
+                                    Manage Class Permissions
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -136,7 +216,7 @@ export async function renderTeacherSnapshots() {
     return `
         <div class="h-full flex flex-col">
             <div class="shrink-0 md:p-6 hidden md:block"><h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Snapshots</h2><p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Real-time Activity</p></div>
-            <div class="panels-container lg:block flex-1">
+            <div class="panels-container flex-1">
                 <div class="bg-white border-b flex flex-col h-full" data-card-title="Activity Snapshots">
                     <div class="sticky-panel-header md:hidden">
                         <div class="flex items-center gap-3">
@@ -176,7 +256,7 @@ export async function renderTeacherLessons() {
     return `
         <div class="h-full flex flex-col">
             <div class="shrink-0 md:p-6 hidden md:block"><h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Lesson Designer</h2><p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Activity Presets</p></div>
-            <div class="panels-container lg:block flex-1">
+            <div class="panels-container flex-1">
                 <div class="bg-white border-b flex flex-col" data-card-title="NGSS Blueprints">
                     <div class="sticky-panel-header md:hidden">
                         <div class="flex items-center gap-2">
@@ -230,7 +310,7 @@ export async function renderTeacherStudents() {
     return `
         <div class="h-full flex flex-col">
             <div class="shrink-0 md:p-6 hidden md:block"><h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Students</h2><p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Management</p></div>
-            <div class="panels-container lg:block flex-1">
+            <div class="panels-container flex-1">
                 <div class="bg-white border-b flex flex-col h-full" data-card-title="Student Roster">
                     <div class="sticky-panel-header md:hidden">
                         <div class="flex items-center gap-2">
@@ -266,7 +346,7 @@ export async function renderTeacherAccess() {
     return `
         <div class="h-full flex flex-col">
             <div class="shrink-0 md:p-6 hidden md:block"><h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Access Control</h2><p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Class Governance</p></div>
-            <div class="panels-container lg:block flex-1">
+            <div class="panels-container flex-1">
                                 <div class="bg-white border-b flex flex-col h-full" data-card-title="Guided Mode">
                                     <div class="sticky-panel-header md:hidden">
                                         <div class="flex items-center gap-2">
@@ -327,8 +407,8 @@ export async function renderSessionSettings() {
     return `
         <div class="h-full flex flex-col">
             <div class="shrink-0 md:p-6 hidden md:block"><h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Session Settings</h2><p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Platform Configuration</p></div>
-            <div class="panels-container lg:block flex-1">
-                <div class="bg-white border-b flex flex-col" data-card-title="API Configurations">
+            <div class="panels-container flex-1 px-4 md:px-6 pb-6">
+                <div class="bg-white border-b flex flex-col full-bleed-panel" data-card-title="API Configurations">
                     <div class="sticky-panel-header md:hidden">
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center shrink-0 border border-blue-500">
@@ -336,17 +416,19 @@ export async function renderSessionSettings() {
                             </div>
                             <h3>API Connections</h3>
                             ${renderInfoTip('Connect to external services like Unsplash or Pexels to enable scientific media searching within the platform.')}
-                                                </div>
-                                            </div>
-                                            <div class="panel-content space-y-8">
-                                                <div class="hidden md:flex items-center justify-between mb-4 border-b pb-4">
-                                                    <h3 class="font-black text-gray-900 uppercase text-sm">System Connections</h3>
-                                                    ${renderInfoTip('Connect to external services like Unsplash or Pexels to enable scientific media searching within the platform.')}
-                                                </div>
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-3"><label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Unsplash Key</label><div class="flex gap-2"><input type="password" id="unsplashKey" value="${App.teacherSettings.keys?.unsplash || ''}" class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-mono text-sm shadow-inner"><button onclick="window.saveApiKey('unsplash')" class="px-4 bg-gray-900 text-white rounded-xl font-bold text-xs uppercase shadow-md">Save</button></div></div><div class="space-y-3"><label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pexels Key</label><div class="flex gap-2"><input type="password" id="pexelsKey" value="${App.teacherSettings.keys?.pexels || ''}" class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-mono text-sm shadow-inner"><button onclick="window.saveApiKey('pexels')" class="px-4 bg-gray-900 text-white rounded-xl font-bold text-xs uppercase shadow-md">Save</button></div></div></div></div>
+                        </div>
+                    </div>
+                    <div class="panel-content space-y-8 !p-6 md:!p-8">
+                        <div class="hidden md:flex items-center justify-between mb-4 border-b pb-4">
+                            <h3 class="font-black text-gray-900 uppercase text-sm">System Connections</h3>
+                            ${renderInfoTip('Connect to external services like Unsplash or Pexels to enable scientific media searching within the platform.')}
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-3"><label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Unsplash Key</label><div class="flex gap-2"><input type="password" id="unsplashKey" value="${App.teacherSettings.keys?.unsplash || ''}" class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-mono text-sm shadow-inner"><button onclick="window.saveApiKey('unsplash')" class="px-4 bg-gray-900 text-white rounded-xl font-bold text-xs uppercase shadow-md">Save</button></div></div><div class="space-y-3"><label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pexels Key</label><div class="flex gap-2"><input type="password" id="pexelsKey" value="${App.teacherSettings.keys?.pexels || ''}" class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-mono text-sm shadow-inner"><button onclick="window.saveApiKey('pexels')" class="px-4 bg-gray-900 text-white rounded-xl font-bold text-xs uppercase shadow-md">Save</button></div></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-white border-b flex flex-col h-full" data-card-title="Preferences">
+                <div class="bg-white border-b flex flex-col flex-1 full-bleed-panel" data-card-title="Preferences">
                     <div class="sticky-panel-header md:hidden">
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 bg-purple-600 text-white rounded-lg flex items-center justify-center shrink-0 border border-purple-500">
@@ -368,13 +450,396 @@ export async function renderSessionSettings() {
                                 { id: 'showAllIcons', label: 'Full Icon Library', desc: 'Access 200k+ icons' },
                                 { id: 'showDefaultIcons', label: 'Default Icon Set', desc: 'Enable standard science icons' },
                                 { id: 'showDefaultEmojis', label: 'Default Emoji Set', desc: 'Enable standard symbols' },
-                                { id: 'defaultCategoriesEnabled', label: 'Inquiry Defaults', desc: 'Notice, Wonder, Ideas' }
+                                { id: 'defaultCategoriesEnabled', label: 'Inquiry Defaults', desc: 'Notice, Wonder, Ideas' },
+                                { id: 'showSepTips', label: 'SEP Coaching', desc: 'Display practice tips' },
+                                { id: 'showCccTips', label: 'CCC Coaching', desc: 'Display concept tips' }
                             ].map(pref => `<div class="flex items-center justify-between p-5 bg-white active:bg-gray-50 transition-colors"><div><p class="font-bold text-gray-800 text-sm">${pref.label}</p><p class="text-[10px] text-gray-400 font-bold uppercase">${pref.desc}</p></div><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" onchange="window.toggleTeacherSetting('${pref.id}')" ${App.teacherSettings[pref.id] ? 'checked' : ''} class="sr-only peer"><div class="w-12 h-6 bg-gray-200 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-6 shadow-inner"></div></label></div>`).join('')}
                         </div>
                     </div>
                 </div>
             </div>
         </div>`;
+}
+
+export async function renderCoachingManager() {
+    return `
+        <div class="h-full flex flex-col">
+            <div class="shrink-0 md:p-6 hidden md:block">
+                <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Coaching Architect</h2>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Practice Guidance & Logic</p>
+            </div>
+            <div class="panels-container flex-1 px-4 md:px-6 pb-6">
+                <div class="flex flex-col bg-white border-b full-bleed-panel h-full" data-card-title="Coaching Library" data-teacher-module="coaching">
+                    <div class="sticky-panel-header">
+                        <div class="flex items-center gap-1 bg-gray-100/50 p-1 rounded-xl border border-gray-200 w-full overflow-x-auto no-scrollbar">
+                            <div class="px-2 shrink-0 border-r border-gray-200">
+                                <div class="w-8 h-8 bg-primary text-white rounded-lg flex items-center justify-center shrink-0 shadow-lg">
+                                    <span class="iconify" data-icon="mdi:human-male-board"></span>
+                                </div>
+                            </div>
+                            <!-- SEP Tabs -->
+                            <div class="flex items-center gap-1 border-r border-gray-200 px-2">
+                                ${Object.keys(SEPTipsLibrary).map(sepKey => `
+                                    <button onclick="window.switchCoachingLibTab('${sepKey}')" 
+                                        class="min-w-[50px] py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${App.uiState?.coachingLibTab === sepKey ? 'bg-primary text-white shadow-sm' : 'text-gray-400 hover:text-primary'}">
+                                        ${sepKey}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <!-- CCC Tabs -->
+                            <div class="flex items-center gap-1 px-2">
+                                ${Object.keys(CCCTipsLibrary).map(cccKey => `
+                                    <button onclick="window.switchCoachingLibTab('${cccKey}')" 
+                                        class="min-w-[50px] py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${App.uiState?.coachingLibTab === cccKey ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-400 hover:text-amber-500'}">
+                                        ${cccKey.replace('cat_', 'CCC ')}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col min-h-0">
+                        <div id="coachingLibSwiper" class="horizontal-snap-container" onscroll="window.handleCoachingLibScroll(this)">
+                            ${(() => {
+                                const combinedKeys = [...Object.keys(SEPTipsLibrary), ...Object.keys(CCCTipsLibrary)];
+                                return combinedKeys.map(key => {
+                                    const isCcc = key.startsWith('cat_');
+                                    const library = isCcc ? CCCTipsLibrary : SEPTipsLibrary;
+                                    const item = library[key];
+                                    const activeTipId = App.teacherSettings.activeTips?.[key];
+                                    const customTipsForKey = (App.teacherSettings.customTips || []).filter(t => isCcc ? t.ccc === key : t.sep === key);
+                                    
+                                    return `
+                                        <div class="horizontal-snap-item flex flex-col h-full" data-coaching-tab="${key}">
+                                            <!-- Panel Header (Desktop Only) -->
+                                            <div class="hidden md:flex p-6 border-b bg-gray-50/50 items-center justify-between shrink-0">
+                                                <div class="flex items-center gap-4">
+                                                    <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl ${isCcc ? 'text-amber-500' : 'text-primary'} shadow-sm border border-gray-100">
+                                                        <span class="iconify" data-icon="${item.icon}"></span>
+                                                    </div>
+                                                    <div>
+                                                        <h4 class="font-black text-lg uppercase text-gray-800 leading-tight">${item.title}</h4>
+                                                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${key} • Select 1 Active Guidance</p>
+                                                    </div>
+                                                </div>
+                                                <button onclick="window.addCustomTip('${key}')" class="px-6 py-2.5 bg-primary text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-100 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
+                                                    <span class="iconify text-lg" data-icon="mdi:plus"></span> Add Custom Tip
+                                                </button>
+                                            </div>
+
+                                            <!-- Content -->
+                                            <div class="flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar space-y-8">
+                                                <!-- Defaults & Random logic -->
+                                                <div class="flex gap-3">
+                                                    <button onclick="window.setCoachingTip('${key}', null); App.teacherSettings.randomCoachingTips = true; window.saveToStorage(); renderTeacherContent();" 
+                                                        class="flex-1 p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${!activeTipId && App.teacherSettings.randomCoachingTips ? 'border-primary bg-blue-50' : 'border-gray-50 bg-gray-50 hover:border-gray-200'}">
+                                                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-primary">
+                                                            <span class="iconify text-xl" data-icon="mdi:shuffle-variant"></span>
+                                                        </div>
+                                                        <div class="text-left">
+                                                            <span class="text-xs font-black text-gray-900 block uppercase">Random Selection</span>
+                                                            <span class="text-[9px] text-gray-500 font-bold uppercase">Library fallback mode</span>
+                                                        </div>
+                                                    </button>
+                                                    <button onclick="window.setCoachingTip('${key}', 'none');" 
+                                                        class="flex-1 p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${activeTipId === 'none' ? 'border-gray-400 bg-gray-100' : 'border-gray-50 bg-gray-50 hover:border-gray-200'}">
+                                                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-gray-400">
+                                                            <span class="iconify text-xl" data-icon="mdi:eye-off-outline"></span>
+                                                        </div>
+                                                        <div class="text-left">
+                                                            <span class="text-xs font-black text-gray-900 block uppercase">No Guidance</span>
+                                                            <span class="text-[9px] text-gray-500 font-bold uppercase">Hide tips for this ${isCcc ? 'concept' : 'practice'}</span>
+                                                        </div>
+                                                    </button>
+                                                </div>
+
+                                                <!-- Library List -->
+                                                <div class="space-y-4">
+                                                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">Element-Level Guidance (Library)</label>
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        ${item.elements.map(tip => `
+                                                            <label class="flex items-start gap-4 p-5 rounded-[2rem] border-2 transition-all cursor-pointer ${activeTipId === tip.id ? 'border-primary bg-blue-50 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'}">
+                                                                <input type="radio" name="tip_${key}" value="${tip.id}" ${activeTipId === tip.id ? 'checked' : ''} onchange="window.setCoachingTip('${key}', '${tip.id}')" class="mt-1 w-5 h-5 text-primary">
+                                                                <div class="flex-1">
+                                                                    <div class="flex items-center justify-between mb-1">
+                                                                        <span class="text-xs font-black text-gray-900 uppercase tracking-tight">${tip.label}</span>
+                                                                        <span class="text-[9px] font-black text-primary uppercase">${tip.mindset || 'Guidance'}</span>
+                                                                    </div>
+                                                                    <p class="text-[10px] text-gray-600 leading-relaxed italic">"${tip.text}"</p>
+                                                                </div>
+                                                            </label>
+                                                        `).join('')}
+                                                    </div>
+                                                </div>
+
+                                                <!-- Custom List -->
+                                                <div class="space-y-4">
+                                                    <div class="flex items-center justify-between px-2">
+                                                        <label class="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] block">Your Custom Tips</label>
+                                                        <button onclick="window.addCustomTip('${key}')" class="md:hidden text-primary font-black text-[10px] uppercase tracking-widest">+ Add New</button>
+                                                    </div>
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        ${customTipsForKey.map(tip => `
+                                                            <div class="flex items-start gap-4 p-5 rounded-[2rem] border-2 transition-all cursor-pointer ${activeTipId === tip.id ? 'border-primary bg-blue-50 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'}">
+                                                                <input type="radio" name="tip_${key}" value="${tip.id}" ${activeTipId === tip.id ? 'checked' : ''} onchange="window.setCoachingTip('${key}', '${tip.id}')" class="mt-1 w-5 h-5 text-primary">
+                                                                <div class="flex-1 min-w-0">
+                                                                    <div class="flex justify-between items-start">
+                                                                        <span class="text-xs font-black text-gray-900 block mb-1 uppercase tracking-tight">${tip.label}</span>
+                                                                        <button onclick="window.deleteCustomTip('${tip.id}')" class="text-gray-300 hover:text-red-500 transition-colors">
+                                                                            <span class="iconify" data-icon="mdi:trash-can-outline"></span>
+                                                                        </button>
+                                                                    </div>
+                                                                    <p class="text-[10px] text-gray-600 leading-relaxed italic">"${tip.text}"</p>
+                                                                    <div class="mt-2 text-[9px] font-black text-gray-400 uppercase tracking-widest">${tip.mindset}</div>
+                                                                </div>
+                                                            </div>
+                                                        `).join('')}
+                                                        ${customTipsForKey.length === 0 ? `
+                                                            <button onclick="window.addCustomTip('${key}')" class="col-span-full py-8 border-2 border-dashed border-gray-100 rounded-[2rem] text-[10px] font-black text-gray-300 uppercase tracking-widest hover:border-gray-200 hover:text-gray-400 transition-all flex flex-col items-center gap-2">
+                                                                <span class="iconify text-2xl" data-icon="mdi:plus-circle-outline"></span>
+                                                                Add Custom Guidance
+                                                            </button>
+                                                        ` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('');
+                            })()}
+                        </div>
+                        
+                        <!-- Swipe Indicators (Dots) -->
+                        <div id="coachingLibDots" class="swipe-dots md:hidden border-t border-gray-50">
+                            ${(() => {
+                                const combinedKeys = [...Object.keys(SEPTipsLibrary), ...Object.keys(CCCTipsLibrary)];
+                                return combinedKeys.map(key => `
+                                    <button onclick="window.switchCoachingLibTab('${key}')" 
+                                        class="swipe-dot ${App.uiState?.coachingLibTab === key ? 'active' : ''}" 
+                                        aria-label="Go to ${key}"></button>
+                                `).join('');
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+}
+
+window.openTipManager = async (key) => {
+    if (App.mode !== 'teacher') return;
+    const { SEPTipsLibrary, CCCTipsLibrary } = await import('../core/tips_library.js');
+    
+    const isCcc = key.startsWith('cat_');
+    const library = isCcc ? CCCTipsLibrary : SEPTipsLibrary;
+    const item = library[key];
+    
+    if (!item) { toast(`No tips for this ${isCcc ? 'concept' : 'practice'}`, 'info'); return; }
+
+    const activeTipId = App.teacherSettings.activeTips?.[key];
+    const customTipsForKey = (App.teacherSettings.customTips || []).filter(t => isCcc ? t.ccc === key : t.sep === key);
+
+    const modal = document.createElement('div');
+    modal.id = 'tipSelectorModal';
+    modal.className = 'fixed inset-0 z-[400] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200';
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+    modal.innerHTML = `
+        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+            <div class="p-8 border-b bg-gray-50/50 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 ${isCcc ? 'bg-amber-500' : 'bg-primary'} text-white rounded-2xl flex items-center justify-center text-3xl shadow-xl">
+                        <span class="iconify" data-icon="${item.icon}"></span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-gray-900 uppercase leading-tight">Coach's Corner</h3>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">${isCcc ? 'Concept' : 'Practice'} Tip for ${item.title}</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('tipSelectorModal').remove()" class="p-3 hover:bg-gray-200 rounded-2xl transition-all">
+                    <span class="iconify text-2xl" data-icon="mdi:close"></span>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                <div class="grid grid-cols-1 gap-3">
+                    <!-- Library Tips -->
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Library Guidance</p>
+                    ${item.elements.map(tip => `
+                        <label class="flex items-start gap-4 p-5 rounded-[2rem] border-2 transition-all cursor-pointer ${activeTipId === tip.id ? 'border-primary bg-blue-50' : 'border-gray-50 bg-gray-50 hover:border-gray-200'}">
+                            <input type="radio" name="active_tip" value="${tip.id}" ${activeTipId === tip.id ? 'checked' : ''} 
+                                onchange="window.setCoachingTip('${key}', '${tip.id}'); document.getElementById('tipSelectorModal').remove();" class="mt-1 w-5 h-5 text-primary border-gray-300 focus:ring-primary">
+                            <div>
+                                <span class="text-sm font-black text-gray-900 block mb-1 uppercase tracking-tight">${tip.label}</span>
+                                <span class="text-xs text-gray-600 block leading-relaxed italic">"${tip.text}"</span>
+                            </div>
+                        </label>
+                    `).join('')}
+                    
+                    <!-- Custom Tips -->
+                    ${customTipsForKey.length > 0 ? `
+                        <p class="text-[9px] font-black text-amber-600 uppercase tracking-[0.2em] ml-2 mt-4">Your Custom Tips</p>
+                        ${customTipsForKey.map(tip => `
+                            <label class="flex items-start gap-4 p-5 rounded-[2rem] border-2 transition-all cursor-pointer ${activeTipId === tip.id ? 'border-primary bg-blue-50' : 'border-gray-50 bg-gray-50 hover:border-gray-200'}">
+                                <input type="radio" name="active_tip" value="${tip.id}" ${activeTipId === tip.id ? 'checked' : ''} 
+                                    onchange="window.setCoachingTip('${key}', '${tip.id}'); document.getElementById('tipSelectorModal').remove();" class="mt-1 w-5 h-5 text-primary border-gray-300 focus:ring-primary">
+                                <div class="flex-1">
+                                    <span class="text-sm font-black text-gray-900 block mb-1 uppercase tracking-tight">${tip.label}</span>
+                                    <span class="text-xs text-gray-600 block leading-relaxed italic">"${tip.text}"</span>
+                                </div>
+                            </label>
+                        `).join('')}
+                    ` : ''}
+                </div>
+            </div>
+            
+            <div class="p-8 bg-gray-50 border-t flex flex-col gap-3">
+                <div class="flex gap-3">
+                    <button onclick="window.addCustomTip('${key}')" class="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-black transition-all flex items-center justify-center gap-2">
+                        <span class="iconify" data-icon="mdi:plus-circle"></span> Add Custom Guidance
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="window.setCoachingTip('${key}', null); App.teacherSettings.randomCoachingTips = true; window.saveToStorage(); document.getElementById('tipSelectorModal').remove();" 
+                        class="py-4 bg-white border-2 border-gray-200 text-gray-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:border-primary hover:text-primary transition-all">
+                        Randomize
+                    </button>
+                    <button onclick="window.setCoachingTip('${key}', 'none'); document.getElementById('tipSelectorModal').remove();" 
+                        class="py-4 bg-white border-2 border-gray-200 text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-red-500 hover:border-red-100 transition-all">
+                        Hide Coaching
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+
+/**
+ * Coaching Library Tab Management
+ */
+window.switchCoachingLibTab = (tabId) => {
+    if (!App.uiState) App.uiState = {};
+    App.uiState.coachingLibTab = tabId;
+    const swiper = document.getElementById('coachingLibSwiper');
+    if (swiper) {
+        const target = swiper.querySelector(`[data-coaching-tab="${tabId}"]`);
+        if (target) {
+            App._isScrollingToCoachingLib = true;
+            swiper.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+            
+            // Manually update active states without full re-render
+            document.querySelectorAll('[onclick*="switchCoachingLibTab"]').forEach(btn => {
+                const btnTabId = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+                const isActive = btnTabId === tabId;
+                if (btn.classList.contains('min-w-[50px]')) { // Library Tabs
+                    const isCcc = btnTabId.startsWith('cat_');
+                    btn.className = `min-w-[50px] py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${isActive ? (isCcc ? 'bg-amber-500 text-white shadow-sm' : 'bg-primary text-white shadow-sm') : 'text-gray-400 hover:text-primary'}`;
+                } else if (btn.classList.contains('swipe-dot')) { // Dots
+                    btn.classList.toggle('active', isActive);
+                }
+            });
+
+            setTimeout(() => { 
+                App._isScrollingToCoachingLib = false; 
+            }, 500);
+        }
+    }
+};
+
+window.handleCoachingLibScroll = (el) => {
+    if (App._isScrollingToCoachingLib) return;
+    const width = el.offsetWidth;
+    const index = Math.round(el.scrollLeft / width);
+    const tabs = [...Object.keys(SEPTipsLibrary), ...Object.keys(CCCTipsLibrary)];
+    const activeId = tabs[index];
+    if (activeId && App.uiState?.coachingLibTab !== activeId) {
+        if (!App.uiState) App.uiState = {};
+        App.uiState.coachingLibTab = activeId;
+        
+        // Update active states
+        document.querySelectorAll('[onclick*="switchCoachingLibTab"]').forEach(btn => {
+            const btnTabId = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+            const isActive = btnTabId === activeId;
+            if (btn.classList.contains('min-w-[50px]')) {
+                const isCcc = btnTabId.startsWith('cat_');
+                btn.className = `min-w-[50px] py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${isActive ? (isCcc ? 'bg-amber-500 text-white shadow-sm' : 'bg-primary text-white shadow-sm') : 'text-gray-400 hover:text-primary'}`;
+            } else if (btn.classList.contains('swipe-dot')) {
+                btn.classList.toggle('active', isActive);
+            }
+        });
+    }
+};
+
+export async function addCustomTip(key) {
+    const modal = document.getElementById('genericInputModal'); if (!modal) return;
+    const titleEl = document.getElementById('genericInputTitle');
+    const contentEl = document.getElementById('genericInputContent');
+    const actionEl = document.getElementById('genericInputActions');
+
+    titleEl.textContent = 'Add Custom Tip';
+    contentEl.innerHTML = `
+        <div class="space-y-4">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Label / Title</label>
+                <input type="text" id="customTipLabel" placeholder="e.g. Mystery Focus" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold">
+            </div>
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tip Text</label>
+                <textarea id="customTipText" placeholder="What should the student do?..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm min-h-[100px]"></textarea>
+            </div>
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Mindset Tag</label>
+                <input type="text" id="customTipMindset" placeholder="e.g. Critical Thinking" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs">
+            </div>
+        </div>
+    `;
+    actionEl.innerHTML = `<button onclick="window.saveCustomTip('${key}')" class="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase tracking-widest shadow-lg">Save Tip</button>`;
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+}
+
+export async function saveCustomTip(key) {
+    const label = document.getElementById('customTipLabel')?.value.trim();
+    const text = document.getElementById('customTipText')?.value.trim();
+    const mindset = document.getElementById('customTipMindset')?.value.trim() || 'Custom';
+    
+    if (!label || !text) { toast('Label and Text are required', 'error'); return; }
+    
+    const isCcc = key.startsWith('cat_');
+    const tip = { id: 'ct_' + Date.now(), [isCcc ? 'ccc' : 'sep']: key, label, text, mindset };
+    if (!App.teacherSettings.customTips) App.teacherSettings.customTips = [];
+    App.teacherSettings.customTips.push(tip);
+    
+    document.getElementById('genericInputModal')?.classList.add('hidden');
+    const { saveToStorage } = await import('../core/sync.js');
+    await saveToStorage();
+    renderTeacherContent();
+    toast('Custom tip added!', 'success');
+}
+
+export async function deleteCustomTip(tipId) {
+    if (!confirm('Delete this custom tip?')) return;
+    App.teacherSettings.customTips = (App.teacherSettings.customTips || []).filter(t => t.id !== tipId);
+    
+    // If the deleted tip was active, reset to default library tip
+    Object.keys(App.teacherSettings.activeTips).forEach(k => {
+        if (App.teacherSettings.activeTips[k] === tipId) {
+            App.teacherSettings.activeTips[k] = null; 
+        }
+    });
+
+    const { saveToStorage } = await import('../core/sync.js');
+    await saveToStorage();
+    renderTeacherContent();
+    toast('Tip deleted', 'info');
+}
+
+export async function setCoachingTip(key, tipId) {
+    if (!App.teacherSettings.activeTips) App.teacherSettings.activeTips = {};
+    App.teacherSettings.activeTips[key] = tipId;
+    const { saveToStorage } = await import('../core/sync.js');
+    await saveToStorage();
+    renderTeacherContent();
 }
 
 export async function previewTemplate(templateId) {

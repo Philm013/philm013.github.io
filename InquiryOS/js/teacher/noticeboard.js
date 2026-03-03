@@ -46,7 +46,7 @@ export async function renderTeacherNoticeBoard() {
     return `
         <div class="panels-container">
             <div class="bg-white border-b flex flex-col h-full" data-card-title="Classroom Board">
-                <div class="sticky-panel-header">
+                <div class="sticky-panel-header md:hidden">
                     <div class="flex items-center gap-1 bg-gray-100/50 p-1 rounded-xl border border-gray-200 w-full overflow-x-auto no-scrollbar">
                         <div class="px-2 shrink-0 border-r border-gray-200">
                             ${renderInfoTip('The heart of class collaboration! Review every student\'s Notices, Wonders, and Ideas in real-time. You can even move posts between categories if a student finds a "Testable Question" in their wonders!')}
@@ -62,10 +62,10 @@ export async function renderTeacherNoticeBoard() {
                 </div>
 
                 <div class="flex-1 flex flex-col min-h-0">
-                    <div id="teacherInquirySwiper" class="horizontal-snap-container md:block" onscroll="window.handleTeacherInquiryScroll(this)">
+                    <div id="teacherInquirySwiper" class="horizontal-snap-container md:grid-cols-4" onscroll="window.handleTeacherInquiryScroll(this)">
                         ${categories.map(cat => `
                             <div class="horizontal-snap-item flex flex-col" data-inquiry-tab="${cat.id}">
-                                <div class="hidden md:flex p-4 border-b bg-gray-50/50 items-center justify-between">
+                                <div class="flex p-4 border-b bg-gray-50/50 items-center justify-between">
                                     <div class="flex items-center gap-3">
                                         <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-${cat.color === 'yellow' ? 'amber' : cat.color}-50 text-${cat.color === 'yellow' ? 'amber' : cat.color}-600">
                                             <span class="iconify text-lg" data-icon="${cat.icon}"></span>
@@ -75,7 +75,7 @@ export async function renderTeacherNoticeBoard() {
                                     <span class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[9px] font-black">${items[cat.id]?.length || 0} Posts</span>
                                 </div>
                                 <div class="panel-content !bg-gray-50/10 !p-4 !justify-start">
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    <div class="grid grid-cols-1 gap-3">
                                         ${items[cat.id]?.map(item => renderTeacherBoardItem(item, categories)).join('') || '<div class="col-span-full py-20 text-center opacity-30 text-[10px] font-black uppercase tracking-widest border-2 border-dashed rounded-3xl">Empty</div>'}
                                     </div>
                                 </div>
@@ -267,51 +267,88 @@ export function renderCategoryManager() {
     const categories = App.teacherSettings.categories || [], defaultsEnabled = App.teacherSettings.defaultCategoriesEnabled;
     return `
         <div class="panels-container">
-            <div class="bg-white border-b flex flex-col h-full" data-card-title="Theme Settings">
+            <div class="bg-white border-b flex flex-col h-full" data-card-title="Theme Architect">
                 <div class="sticky-panel-header md:hidden">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center shrink-0 border border-blue-500">
-                            <span class="iconify" data-icon="mdi:cog"></span>
+                            <span class="iconify" data-icon="mdi:folder-multiple"></span>
                         </div>
-                        <h3>Themes</h3>
-                        ${renderInfoTip('Themes help students categorize their thoughts. Enable defaults (Notices, Wonders, Ideas) or add your own custom tags.')}
+                        <h3>Theme Architect</h3>
                     </div>
                 </div>
-                <div class="panel-content !justify-start space-y-8">
+                <div class="panel-content !justify-start space-y-10">
                     <div class="hidden md:flex items-center justify-between mb-4 border-b pb-4">
-                        <h3 class="font-black text-gray-900 uppercase text-sm">Theme Settings</h3>
-                        ${renderInfoTip('Themes help students categorize their thoughts. Enable defaults (Notices, Wonders, Ideas) or add your own custom tags.')}
+                        <h3 class="font-black text-gray-900 uppercase text-sm">Theme Architect</h3>
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Architect your inquiry categories</p>
                     </div>
-                    <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center justify-between">
-                        <div class="flex items-center gap-3"><div class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg"><span class="iconify text-xl" data-icon="mdi:eye"></span></div><div><h3 class="text-sm font-black text-gray-900">Inquiry Defaults</h3><p class="text-[8px] font-black text-gray-400 uppercase">N/W/I/Q</p></div></div>
-                        <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" ${defaultsEnabled ? 'checked' : ''} onchange="window.toggleDefaultCategories()" class="sr-only peer"><div class="w-12 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div></label>
-                    </div>
-                    <div class="space-y-4">
-                        <h3 class="text-[10px] font-black text-gray-900 uppercase tracking-widest ml-1">Custom Themes (Tags)</h3>
-                        <div class="grid grid-cols-1 gap-2">
-                            ${categories.map(cat => `<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 shadow-sm group"><input type="color" value="${cat.color}" onchange="window.updateCategoryColor('${cat.id}', this.value)" class="w-8 h-8 rounded-lg cursor-pointer border-none bg-transparent shrink-0"><input type="text" value="${cat.name}" onchange="window.updateCategoryName('${cat.id}', this.value)" class="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-1.5 font-bold text-gray-700 text-xs outline-none"><button onclick="window.deleteCategory('${cat.id}')" class="p-1.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><span class="iconify text-lg" data-icon="mdi:trash-can-outline"></span></button></div>`).join('') || '<p class="text-[10px] text-gray-400 italic text-center py-10 uppercase tracking-widest">No themes defined</p>'}
+
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                        <!-- Left: Defaults & Management -->
+                        <div class="lg:col-span-7 space-y-8">
+                            <!-- 1. Inquiry Defaults -->
+                            <div class="bg-gray-50 p-6 rounded-[2.5rem] border border-gray-100 flex items-center justify-between shadow-inner">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg border border-blue-500">
+                                        <span class="iconify text-2xl" data-icon="mdi:eye"></span>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-black text-gray-900 uppercase leading-tight">Inquiry Defaults</h3>
+                                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Notices, Wonders, Ideas</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" ${defaultsEnabled ? 'checked' : ''} onchange="window.toggleDefaultCategories()" class="sr-only peer">
+                                    <div class="w-14 h-7 bg-gray-200 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-7 shadow-inner"></div>
+                                </label>
+                            </div>
+
+                            <!-- 2. Management List -->
+                            <div class="space-y-4">
+                                <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Active Custom Themes</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    ${categories.map(cat => `
+                                        <div class="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm group hover:border-primary/30 transition-all">
+                                            <input type="color" value="${cat.color}" onchange="window.updateCategoryColor('${cat.id}', this.value)" class="w-10 h-10 rounded-xl cursor-pointer border-none bg-transparent shrink-0">
+                                            <input type="text" value="${cat.name}" onchange="window.updateCategoryName('${cat.id}', this.value)" class="flex-1 bg-transparent border-none font-black text-gray-700 text-sm outline-none">
+                                            <button onclick="window.deleteCategory('${cat.id}')" class="p-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                                                <span class="iconify text-xl" data-icon="mdi:trash-can-outline"></span>
+                                            </button>
+                                        </div>
+                                    `).join('') || '<div class="col-span-full py-12 text-center bg-gray-50 rounded-[2.5rem] border-2 border-dashed border-gray-100"><p class="text-[10px] text-gray-400 font-black uppercase tracking-widest">No custom themes created yet</p></div>'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Creation Area -->
+                        <div class="lg:col-span-5">
+                            <div class="sticky top-6">
+                                <label class="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] ml-2 mb-4 block">New Theme Identity</label>
+                                <div class="p-8 bg-green-50/30 rounded-[3rem] border-2 border-dashed border-green-100 space-y-8 shadow-sm">
+                                    <div class="space-y-2">
+                                        <label class="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Theme Name</label>
+                                        <input type="text" id="newCategoryName" placeholder="e.g. Energy Flow..." 
+                                            class="w-full px-6 py-5 bg-white border border-gray-100 rounded-2xl text-base font-bold outline-none shadow-sm focus:ring-4 focus:ring-green-500/10 transition-all" 
+                                            onkeypress="if(event.key==='Enter')window.addCategory()">
+                                    </div>
+                                    
+                                    <div class="space-y-4">
+                                        <label class="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Brand Color</label>
+                                        <div class="flex gap-4 items-center">
+                                            <input type="color" id="newCategoryColor" value="#3b82f6" class="w-16 h-16 rounded-2xl cursor-pointer border-none bg-white shadow-sm shrink-0">
+                                            <div class="flex-1 grid grid-cols-4 gap-2">
+                                                ${['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#64748b','#06b6d4'].map(c => `<button onclick="document.getElementById('newCategoryColor').value='${c}'" class="w-full aspect-square rounded-xl border-2 border-white shadow-sm hover:scale-110 transition-transform" style="background:${c}"></button>`).join('')}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button onclick="window.addCategory()" class="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-black shadow-xl text-xs uppercase tracking-widest hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3">
+                                        <span class="iconify text-xl" data-icon="mdi:plus-circle"></span>
+                                        Build Theme Tag
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="bg-white border-b flex flex-col h-full" data-card-title="New Theme">
-                <div class="sticky-panel-header md:hidden">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-green-600 text-white rounded-lg flex items-center justify-center shrink-0 border border-green-500">
-                            <span class="iconify" data-icon="mdi:plus-circle"></span>
-                        </div>
-                        <h3>Add Tag</h3>
-                        ${renderInfoTip('Create a new custom tag for students to use when labeling their inquiry board posts.')}
-                    </div>
-                </div>
-                <div class="panel-content">
-                    <div class="hidden md:flex items-center justify-between mb-6 border-b pb-4">
-                        <h3 class="font-black text-gray-900 uppercase text-sm">Create New Tag</h3>
-                        ${renderInfoTip('Create a new custom tag for students to use when labeling their inquiry board posts.')}
-                    </div>
-                    <div class="space-y-6"><input type="text" id="newCategoryName" placeholder="New Theme Name..." class="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold outline-none" onkeypress="if(event.key==='Enter')window.addCategory()">
-                    <div class="flex gap-2"><input type="color" id="newCategoryColor" value="#3b82f6" class="w-14 h-14 rounded-2xl cursor-pointer border-none bg-transparent"><div class="flex-1 grid grid-cols-8 gap-1">${['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#64748b','#06b6d4'].map(c => `<button onclick="document.getElementById('newCategoryColor').value='${c}'" class="w-full aspect-square rounded-lg" style="background:${c}"></button>`).join('')}</div></div>
-                    <button onclick="window.addCategory()" class="w-full py-4 bg-primary text-white rounded-2xl font-black shadow-lg text-xs uppercase tracking-widest">Add Theme Tag</button></div>
                 </div>
             </div>
         </div>

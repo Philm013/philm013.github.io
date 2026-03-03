@@ -1,6 +1,7 @@
 const CACHE_NAME = 'inquiryos-v2';
 const ASSETS = [
   './index.html',
+  './manifest.json',
   './css/style.css',
   './js/main.js',
   './js/core/state.js',
@@ -78,11 +79,13 @@ self.addEventListener('fetch', (event) => {
       caches.open(CACHE_NAME).then((cache) => {
         return cache.match(event.request).then((cachedResponse) => {
           const fetchedResponse = fetch(event.request).then((networkResponse) => {
-            cache.put(event.request, networkResponse.clone());
+            if (networkResponse && networkResponse.ok) {
+              cache.put(event.request, networkResponse.clone());
+            }
             return networkResponse;
           }).catch(() => null);
 
-          return cachedResponse || fetchedResponse;
+          return cachedResponse || fetchedResponse || fetch(event.request);
         });
       })
     );
