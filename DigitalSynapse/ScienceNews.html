@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <title>Digital Synapse | Stable</title>
+    <style>
+        /* --- 1. CORE VARIABLES --- */
+        :root {
+            --primary: #38bdf8;       /* Sky Blue */
+            --accent: #f472b6;        /* Pink (Media) */
+            --saved: #facc15;         /* Gold (Bookmarks) */
+            --bg-body: #0f172a;       /* Dark Slate */
+            --bg-card: #1e293b;
+            --bg-nav: rgba(15, 23, 42, 0.98);
+            --bg-input: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --radius: 12px;
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+            
+            --status-ok: #22c55e;
+            --status-warn: #eab308;
+            --status-err: #ef4444;
+        }
+
+        [data-theme="light"] {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-nav: rgba(255, 255, 255, 0.98);
+            --bg-input: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #cbd5e1;
+            --primary: #0284c7;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* --- 2. HEADER --- */
+        .app-header {
+            padding: calc(10px + var(--safe-top)) 15px 10px;
+            background: var(--bg-nav);
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 50; backdrop-filter: blur(12px);
+        }
+
+        .brand-group { display: flex; align-items: center; gap: 8px; }
+        .brand {
+            font-weight: 800; font-size: 1.1rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--status-ok); transition: 0.3s; box-shadow: 0 0 5px var(--status-ok); }
+        .status-dot.offline { background: var(--status-err); box-shadow: none; }
+        .status-dot.loading { background: var(--status-warn); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        .header-actions { display: flex; gap: 4px; }
+        .icon-btn {
+            background: transparent; border: none; color: var(--text-main);
+            padding: 8px; cursor: pointer; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        }
+        .icon-btn:hover { background: rgba(255,255,255,0.1); }
+        .icon-btn svg { width: 22px; height: 22px; stroke-width: 2; }
+
+        /* --- 3. NAV SCROLL --- */
+        .cat-scroll {
+            display: flex; gap: 8px; padding: 10px 15px;
+            background: var(--bg-body); border-bottom: 1px solid var(--border);
+            overflow-x: auto; scrollbar-width: none; flex-shrink: 0;
+        }
+        .cat-scroll::-webkit-scrollbar { display: none; }
+        
+        .cat-chip {
+            padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+            background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+            white-space: nowrap; cursor: pointer; transition: all 0.2s;
+        }
+        .cat-chip.active { background: var(--primary); color: #0f172a; border-color: var(--primary); }
+        .cat-chip.sources { border-color: var(--accent); color: var(--accent); }
+        .cat-chip.active.sources { background: var(--accent); color: #fff; }
+        .cat-chip.saved { border-color: var(--saved); color: var(--saved); }
+        .cat-chip.active.saved { background: var(--saved); color: #000; }
+
+        /* --- 4. MAIN LAYOUT --- */
+        main {
+            flex: 1; overflow-y: auto; padding: 15px;
+            padding-bottom: calc(20px + var(--safe-bottom));
+        }
+
+        .feed-grid { display: grid; gap: 15px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+        .list-view { grid-template-columns: 1fr; max-width: 800px; margin: 0 auto; }
+        .source-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+
+        /* --- 5. CARDS --- */
+        .news-card {
+            background: var(--bg-card); border-radius: var(--radius);
+            overflow: hidden; border: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative;
+            transition: opacity 0.3s;
+            animation: fadein 0.5s;
+        }
+        @keyframes fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .news-card.read { opacity: 0.6; }
+        .news-card.read img { filter: grayscale(0.8); }
+        
+        .card-actions {
+            position: absolute; top: 8px; right: 8px; z-index: 10;
+            display: flex; gap: 6px;
+        }
+        .action-chip {
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            color: #fff; border: none; border-radius: 20px;
+            padding: 4px 8px; font-size: 0.7rem; cursor: pointer;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .action-chip.bookmarked { color: var(--saved); }
+
+        .list-view .news-card { flex-direction: row; height: 120px; }
+        .list-view .card-img { width: 120px; height: 100%; flex-shrink: 0; }
+        .grid-view .card-img { width: 100%; height: 160px; }
+        .card-img img { width: 100%; height: 100%; object-fit: cover; background: #000; transition: filter 0.3s; }
+        
+        .card-body { padding: 12px; display: flex; flex-direction: column; flex: 1; justify-content: space-between; }
+        .card-meta { font-size: 0.65rem; color: var(--primary); font-weight: 700; margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .card-title { font-size: 0.95rem; font-weight: 600; margin: 0; line-height: 1.3; color: var(--text-main); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .card-desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .list-view .card-desc { display: none; }
+
+        /* Source Card */
+        .source-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 15px;
+            display: flex; flex-direction: column; gap: 8px;
+            cursor: pointer; transition: transform 0.2s, border-color 0.2s;
+            height: 100%; position: relative;
+        }
+        .source-card:active { transform: scale(0.96); }
+        .source-card:hover { border-color: var(--primary); }
+        .source-name { font-weight: 700; font-size: 0.95rem; color: var(--text-main); }
+        .source-cat { 
+            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;
+            display: inline-block; padding: 2px 6px; border-radius: 4px;
+            background: var(--bg-input); color: var(--text-muted); align-self: flex-start;
+        }
+        .source-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        
+        .health-badge { position: absolute; top: 15px; right: 15px; width: 8px; height: 8px; border-radius: 50%; }
+
+        /* --- 6. MODALS --- */
+        .modal {
+            position: fixed; inset: 0; background: var(--bg-body);
+            z-index: 100; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex; flex-direction: column;
+        }
+        .modal.open { transform: translateY(0); }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-nav); }
+        .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+        /* Forms */
+        .input-group { margin-bottom: 15px; }
+        .input-label { display: block; font-size: 0.75rem; margin-bottom: 5px; color: var(--text-muted); font-weight: 600; }
+        input, select, textarea {
+            width: 100%; padding: 12px; background: var(--bg-input);
+            border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text-main); font-size: 0.95rem; outline: none;
+        }
+        
+        .btn { width: 100%; padding: 12px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; text-align: center; }
+        .btn-primary { background: var(--primary); color: #0f172a; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); margin-top: 10px; }
+        .btn-danger { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid #ef4444; margin-top: 10px; }
+
+        /* Switch */
+        .switch { position: relative; width: 40px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; inset: 0; background: var(--bg-input); border-radius: 34px; transition: .3s; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .3s; }
+        input:checked + .slider { background: var(--primary); }
+        input:checked + .slider:before { transform: translateX(18px); }
+
+        .loader { height: 50vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); text-align: center; }
+        .spinner { width: 30px; height: 30px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s infinite linear; margin-bottom: 15px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Sentinel for Infinite Scroll */
+        #sentinel { height: 50px; margin-top: 20px; display: flex; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; }
+        #sentinel.active { opacity: 1; }
+        #sentinel::after { content: ""; width: 20px; height: 20px; border: 2px solid var(--text-muted); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s infinite linear; }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        
+        .feed-item { background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border); margin-bottom: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .feed-info { flex: 1; padding-right: 10px; cursor: pointer; }
+        .feed-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+        .feed-stats { font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 10px; align-items: center; }
+        .health-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .health-dot.ok { background-color: var(--status-ok); }
+        .health-dot.warn { background-color: var(--status-warn); }
+        .health-dot.err { background-color: var(--status-err); }
+
+        @media (min-width: 768px) {
+            main { max-width: 1200px; margin: 0 auto; width: 100%; }
+            .modal { width: 480px; left: 50%; top: 5%; height: 90%; transform: translate(-50%, 110%); border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+            .modal.open { transform: translate(-50%, 0); }
+            .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; opacity: 0; pointer-events: none; transition: 0.3s; }
+            .backdrop.open { opacity: 1; pointer-events: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="brand-group">
+            <div class="brand">Digital Synapse</div>
+            <div id="connection-status" class="status-dot" title="Network Status"></div>
+        </div>
+        <div class="header-actions">
+            <button class="icon-btn" onclick="app.surpriseMe()" title="Surprise Me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.5" fill="currentColor"/></svg></button>
+            <button class="icon-btn" onclick="app.toggleFullScreen()" title="Full Screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg></button>
+            <button class="icon-btn" onclick="app.refreshFeed()" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button>
+            <button class="icon-btn" onclick="ui.openSettings()" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+        </div>
+    </header>
+
+    <div class="cat-scroll">
+        <button class="cat-chip sources" onclick="app.setView('sources', this)">📚 Explore Sources</button>
+        <button class="cat-chip active" onclick="app.setView('all', this)">All News</button>
+        <button class="cat-chip saved" onclick="app.setView('saved', this)">⭐ Saved</button>
+        <button class="cat-chip" onclick="app.setView('student', this)">Student K-12</button>
+        <button class="cat-chip" onclick="app.setView('space', this)">Space</button>
+        <button class="cat-chip" onclick="app.setView('earth', this)">Earth & Bio</button>
+        <button class="cat-chip" onclick="app.setView('tech', this)">Physics & Tech</button>
+        <button class="cat-chip" onclick="app.setView('media', this)">▶ Audio/Video</button>
+        <button class="cat-chip" onclick="app.setView('teacher', this)">🎓 Teacher</button>
+    </div>
+
+    <div class="backdrop" id="backdrop" onclick="ui.closeSettings()"></div>
+
+    <main id="main-content">
+        <div class="loader">
+            <div class="spinner"></div>
+            <p>Initializing...</p>
+        </div>
+    </main>
+    <div id="sentinel"></div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-header">
+            <h2 style="margin:0; font-size:1.1rem" id="modal-title">Settings</h2>
+            <button class="icon-btn" onclick="ui.closeSettings()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="view-list" class="view-section active">
+                <div style="margin-bottom:20px; display:flex; gap:10px;">
+                    <button class="btn btn-primary" onclick="ui.showEditor()">+ Add Feed</button>
+                    <button class="btn btn-outline" onclick="app.exportFeeds()">Backup</button>
+                    <button class="btn btn-outline" onclick="document.getElementById('import-file').click()">Restore</button>
+                    <input type="file" id="import-file" style="display:none" onchange="app.importFeeds(this)">
+                </div>
+                <div class="feed-item" style="display:block">
+                    <div style="font-weight:600; margin-bottom:5px">Preferences</div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px">
+                        <span>Dark Mode</span>
+                        <label class="switch"><input type="checkbox" id="theme-toggle" onchange="app.toggleTheme()"><span class="slider"></span></label>
+                    </div>
+                    <div style="display:flex; justify-content:space-between">
+                        <span>Compact List View</span>
+                        <label class="switch"><input type="checkbox" id="layout-toggle" onchange="app.toggleLayout()"><span class="slider"></span></label>
+                    </div>
+                </div>
+                <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center">
+                    <span style="font-size:0.8rem; font-weight:bold; color:var(--text-muted)">FEED HEALTH & MANAGEMENT</span>
+                    <button style="background:none; border:none; color:var(--primary); font-size:0.75rem; cursor:pointer" onclick="ui.renderFeedManager()">Refresh Status</button>
+                </div>
+                <div id="feed-list-container" style="margin-top:10px"></div>
+                <button class="btn btn-danger" onclick="app.hardReset()" style="margin-top:30px;">Reset All Data</button>
+            </div>
+            <div id="view-editor" class="view-section">
+                <input type="hidden" id="edit-id">
+                <div class="input-group"><label class="input-label">Feed Name</label><input type="text" id="edit-name"></div>
+                <div class="input-group"><label class="input-label">RSS URL</label><input type="url" id="edit-url" placeholder="https://... or YouTube Playlist URL"></div>
+                <div class="input-group">
+                    <label class="input-label">Category</label>
+                    <select id="edit-cat">
+                        <option value="student">Student K-12</option>
+                        <option value="space">Space</option>
+                        <option value="earth">Earth</option>
+                        <option value="tech">Tech</option>
+                        <option value="media">Media</option>
+                        <option value="teacher">Teacher</option>
+                    </select>
+                </div>
+                <div class="input-group"><label class="input-label">Description</label><textarea id="edit-desc"></textarea></div>
+                <button class="btn btn-primary" onclick="app.saveFeed()">Save Feed</button>
+                <button class="btn btn-outline" onclick="ui.showList()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. DATA SEEDING ---
+        const MASTER_FEEDS = [
+            { id: 'sn_exp', name: 'Science News Explores', url: 'https://www.snexplores.org/feed', category: 'student', desc: 'News for middle and high school students.' },
+            { id: 'sjk', name: 'Science Journal for Kids', url: 'https://sciencejournalforkids.org/feed', category: 'student', desc: 'Peer-reviewed papers adapted for kids.' },
+            { id: 'crash_bio', name: 'Crash Course Biology', url: 'https://www.youtube.com/feeds/videos.xml?playlist_id=PL8dPuuaLjXtPW_ofbxdHNciuLoTRLPMgB', category: 'student', desc: 'Added via YouTube Playlist.' },
+            { id: 'dogonews', name: 'DOGO News', url: 'https://www.dogonews.com/feed', category: 'student', desc: 'Current events for elementary/middle.' },
+            { id: 'smith_tween', name: 'Smithsonian Smart News', url: 'https://www.smithsonianmag.com/rss/smart-news/', category: 'student', desc: 'Quick stories from history and science.' },
+            { id: 'frontiers_ym', name: 'Frontiers for Young Minds', url: 'https://kids.frontiersin.org/rss', category: 'student', desc: 'Science articles reviewed by kids.' },
+            { id: 'wonderopolis', name: 'Wonderopolis', url: 'https://wonderopolis.org/rss', category: 'student', desc: 'Daily intriguing questions answered.' },
+            { id: 'nasa_news', name: 'NASA News Releases', url: 'https://www.nasa.gov/news-release/feed/', category: 'space', desc: 'Official press releases from NASA.' },
+            { id: 'nasa_iotd', name: 'NASA Image of Day', url: 'https://www.nasa.gov/feeds/iotd-feed/', category: 'space', desc: 'Daily astronomy images.' },
+            { id: 'space_com', name: 'Space.com', url: 'https://www.space.com/feeds/all', category: 'space', desc: 'Astronomy and spaceflight news.' },
+            { id: 'esa_news', name: 'European Space Agency', url: 'https://www.esa.int/rssfeed/Our_Activities/Space_News', category: 'space', desc: 'Global space mission updates.' },
+            { id: 'sky_tel', name: 'Sky & Telescope', url: 'https://skyandtelescope.org/feed/', category: 'space', desc: 'Amateur astronomy and observing guides.' },
+            { id: 'universe_today', name: 'Universe Today', url: 'https://www.universetoday.com/feed/', category: 'space', desc: 'Accessible space news.' },
+            { id: 'webb_news', name: 'Webb Telescope', url: 'https://webbtelescope.org/rss/news', category: 'space', desc: 'Updates from the James Webb Telescope.' },
+            { id: 'planetary_soc', name: 'The Planetary Society', url: 'https://www.planetary.org/rss/news', category: 'space', desc: 'Advocacy and exploration blog.' },
+            { id: 'livesci', name: 'Live Science', url: 'https://www.livescience.com/feeds/all', category: 'earth', desc: 'News on nature and health.' },
+            { id: 'mongabay', name: 'Mongabay', url: 'https://news.mongabay.com/feed/', category: 'earth', desc: 'Global conservation and environmental news.' },
+            { id: 'usgs_quake', name: 'USGS Earthquakes', url: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/atom.php', category: 'earth', desc: 'Real-time seismic activity.' },
+            { id: 'noaa_news', name: 'NOAA Stories', url: 'https://www.noaa.gov/news/rss', category: 'earth', desc: 'Climate and ocean science.' },
+            { id: 'treehugger', name: 'Treehugger', url: 'https://www.treehugger.com/feeds/latest', category: 'earth', desc: 'Sustainability and nature.' },
+            { id: 'phys_bio', name: 'Phys.org Biology', url: 'https://phys.org/rss-feed/biology-news/', category: 'earth', desc: 'Latest research in life sciences.' },
+            { id: 'cdc_outbreak', name: 'CDC Outbreaks', url: 'https://tools.cdc.gov/api/v2/resources/media/132608.rss', category: 'earth', desc: 'Public health and disease tracking.' },
+            { id: 'sciam_earth', name: 'SciAm: Earth', url: 'http://rss.sciam.com/ScientificAmerican-Global?format=xml', category: 'earth', desc: 'Scientific American Earth section.' },
+            { id: 'hackaday', name: 'Hackaday', url: 'https://hackaday.com/blog/feed/', category: 'tech', desc: 'Engineering and maker news.' },
+            { id: 'adafruit', name: 'Adafruit Blog', url: 'https://blog.adafruit.com/feed/', category: 'tech', desc: 'Electronics, coding, and maker education.' },
+            { id: 'mit_tech', name: 'MIT Tech Review', url: 'https://www.technologyreview.com/feed', category: 'tech', desc: 'Emerging technologies.' },
+            { id: 'ieee_robot', name: 'IEEE Robotics', url: 'https://spectrum.ieee.org/rss/robotics/fulltext', category: 'tech', desc: 'Professional robotics news.' },
+            { id: 'wired_sci', name: 'Wired Science', url: 'https://www.wired.com/feed/category/science/latest/rss', category: 'tech', desc: 'Culture and technology.' },
+            { id: 'nsf_news', name: 'NSF Research', url: 'https://www.nsf.gov/rss/news_rss.xml', category: 'tech', desc: 'National Science Foundation updates.' },
+            { id: 'codeorg', name: 'Code.org', url: 'https://medium.com/feed/@codeorg', category: 'tech', desc: 'CS education and equity.' },
+            { id: 'popmech', name: 'Popular Mechanics', url: 'https://www.popularmechanics.com/rss/all.xml', category: 'tech', desc: 'How things work.' },
+            { id: 'scishow', name: 'SciShow Kids (YT)', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCXVCgDuD_QCkI7gTKU7-tpg', category: 'media', desc: 'Science videos for elementary.' },
+            { id: 'crash_course', name: 'Crash Course Kids (YT)', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC4a-Gbdw7vOaccHmFo40b9g', category: 'media', desc: 'Curriculum-aligned science videos.' },
+            { id: 'nasa_video', name: 'NASA Video (YT)', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCLA_DiR1FfKNvjuUpBHmylQ', category: 'media', desc: 'Official NASA video feed.' },
+            { id: 'mark_rober', name: 'Mark Rober (YT)', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCY1kMZp36IQSyNx_9h4mpCg', category: 'media', desc: 'Engineering and science experiments.' },
+            { id: 'brains_on', name: 'Brains On!', url: 'https://feeds.simplecast.com/4FF7CAnQ', category: 'media', desc: 'Podcast for curious kids.' },
+            { id: 'tumble', name: 'Tumble Science', url: 'https://feeds.sciencepodcastforkids.com/tumblepodcast', category: 'media', desc: 'Story-based science podcast.' },
+            { id: 'wow_world', name: 'Wow in the World', url: 'https://feeds.megaphone.fm/wowintheworld', category: 'media', desc: 'NPRs science podcast for kids.' },
+            { id: 'edutopia_stem', name: 'Edutopia STEM', url: 'https://www.edutopia.org/feeds/stem', category: 'teacher', desc: 'Strategies for STEM teaching.' },
+            { id: 'sci_buddies', name: 'Science Buddies', url: 'https://www.sciencebuddies.org/rss/news_feed.xml', category: 'teacher', desc: 'Science fair project ideas.' },
+            { id: 'nsf_fund', name: 'NSF Funding', url: 'https://www.nsf.gov/rss/funding_rss.xml', category: 'teacher', desc: 'Grant opportunities.' },
+            { id: 'ed_week', name: 'EdWeek STEM', url: 'https://feeds.edweek.org/ew/stem', category: 'teacher', desc: 'Policy and curriculum news.' },
+            { id: 'teach_eng', name: 'TeachEngineering', url: 'https://www.teachengineering.org/rss', category: 'teacher', desc: 'Curriculum for K-12 engineering.' }
+        ];
+
+        // --- 2. INDEXED DB ---
+        const DB_NAME = 'SynapseRef';
+        const DB_VERSION = 3;
+        const db = {
+            open: () => new Promise((resolve, reject) => {
+                const r = indexedDB.open(DB_NAME, DB_VERSION);
+                r.onupgradeneeded = e => {
+                    const d = e.target.result;
+                    if(!d.objectStoreNames.contains('feeds')) d.createObjectStore('feeds', { keyPath: 'id' });
+                    if(!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' });
+                    if(!d.objectStoreNames.contains('bookmarks')) d.createObjectStore('bookmarks', { keyPath: 'link' });
+                    if(!d.objectStoreNames.contains('cache')) d.createObjectStore('cache', { keyPath: 'url' });
+                };
+                r.onsuccess = () => resolve(r.result);
+                r.onerror = () => reject(r.error);
+            }),
+            put: async (store, item) => {
+                const d = await db.open();
+                return new Promise(r => d.transaction(store, 'readwrite').objectStore(store).put(item).onsuccess = () => r());
+            },
+            get: async (store, key) => {
+                const d = await db.open();
+                return new Promise(r => d.transaction(store, 'readonly').objectStore(store).get(key).onsuccess = e => r(e.target.result));
+            },
+            getAll: async (store) => {
+                const d = await db.open();
+                return new Promise(r => d.transaction(store, 'readonly').objectStore(store).getAll().onsuccess = e => r(e.target.result));
+            },
+            delete: async (store, key) => {
+                const d = await db.open();
+                return new Promise(r => d.transaction(store, 'readwrite').objectStore(store).delete(key).onsuccess = () => r());
+            },
+            clearAll: async () => {
+                const d = await db.open();
+                const tx = d.transaction(['feeds', 'settings', 'bookmarks', 'cache'], 'readwrite');
+                tx.objectStore('feeds').clear(); tx.objectStore('settings').clear(); tx.objectStore('bookmarks').clear(); tx.objectStore('cache').clear();
+                return new Promise(r => tx.oncomplete = () => r());
+            }
+        };
+
+        // --- 3. APP LOGIC ---
+        const app = {
+            feeds: [],
+            bookmarks: [],
+            currentArticles: [],
+            readHistory: new Set(),
+            activeView: 'sources',
+            currentFeedId: null,
+            visibleLimit: 24,
+            settings: { theme: 'dark', layout: 'grid' },
+
+            async init() {
+                window.addEventListener('online', ui.updateStatus);
+                window.addEventListener('offline', ui.updateStatus);
+                ui.updateStatus();
+                ui.initInfiniteScroll();
+
+                const hist = localStorage.getItem('synapse_read');
+                if(hist) this.readHistory = new Set(JSON.parse(hist));
+
+                const s = await db.getAll('settings');
+                if(s.length) s.forEach(x => this.settings[x.key] = x.value);
+                else if(window.matchMedia('(prefers-color-scheme: light)').matches) this.settings.theme = 'light';
+                
+                this.bookmarks = await db.getAll('bookmarks');
+
+                let f = await db.getAll('feeds');
+                if(f.length === 0) {
+                    for(const feed of MASTER_FEEDS) { 
+                        feed.active = true; 
+                        feed.lastCheck = 0;
+                        feed.status = 'pending';
+                        feed.errorCount = 0;
+                        await db.put('feeds', feed); 
+                    }
+                    f = MASTER_FEEDS;
+                }
+                this.feeds = f;
+
+                ui.applySettings();
+                ui.renderFeedManager();
+                this.loadView();
+            },
+
+            async updateFeedStatus(id, status, count = 0) {
+                const feed = this.feeds.find(f => f.id === id);
+                if (!feed) return;
+                feed.lastCheck = Date.now();
+                feed.status = status;
+                if (status === 'ok') {
+                    feed.lastSuccess = Date.now();
+                    feed.errorCount = 0;
+                    feed.lastCount = count;
+                } else {
+                    feed.errorCount = (feed.errorCount || 0) + 1;
+                }
+                await db.put('feeds', feed);
+            },
+
+            async fetchFeed(url, background = false) {
+                const cached = await db.get('cache', url);
+                if(cached && !background) return cached.data;
+
+                // WATERFALL PROXY STRATEGY
+                // 1. AllOrigins (Best for local 'null' origin dev)
+                // 2. Yacdn (Backup)
+                // 3. Lauhdutin (Backup)
+                let PROXIES = [
+                    {
+                        name: 'AllOrigins',
+                        url: (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+                        transform: async (res) => { const json = await res.json(); return json.contents; }
+                    },
+                    {
+                        name: 'CorsProxyOrg',
+                        url: (u) => `https://corsproxy.org/?${encodeURIComponent(u)}`,
+                        transform: async (res) => await res.text()
+                    },
+                    {
+                        name: 'Yacdn',
+                        url: (u) => `https://yacdn.org/proxy/${u}`,
+                        transform: async (res) => await res.text()
+                    },
+                    {
+                        name: 'Lauhdutin',
+                        url: (u) => `https://cors.lauhdutin.com/${u}`,
+                        transform: async (res) => await res.text()
+                    }
+                ];
+
+                for (const proxy of PROXIES) {
+                    try {
+                        const controller = new AbortController();
+                        const id = setTimeout(() => controller.abort(), 6000); 
+                        const res = await fetch(proxy.url(url), { signal: controller.signal });
+                        clearTimeout(id);
+                        
+                        if (!res.ok) throw new Error(`Status ${res.status}`);
+                        const text = await proxy.transform(res);
+                        if (!text || text.length < 50) throw new Error('Empty response');
+
+                        const parser = new DOMParser();
+                        const xmlDoc = parser.parseFromString(text, "text/xml");
+                        
+                        // UNLIMITED FETCH
+                        const items = Array.from(xmlDoc.querySelectorAll("item, entry"));
+                        
+                        if (items.length === 0) throw new Error('No items found');
+
+                        const parsedItems = items.map(item => {
+                            const title = item.querySelector("title")?.textContent || "No Title";
+                            const linkEl = item.querySelector("link");
+                            const link = linkEl?.getAttribute("href") || linkEl?.textContent || "";
+                            const pubDate = item.querySelector("pubDate, published, updated")?.textContent || new Date().toISOString();
+                            const desc = item.querySelector("description, summary, content")?.textContent || "";
+                            
+                            let thumbnail = "";
+                            const enclosure = item.querySelector("enclosure");
+                            const media = item.getElementsByTagNameNS ? 
+                                          (item.getElementsByTagNameNS("*", "content")[0] || item.getElementsByTagNameNS("*", "thumbnail")[0]) : 
+                                          item.querySelector("media\\:content, content");
+                            
+                            if (enclosure?.getAttribute("type")?.includes("image")) thumbnail = enclosure.getAttribute("url");
+                            else if (media?.getAttribute("url")) thumbnail = media.getAttribute("url");
+                            else {
+                                const imgMatch = desc.match(/src="([^"]+)"/);
+                                if(imgMatch) thumbnail = imgMatch[1];
+                            }
+                            return { title, link, pubDate, description: desc, thumbnail, enclosure: { link: thumbnail } };
+                        });
+
+                        await db.put('cache', { url: url, ts: Date.now(), data: parsedItems });
+                        return parsedItems;
+                    } catch (e) {
+                        // console.warn(`Proxy ${proxy.name} failed:`, e);
+                    }
+                }
+                return cached ? cached.data : [];
+            },
+
+            async loadView() {
+                // HIDE Sentinel for non-list views
+                document.getElementById('sentinel').style.display = 'none';
+
+                if(this.activeView === 'sources') return ui.renderSources(this.feeds.filter(f => f.active));
+                if(this.activeView === 'saved') {
+                    this.currentArticles = this.bookmarks.sort((a,b) => b.timestamp - a.timestamp);
+                    ui.renderGrid([]); 
+                    return ui.renderBatch(this.currentArticles);
+                }
+
+                ui.clearGrid();
+                
+                let targetFeeds = this.feeds.filter(f => f.active);
+                if(this.activeView === 'single') targetFeeds = targetFeeds.filter(f => f.id === this.currentFeedId);
+                else if(this.activeView !== 'all') targetFeeds = targetFeeds.filter(f => f.category === this.activeView);
+                
+                if(this.activeView === 'all' && targetFeeds.length > 8) targetFeeds = targetFeeds.sort(() => 0.5 - Math.random()).slice(0, 8);
+
+                this.currentArticles = [];
+                this.visibleLimit = 24; 
+                document.getElementById('sentinel').style.display = 'flex'; 
+
+                // 1. Show Cache
+                for(const feed of targetFeeds) {
+                    const cached = await db.get('cache', feed.url);
+                    if(cached) {
+                        const items = cached.data.map(i => this.processItem(i, feed));
+                        this.currentArticles.push(...items);
+                    }
+                }
+                
+                if(this.currentArticles.length > 0) {
+                    this.currentArticles.sort((a,b) => b.timestamp - a.timestamp);
+                    ui.renderBatch(this.currentArticles.slice(0, this.visibleLimit));
+                    document.getElementById('connection-status').classList.add('loading');
+                } else {
+                    ui.showLoader();
+                }
+
+                // 2. Fetch Fresh
+                const promises = targetFeeds.map(async feed => {
+                    if(this.activeView === 'all') await new Promise(r => setTimeout(r, Math.random() * 1000));
+                    const freshItems = await this.fetchFeed(feed.url, true);
+                    
+                    if (freshItems.length > 0) await this.updateFeedStatus(feed.id, 'ok', freshItems.length);
+                    else await this.updateFeedStatus(feed.id, 'error');
+
+                    const processed = freshItems.map(i => this.processItem(i, feed));
+                    
+                    this.currentArticles = this.currentArticles.filter(a => a.sourceName !== feed.name);
+                    this.currentArticles.push(...processed);
+                    this.currentArticles.sort((a,b) => b.timestamp - a.timestamp);
+                    
+                    requestAnimationFrame(() => {
+                        const con = document.getElementById('main-content');
+                        if (con.scrollTop < 500) {
+                            ui.renderBatch(this.currentArticles.slice(0, this.visibleLimit));
+                        }
+                    });
+                });
+
+                await Promise.allSettled(promises);
+                document.getElementById('connection-status').classList.remove('loading');
+                const errorCount = this.feeds.filter(f => f.active && f.status === 'error').length;
+                const dot = document.getElementById('connection-status');
+                if (errorCount > 2) { dot.classList.add('offline'); dot.title = `Issues: ${errorCount} feeds`; }
+                else { dot.classList.remove('offline'); dot.title = "System Healthy"; }
+            },
+
+            processItem(item, feed) {
+                return {
+                    ...item,
+                    sourceName: feed.name,
+                    category: feed.category,
+                    timestamp: new Date(item.pubDate).getTime(),
+                    img: ui.extractImage(item)
+                };
+            },
+
+            loadMore() {
+                if (this.visibleLimit >= this.currentArticles.length) return;
+                
+                const start = this.visibleLimit;
+                this.visibleLimit += 24;
+                const nextBatch = this.currentArticles.slice(start, this.visibleLimit);
+                
+                if (nextBatch.length > 0) {
+                    const con = document.getElementById('main-content');
+                    if (con.querySelector('.feed-grid')) {
+                        con.querySelector('.feed-grid').insertAdjacentHTML('beforeend', ui.generateCards(nextBatch));
+                    } else {
+                        ui.renderBatch(this.currentArticles.slice(0, this.visibleLimit));
+                    }
+                }
+            },
+
+            refreshFeed() {
+                const tx = db.open().then(d => {
+                    const t = d.transaction('cache', 'readwrite');
+                    t.objectStore('cache').clear();
+                    t.oncomplete = () => this.loadView();
+                });
+            },
+
+            setView(view, btn) {
+                this.activeView = view;
+                this.currentFeedId = null; 
+                document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+                if(btn) btn.classList.add('active');
+                this.loadView();
+            },
+
+            openSingleFeed(id) {
+                this.activeView = 'single';
+                this.currentFeedId = id;
+                document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+                this.loadView();
+            },
+
+            markRead(link) {
+                this.readHistory.add(link);
+                localStorage.setItem('synapse_read', JSON.stringify([...this.readHistory]));
+                const card = document.querySelector(`.news-card[data-href="${link}"]`);
+                if(card) card.classList.add('read');
+                window.open(link, '_blank', 'noopener,noreferrer');
+            },
+
+            surpriseMe() {
+                if(this.currentArticles.length === 0) return alert("Feeds loading...");
+                const random = this.currentArticles[Math.floor(Math.random() * this.currentArticles.length)];
+                this.markRead(random.link);
+            },
+
+            async toggleBookmark(itemStr) {
+                const item = JSON.parse(decodeURIComponent(itemStr));
+                const exists = this.bookmarks.find(b => b.link === item.link);
+                if(exists) {
+                    await db.delete('bookmarks', item.link);
+                    this.bookmarks = this.bookmarks.filter(b => b.link !== item.link);
+                } else {
+                    await db.put('bookmarks', item);
+                    this.bookmarks.push(item);
+                }
+                if(this.activeView === 'saved') this.loadView();
+                else {
+                    const btn = document.querySelector(`button[data-link="${item.link}"]`);
+                    if(btn) {
+                        btn.innerHTML = exists ? '☆' : '★';
+                        btn.classList.toggle('bookmarked');
+                    }
+                }
+            },
+
+            shareItem(title, url) {
+                if(navigator.share) navigator.share({ title, url }).catch(console.error);
+                else prompt("Copy link:", url);
+            },
+
+            toggleFullScreen() {
+                if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(console.log);
+                else if (document.exitFullscreen) document.exitFullscreen();
+            },
+
+            async toggleFeed(id) {
+                const f = this.feeds.find(x => x.id === id);
+                if(f) { f.active = !f.active; await db.put('feeds', f); }
+            },
+            async saveFeed() {
+                let id = document.getElementById('edit-id').value;
+                const name = document.getElementById('edit-name').value;
+                let url = document.getElementById('edit-url').value.trim();
+                const cat = document.getElementById('edit-cat').value;
+                const desc = document.getElementById('edit-desc').value;
+                
+                if(!name || !url) return alert("Name and RSS URL are required");
+                if(!id) id = 'custom_' + Date.now();
+
+                if (url.includes('youtube.com/playlist') || url.includes('youtu.be')) {
+                    const listMatch = url.match(/[?&]list=([^&]+)/);
+                    if (listMatch) url = `https://www.youtube.com/feeds/videos.xml?playlist_id=${listMatch[1]}`;
+                }
+
+                const newFeed = { 
+                    id, name, url, category: cat, desc, active: true,
+                    status: 'pending', lastCheck: 0, errorCount: 0 
+                };
+                const idx = this.feeds.findIndex(f => f.id === id);
+                if(idx > -1) this.feeds[idx] = newFeed; else this.feeds.push(newFeed);
+                
+                await db.put('feeds', newFeed);
+                ui.showList(); 
+                ui.renderFeedManager();
+                app.loadView();
+            },
+            exportFeeds() {
+                const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.feeds));
+                const a = document.createElement('a'); a.href = data; a.download = "synapse_backup.json"; a.click();
+            },
+            importFeeds(input) {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const imp = JSON.parse(e.target.result);
+                        for(const f of imp) { await db.put('feeds', f); }
+                        alert("Restored!"); location.reload();
+                    } catch(e) { alert("Error"); }
+                };
+                reader.readAsText(input.files[0]);
+            },
+            async toggleTheme() {
+                this.settings.theme = this.settings.theme === 'dark' ? 'light' : 'dark';
+                await db.put('settings', { key: 'theme', value: this.settings.theme });
+                ui.applySettings();
+            },
+            async toggleLayout() {
+                this.settings.layout = this.settings.layout === 'grid' ? 'list' : 'grid';
+                await db.put('settings', { key: 'layout', value: this.settings.layout });
+                ui.applySettings();
+                this.loadView();
+            },
+            async hardReset() { 
+                if(confirm("Reset entire app?")) { await db.clearAll(); location.reload(); } 
+            }
+        };
+
+        // --- 4. UI HELPERS ---
+        const ui = {
+            openSettings: () => { document.getElementById('settings-modal').classList.add('open'); document.getElementById('backdrop').classList.add('open'); ui.renderFeedManager(); ui.showList(); },
+            closeSettings: () => { document.getElementById('settings-modal').classList.remove('open'); document.getElementById('backdrop').classList.remove('open'); },
+            updateStatus: () => {
+                const el = document.getElementById('connection-status');
+                if(navigator.onLine) { el.classList.remove('offline'); el.title="Online"; }
+                else { el.classList.add('offline'); el.title="Offline"; }
+            },
+            showList: () => { document.getElementById('view-list').classList.add('active'); document.getElementById('view-editor').classList.remove('active'); document.getElementById('modal-title').textContent = "Settings"; },
+            showEditor: (id = null) => { 
+                document.getElementById('view-list').classList.remove('active'); 
+                document.getElementById('view-editor').classList.add('active'); 
+                document.getElementById('modal-title').textContent = id ? "Edit Source" : "Add Source";
+                const feed = id ? app.feeds.find(f => f.id === id) : null;
+                document.getElementById('edit-id').value = feed ? feed.id : '';
+                document.getElementById('edit-name').value = feed ? feed.name : '';
+                document.getElementById('edit-url').value = feed ? feed.url : '';
+                document.getElementById('edit-cat').value = feed ? feed.category : 'student';
+                document.getElementById('edit-desc').value = feed ? feed.desc : '';
+            },
+            applySettings: () => {
+                document.body.setAttribute('data-theme', app.settings.theme);
+                document.getElementById('theme-toggle').checked = app.settings.theme !== 'dark';
+                document.getElementById('layout-toggle').checked = app.settings.layout === 'list';
+            },
+            showLoader: (msg = "Loading...") => { document.getElementById('main-content').innerHTML = `<div class="loader"><div class="spinner"></div><p>${msg}</p></div>`; },
+            clearGrid: () => { document.getElementById('main-content').innerHTML = ''; },
+            extractImage: (item) => {
+                if(item.thumbnail) return item.thumbnail;
+                const doc = new DOMParser().parseFromString(item.description, 'text/html');
+                const img = doc.querySelector('img');
+                if(img && img.src) return img.src;
+                return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMWUyOTNiIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiAvPjwvc3ZnPg==';
+            },
+            timeAgo: (ts) => {
+                if (!ts) return 'Never';
+                const s = Math.floor((Date.now() - ts) / 1000);
+                if(s < 60) return 'Just now';
+                const m = Math.floor(s/60); if(m<60) return `${m}m ago`;
+                const h = Math.floor(m/60); if(h<24) return `${h}h ago`;
+                return `${Math.floor(h/24)}d ago`;
+            },
+            generateCards: (articles) => {
+                return articles.map(item => {
+                    const isBookmarked = app.bookmarks.some(b => b.link === item.link);
+                    const isRead = app.readHistory.has(item.link);
+                    const itemStr = encodeURIComponent(JSON.stringify(item));
+                    return `
+                    <div class="news-card ${isRead ? 'read' : ''}" data-href="${item.link}">
+                        <div class="card-actions">
+                            <button class="action-chip ${isBookmarked ? 'bookmarked' : ''}" data-link="${item.link}" onclick="app.toggleBookmark('${itemStr}')">${isBookmarked ? '★' : '☆'}</button>
+                            <button class="action-chip" onclick="app.shareItem('${item.title.replace(/'/g, "")}', '${item.link}')">↗</button>
+                        </div>
+                        <div class="card-img" onclick="app.markRead('${item.link}')"><img src="${item.img}" loading="lazy" alt="img" onerror="this.style.display='none'"></div>
+                        <div class="card-body" onclick="app.markRead('${item.link}')">
+                            <div>
+                                <div class="card-meta"><span>${item.sourceName}</span><span>${new Date(item.timestamp).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</span></div>
+                                <h3 class="card-title">${item.title}</h3>
+                                <div class="card-desc">${(() => {
+                                    const d = document.createElement('div');
+                                    d.innerHTML = item.description;
+                                    return (d.textContent || "").substring(0, 100) + "...";
+                                })()}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            },
+            renderBatch: (articles) => {
+                const con = document.getElementById('main-content');
+                if(!articles.length) {
+                    con.innerHTML = `<div class="loader"><p>No articles found. Check Settings > Status.</p></div>`;
+                    return;
+                }
+                const view = app.settings.layout === 'list' ? 'list-view' : 'grid-view';
+                con.innerHTML = `<div class="feed-grid ${view}">` + ui.generateCards(articles) + `</div>`;
+            },
+            renderSources: (feeds) => {
+                const con = document.getElementById('main-content');
+                con.innerHTML = `<div class="source-grid">` + feeds.map(f => `
+                    <div class="source-card" onclick="app.openSingleFeed('${f.id}')">
+                        <div class="health-badge ${f.status === 'ok' ? 'ok' : 'err'}" style="background-color: var(--status-${f.status === 'ok' ? 'ok' : 'err'})"></div>
+                        <div class="source-name">${f.name}</div>
+                        <div class="source-cat">${f.category}</div>
+                        <div class="source-desc">${f.desc || 'No description.'}</div>
+                    </div>
+                `).join('') + `</div>`;
+            },
+            renderFeedManager: () => {
+                const con = document.getElementById('feed-list-container');
+                con.innerHTML = app.feeds.map(f => {
+                    let dotClass = 'ok';
+                    let statusText = f.lastSuccess ? `Updated: ${ui.timeAgo(f.lastSuccess)}` : 'Never updated';
+                    if (f.status === 'error') {
+                        dotClass = 'err';
+                        statusText = `Failed (${f.errorCount}x)`;
+                    } else if (f.lastSuccess && (Date.now() - f.lastSuccess > 604800000)) { 
+                        dotClass = 'warn'; statusText = 'Stale (>7 days)';
+                    }
+                    return `
+                    <div class="feed-item">
+                        <div class="feed-info" onclick="ui.showEditor('${f.id}')">
+                            <div class="feed-title"><div class="health-dot ${dotClass}"></div>${f.name}</div>
+                            <div class="feed-stats"><span>${statusText}</span><span>• ${f.lastCount || 0} items</span></div>
+                        </div>
+                        <label class="switch"><input type="checkbox" ${f.active ? 'checked' : ''} onchange="app.toggleFeed('${f.id}')"><span class="slider"></span></label>
+                    </div>`;
+                }).join('');
+            },
+            initInfiniteScroll: () => {
+                const sentinel = document.getElementById('sentinel');
+                const obs = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting) {
+                        document.getElementById('sentinel').classList.add('active');
+                        setTimeout(() => {
+                            app.loadMore();
+                            document.getElementById('sentinel').classList.remove('active');
+                        }, 500);
+                    }
+                }, { rootMargin: '100px' });
+                obs.observe(sentinel);
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>

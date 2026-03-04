@@ -390,8 +390,14 @@ export async function finishOnboarding() {
     }
 
     App.user.name = name;
-    App.user.visitorId = `${role}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     App.classCode = classCode;
+    
+    // Stable visitorId for teachers based on classCode, random for students
+    if (role === 'teacher') {
+        App.user.visitorId = `teacher_${classCode}`;
+    } else {
+        App.user.visitorId = `student_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    }
     
     // Default avatar if none selected
     if (!App.user.avatar) {

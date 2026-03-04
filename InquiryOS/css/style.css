@@ -73,66 +73,6 @@ html, body {
     background: var(--bg-main);
 }
 
-/* ==================== DESKTOP DASHBOARD OVERHAUL (Single Panel Grids) ==================== */
-@media (min-width: 769px) {
-    .view-student #mainContent {
-        background: #f1f5f9; /* Slate 100 */
-        padding: 0.75rem !important;
-        overflow: hidden !important;
-        height: calc(100dvh - var(--header-height));
-    }
-
-    .active-dashboard {
-        height: 100% !important;
-        width: 100% !important;
-        background: transparent !important;
-    }
-
-    .panels-container {
-        display: grid !important;
-        gap: 0.75rem;
-        height: 100%;
-        width: 100%;
-        grid-template-columns: repeat(12, 1fr);
-        padding: 0;
-    }
-
-    /* All panels should look like integrated workspace cards */
-    .panels-container > div {
-        display: flex !important;
-        background: white !important;
-        border-radius: 1rem !important;
-        border: 1px solid var(--border-color) !important;
-        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1) !important;
-        overflow: hidden;
-        flex-direction: column;
-        min-height: 0;
-    }
-
-    /* 1. Questions (SEP1) */
-    [data-module-id="questions"] .panels-container > [data-card-title="Phenomenon"] { grid-column: span 3; }
-    [data-module-id="questions"] .panels-container > [data-card-title="Inquiry Board"] { grid-column: span 6; }
-    [data-module-id="questions"] .panels-container > [data-card-title="Driving Questions"] { grid-column: span 3; }
-
-    /* 2. Models (SEP2) */
-    [data-module-id="models"] .panels-container > [data-card-title="Model Canvas"] { grid-column: span 8; }
-    [data-module-id="models"] .panels-container > [data-card-title="Model Explanations"] { grid-column: span 4; }
-
-    /* 3. Investigation (SEP3) */
-    [data-module-id="investigation"] .panels-container > [data-card-title="Experimental Variables"] { grid-column: span 4; }
-    [data-module-id="investigation"] .panels-container > [data-card-title="Data Collection Table"] { grid-column: span 8; }
-
-    /* 4. Analysis (SEP4) */
-    [data-module-id="analysis"] .panels-container > [data-card-title="Chart Designer"] { grid-column: span 8; }
-    [data-module-id="analysis"] .panels-container > [data-card-title="Statistical Summary"] { grid-column: span 4; }
-
-    /* 5. Math (SEP5) */
-    [data-module-id="math"] .panels-container > [data-card-title="Math Workspace"] { grid-column: span 12; }
-
-    /* 6. Explanations (SEP6) */
-    [data-module-id="explanations"] .panels-container > [data-card-title="CER Workspace"] { grid-column: span 12; }
-}
-
 .nav-btn.active { background: var(--primary-gradient); color: white; }
 .teacher-nav.active { background: var(--teacher-gradient); color: white; }
 
@@ -423,7 +363,7 @@ html, body {
     .quick-jump-overlay.is-visible { display: block; }
 }
 
-/* ==================== DESKTOP PREMIUM LAYOUT ==================== */
+/* ==================== DESKTOP CONSOLIDATED LAYOUT ==================== */
 @media (min-width: 769px) {
     #appView {
         height: 100dvh;
@@ -443,14 +383,195 @@ html, body {
 
     /* Section layout - all modules are full-bleed on desktop */
     #mainContent > * {
-        min-height: calc(100dvh - var(--header-height)) !important;
+        height: calc(100dvh - var(--header-height)) !important;
         scroll-snap-align: start;
         display: flex;
         flex-direction: column;
         background: var(--bg-main);
         padding: 0 !important; /* Remove module-level padding */
         box-sizing: border-box;
+        overflow: hidden;
     }
+
+    /* Standardized Dashboard Structure */
+    .dashboard-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .panels-container {
+        display: grid !important;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 0.75rem !important;
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 0.75rem !important;
+        background: #f1f5f9; /* Slate 100 for workspace feel */
+    }
+
+    /* All panels should look like integrated workspace cards on Desktop */
+    .panels-container > div, .panels-container > section, .practice-card {
+        display: flex !important;
+        background: white !important;
+        border-radius: 1rem !important;
+        border: 1px solid var(--border-color) !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+        overflow: hidden;
+        flex-direction: column;
+        min-height: 0;
+        position: relative;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .panels-container > div:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Hide mobile-only elements on desktop */
+    .mobile-nav-toggle, .md\:hidden { display: none !important; }
+
+    /* Sticky headers are relative but styled as bars on desktop */
+    .sticky-panel-header {
+        position: relative !important;
+        top: auto !important;
+        background: var(--bg-main) !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        padding: 0.75rem 1.5rem !important;
+        height: auto !important;
+        min-height: 48px;
+        backdrop-filter: none !important;
+        flex-shrink: 0;
+        display: flex !important;
+        align-items: center;
+    }
+
+    /* Override flex for hidden desktop headers */
+    .sticky-panel-header.md\:hidden { display: none !important; }
+
+    /* Standardized Monitor Headers (Dark Theme) */
+    .monitor-header {
+        background: #0f172a !important; /* Slate 900 */
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding: 1.5rem !important;
+    }
+    .monitor-header h2 { color: white !important; margin: 0 !important; }
+    .monitor-header p { color: rgba(255, 255, 255, 0.5) !important; }
+
+    .panel-content {
+        flex: 1;
+        overflow-y: auto !important;
+        padding: 1.5rem !important; /* Standardized internal padding */
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-color) transparent;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* --- Student Module Grids (Practice Panels) --- */
+    
+    /* 0. Overview */
+    [data-module-id="overview"] .panels-container > [data-card-title="The Mystery"] { grid-column: span 4; }
+    [data-module-id="overview"] .panels-container > [data-card-title="Scientific Story"] { grid-column: span 4; }
+    [data-module-id="overview"] .panels-container > [data-card-title="Research Progress"] { grid-column: span 4; }
+    [data-module-id="overview"] .panels-container > [data-card-title="Quick Actions"] { grid-column: span 12; }
+
+    /* 1. Questions (SEP1) */
+    [data-module-id="questions"] .panels-container > [data-card-title="Phenomenon"] { grid-column: span 3; }
+    [data-module-id="questions"] .panels-container > [data-card-title="Inquiry Board"] { grid-column: span 6; }
+    [data-module-id="questions"] .panels-container > [data-card-title="Driving Questions"] { grid-column: span 3; }
+
+    /* 2. Models (SEP2) */
+    [data-module-id="models"] .panels-container > [data-card-title="Model Canvas"] { grid-column: span 8; }
+    [data-module-id="models"] .panels-container > [data-card-title="Model Explanations"] { grid-column: span 4; }
+
+    /* 3. Investigation (SEP3) */
+    [data-module-id="investigation"] .panels-container > [data-card-title="Experimental Variables"] { grid-column: span 4; }
+    [data-module-id="investigation"] .panels-container > [data-card-title="Data Collection Table"] { grid-column: span 8; }
+
+    /* 4. Analysis (SEP4) */
+    [data-module-id="analysis"] .panels-container > [data-card-title="Chart Designer"] { grid-column: span 8; }
+    [data-module-id="analysis"] .panels-container > [data-card-title="Statistical Summary"] { grid-column: span 4; }
+
+    /* 5. Math (SEP5) */
+    [data-module-id="math"] .panels-container > [data-card-title="Math Workspace"] { grid-column: span 12; }
+
+    /* 6. Explanations (SEP6) */
+    [data-module-id="explanations"] .panels-container > [data-card-title="CER Workspace"] { grid-column: span 12; }
+
+    /* 7. Argument (SEP7) */
+    [data-module-id="argument"] .panels-container > [data-card-title="Argument Board"] { grid-column: span 12; }
+
+    /* 8. Communication (SEP8) */
+    [data-module-id="communication"] .panels-container > [data-card-title="Poster Builder"] { grid-column: span 12; }
+
+    /* --- Teacher Dashboard Grids --- */
+    
+    /* Teacher Overview: Lesson Focus + Alignment */
+    [data-teacher-module="overview"] .panels-container > [data-card-title="Lesson Focus"] { grid-column: span 7; }
+    [data-teacher-module="overview"] .panels-container > [data-card-title="Alignment & Controls"] { grid-column: span 5; }
+
+    /* Teacher Access: Guided Mode + Permissions */
+    [data-teacher-module="access"] .panels-container > [data-card-title="Guided Mode"] { grid-column: span 5; }
+    [data-teacher-module="access"] .panels-container > [data-card-title="Permissions"] { grid-column: span 7; }
+
+    /* Teacher Snapshots, Students, Moderation, NGSS, Settings (Full Width Panels) */
+    [data-teacher-module="snapshots"] .panels-container > div,
+    [data-teacher-module="students"] .panels-container > div,
+    [data-teacher-module="moderation"] .panels-container > div,
+    [data-teacher-module="ngss"] .panels-container > div,
+    [data-teacher-module="settings"] .panels-container > div,
+    [data-teacher-module="coaching"] .panels-container > div {
+        grid-column: span 12;
+    }
+
+    /* Teacher Lessons side-by-side */
+    [data-teacher-module="lessons"] .panels-container > [data-card-title="NGSS Blueprints"] { grid-column: span 7; }
+    [data-teacher-module="lessons"] .panels-container > [data-card-title="My Presets"] { grid-column: span 5; }
+
+    /* Notice Board - Force grid layout for desktop */
+    #teacherInquirySwiper {
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 0.75rem !important;
+        overflow: visible !important;
+        height: 100% !important;
+        width: 100% !important;
+        flex: 1;
+    }
+    #teacherInquirySwiper .horizontal-snap-item {
+        width: 100% !important;
+        min-width: 0 !important;
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid var(--border-color);
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* Theme Architect (Categories) - Custom inner grid */
+    [data-teacher-module="categories"] .panels-container > [data-card-title="Theme Architect"] { grid-column: span 12; }
+
+    /* Asset Architect (Icons) - Custom inner grid */
+    [data-teacher-module="icons"] .panels-container > [data-card-title="Icon Bank"] { grid-column: span 6; }
+    [data-teacher-module="icons"] .panels-container > [data-card-title="Emoji Bank"] { grid-column: span 6; }
+
+    /* Moderation - Full Width */
+    [data-teacher-module="moderation"] .panels-container > [data-card-title="Discussion Moderation"] { grid-column: span 12; }
+    
+    /* Settings - Full Width */
+    [data-teacher-module="settings"] .panels-container > [data-card-title="API Configurations"] { grid-column: span 6; }
+    [data-teacher-module="settings"] .panels-container > [data-card-title="Preferences"] { grid-column: span 6; }
+
+
+
+    /* Desktop Navigation Container (Dots & Arrows) */
     .desktop-nav-container {
         position: fixed;
         right: 1.5rem;
@@ -525,11 +646,6 @@ html, body {
         cursor: not-allowed;
     }
 
-    /* Hide the mobile scroll handle on desktop */
-    #globalScrollHandle {
-        display: none !important;
-    }
-
     /* Coach's Corner Bar Style */
     .coaching-bar {
         background: white;
@@ -553,127 +669,6 @@ html, body {
         padding-right: 1rem;
         border-right: 1px solid var(--border-color);
     }
-
-    .panels-container {
-        display: grid;
-        gap: 0 !important; /* Remove gaps between panels for full-bleed look */
-        flex: 1;
-        min-height: 0;
-        width: 100%;
-        max-width: 100%;
-        margin: 0;
-    }
-
-    /* All panels are full-bleed on Desktop by default now */
-    .panels-container > * {
-        min-height: 0 !important;
-        height: 100%;
-        background: var(--bg-card);
-        border-radius: 0 !important; /* No rounded corners */
-        border: none !important;
-        border-right: 1px solid var(--border-color) !important;
-        border-bottom: 1px solid var(--border-color) !important;
-        box-shadow: none !important;
-        display: flex !important;
-        flex-direction: column !important;
-        overflow: hidden !important;
-        padding: 0 !important;
-        position: relative;
-        transition: none !important; /* Remove hover lift for cleaner dashboard feel */
-    }
-    
-    .panels-container > *:last-child {
-        border-right: none !important;
-    }
-
-    .panel-content {
-        flex: 1;
-        overflow-y: auto !important;
-        padding: 2rem !important; /* Standardized internal padding */
-        scrollbar-width: thin;
-        scrollbar-color: var(--border-color) transparent;
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* Sticky headers are relative but styled as bars on desktop */
-    .sticky-panel-header {
-        position: relative !important;
-        top: auto !important;
-        background: var(--bg-main) !important;
-        border-bottom: 1px solid var(--border-color) !important;
-        padding: 0.75rem 2rem !important;
-        height: auto !important;
-        min-height: 48px;
-        backdrop-filter: none !important;
-        flex-shrink: 0;
-        display: flex !important;
-        align-items: center;
-    }
-
-    .sticky-panel-header h3 {
-        font-size: 0.85rem !important;
-        font-weight: 900 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.15em !important;
-        color: var(--text-muted);
-    }
-
-    /* Module-Specific Desktop Grid Layouts */
-    [data-current-module="overview"] .panels-container {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: 1.1fr 0.9fr;
-    }
-
-    [data-current-module="questions"] .panels-container {
-        grid-template-columns: 1fr 1.5fr 1fr;
-    }
-
-    [data-current-module="models"] .panels-container {
-        grid-template-columns: 2fr 1fr;
-    }
-
-    [data-current-module="investigation"] .panels-container {
-        grid-template-columns: 0.8fr 2.2fr;
-    }
-
-    [data-current-module="analysis"] .panels-container {
-        grid-template-columns: 2fr 1fr;
-    }
-
-    [data-current-module="math"] .panels-container {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: 1fr 1fr;
-    }
-
-    [data-current-module="explanations"] .panels-container {
-        grid-template-columns: 0.8fr 1.2fr;
-        grid-template-rows: repeat(3, 1fr);
-        grid-template-areas: 
-            "bank claim"
-            "bank evidence"
-            "bank reasoning";
-    }
-
-    /* Teacher Dashboard Grid Layouts */
-    [data-teacher-module="access"] .panels-container,
-    [data-teacher-module="lessons"] .panels-container {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    [data-teacher-module="overview"] .panels-container {
-        display: flex !important; /* Teacher overview has internal grid logic */
-    }
-
-    [data-card-title="Evidence Bank"] { grid-area: bank; }
-    [data-card-title="Scientific Claim"] { grid-area: claim; }
-    [data-card-title="Evidence Description"] { grid-area: evidence; }
-    [data-card-title="Reasoning"] { grid-area: reasoning; }
-
-    /* Desktop typography adjustments */
-    .text-\[10px\], .text-\[9px\] { font-size: 0.85rem !important; font-weight: 800 !important; }
-    h2.text-sm { font-size: 2.25rem !important; line-height: 2.5rem !important; }
-    .text-xs { font-size: 0.95rem !important; }
 
     /* Desktop Accessibility Handle Positioning */
     .global-scroll-handle {

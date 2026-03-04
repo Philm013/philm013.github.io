@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <title>Digital Synapse | Research Hub</title>
+    <!-- Icons for UI -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* --- 1. CORE VARIABLES & THEME --- */
+        :root {
+            --primary: #38bdf8;       /* Sky Blue */
+            --accent: #f472b6;        /* Pink */
+            --saved: #facc15;         /* Gold */
+            --bg-body: #0f172a;       /* Dark Slate */
+            --bg-card: #1e293b;
+            --bg-nav: rgba(15, 23, 42, 0.95);
+            --bg-input: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
+
+        [data-theme="light"] {
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
+            --bg-nav: rgba(255, 255, 255, 0.95);
+            --bg-input: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: background 0.3s ease;
+        }
+
+        /* --- 2. LAYOUT COMPONENTS --- */
+        header {
+            padding: calc(10px + var(--safe-top)) 16px 10px;
+            background: var(--bg-nav);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .header-controls { display: flex; gap: 12px; }
+        .icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        .icon-btn:hover, .icon-btn.active { color: var(--text-main); background: var(--bg-input); }
+
+        /* Main Content Area */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            scroll-behavior: smooth;
+        }
+
+        /* Loading Spinner */
+        .loader-container {
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid var(--bg-input);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- 3. NEWS FEED GRID --- */
+        .feed-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .article-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            box-shadow: var(--shadow);
+        }
+        .article-card:hover { transform: translateY(-2px); }
+
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        .source-tag { color: var(--primary); }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            line-height: 1.4;
+        }
+        .card-title a {
+            color: var(--text-main);
+            text-decoration: none;
+        }
+        .card-title a:hover { color: var(--primary); }
+
+        .card-excerpt {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 12px;
+            flex: 1;
+        }
+
+        .card-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+        }
+        
+        .date-badge { font-size: 0.75rem; color: var(--text-muted); }
+        
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+        .action-btn:hover { color: var(--text-main); }
+        .action-btn.saved { color: var(--saved); }
+
+        /* --- 4. NAVIGATION BAR (Mobile Bottom) --- */
+        nav {
+            background: var(--bg-nav);
+            border-top: 1px solid var(--border);
+            padding: 10px 0 calc(10px + var(--safe-bottom));
+            display: flex;
+            justify-content: space-around;
+            backdrop-filter: blur(8px);
+            z-index: 50;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            width: 60px;
+        }
+        .nav-item i { font-size: 1.25rem; margin-bottom: 2px; }
+        .nav-item.active { color: var(--primary); }
+
+        /* --- 5. MANAGERS & MODALS --- */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal.open { display: flex; }
+        
+        .modal-content {
+            background: var(--bg-card);
+            width: 90%; max-width: 500px;
+            max-height: 80vh;
+            border-radius: var(--radius);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .modal-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+        }
+
+        .modal-body {
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        /* Feed List Styling */
+        .feed-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--bg-input);
+            margin-bottom: 8px;
+            border-radius: 8px;
+        }
+        .feed-info { flex: 1; }
+        .feed-name { font-weight: 600; font-size: 0.95rem; }
+        .feed-cat { font-size: 0.75rem; color: var(--primary); margin-top: 2px; }
+        
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px; height: 24px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #64748b;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+        .empty-state i { font-size: 3rem; margin-bottom: 16px; opacity: 0.5; }
+        
+        .refresh-btn {
+            background-color: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        .refresh-btn:active { opacity: 0.8; }
+        
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <h1>Digital Synapse</h1>
+        <div class="header-controls">
+            <button class="icon-btn" onclick="app.refreshFeeds()" title="Refresh"><i class="fas fa-sync-alt"></i></button>
+            <button class="icon-btn" onclick="app.toggleTheme()" title="Toggle Theme"><i class="fas fa-moon"></i></button>
+            <button class="icon-btn" onclick="ui.toggleModal('settings')" title="Sources"><i class="fas fa-sliders-h"></i></button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content">
+        <div class="loader-container">
+            <div class="spinner"></div>
+        </div>
+    </main>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-item active" onclick="app.switchView('feed')">
+            <i class="fas fa-newspaper"></i>
+            <span>Feed</span>
+        </div>
+        <div class="nav-item" onclick="app.switchView('explore')">
+            <i class="fas fa-compass"></i>
+            <span>Sources</span>
+        </div>
+        <div class="nav-item" onclick="app.switchView('saved')">
+            <i class="fas fa-bookmark"></i>
+            <span>Saved</span>
+        </div>
+    </nav>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Manage Sources</span>
+                <button class="icon-btn" onclick="ui.toggleModal('settings')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="feed-manager-list">
+                <!-- Feed Toggles injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * DIGITAL SYNAPSE LOGIC
+         * * Features:
+         * 1. CORS Proxy Fetching to make RSS work in browser
+         * 2. LocalStorage for persistence
+         * 3. Aggregated Feed Parsing
+         */
+
+        const RESOURCES = [
+            // --- GENERAL SCIENCE ---
+            { id: 'scidaily_top', name: 'ScienceDaily (Top)', cat: 'General', url: 'https://www.sciencedaily.com/rss/top/science.xml', active: true },
+            { id: 'eurekalert', name: 'EurekAlert!', cat: 'General', url: 'https://www.eurekalert.org/rss/science_news.xml', active: true },
+            { id: 'physorg', name: 'Phys.org', cat: 'Physics/Tech', url: 'https://phys.org/rss-feed/', active: true },
+            { id: 'bbc_sci', name: 'BBC Science', cat: 'News', url: 'http://feeds.bbci.co.uk/news/science_and_environment/rss.xml', active: true },
+            { id: 'nyt_sci', name: 'NYT Science', cat: 'News', url: 'https://rss.nytimes.com/services/xml/rss/nyt/Science.xml', active: false },
+            
+            // --- SPACE ---
+            { id: 'nasa', name: 'NASA Breaking', cat: 'Space', url: 'https://www.nasa.gov/rss/dyn/breaking_news.rss', active: true },
+            { id: 'space_com', name: 'Space.com', cat: 'Space', url: 'https://www.space.com/feeds/all', active: true },
+            { id: 'esa', name: 'ESA', cat: 'Space', url: 'https://www.esa.int/rssfeed/Our_Activities/Space_Science', active: false },
+
+            // --- TECHNOLOGY ---
+            { id: 'wired', name: 'Wired Science', cat: 'Tech', url: 'https://www.wired.com/feed/category/science/latest/rss', active: true },
+            { id: 'verge_sci', name: 'The Verge', cat: 'Tech', url: 'https://www.theverge.com/rss/science/index.xml', active: true },
+            { id: 'arstechnica', name: 'Ars Technica', cat: 'Tech', url: 'http://feeds.arstechnica.com/arstechnica/science', active: false },
+            { id: 'mit_tech', name: 'MIT Tech Review', cat: 'Tech', url: 'https://www.technologyreview.com/feed/', active: false },
+
+            // --- BIOLOGY & NATURE ---
+            { id: 'nih', name: 'NIH Research', cat: 'Biology', url: 'https://www.nih.gov/news-events/feed.xml', active: true },
+            { id: 'smithsonian', name: 'Smithsonian', cat: 'Nature', url: 'https://www.smithsonianmag.com/rss/science-nature/', active: true },
+        ];
+
+        const app = {
+            state: {
+                view: 'feed', // feed, explore, saved
+                feeds: [],
+                articles: [],
+                saved: [],
+                theme: 'dark'
+            },
+
+            init: () => {
+                // Load Settings
+                const storedFeeds = localStorage.getItem('ds_feeds');
+                const storedSaved = localStorage.getItem('ds_saved');
+                const storedTheme = localStorage.getItem('ds_theme');
+
+                // Merge default resources with stored state to handle updates
+                if (storedFeeds) {
+                    const parsed = JSON.parse(storedFeeds);
+                    // Update active states based on storage, but keep new URLs if updated in code
+                    app.state.feeds = RESOURCES.map(res => {
+                        const saved = parsed.find(p => p.id === res.id);
+                        return saved ? { ...res, active: saved.active } : res;
+                    });
+                } else {
+                    app.state.feeds = [...RESOURCES];
+                }
+
+                if (storedSaved) app.state.saved = JSON.parse(storedSaved);
+                if (storedTheme) app.state.theme = storedTheme;
+
+                // Apply Theme
+                document.documentElement.setAttribute('data-theme', app.state.theme);
+                
+                // Initial Render
+                ui.renderNav();
+                app.refreshFeeds();
+            },
+
+            refreshFeeds: async () => {
+                ui.showLoading();
+                app.state.articles = []; // Clear current
+
+                const activeFeeds = app.state.feeds.filter(f => f.active);
+                const promises = activeFeeds.map(feed => app.fetchRSS(feed));
+
+                try {
+                    const results = await Promise.allSettled(promises);
+                    results.forEach(res => {
+                        if (res.status === 'fulfilled') {
+                            app.state.articles.push(...res.value);
+                        }
+                    });
+
+                    // Sort by date (newest first)
+                    app.state.articles.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    if (app.state.view === 'feed') ui.renderFeed();
+                } catch (e) {
+                    console.error("Critical Fetch Error", e);
+                    document.getElementById('main-content').innerHTML = `<div class="empty-state">Error loading feeds. Check connection.</div>`;
+                }
+            },
+
+            // Using AllOrigins as a CORS Proxy
+            fetchRSS: async (feed) => {
+                try {
+                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(feed.url)}`;
+                    const response = await fetch(proxyUrl);
+                    const data = await response.json();
+                    
+                    if (!data.contents) throw new Error("No content");
+
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+                    const items = Array.from(xmlDoc.querySelectorAll("item"));
+
+                    return items.map(item => {
+                        const title = item.querySelector("title")?.textContent || "Untitled";
+                        const link = item.querySelector("link")?.textContent || "#";
+                        const descRaw = item.querySelector("description")?.textContent || "";
+                        // Basic strip HTML for excerpt
+                        const div = document.createElement("div");
+                        div.innerHTML = descRaw;
+                        const desc = div.textContent || div.innerText || "";
+                        
+                        const dateStr = item.querySelector("pubDate")?.textContent;
+                        const date = dateStr ? new Date(dateStr) : new Date();
+
+                        return {
+                            id: link, // URL as ID
+                            sourceId: feed.id,
+                            sourceName: feed.name,
+                            category: feed.cat,
+                            title: title,
+                            link: link,
+                            excerpt: desc,
+                            date: date
+                        };
+                    }).slice(0, 10); // Limit to 10 per feed to keep it snappy
+                } catch (err) {
+                    console.warn(`Failed to load ${feed.name}:`, err);
+                    return [];
+                }
+            },
+
+            toggleSave: (link, title, source, event) => {
+                event.stopPropagation();
+                const index = app.state.saved.findIndex(s => s.link === link);
+                
+                if (index > -1) {
+                    app.state.saved.splice(index, 1);
+                } else {
+                    app.state.saved.push({ link, title, sourceName: source, date: new Date() });
+                }
+                
+                localStorage.setItem('ds_saved', JSON.stringify(app.state.saved));
+                
+                // Re-render current view to update button state
+                if (app.state.view === 'saved') ui.renderSaved();
+                else ui.renderFeed();
+            },
+
+            toggleTheme: () => {
+                app.state.theme = app.state.theme === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', app.state.theme);
+                localStorage.setItem('ds_theme', app.state.theme);
+            },
+
+            switchView: (viewName) => {
+                app.state.view = viewName;
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                
+                // Highlight nav
+                const map = {'feed':0, 'explore':1, 'saved':2};
+                document.querySelectorAll('.nav-item')[map[viewName]].classList.add('active');
+
+                if (viewName === 'feed') ui.renderFeed();
+                else if (viewName === 'saved') ui.renderSaved();
+                else if (viewName === 'explore') ui.renderExplore();
+            },
+
+            toggleFeedActive: (id) => {
+                const feed = app.state.feeds.find(f => f.id === id);
+                if (feed) {
+                    feed.active = !feed.active;
+                    localStorage.setItem('ds_feeds', JSON.stringify(app.state.feeds));
+                    // If we are in settings modal, re-render it
+                    ui.renderSettingsList(); 
+                }
+            }
+        };
+
+        const ui = {
+            showLoading: () => {
+                document.getElementById('main-content').innerHTML = `<div class="loader-container"><div class="spinner"></div></div>`;
+            },
+
+            toggleModal: (name) => {
+                const modal = document.getElementById(`${name}-modal`);
+                if (modal.style.display === 'flex') {
+                    modal.style.display = 'none';
+                    // If closing settings, refresh feed to apply changes
+                    if (name === 'settings') app.refreshFeeds();
+                } else {
+                    modal.style.display = 'flex';
+                    if (name === 'settings') ui.renderSettingsList();
+                }
+            },
+
+            renderNav: () => {
+                // handled in HTML/CSS mostly
+            },
+
+            renderFeed: () => {
+                const container = document.getElementById('main-content');
+                if (app.state.articles.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-satellite-dish"></i>
+                            <p>No articles found. Try enabling more sources in settings.</p>
+                            <button class="refresh-btn" onclick="app.refreshFeeds()">Try Again</button>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = `<div class="feed-grid">` + 
+                    app.state.articles.map(art => ui.buildCard(art)).join('') + 
+                    `</div>`;
+            },
+
+            renderSaved: () => {
+                const container = document.getElementById('main-content');
+                if (app.state.saved.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-bookmark"></i>
+                            <p>You haven't saved any articles yet.</p>
+                        </div>`;
+                    return;
+                }
+                container.innerHTML = `<div class="feed-grid">` + 
+                    app.state.saved.map(art => ui.buildCard(art)).join('') + 
+                    `</div>`;
+            },
+
+            renderExplore: () => {
+                const container = document.getElementById('main-content');
+                // Group by category
+                const cats = {};
+                app.state.feeds.forEach(f => {
+                    if(!cats[f.cat]) cats[f.cat] = [];
+                    cats[f.cat].push(f);
+                });
+
+                let html = `<div style="max-width:800px; margin:0 auto;">
+                    <h2 style="margin-bottom:20px;">Source Directory</h2>`;
+
+                for(let cat in cats) {
+                    html += `<h3 style="color:var(--primary); border-bottom:1px solid var(--border); padding-bottom:8px; margin-top:24px;">${cat}</h3>`;
+                    html += cats[cat].map(f => `
+                        <div class="feed-item" style="background:var(--bg-card); margin-bottom:10px;">
+                            <div class="feed-info">
+                                <div class="feed-name">${f.name}</div>
+                                <div class="feed-cat"><a href="${f.url}" target="_blank" style="color:var(--text-muted)">RSS Link</a></div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" ${f.active ? 'checked' : ''} onchange="app.toggleFeedActive('${f.id}')">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    `).join('');
+                }
+                html += `</div>`;
+                container.innerHTML = html;
+            },
+
+            renderSettingsList: () => {
+                const container = document.getElementById('feed-manager-list');
+                container.innerHTML = app.state.feeds.map(f => `
+                    <div class="feed-item">
+                        <div class="feed-info">
+                            <div class="feed-name">${f.name}</div>
+                            <div class="feed-cat">${f.cat}</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" ${f.active ? 'checked' : ''} onchange="app.toggleFeedActive('${f.id}')">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                `).join('');
+            },
+
+            buildCard: (art) => {
+                const isSaved = app.state.saved.some(s => s.link === art.link);
+                // Safe date format
+                let dateDisplay = "";
+                try {
+                    dateDisplay = new Date(art.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                } catch(e) { dateDisplay = ""; }
+
+                return `
+                    <article class="article-card">
+                        <div class="card-meta">
+                            <span class="source-tag">${art.sourceName}</span>
+                            <span>${dateDisplay}</span>
+                        </div>
+                        <h3 class="card-title"><a href="${art.link}" target="_blank">${art.title}</a></h3>
+                        <div class="card-excerpt">${art.excerpt}</div>
+                        <div class="card-actions">
+                            <span class="date-badge">${art.category || 'Science'}</span>
+                            <div style="display:flex; gap:16px;">
+                                <button class="action-btn ${isSaved ? 'saved' : ''}" 
+                                    onclick="app.toggleSave('${art.link}', '${art.title.replace(/'/g, "\\'")}', '${art.sourceName}', event)">
+                                    <i class="${isSaved ? 'fas' : 'far'} fa-bookmark"></i>
+                                </button>
+                                <a href="${art.link}" target="_blank" class="action-btn">
+                                    <i class="fas fa-external-link-alt"></i>
+                                ুল</a>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }
+        };
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', app.init);
+
+    </script>
+</body>
+</html>

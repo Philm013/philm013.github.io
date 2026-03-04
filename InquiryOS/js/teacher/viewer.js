@@ -82,7 +82,7 @@ export async function renderLiveModels() {
 
     return `
         <div class="h-full flex flex-col -m-6">
-            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
+            <div class="monitor-header flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
                 <div class="flex items-center gap-6">
                     <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
                         <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
@@ -92,7 +92,7 @@ export async function renderLiveModels() {
                             <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
                             <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Model Viewer</span>
                         </div>
-                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">${!App.teacherSettings.showFeedbackToStudents ? 'Grading: Hidden' : 'Grading: Live'}</p>
+                        <p class="text-xs text-white/50 font-bold uppercase tracking-widest mt-1">${!App.teacherSettings.showFeedbackToStudents ? 'Grading: Hidden' : 'Grading: Live'}</p>
                     </div>
                 </div>
                 ${renderViewerModuleTabs()}
@@ -131,7 +131,7 @@ export async function renderLiveGeneric() {
 
     return `
         <div class="h-full flex flex-col -m-6">
-            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
+            <div class="monitor-header flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
                 <div class="flex items-center gap-6">
                     <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
                         <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
@@ -141,7 +141,7 @@ export async function renderLiveGeneric() {
                             <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
                             <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Monitoring</span>
                         </div>
-                        <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Practice: ${App.currentModule.toUpperCase()}</p>
+                        <p class="text-xs text-white/50 font-bold uppercase tracking-widest mt-1">Practice: ${App.currentModule.toUpperCase()}</p>
                     </div>
                 </div>
                 ${renderViewerModuleTabs()}
@@ -229,13 +229,26 @@ export async function renderLiveData() {
 
     return `
         <div class="h-full flex flex-col -m-6">
-            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50 shrink-0">
+            <div class="monitor-header flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50 shrink-0">
                 <div class="flex items-center gap-6">
-                    <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all"><span class="iconify text-2xl" data-icon="mdi:arrow-left"></span></button>
-                    <div><div class="flex items-center gap-2"><h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2><span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Data Monitor</span></div><p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Real-time Inspection</p></div>
+                    <button onclick="window.stopViewingStudent()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                        <span class="iconify text-2xl" data-icon="mdi:arrow-left"></span>
+                    </button>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-black text-2xl uppercase tracking-tighter">${currentStudent?.name || 'Student'}</h2>
+                            <span class="px-2 py-0.5 bg-primary text-white rounded text-[10px] font-black uppercase tracking-widest">Data Monitor</span>
+                        </div>
+                        <p class="text-xs text-white/50 font-bold uppercase tracking-widest mt-1">Real-time Inspection</p>
+                    </div>
                 </div>
                 ${renderViewerModuleTabs()}
-                <div class="flex items-center gap-2"><button onclick="window.presentToClass('data')" class="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2"><span class="iconify text-lg" data-icon="mdi:presentation"></span>Present</button></div>
+                <div class="flex items-center gap-2">
+                    <button onclick="window.presentToClass('data')" class="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2">
+                        <span class="iconify text-lg" data-icon="mdi:presentation"></span>
+                        Present
+                    </button>
+                </div>
             </div>
             <div class="flex-1 overflow-auto bg-gray-50 p-8 custom-scrollbar">
                 <div class="max-w-7xl mx-auto space-y-8">
@@ -404,7 +417,7 @@ export async function renderIconManager() {
     }, 100);
 
     return `
-        <div class="h-full flex flex-col -m-6 bg-white overflow-hidden">
+        <div class="h-full flex flex-col -m-6 bg-white overflow-hidden" data-teacher-module="icons">
             <div class="p-4 md:p-6 bg-white border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 shrink-0 shadow-sm z-50">
                 <div class="flex items-center gap-4 md:gap-6">
                     <button onclick="window.stopEditingBank()" class="w-10 h-10 md:w-12 md:h-12 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl md:rounded-2xl flex items-center justify-center transition-all">

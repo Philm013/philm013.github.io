@@ -326,22 +326,29 @@ export async function showTeacherModule(moduleId) {
     const isStacked = stackedModules.includes(moduleId);
 
     if (isStacked) {
-        App._isScrollingToModule = true;
+        // Optimization: Check if stack is already in DOM
+        const content = document.getElementById('mainContent');
+        const hasStack = content.querySelector('.teacher-section');
         
-        // Ensure content is rendered (this will skip restoration if _isScrollingToModule is true)
-        await renderTeacherContent();
+        if (!hasStack) {
+            await renderTeacherContent(true); // Force initial render
+        }
+
+        App._isScrollingToModule = true;
         
         // Find target
         const target = document.querySelector(`[data-teacher-module="${moduleId}"]`);
         if (target) {
-            target.scrollIntoView({ behavior: 'smooth' });
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             // Allow time for smooth scroll to finish
             setTimeout(() => { App._isScrollingToModule = false; }, 800);
         } else {
+            // Fallback if not found (shouldn't happen if hasStack is true)
+            await renderTeacherContent();
             App._isScrollingToModule = false;
         }
     } else {
-        // Live view or specialized tool
+        // Live view or specialized tool (always re-renders)
         await renderTeacherContent();
     }
 

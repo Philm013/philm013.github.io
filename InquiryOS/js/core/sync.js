@@ -9,6 +9,7 @@ import { dbPut, dbGet, dbGetByIndex, dbPutMany, dbGetByPrefix, STORE_SESSIONS, S
 import { updateHealthIndicator, deepClone } from '../ui/utils.js';
 import { renderNavigation } from '../ui/navigation.js';
 import { renderStudentContent, renderTeacherContent, renderEvidenceBank } from '../ui/renderer.js';
+import { p2p } from './sync-peer.js';
 
 /**
  * Saves current application state to IndexedDB.
@@ -55,6 +56,14 @@ export async function saveToStorage() {
             await dbPutMany(STORE_SESSIONS, batch);
         }
         
+        // P2P Sync
+        if (App.mode === 'student') {
+            p2p.sendWorkUpdate();
+        } else if (App.mode === 'teacher') {
+            p2p.sendBroadcast('teacherSettings', App.teacherSettings);
+            p2p.sendBroadcast('sharedData', App.sharedData);
+        }
+
         App.syncState.lastSync = timestamp;
         updateHealthIndicator('sync', 'good');
         const lastSyncEl = document.getElementById('lastSyncTime');
@@ -114,9 +123,13 @@ export async function loadFromStorage() {
  * Starts the polling interval for data synchronization.
  */
 export function startSync() {
+    // P2P Init
+    p2p.init();
+
     if (App.syncState.syncInterval) clearInterval(App.syncState.syncInterval);
     App.syncState.syncInterval = setInterval(async () => {
         await syncWithStorage();
+        p2p.discoverPeers();
     }, 2000);
 }
 
@@ -235,6 +248,10 @@ export async function saveAndBroadcast(path, value) {
     } else {
         setNestedValue(App.work, path, value);
     }
+    
+    // P2P Broadcast
+    p2p.sendBroadcast(path, value);
+    
     await saveToStorage();
 }
 

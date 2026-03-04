@@ -335,7 +335,7 @@ function updateUIForActiveModule(moduleId) {
 /**
  * Renders all teacher modules in a continuous vertical stack.
  */
-export async function renderTeacherContent() {
+export async function renderTeacherContent(force = false) {
     if (App.isExemplarMode && !App.viewingStudentId) {
         const content = document.getElementById('mainContent');
         if (content) {
@@ -350,8 +350,7 @@ export async function renderTeacherContent() {
     const content = document.getElementById('mainContent');
     if (!content) return;
 
-    const scrollPos = content.scrollTop;
-
+    // Check if we are in a live view or specialized tool
     if (['livemodels', 'livedata', 'livegeneric'].includes(App.teacherModule) || App._editingAssetBank) {
         content.style.scrollSnapType = 'none';
         const liveRenderer = App._editingAssetBank ? renderIconManager : { livemodels: renderLiveModels, livedata: renderLiveData, livegeneric: renderLiveGeneric }[App.teacherModule];
@@ -360,11 +359,31 @@ export async function renderTeacherContent() {
         return;
     }
 
+    // Stacked Dashboard Mode
     content.style.scrollSnapType = 'y mandatory';
 
     const modules = ['overview', 'lessons', 'snapshots', 'students', 'access', 'noticeboard', 'coaching', 'moderation', 'categories', 'icons', 'ngss', 'settings'];
     const renderers = { overview: renderTeacherOverview, lessons: renderTeacherLessons, snapshots: renderTeacherSnapshots, students: renderTeacherStudents, access: renderTeacherAccess, noticeboard: renderTeacherNoticeBoard, coaching: renderCoachingManager, moderation: renderModeration, categories: renderCategoryManager, icons: renderIconManager, ngss: renderNGSSBrowser, settings: renderSessionSettings };
 
+    // Optimization: Check if stack is already built
+    const sections = Array.from(content.querySelectorAll('.teacher-section'));
+    if (sections.length === modules.length && !force) {
+        // Update each section individually to preserve parent scroll position
+        for (const id of modules) {
+            const section = content.querySelector(`[data-teacher-module="${id}"]`);
+            if (section) {
+                const html = await renderers[id]();
+                // Simple check to avoid unnecessary innerHTML writes (optional)
+                if (section.innerHTML !== html) {
+                    section.innerHTML = html;
+                }
+            }
+        }
+        setupTeacherModuleObserver();
+        return;
+    }
+
+    // Full render (only if stack is missing or forced)
     const stack = await Promise.all(modules.map(async id => {
         const html = await renderers[id]();
         return `<div class="teacher-section w-full" data-teacher-module="${id}">${html}</div>`;
@@ -374,10 +393,8 @@ export async function renderTeacherContent() {
     
     // Only restore scroll position if we are not explicitly navigating/scrolling to a module
     if (!App._isScrollingToModule) {
-        content.scrollTop = scrollPos;
         setTimeout(() => {
             setupTeacherModuleObserver();
-            if (!App._isScrollingToModule) content.scrollTop = scrollPos;
         }, 50);
     } else {
         setTimeout(() => setupTeacherModuleObserver(), 50);
