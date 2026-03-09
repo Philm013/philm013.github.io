@@ -4,16 +4,48 @@
 
 import { GoogleGenAI } from "https://esm.run/@google/genai";
 
-const API_KEY = ""; // <<< IMPORTANT: REPLACE WITH YOUR ACTUAL GEMINI API KEY
+let ai = null;
 
-let ai;
-
-try {
-    ai = new GoogleGenAI({ apiKey: API_KEY });
-} catch (error) {
-    console.error("Failed to initialize Gemini AI. Ensure your API key is valid.", error);
-    // You might want to disable AI features in the UI if this fails.
+export function initializeAI() {
+    const apiKey = localStorage.getItem('gemini_api_key');
+    if (apiKey) {
+        try {
+            ai = new GoogleGenAI({ apiKey: apiKey });
+            console.log("Gemini AI initialized from local storage.");
+        } catch (error) {
+            console.error("Failed to initialize Gemini AI.", error);
+            ai = null;
+        }
+    } else {
+        console.warn("No Gemini API key found in local storage.");
+        ai = null;
+    }
 }
+
+export function setApiKey(key) {
+    if (key) {
+        localStorage.setItem('gemini_api_key', key);
+        initializeAI();
+    } else {
+        localStorage.removeItem('gemini_api_key');
+        ai = null;
+    }
+}
+
+export function setModel(model) {
+    localStorage.setItem('gemini_model', model);
+}
+
+export function getSelectedModel() {
+    return localStorage.getItem('gemini_model') || 'gemini-2.0-flash';
+}
+
+export function hasApiKey() {
+    return ai !== null;
+}
+
+// Initialize on load
+initializeAI();
 
 export async function getStrategicAdvice(gameStateSummary) {
     if (!ai) return "Advisor AI is offline. Check API Key.";
@@ -40,7 +72,7 @@ export async function getStrategicAdvice(gameStateSummary) {
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-pro",
+            model: getSelectedModel(),
             contents: prompt,
         });
 
@@ -197,7 +229,7 @@ export async function getMissionControlNarrative(gameEvent) {
     `;
 
     const requestPayload = {
-        model: "gemini-2.5-pro",
+        model: getSelectedModel(),
         contents: prompt,
     };
 

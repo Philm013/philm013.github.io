@@ -2,7 +2,7 @@
 
 
 // --- GEMINI INTEGRATION: Import the service functions ---
-import { getStrategicAdvice, getMissionControlNarrative } from './gemini-service.js';
+import { getStrategicAdvice, getMissionControlNarrative, setApiKey, hasApiKey, setModel, getSelectedModel } from './gemini-service.js';
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -359,36 +359,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const isBloom = gameState.events.bioluminescentBloom.active;
         
         for (let y = 0; y < WORLD_HEIGHT; y++) for (let x = 0; x < WORLD_WIDTH; x++) {
-            if (gameState.world.fog[y][x] === 2) {
-                gameState.world.fog[y][x] = 1; // Mark as shrouded
+            if (gameState.world.fog[y][x] >= 2) {
+                gameState.world.fog[y][x] = 1; // Mark as shrouded (memory)
                 mapChanged = true;
             }
         }
 
-        const revealTile = (x, y) => {
+        const revealTile = (x, y, level = 3) => {
             if (gameState.world.fog[y]?.[x] !== undefined) {
                 if (gameState.world.fog[y][x] === 0) {
                     revealedCount++;
                     mapChanged = true;
                 }
-                gameState.world.fog[y][x] = 2; // Mark as visible
+                if (gameState.world.fog[y][x] < level) {
+                    gameState.world.fog[y][x] = level;
+                }
             }
         };
         
         if (isBloom) {
             for (let y = 0; y < WORLD_HEIGHT; y++) for (let x = 0; x < WORLD_WIDTH; x++) {
-                revealTile(x,y);
+                revealTile(x, y, 3);
             }
         } else {
             findTiles(c => c.building.type !== 'empty').forEach(b => {
-                const sight = TILE_DEFS[b.building.type]?.sightRadius || 1;
-                findTilesInRadius(b.x, b.y, sight, () => true, true).forEach(t => revealTile(t.x, t.y));
+                const sight = TILE_DEFS[b.building.type]?.sightRadius || 2; // Default sight is 2
+                findTilesInRadius(b.x, b.y, sight, () => true, true).forEach(t => revealTile(t.x, t.y, 3));
+                
+                // Sensor Arrays provide long-range ping (Tier 2)
+                if (b.building.type === 'sensor-array' && b.building.connected.power) {
+                    let radarRadius = 15;
+                    if (gameState.tech['deep-scan']) radarRadius = 25;
+                    findTilesInRadius(b.x, b.y, radarRadius, () => true, true).forEach(t => revealTile(t.x, t.y, 2));
+                }
             });
             gameState.specialists.forEach(s => {
-                 findTilesInRadius(s.x, s.y, 3, () => true, true).forEach(t => revealTile(t.x, t.y));
+                 const sight = s.type === 'Ranger' ? 6 : 3;
+                 findTilesInRadius(s.x, s.y, sight, () => true, true).forEach(t => revealTile(t.x, t.y, 3));
             });
             gameState.vehicles.forEach(v => {
-                findTilesInRadius(v.x, v.y, v.sightRadius, () => true, true).forEach(t => revealTile(t.x, t.y));
+                findTilesInRadius(v.x, v.y, v.sightRadius || 4, () => true, true).forEach(t => revealTile(t.x, t.y, 3));
             });
         }
         
@@ -520,23 +530,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateThreats() {
         const threatState = gameState.threats;
-        
+
         threatState.active.forEach(t => {
             t.isSlowed = false;
             t.targetable = !t.isBurrowed;
         });
-        
-        // --- FIX: Check for wave survival *before* spawning a new wave ---
-        // This prevents a race condition where a new wave spawns in the same tick a wave is cleared,
-        // which would prevent the 'survivedWaves' counter from incrementing.
+
         if (threatState.waveCount > threatState.survivedWaves && threatState.active.length === 0) {
             threatState.survivedWaves = threatState.waveCount;
             addMessage(gameState, 'DIRECTOR', `Threat neutralized. Well done.`);
             triggerMissionControlEvent({ event: 'wave_survived', wave: threatState.waveCount });
         }
-        
+
         if (threatState.active.length === 0) {
             let shouldSpawn = false;
+            let signature = 10;
+            findTiles(c => c.building.type !== 'empty').forEach(t => {
+                if (t.building.type === 'sensor-array') signature += 50;
+                if (t.building.type === 'habitat' || t.building.type === 'command-post') signature += 10;
+                if (TILE_DEFS[t.building.type].produces?.power || TILE_DEFS[t.building.type].produces?.power_solar) signature += 5;
+            });
+
             if (threatState.waveCount === 0) {
                 if (gameState.tech['automated-defense'] && gameState.time > 100) shouldSpawn = true;
             } else if (gameState.time > threatState.nextWaveTime) {
@@ -546,14 +560,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (shouldSpawn) {
                 threatState.waveCount++;
                 const isBossWave = threatState.waveCount > 0 && threatState.waveCount % 5 === 0;
-                let waveSize = 2 + Math.floor(threatState.waveCount / 2);
-                
+
+                // Scale wave size by signature
+                let baseWaveSize = 2 + Math.floor(threatState.waveCount / 2);
+                let waveSize = baseWaveSize + Math.floor(signature / 100);
+
                 if(isBossWave) {
                     addAlert(`MASSIVE lifeform detected! Boss wave approaching!`, 'alert');
                     spawnThreat('boss-critter');
-                    waveSize = 4 + threatState.waveCount;
+                    waveSize += 2;
                 } else {
-                    addAlert(`Alien wave ${threatState.waveCount} approaching!`, 'alert');
+                    addAlert(`Alien wave ${threatState.waveCount} approaching! (Signature: ${signature})`, 'alert');
                 }
                 audioManager.play('alert', 0.6);
 
@@ -563,11 +580,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     spawnThreat(randomType);
                     if(gameState.time > 300 && Math.random() < 0.2) spawnThreat('burrower');
                 }
-                threatState.nextWaveTime = gameState.time + 100 + (Math.random() * 50);
+                // High signature decreases time between waves
+                let cooldown = 150 - Math.min(100, Math.floor(signature / 5));
+                threatState.nextWaveTime = gameState.time + cooldown + (Math.random() * 50);
                 renderMinimap();
             }
-        }
-        
+        }        
         if(gameState.time % 20 === 0) {
             let newHiveThreats = false;
             findTiles(c => c.building.type === 'alien-hive').forEach(hive => {
@@ -736,17 +754,36 @@ function updateMaintenanceAndShields() {
 function updateSpecialists() {
     // Clear old task icons
     gameState.world.grid.flat().forEach(cell => cell.building.task = null);
-    
+
     // Handle housing penalty
     if(gameState.specialists.length > gameState.housingCapacity) {
         if(gameState.time % 4 === 0) addMessage(gameState, 'EVENT', `Insufficient housing! ${gameState.specialists.length}/${gameState.housingCapacity} specialists. Colony productivity reduced.`);
     }
-    
+
     const activeSpecialists = gameState.specialists.slice(0, gameState.housingCapacity);
 
     activeSpecialists.forEach(s => {
-        const station = s.stationId ? gameState.world.grid[s.stationId.y][s.stationId.x] : null;
-        const stationDef = station ? TILE_DEFS[station.building.type] : null;
+        // --- NEW: Sentinel Combat Logic ---
+        if (s.skill === 'Sentinel' && s.task.current !== 'returning_home') {
+            s.attackCooldown = Math.max(0, (s.attackCooldown || 0) - 1);
+            if (s.attackCooldown <= 0) {
+                const range = 6;
+                const damage = 15;
+                const potentialTargets = gameState.threats.active
+                    .filter(t => t.targetable && Math.hypot(t.x - s.x, t.y - s.y) <= range)
+                    .sort((a, b) => Math.hypot(a.x - s.x, a.y - s.y) - Math.hypot(b.x - s.x, b.y - s.y));
+
+                if (potentialTargets.length > 0) {
+                    const target = potentialTargets[0];
+                    target.health -= Math.max(1, damage - (target.defense || 0));
+                    createEffect('projectile', s.x, s.y, target.x, target.y, null, 'var(--error-color)');
+                    audioManager.play('turret', 0.2, 400);
+                    s.attackCooldown = 10;
+                }
+            }
+        }
+
+        const station = s.stationId ? gameState.world.grid[s.stationId.y][s.stationId.x] : null;        const stationDef = station ? TILE_DEFS[station.building.type] : null;
         const operationalRadius = stationDef?.provides?.specialist_station_radius ?? Math.max(WORLD_WIDTH, WORLD_HEIGHT);
 
         // STATE: IDLE (or returning home)
@@ -1512,7 +1549,7 @@ function getProximityBonus(x, y, type) {
                     }
                 }
                 
-                if (fogState === 1) {
+                if (fogState === 1 || fogState === 2) {
                     ctx.fillStyle = 'rgba(0,0,0,0.6)';
                     ctx.fillRect(drawX, drawY, scaledCellSize, scaledCellSize);
                 }
@@ -1610,7 +1647,7 @@ function getProximityBonus(x, y, type) {
         }
 
         gameState.vehicles.forEach(v => {
-            const isVisible = gameState.world.fog[Math.floor(v.y)]?.[Math.floor(v.x)] === 2;
+            const isVisible = gameState.world.fog[Math.floor(v.y)]?.[Math.floor(v.x)] === 3;
             if(!isVisible) return;
             const def = VEHICLE_DEFS[v.type];
             const img = imageCache[def.svg];
@@ -1638,7 +1675,7 @@ function getProximityBonus(x, y, type) {
         
         gameState.specialists.forEach(s => {
             if (s.task.current === 'working') return; // Specialist is "inside" the building.
-            const isVisible = gameState.world.fog[Math.floor(s.y)]?.[Math.floor(s.x)] === 2;
+            const isVisible = gameState.world.fog[Math.floor(s.y)]?.[Math.floor(s.x)] === 3;
             if(!isVisible) return;
             const imgKey = `specialist_${s.skill.toLowerCase()}`;
             const img = imageCache[imgKey];
@@ -1650,13 +1687,24 @@ function getProximityBonus(x, y, type) {
         });
 
         gameState.threats.active.forEach(t => {
-            const isVisible = gameState.world.fog[Math.floor(t.y)]?.[Math.floor(t.x)] === 2;
-            if(!isVisible) return;
+            const fogState = gameState.world.fog[Math.floor(t.y)]?.[Math.floor(t.x)];
+            if(fogState < 2) return;
+            
+            const drawX = t.x * scaledCellSize + offsetX;
+            const drawY = t.y * scaledCellSize + offsetY;
+
+            if (fogState === 2) {
+                // Radar ping
+                ctx.fillStyle = `rgba(239, 68, 68, ${0.5 + 0.5 * Math.sin(now / 150)})`; // pulsing red blip
+                ctx.beginPath();
+                ctx.arc(drawX + scaledCellSize / 2, drawY + scaledCellSize / 2, scaledCellSize * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                return;
+            }
+
             const def = THREAT_DEFS[t.type];
             const img = imageCache[def.svg];
             if(img) {
-                const drawX = t.x * scaledCellSize + offsetX;
-                const drawY = t.y * scaledCellSize + offsetY;
                 ctx.save();
                 if(t.isBurrowed) ctx.globalAlpha = 0.5;
                 if(t.isSlowed) {
@@ -1672,7 +1720,7 @@ function getProximityBonus(x, y, type) {
         gameState.effects.forEach(effect => {
             const drawX = effect.x * scaledCellSize + offsetX;
             const drawY = effect.y * scaledCellSize + offsetY;
-            if (gameState.world.fog[Math.floor(effect.y)]?.[Math.floor(effect.x)] !== 2) return;
+            if (gameState.world.fog[Math.floor(effect.y)]?.[Math.floor(effect.x)] < 2) return;
             
             if (effect.type === 'projectile') {
                 ctx.fillStyle = effect.color;
@@ -1853,16 +1901,32 @@ function getProximityBonus(x, y, type) {
     // --- RENDER FUNCTIONS (NON-CANVAS) ---
     function renderTopBar() {
         document.getElementById('top-bar').innerHTML = `
-            <div class="resource-display" id="housing-info" title="Housing">${SVG_DEFS.housing} <span id="housing-val" class="value"></span></div>
-            <div class="resource-display" id="metal-info" title="Metal">${SVG_DEFS.metal} <span id="metal-val" class="value"></span></div>
-            <div class="resource-display" id="biomass-info" title="Biomass">${SVG_DEFS.biomass} <span id="biomass-val" class="value"></span></div>
-            <div class="resource-display" id="components-info" title="Adv. Components">${SVG_DEFS.components} <span id="components-val" class="value"></span></div>
-            <div class="resource-display" id="exotic-info" title="Exotic Matter">${SVG_DEFS.exoticMatter} <span id="exotic-val" class="value"></span></div>
-            <div class="resource-display" id="water-info" title="Water">${SVG_DEFS.water} <span id="water-val" class="value"></span></div>
-            <div class="resource-display" id="power-info" title="Power Grid">${SVG_DEFS.power} <span id="power-val" class="value"></span> (<span id="power-delta"></span>)</div>
-            <div class="resource-display" id="battery-info" title="Battery">${SVG_DEFS.battery} <span id="battery-val" class="value"></span>%</div>
-            <div class="resource-display" id="research-info" title="Research Points">${SVG_DEFS.research} <span id="research-val" class="value"></span></div>
-            <div id="day-night-indicator"></div>`;
+            <div class="resource-group">
+                <div class="resource-display" id="housing-info" title="Housing">${SVG_DEFS.housing} <span id="housing-val" class="value"></span></div>
+                <div class="resource-display" id="metal-info" title="Metal">${SVG_DEFS.metal} <span id="metal-val" class="value"></span></div>
+                <div class="resource-display" id="biomass-info" title="Biomass">${SVG_DEFS.biomass} <span id="biomass-val" class="value"></span></div>
+                <div class="resource-display" id="components-info" title="Adv. Components">${SVG_DEFS.components} <span id="components-val" class="value"></span></div>
+                <div class="resource-display" id="exotic-info" title="Exotic Matter">${SVG_DEFS.exoticMatter} <span id="exotic-val" class="value"></span></div>
+                <div class="resource-display" id="water-info" title="Water">${SVG_DEFS.water} <span id="water-val" class="value"></span></div>
+                <div class="resource-display" id="power-info" title="Power Grid">${SVG_DEFS.power} <span id="power-val" class="value"></span> (<span id="power-delta"></span>)</div>
+                <div class="resource-display" id="battery-info" title="Battery">${SVG_DEFS.battery} <span id="battery-val" class="value"></span>%</div>
+                <div class="resource-display" id="research-info" title="Research Points">${SVG_DEFS.research} <span id="research-val" class="value"></span></div>
+            </div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div id="day-night-indicator"></div>
+                <button id="settings-btn" style="background:none; border:none; color:var(--text-muted); cursor:pointer;" title="Settings">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+            </div>`;
+        
+        document.getElementById('settings-btn').addEventListener('click', () => {
+            const keyInput = document.getElementById('api-key-input');
+            keyInput.value = localStorage.getItem('gemini_api_key') || '';
+            const modelSelect = document.getElementById('model-select');
+            modelSelect.value = getSelectedModel();
+            document.getElementById('settings-message').style.display = 'none';
+            showModal('settings-modal');
+        });
     }
 
     function renderTopBarValues() {
@@ -1975,7 +2039,11 @@ function renderSelectionPanel() {
             recruitContainer.className = 'recruitment-actions';
             recruitContainer.innerHTML = `<strong>Recruit Specialist</strong>`;
             
-            ['Engineer', 'Biologist', 'Scientist'].forEach(skill => {
+            let availableSkills = ['Engineer', 'Biologist', 'Scientist'];
+            if (gameState.tech['basic-radar']) availableSkills.push('Ranger');
+            if (gameState.tech['sentinel-armor']) availableSkills.push('Sentinel');
+
+            availableSkills.forEach(skill => {
                 const canAfford = checkCanAfford(RECRUIT_COST);
                 const hasHousing = gameState.specialists.length < gameState.housingCapacity;
                 const btn = document.createElement('button');
@@ -2551,7 +2619,7 @@ function renderSpecialistList() {
 
             ctx.fillStyle = color;
             ctx.fillRect(x * tileW, y * tileH, tileW, tileH);
-            if(gameState.world.fog[y][x] === 1) {
+            if(gameState.world.fog[y][x] === 1 || gameState.world.fog[y][x] === 2) {
                 ctx.fillStyle = 'rgba(0,0,0,0.5)';
                 ctx.fillRect(x * tileW, y * tileH, tileW, tileH);
             }
@@ -2559,7 +2627,7 @@ function renderSpecialistList() {
         
         ctx.fillStyle = 'red';
         gameState.threats.active.forEach(t => {
-            if(gameState.world.fog[Math.floor(t.y)]?.[Math.floor(t.x)] > 0) ctx.fillRect(t.x * tileW, t.y * tileH, tileW*1.5, tileH*1.5);
+            if(gameState.world.fog[Math.floor(t.y)]?.[Math.floor(t.x)] >= 2) ctx.fillRect(t.x * tileW, t.y * tileH, tileW*1.5, tileH*1.5);
         });
 
         const { width, height } = canvases.interaction.getBoundingClientRect();
@@ -2579,8 +2647,21 @@ function renderSpecialistList() {
     function setupEventListeners() {
         const interactionCanvas = canvases.interaction;
         const modalContainer = document.getElementById('modal-container');
-        
-        document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => { 
+
+        const logToggleBtn = document.getElementById('log-toggle-btn');
+        if (logToggleBtn) {
+            logToggleBtn.addEventListener('click', () => {
+                const container = document.getElementById('event-log-container');
+                container.classList.toggle('expanded');
+                logToggleBtn.textContent = container.classList.contains('expanded') ? '▼' : '▲';
+            });
+        }
+
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', (e) => {
+ 
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            
             if (btn.id === 'advisor-btn') {
                 handleAdvisorClick();
             } else {
@@ -2589,7 +2670,43 @@ function renderSpecialistList() {
             }
             audioManager.play('click'); 
         }));
-        modalContainer.addEventListener('click', (e) => { if (e.target === modalContainer || e.target.classList.contains('modal-close-btn')) hideModals(); });
+        
+        modalContainer.addEventListener('click', (e) => { if (e.target === modalContainer || e.target.closest('.modal-close-btn')) hideModals(); });
+        
+        // Swipe-to-close logic for mobile bottom sheets
+        let modalStartY = 0;
+        let currentModal = null;
+
+        modalContainer.addEventListener('touchstart', (e) => {
+            if (window.innerWidth <= 768 && e.target.closest('.modal-content') && !e.target.closest('.modal-content.full-screen')) {
+                modalStartY = e.touches[0].clientY;
+                currentModal = e.target.closest('.modal-content');
+                currentModal.style.transition = 'none';
+            }
+        }, { passive: true });
+
+        modalContainer.addEventListener('touchmove', (e) => {
+            if (!currentModal) return;
+            const deltaY = e.touches[0].clientY - modalStartY;
+            if (deltaY > 0) {
+                const scrollable = e.target.closest('.modal-content > div:not(.modal-header)');
+                if (scrollable && scrollable.scrollTop > 0) return;
+                if (e.cancelable) e.preventDefault();
+                currentModal.style.transform = `translateY(${deltaY}px)`;
+            }
+        }, { passive: false });
+
+        modalContainer.addEventListener('touchend', (e) => {
+            if (!currentModal) return;
+            const deltaY = e.changedTouches[0].clientY - modalStartY;
+            currentModal.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+            if (deltaY > 150) {
+                hideModals();
+            } else {
+                currentModal.style.transform = '';
+            }
+            currentModal = null;
+        });
         
         interactionCanvas.addEventListener('pointerdown', handlePointerDown);
         interactionCanvas.addEventListener('pointermove', handlePointerMove);
@@ -2606,13 +2723,18 @@ function renderSpecialistList() {
         const minimap = document.getElementById('minimap-canvas');
         minimap.addEventListener('click', handleMinimapClick);
 
-        const logContainer = document.getElementById('event-log-container');
-        const logToggleBtn = document.getElementById('log-toggle-btn');
-        logToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); 
-            const isExpanded = logContainer.classList.toggle('expanded');
-            logToggleBtn.textContent = isExpanded ? '▼' : '▲';
-        });
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        if (saveSettingsBtn) {
+            saveSettingsBtn.addEventListener('click', () => {
+                const keyInput = document.getElementById('api-key-input').value.trim();
+                const modelInput = document.getElementById('model-select').value;
+                setApiKey(keyInput);
+                setModel(modelInput);
+                const msg = document.getElementById('settings-message');
+                msg.style.display = 'block';
+                setTimeout(() => { msg.style.display = 'none'; hideModals(); }, 1500);
+            });
+        }
     }
     
     function showModal(modalId, isFullScreen = false) {
@@ -2620,6 +2742,7 @@ function renderSpecialistList() {
         modalContainer.querySelectorAll('.modal-content').forEach(m => {
             m.classList.remove('active');
             m.classList.remove('full-screen');
+            m.style.transform = ''; // reset swipe transform
         });
         const targetModal = document.getElementById(modalId);
         if (targetModal) {
@@ -2675,7 +2798,15 @@ function renderSpecialistList() {
     }
 
     function hideModals() { 
-        document.getElementById('modal-container').classList.remove('active'); 
+        const modalContainer = document.getElementById('modal-container');
+        modalContainer.classList.remove('active'); 
+        setTimeout(() => {
+            modalContainer.querySelectorAll('.modal-content').forEach(m => {
+                m.classList.remove('active');
+                m.style.transform = '';
+            });
+        }, 300); // Wait for transition
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         activeModalId = null; 
     }
     
@@ -3306,7 +3437,17 @@ function renderSpecialistList() {
         if (specialist.xp >= xpNeeded) {
             specialist.level++;
             specialist.xp -= xpNeeded;
-            addMessage(gameState, 'INFO', `${specialist.name} has been promoted to Level ${specialist.level}!`);
+            
+            // Specialist Perks System: Gain a random positive trait on level up
+            const availableTraits = TRAITS.positive.filter(t => !specialist.traits.includes(t.id));
+            let perkMessage = '';
+            if (availableTraits.length > 0 && Math.random() < 0.5) { // 50% chance to gain a perk
+                const newTrait = availableTraits[Math.floor(Math.random() * availableTraits.length)];
+                specialist.traits.push(newTrait.id);
+                perkMessage = ` They acquired the [${newTrait.name}] trait!`;
+            }
+            
+            addMessage(gameState, 'INFO', `${specialist.name} has been promoted to Level ${specialist.level}!${perkMessage}`);
             if (activeModalId === 'team-modal') renderSpecialistList();
         }
     }

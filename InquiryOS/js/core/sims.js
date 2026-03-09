@@ -74,7 +74,7 @@ export async function loadSimulationsData() {
                     provider: 'Concord CODAP',
                     tags: doc.tag || [],
                     categories: cats,
-                    type: 'sim'
+                    type: 'data'
                 });
             });
         }
@@ -172,15 +172,20 @@ export async function loadSimulationsData() {
 /**
  * Searches the loaded simulations library.
  * @param {string} query - Search keyword.
+ * @param {string} type - Resource type filter ('sim', 'data', etc).
  * @param {string} category - Category filter.
  * @returns {Array} Filtered list of simulations.
  */
-export function searchSimulations(query = '', category = '') {
+export function searchSimulations(query = '', type = 'sim', category = '') {
     const q = (query || '').toLowerCase();
+    const t = (type || '').toLowerCase();
     const cat = (category || '').toLowerCase();
 
     return App.simulations.filter(s => {
         if (!s) return false;
+
+        // Filter by type if provided
+        if (t && s.type !== t) return false;
         
         const title = (s.title || '').toLowerCase();
         const description = (s.description || '').toLowerCase();

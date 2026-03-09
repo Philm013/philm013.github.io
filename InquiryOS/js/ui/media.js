@@ -129,35 +129,12 @@ async function searchSimsLocal(query) {
 }
 
 async function searchDataLocal(query) {
-    // Fetch CODAP data if not already present
-    let datasets = [];
-    try {
-        const res = await fetch('JSON/CONCORD_CODAP_DATA.json');
-        if (res.ok) {
-            const data = await res.json();
-            datasets = data.sample_docs || [];
-        }
-    } catch (e) {
-        console.error('Failed to load CODAP data', e);
+    if (typeof window.searchSimulations !== 'function') {
+        throw new Error('Simulation library not loaded');
     }
-
-    const filtered = query ? datasets.filter(d => 
-        (d.title && d.title.toLowerCase().includes(query.toLowerCase())) || 
-        (d.description && d.description.toLowerCase().includes(query.toLowerCase())) ||
-        (d.tag && d.tag.some(t => t.toLowerCase().includes(query.toLowerCase())))
-    ) : datasets;
-
-    const results = filtered.map(d => ({
-        id: 'codap_' + (d.title ? d.title.replace(/\s+/g, '_') : Math.random().toString(36).substr(2, 9)),
-        type: 'data',
-        thumb: 'https://cdn.jsdelivr.net/npm/@mdi/svg@7.2.96/svg/database.svg',
-        url: `https://codap.concord.org/releases/latest/static/dg/en/cert/index.html?url=https://concord-consortium.github.io/codap-data/${d.path}`,
-        provider: 'CODAP',
-        author: 'Concord Consortium',
-        title: d.title || 'Untitled Dataset',
-        description: d.description || ''
-    }));
-
+    
+    // Simulations library now includes CODAP data as 'data' type
+    const results = window.searchSimulations(query, 'data');
     currentSearchResults = results;
     renderMediaResults(results.slice(0, RESULTS_BATCH_SIZE));
     resultsShownCount = Math.min(results.length, RESULTS_BATCH_SIZE);
@@ -314,7 +291,7 @@ export function viewMediaDetail(idOrItem) {
         mediaHtml = `<img src="${item.url}" class="max-w-full max-h-full object-contain shadow-2xl" loading="lazy">`;
     } else if (item.type === 'video') {
         mediaHtml = `<video src="${item.url}" controls autoplay class="max-w-full max-h-full shadow-2xl"></video>`;
-    } else if (item.type === 'sim') {
+    } else if (item.type === 'sim' || item.type === 'data') {
         mediaHtml = `
             <div class="w-full h-full flex flex-col items-center justify-center p-4">
                 <iframe src="${item.url}" class="w-full h-full bg-white md:rounded-3xl border-0 shadow-2xl" allowfullscreen loading="lazy"></iframe>

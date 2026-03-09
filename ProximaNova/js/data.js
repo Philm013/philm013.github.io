@@ -62,18 +62,25 @@ function populateDefs(findTiles) {
         'power-conduit': { name: 'Power Conduit', cost: { metal: 2 }, desc: 'Extends the power grid.', requires: 'basic-infrastructure', placeOnTerrain: ['plains', 'rocky'], isInfrastructure: true, sightRadius: 1 },
         'water-pipe': { name: 'Water Pipe', cost: { metal: 2 }, desc: 'Extends the water network.', requires: 'basic-infrastructure', placeOnTerrain: ['plains', 'rocky'], isInfrastructure: true, sightRadius: 1 },
         'maintenance-hub': { name: 'Maintenance Hub', svg: { base: 'maintenance_hub_base', parts: [{ svg: 'maintenance_hub_arms', animation: 'spin' }] }, cost: { metal: 75, components: 10 }, consumes: { power: -5 }, desc: "Automatically repairs nearby buildings.", requires: 'automated-maintenance', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'], radius: 3, isElectronic: true, sightRadius: 2 },
+        'satellite-network': { name: 'Satellite Uplink', svg: 'satelliteNetwork', cost: { metal: 150, components: 50 }, consumes: { power: -15 }, desc: "Provides orbital scans, slowly revealing the map.", requires: 'orbital-mechanics', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky', 'highlands'], isElectronic: true, sightRadius: 15 },
+        'climate-control': { name: 'Climate Control Array', svg: { base: 'climate_control_base', parts: [{ svg: 'climate_control_ring', animation: 'spin' }] }, cost: { metal: 300, components: 80, exoticMatter: 10 }, consumes: { power: -40, water: -5 }, desc: "Mitigaes environmental hazards like Dust Storms.", requires: 'geoengineering', requiresInfrastructure: ['power', 'water'], placeOnTerrain: ['plains'], isElectronic: true, sightRadius: 4 },
+        'trade-portal': { name: 'Interstellar Trade Portal', svg: 'tradePortal', cost: { metal: 400, components: 120, exoticMatter: 20 }, consumes: { power: -50 }, desc: "Trade excess resources for Exotic Matter or specific components.", requires: 'hyperspace-logistics', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'], isElectronic: true, sightRadius: 3 },
+        'sensor-array': { name: 'Sensor Array', svg: { base: 'sensorArray_base', parts: [{ svg: 'sensorArray_dish', animation: 'spin' }] }, cost: { metal: 50, components: 20 }, consumes: { power: -15 }, desc: "Provides radar pings of enemy movements in a huge radius. Deep Scan increases range.", requires: 'basic-radar', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'], isElectronic: true, sightRadius: 5 },
         
         // --- VEHICLES ---
         'rover-bay': { name: 'Rover Bay', svg: 'roverBay', cost: { metal: 80, components: 5 }, consumes: {power: -5}, desc: "Constructs Scout Rovers.", requires: 'basic-robotics', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'], builds: [{ name: 'Scout Rover', type: 'scout-rover', cost: { metal: 50, components: 5 }, time: 10 }], sightRadius: 4},
         'vehicle-factory': { name: 'Vehicle Factory', svg: 'vehicleFactory', cost: { metal: 150, components: 25 }, consumes: {power: -10}, desc: "Constructs advanced vehicles.", requires: 'advanced-robotics', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'], builds: [{ name: 'Constructor', type: 'constructor-rover', cost: { metal: 100, components: 15 }, time: 20 }, { name: 'Tank Drone', type: 'tank-drone', cost: { metal: 200, components: 35 }, time: 35 }], sightRadius: 4},
+        'drone-bay': { name: 'Automated Drone Bay', svg: 'roverBay', cost: { metal: 200, components: 40 }, consumes: { power: -15 }, desc: "Manufactures combat and scout drones. Operates independently of population limits.", requires: 'drone-logistics', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'], builds: [{ name: 'Automated Drone', type: 'auto-drone', cost: { metal: 120, components: 20 }, time: 25 }], sightRadius: 4 },
 
         // --- DEFENSE ---
         'defense-turret': { name: 'Defense Turret', svg: 'defenseTurret', cost: {metal: 100, components: 15}, consumes: {power: -10}, desc: "Automatically fires at threats in range.", requires: 'automated-defense', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'], isElectronic: true, sightRadius: 6, radius: 6, damage: 5, defense: true },
         'artillery-cannon': { name: 'Artillery Cannon', svg: 'artilleryCannon', cost: {metal: 150, components: 30}, consumes: {power: -20}, desc: "Long-range, area-of-effect damage.", requires: 'advanced-defense', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'],  isElectronic: true, sightRadius: 12, radius: 12, damage: 20, areaOfEffect: 2, cooldown: 5, defense: true },
+        'plasma-turret': { name: 'Plasma Turret', svg: 'artilleryCannon', cost: {metal: 250, components: 50, exoticMatter: 5}, consumes: {power: -30}, desc: "Melts armored targets with high, piercing damage.", requires: 'plasma-coils', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'], isElectronic: true, sightRadius: 8, radius: 8, damage: 35, defense: true },
         'slowing-field-projector': { name: 'Slowing Field', svg: 'slowingField', cost: {metal: 80, components: 10}, consumes: {power: -8}, desc: "Creates a field that slows enemies.", requires: 'field-manipulation', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'],  isElectronic: true, sightRadius: 5, radius: 5, defense: true },
         'emp-minefield': { name: 'EMP Minefield', svg: 'empMine', cost: {metal: 25, components: 5}, desc: "Single-use trap that damages and stuns enemies.", requires: 'field-manipulation', placeOnTerrain: ['plains', 'rocky'], triggerRadius: 1.5, blastRadius: 2.5, damage: 25, defense: true },
         'command-post': { name: 'Command Post', svg: 'commandPost', cost: {metal: 120, components: 20}, consumes: {power: -5}, provides: { housing: 1, specialist_station_radius: 20 }, desc: "Assign specialists here to create a forward base. Boosts nearby defenses.", requires: 'tactical-command', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'], defense: true, sightRadius: 4 },
         'shield-generator': { name: 'Shield Generator', svg: { base: 'shield_generator_base', parts: [{ svg: 'shield_generator_core', animation: 'pulse' }] }, cost: { metal: 150, components: 25 }, consumes: { power: -15 }, desc: "Protects nearby buildings from hazards.", requires: 'defensive-fields', requiresInfrastructure: ['power'], placeOnTerrain: ['plains', 'rocky'], radius: 4, maxLevel: 2, upgrade: { tech: 'field-amplification', cost: { metal: 100, components: 50 } }, isElectronic: true, sightRadius: 2, defense: true },
+
         
         // --- VICTORY ---
         'terraformer-seed-vault': { name: 'Terraformer Seed Vault', svg: { base: 'genesisPad_base', parts: [{ svg: 'genesisPad_tip', animation: 'pulse' }] }, cost: { metal: 1000, components: 200 }, consumes: { power: -100 }, desc: "The key to victory. Charge with resources.", requires: 'genesis-protocol', requiresInfrastructure: ['power'], placeOnTerrain: ['plains'], taskIcon: '🚀', sightRadius: 4, workRequired: 1000 },
@@ -103,6 +110,19 @@ function populateDefs(findTiles) {
         'field-manipulation': { name: 'Field Manipulation', cost: 150, desc: 'Unlocks Slowing Fields and EMP Mines.', requires: 'advanced-defense' },
         'tactical-command': { name: 'Tactical Command', cost: 180, desc: 'Unlocks the Command Post to enhance defenses.', requires: 'field-manipulation' },
         
+        // --- EXPANSION: Exploration Branch ---
+        'basic-radar': { name: 'Basic Radar', cost: 50, desc: 'Unlocks the Sensor Array to ping enemies through the fog.', requires: 'basic-research' },
+        'deep-scan': { name: 'Deep Scan', cost: 100, desc: 'Increases the Sensor Array ping radius by 66%.', requires: 'basic-radar' },
+        'thermal-optics': { name: 'Thermal Optics', cost: 150, desc: 'Allows Rangers to see further through the fog.', requires: 'deep-scan' },
+
+        // --- EXPANSION: Military Branch ---
+        'ballistics-1': { name: 'Ballistics I', cost: 90, desc: 'Increases Defense Turret damage by 25%.', requires: 'automated-defense' },
+        'sentinel-armor': { name: 'Sentinel Armor', cost: 130, desc: 'Unlocks the Sentinel combat specialist.', requires: 'ballistics-1' },
+        'plasma-coils': { name: 'Plasma Coils', cost: 200, desc: 'Unlocks the Plasma Turret for heavy single-target damage.', requires: 'advanced-defense' },
+
+        // --- EXPANSION: Logistics Branch ---
+        'drone-logistics': { name: 'Drone Logistics', cost: 160, desc: 'Unlocks the Automated Drone Bay.', requires: 'advanced-robotics' },
+        
         // Building Upgrades & Mid-Game
         'efficient-solar': { name: 'Efficient Solar', cost: 75, desc: 'Unlocks Solar Panel upgrades.', requires: 'advanced-fabrication' },
         'soil-enrichment': { name: 'Soil Enrichment', cost: 80, desc: 'Unlocks Hydroponics Bay upgrades.', requires: 'water-filtration' },
@@ -110,6 +130,7 @@ function populateDefs(findTiles) {
         'advanced-filtration': { name: 'Advanced Filtration', cost: 90, desc: 'Unlocks Water Extractor upgrades.', requires: 'water-filtration' },
         'automated-maintenance': { name: 'Automated Maintenance', cost: 150, desc: 'Unlocks the Maintenance Hub.', requires: 'advanced-robotics' },
         'geothermal-power': { name: 'Geothermal Power', cost: 200, desc: 'Harness geothermal vents for massive power.', requires: 'efficient-solar' },
+
         
         // --- PHASE 4 CHANGE START ---
         'waste-recycling': { name: 'Waste Recycling', cost: 160, desc: 'Unlocks the Recycling Center to reclaim metal.', requires: 'automated-maintenance' },
@@ -120,6 +141,9 @@ function populateDefs(findTiles) {
         // Late-Game & Victory
         'defensive-fields': { name: 'Defensive Fields', cost: 250, desc: 'Unlocks the Shield Generator.', requires: 'geothermal-power' },
         'field-amplification': { name: 'Field Amplification', cost: 300, desc: 'Unlocks Shield Generator upgrades.', requires: 'defensive-fields' },
+        'orbital-mechanics': { name: 'Orbital Mechanics', cost: 320, desc: 'Unlocks the Satellite Uplink for global mapping.', requires: 'advanced-robotics' },
+        'geoengineering': { name: 'Geoengineering', cost: 400, desc: 'Unlocks the Climate Control Array to prevent storms.', requires: 'atmospheric-processing' },
+        'hyperspace-logistics': { name: 'Hyperspace Logistics', cost: 450, exoticCost: 5, desc: 'Unlocks the Trade Portal to exchange resources.', requires: 'geoengineering' },
         'exotic-physics': { name: 'Exotic Physics', cost: 500, exoticCost: 10, desc: 'Greatly enhances research and Exotic Matter extraction.', requires: 'defensive-fields' },
         // --- PHASE 4 CHANGE START ---
         'fusion-power': { name: 'Fusion Power', cost: 750, exoticCost: 30, desc: 'Unlocks the Fusion Reactor, the ultimate power source.', requires: 'exotic-physics' },
@@ -192,6 +216,14 @@ function populateDefs(findTiles) {
     SVG_DEFS.specialist_engineer = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="scale(0.8) translate(12, 12)"><circle cx="50" cy="25" r="15" fill="var(--component-color)"/><path d="M50 40 L 70 85 L 30 85 Z" fill="var(--component-color)"/><path d="M50 40 L 65 80 L 35 80 Z" fill="#fbb-f21"/><path fill="#fef08a" d="M50 60 l5 -15 5 15 -15 5 15 5 -5 15 -5 -15 15 -5z"/></g></svg>`;
     SVG_DEFS.specialist_biologist = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="scale(0.8) translate(12, 12)"><circle cx="50" cy="25" r="15" fill="var(--success-color)"/><path d="M50 40 L 70 85 L 30 85 Z" fill="var(--success-color)"/><path d="M50 40 L 65 80 L 35 80 Z" fill="#86efac"/><path fill="#dcfce7" d="M50 50 C 45 65, 55 65, 50 80 C 55 65, 65 65, 50 50 Z" /></g></svg>`;
     SVG_DEFS.specialist_scientist = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="scale(0.8) translate(12, 12)"><circle cx="50" cy="25" r="15" fill="var(--research-color)"/><path d="M50 40 L 70 85 L 30 85 Z" fill="var(--research-color)"/><path d="M50 40 L 65 80 L 35 80 Z" fill="#c4b5fd"/><circle cx="50" cy="65" r="5" fill="#f5f3ff"/><circle cx="50" cy="65" r="15" stroke="#f5f3ff" stroke-width="3" fill="none" transform-origin="center" transform="rotate(45)"/><circle cx="50" cy="65" r="15" stroke="#f5f3ff" stroke-width="3" fill="none" transform-origin="center" transform="rotate(-45)"/></g></svg>`;
+    SVG_DEFS.specialist_ranger = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="scale(0.8) translate(12, 12)"><circle cx="50" cy="25" r="15" fill="#38bdf8"/><path d="M50 40 L 70 85 L 30 85 Z" fill="#38bdf8"/><path d="M50 40 L 65 80 L 35 80 Z" fill="#bae6fd"/><path d="M35 55 L 65 55 L 50 40 Z" fill="#fff" opacity="0.8"/></g></svg>`;
+    SVG_DEFS.specialist_sentinel = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="scale(0.8) translate(12, 12)"><rect x="30" y="10" width="40" height="30" rx="5" fill="#ef4444"/><path d="M40 40 L 80 90 L 20 90 Z" fill="#ef4444"/><path d="M40 40 L 75 85 L 25 85 Z" fill="#fca5a5"/><rect x="40" y="50" width="20" height="20" fill="#fff" opacity="0.8"/></g></svg>`;
+    
+    // Expansion Buildings & Vehicles
+    SVG_DEFS.sensorArray_base = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="35" y="60" width="30" height="40" fill="#4a5568"/><polygon points="20,100 80,100 65,60 35,60" fill="#2d3748"/></svg>`;
+    SVG_DEFS.sensorArray_dish = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M 20 40 Q 50 10 80 40 L 50 60 Z" fill="var(--accent-color)" opacity="0.8"/><circle cx="50" cy="50" r="8" fill="#fff"/></svg>`;
+    SVG_DEFS['auto-drone'] = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="var(--accent-color)"/><circle cx="50" cy="50" r="10" fill="#fff" class="is-pulsing"/><rect x="10" y="45" width="20" height="10" fill="#4a5568"/><rect x="70" y="45" width="20" height="10" fill="#4a5568"/></svg>`;
+
 
     // Buildings
     SVG_DEFS.habitat = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><radialGradient id="habitat-grad" cx="50%" cy="30%" r="70%"><stop offset="0%" stop-color="#f1f5f9"/><stop offset="100%" stop-color="#94a3b8"/></radialGradient><linearGradient id="habitat-base-grad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#64748b"/><stop offset="100%" stop-color="#334155"/></linearGradient></defs><rect x="10" y="70" width="80" height="25" rx="5" fill="url(#habitat-base-grad)"/><path d="M20 75 A 30 30 0 0 1 80 75 Z" fill="url(#habitat-grad)"/><circle cx="50" cy="50" r="10" fill="#60a5fa" stroke="#e0f2fe" stroke-width="2"/></svg>`;
@@ -248,5 +280,11 @@ function populateDefs(findTiles) {
     SVG_DEFS.crashedFreighter = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="rotate(-15 50 50)"><path d="M10 40 Q 50 20, 90 40 L 80 70 Q 50 90, 20 70 Z" fill="#334155" /><path d="M15 42 Q 50 25, 85 42 L 77 68 Q 50 85, 23 68 Z" fill="#475569" /><rect x="40" y="10" width="20" height="20" fill="#64748b" /><rect x="25" y="65" width="50" height="15" fill="#9ca3af" /></g></svg>`;
     SVG_DEFS.corruptor = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><filter id="corruptor-glow"><feGaussianBlur stdDeviation="4" result="cBlur"/><feMerge><feMergeNode in="cBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="M50 20 L 60 40 L 80 50 L 60 60 L 50 80 L 40 60 L 20 50 L 40 40 Z" fill="#4c1d95" /><g filter="url(#corruptor-glow)"><circle cx="50" cy="50" r="10" fill="#a78bfa" class="is-pulsing" /></g></svg>`;
     SVG_DEFS.psion = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><filter id="psion-glow"><feGaussianBlur stdDeviation="4" result="cBlur"/><feMerge><feMergeNode in="cBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#psion-glow)"><path d="M50 90 C 70 70, 70 30, 50 10 C 30 30, 30 70, 50 90 Z" stroke="var(--exotic-color)" stroke-width="5" fill="rgba(167, 139, 250, 0.2)" /><path d="M50 70 L 60 50 L 40 50 Z" fill="var(--exotic-color)" class="is-pulsing" /></g></svg>`;
+    // --- EXPANSIONS SVG START ---
+    SVG_DEFS.satelliteNetwork = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20 90 L 40 30 L 60 30 L 80 90 Z" fill="#475569"/><circle cx="50" cy="25" r="15" fill="#1e3a8a"/><path d="M50 25 L 50 5 M 40 10 L 60 10" stroke="#9ca3af" stroke-width="2"/></svg>`;
+    SVG_DEFS.climate_control_base = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M30 90 L 70 90 L 60 40 L 40 40 Z" fill="#334155"/><circle cx="50" cy="40" r="20" fill="#06b6d4"/></svg>`;
+    SVG_DEFS.climate_control_ring = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g><path d="M50 40 m -25, 0 a 25,25 0 1,0 50,0 a 25,25 0 1,0 -50,0" stroke="var(--water-color)" stroke-width="4" fill="none" stroke-dasharray="10 5" class="is-spinning"/></g></svg>`;
+    SVG_DEFS.tradePortal = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><radialGradient id="portal-grad"><stop offset="0%" stop-color="#f0abfc"/><stop offset="100%" stop-color="#d946ef"/></radialGradient></defs><rect x="10" y="80" width="80" height="15" fill="#475569"/><path d="M 25 80 L 25 20 A 25 25 0 0 1 75 20 L 75 80 Z" fill="none" stroke="#64748b" stroke-width="10"/><path d="M 30 80 L 30 25 A 20 20 0 0 1 70 25 L 70 80 Z" fill="url(#portal-grad)" opacity="0.8"/></svg>`;
+    // --- EXPANSIONS SVG END ---
     // --- PHASE 4 SVG END ---
 }

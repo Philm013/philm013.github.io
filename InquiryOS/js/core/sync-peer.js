@@ -23,6 +23,9 @@ export class P2PManager {
     init() {
         if (!App.classCode) return;
 
+        // Re-sync isHost in case App.mode changed after constructor
+        this.isHost = App.mode === 'teacher';
+
         const myId = this.prefix + App.classCode + '-' + App.user.visitorId;
         console.log('P2P: Initializing with ID', myId);
 
@@ -37,6 +40,13 @@ export class P2PManager {
             });
 
             this.peer.on('connection', (conn) => {
+                // Prevent duplicate connections from same peer
+                const remoteVisitorId = conn.peer.split('-').pop();
+                if (this.connections.has(remoteVisitorId)) {
+                    console.log('P2P: Closing duplicate incoming connection from', remoteVisitorId);
+                    conn.close();
+                    return;
+                }
                 this.setupConnection(conn);
             });
 
@@ -88,8 +98,10 @@ export class P2PManager {
 
         // 1. Always try to connect to the Teacher if I am a student
         if (!this.isHost) {
-            const teacherPeerId = this.prefix + App.classCode + '-teacher_' + App.classCode;
-            if (!this.connections.has('teacher_' + App.classCode)) {
+            const teacherVisitorId = 'teacher_' + App.classCode;
+            const teacherPeerId = this.prefix + App.classCode + '-' + teacherVisitorId;
+            
+            if (teacherPeerId !== this.peer.id && !this.connections.has(teacherVisitorId)) {
                 console.log('P2P: Attempting to connect to teacher host...');
                 const conn = this.peer.connect(teacherPeerId, { reliable: true });
                 this.setupConnection(conn);
