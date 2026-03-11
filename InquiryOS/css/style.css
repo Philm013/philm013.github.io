@@ -476,39 +476,39 @@ html, body {
     /* --- Student Module Grids (Practice Panels) --- */
     
     /* 0. Overview */
-    [data-module-id="overview"] .panels-container > [data-card-title="The Mystery"] { grid-column: span 4; }
-    [data-module-id="overview"] .panels-container > [data-card-title="Scientific Story"] { grid-column: span 4; }
-    [data-module-id="overview"] .panels-container > [data-card-title="Research Progress"] { grid-column: span 4; }
-    [data-module-id="overview"] .panels-container > [data-card-title="Quick Actions"] { grid-column: span 12; }
+    :is([data-module-id="overview"], [data-current-module="overview"]) .panels-container [data-card-title="The Mystery"] { grid-column: span 4; }
+    :is([data-module-id="overview"], [data-current-module="overview"]) .panels-container [data-card-title="Scientific Story"] { grid-column: span 4; }
+    :is([data-module-id="overview"], [data-current-module="overview"]) .panels-container [data-card-title="Research Progress"] { grid-column: span 4; }
+    :is([data-module-id="overview"], [data-current-module="overview"]) .panels-container [data-card-title="Quick Actions"] { grid-column: span 12; }
 
     /* 1. Questions (SEP1) */
-    [data-module-id="questions"] .panels-container > [data-card-title="Phenomenon"] { grid-column: span 3; }
-    [data-module-id="questions"] .panels-container > [data-card-title="Inquiry Board"] { grid-column: span 6; }
-    [data-module-id="questions"] .panels-container > [data-card-title="Driving Questions"] { grid-column: span 3; }
+    :is([data-module-id="questions"], [data-current-module="questions"]) .panels-container [data-card-title="Phenomenon"] { grid-column: span 3; }
+    :is([data-module-id="questions"], [data-current-module="questions"]) .panels-container [data-card-title="Inquiry Board"] { grid-column: span 6; }
+    :is([data-module-id="questions"], [data-current-module="questions"]) .panels-container [data-card-title="Driving Questions"] { grid-column: span 3; }
 
     /* 2. Models (SEP2) */
-    [data-module-id="models"] .panels-container > [data-card-title="Model Canvas"] { grid-column: span 8; }
-    [data-module-id="models"] .panels-container > [data-card-title="Model Explanations"] { grid-column: span 4; }
+    :is([data-module-id="models"], [data-current-module="models"]) .panels-container [data-card-title="Model Canvas"] { grid-column: span 8; }
+    :is([data-module-id="models"], [data-current-module="models"]) .panels-container [data-card-title="Model Explanations"] { grid-column: span 4; }
 
     /* 3. Investigation (SEP3) */
-    [data-module-id="investigation"] .panels-container > [data-card-title="Experimental Variables"] { grid-column: span 4; }
-    [data-module-id="investigation"] .panels-container > [data-card-title="Data Collection Table"] { grid-column: span 8; }
+    :is([data-module-id="investigation"], [data-current-module="investigation"]) .panels-container [data-card-title="Experimental Variables"] { grid-column: span 4; }
+    :is([data-module-id="investigation"], [data-current-module="investigation"]) .panels-container [data-card-title="Data Collection Table"] { grid-column: span 8; }
 
     /* 4. Analysis (SEP4) */
-    [data-module-id="analysis"] .panels-container > [data-card-title="Chart Designer"] { grid-column: span 8; }
-    [data-module-id="analysis"] .panels-container > [data-card-title="Statistical Summary"] { grid-column: span 4; }
+    :is([data-module-id="analysis"], [data-current-module="analysis"]) .panels-container [data-card-title="Chart Designer"] { grid-column: span 8; }
+    :is([data-module-id="analysis"], [data-current-module="analysis"]) .panels-container [data-card-title="Statistical Summary"] { grid-column: span 4; }
 
     /* 5. Math (SEP5) */
-    [data-module-id="math"] .panels-container > [data-card-title="Math Workspace"] { grid-column: span 12; }
+    :is([data-module-id="math"], [data-current-module="math"]) .panels-container [data-card-title="Math Workspace"] { grid-column: span 12; }
 
     /* 6. Explanations (SEP6) */
-    [data-module-id="explanations"] .panels-container > [data-card-title="CER Workspace"] { grid-column: span 12; }
+    :is([data-module-id="explanations"], [data-current-module="explanations"]) .panels-container [data-card-title="CER Workspace"] { grid-column: span 12; }
 
     /* 7. Argument (SEP7) */
-    [data-module-id="argument"] .panels-container > [data-card-title="Argument Board"] { grid-column: span 12; }
+    :is([data-module-id="argument"], [data-current-module="argument"]) .panels-container [data-card-title="Argument Board"] { grid-column: span 12; }
 
     /* 8. Communication (SEP8) */
-    [data-module-id="communication"] .panels-container > [data-card-title="Poster Builder"] { grid-column: span 12; }
+    :is([data-module-id="communication"], [data-current-module="communication"]) .panels-container [data-card-title="Poster Builder"] { grid-column: span 12; }
 
     /* --- Teacher Dashboard Grids --- */
     
@@ -524,6 +524,7 @@ html, body {
     [data-teacher-module="snapshots"] .panels-container > div,
     [data-teacher-module="students"] .panels-container > div,
     [data-teacher-module="moderation"] .panels-container > div,
+    [data-teacher-module="noticeboard"] .panels-container > div,
     [data-teacher-module="ngss"] .panels-container > div,
     [data-teacher-module="settings"] .panels-container > div,
     [data-teacher-module="coaching"] .panels-container > div {

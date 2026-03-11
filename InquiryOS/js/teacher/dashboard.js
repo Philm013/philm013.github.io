@@ -394,13 +394,55 @@ export async function renderTeacherAccess() {
                                     if (m.id === 'analysis') return w.dataTable?.rows?.some(r => Object.values(r).some(v => v));
                                     return false;
                                 }).length;
-                                return `<div class="flex items-center justify-between p-4 bg-white active:bg-gray-50"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center ${!isLocked ? 'text-primary' : 'text-gray-300'}"><span class="iconify text-xl" data-icon="${m.icon}"></span></div><div><p class="font-bold text-gray-800 text-xs">${m.label}</p><p class="text-[8px] font-black text-gray-400 uppercase">${activeCount} Active</p></div></div><div class="flex items-center gap-3"><button onclick="window.forceAllToModule('${m.id}')" class="px-2 py-1 text-[8px] font-black rounded-lg border uppercase ${App.teacherSettings.forceModule === m.id ? 'bg-teacher text-white border-teacher' : 'text-teacher border-red-100'}">Focus</button><label class="relative inline-flex items-center cursor-pointer scale-90"><input type="checkbox" ${!isLocked ? 'checked' : ''} onchange="window.toggleAccess('${m.id}')" class="sr-only peer"><div class="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div></label></div></div>`;
+                                return `<div class="flex items-center justify-between p-4 bg-white active:bg-gray-50"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center ${!isLocked ? 'text-primary' : 'text-gray-300'}"><span class="iconify text-xl" data-icon="${m.icon}"></span></div><div><p class="font-bold text-gray-800 text-xs">${m.label}</p><p class="text-[8px] font-black text-gray-400 uppercase">${activeCount} Active</p></div></div><div class="flex items-center gap-2"><button onclick="window.openExemplarEditor('${m.id}')" class="px-2 py-1 text-[8px] font-black rounded-lg border border-purple-100 text-purple-600 uppercase hover:bg-purple-50" title="Modify Exemplar">Exemplar</button><button onclick="window.forceAllToModule('${m.id}')" class="px-2 py-1 text-[8px] font-black rounded-lg border uppercase ${App.teacherSettings.forceModule === m.id ? 'bg-teacher text-white border-teacher' : 'text-teacher border-red-100'}">Focus</button><label class="relative inline-flex items-center cursor-pointer scale-90"><input type="checkbox" ${!isLocked ? 'checked' : ''} onchange="window.toggleAccess('${m.id}')" class="sr-only peer"><div class="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div></label></div></div>`;
                             }).join('')}
                         </div>
                     </div>
                 </div>
             </div>
         </div>`;
+}
+
+export async function toggleGuidedMode() {
+    App.teacherSettings.guidedMode = !App.teacherSettings.guidedMode;
+    if (App.teacherSettings.guidedMode && !App.teacherSettings.forceModule) {
+        App.teacherSettings.forceModule = 'questions';
+    }
+    await saveToStorage();
+    renderTeacherContent();
+    toast(App.teacherSettings.guidedMode ? 'Guided Mode Enabled' : 'Guided Mode Disabled', 'info');
+}
+
+export async function guidedMove(direction) {
+    const modules = ['questions', 'models', 'investigation', 'analysis', 'math', 'explanations', 'argument', 'communication'];
+    const current = App.teacherSettings.forceModule || 'questions';
+    let idx = modules.indexOf(current);
+    idx = Math.max(0, Math.min(modules.length - 1, idx + direction));
+    App.teacherSettings.forceModule = modules[idx];
+    await saveToStorage();
+    renderTeacherContent();
+}
+
+export async function toggleAccess(moduleId) {
+    App.teacherSettings.moduleAccess[moduleId] = !App.teacherSettings.moduleAccess[moduleId];
+    await saveToStorage();
+    renderTeacherContent();
+}
+
+export async function openExemplarEditor(moduleId) {
+    App.isExemplarMode = true;
+    App.viewerState.isMonitoring = false;
+    App.viewingStudentId = null;
+    App.currentModule = moduleId;
+    
+    if (!App.teacherSettings.exemplars) App.teacherSettings.exemplars = {};
+    if (!App.teacherSettings.exemplars[moduleId]) {
+        App.teacherSettings.exemplars[moduleId] = getInitialWorkState();
+    }
+    
+    App.work = App.teacherSettings.exemplars[moduleId];
+    updateModeUI();
+    toast(`Editing Exemplar: ${moduleId}`, 'info');
 }
 
 export async function renderSessionSettings() {

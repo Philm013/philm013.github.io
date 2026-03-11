@@ -164,8 +164,9 @@ window.showView = (viewId) => {
                     document.getElementById('featuresPanel')?.classList.remove('hidden');
                     document.getElementById('rolesPanel')?.classList.remove('hidden');
                     document.getElementById('landingPanel')?.classList.add('hidden');
-                    if (typeof window.initPanelNavigation === 'function') {
-                        window.initPanelNavigation();
+
+                    if (typeof window.renderAvatarPicker === 'function') {
+                        window.renderAvatarPicker();
                     }
                     if (typeof window.loadRecentSessions === 'function') {
                         window.loadRecentSessions();

@@ -334,14 +334,15 @@ export async function showTeacherModule(moduleId) {
             await renderTeacherContent(true); // Force initial render
         }
 
+        const scrollBehavior = hasStack ? 'smooth' : 'auto';
         App._isScrollingToModule = true;
         
         // Find target
         const target = document.querySelector(`[data-teacher-module="${moduleId}"]`);
         if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            target.scrollIntoView({ behavior: scrollBehavior, block: 'start' });
             // Allow time for smooth scroll to finish
-            setTimeout(() => { App._isScrollingToModule = false; }, 800);
+            setTimeout(() => { App._isScrollingToModule = false; }, scrollBehavior === 'smooth' ? 800 : 50);
         } else {
             // Fallback if not found (shouldn't happen if hasStack is true)
             await renderTeacherContent();

@@ -79,12 +79,14 @@ export async function showLandingPage() {
     const hero = document.getElementById('heroPanel');
     const landing = document.getElementById('landingPanel');
     const features = document.getElementById('featuresPanel');
+    const roles = document.getElementById('rolesPanel');
 
     if (!landing) return;
 
     // returning users should not see the initial landing page information first
     if (hero) hero.classList.add('hidden');
     if (features) features.classList.add('hidden');
+    if (roles) roles.classList.add('hidden');
     landing.classList.remove('hidden');
     landing.classList.add('flex');
 
