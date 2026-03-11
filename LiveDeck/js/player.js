@@ -16,7 +16,8 @@ const player = {
     },
     activeTool: 'none', // 'none', 'laser', 'pen'
     drawings: [], // { type, points, color }
-    
+    hudTimeout: null,
+
     init() {
         this.canvas = document.getElementById('player-canvas');
         this.laserCanvas = document.getElementById('laser-layer');
@@ -26,6 +27,22 @@ const player = {
             window.addEventListener('resize', () => this.resizeLaserCanvas());
         }
         this.bindEvents();
+    },
+
+    toggleHud() {
+        const hud = document.getElementById('player-hud');
+        if (!hud) return;
+        
+        if (hud.classList.contains('visible')) {
+            hud.classList.remove('visible');
+        } else {
+            hud.classList.add('visible');
+            // Auto-hide after 5 seconds of inactivity unless locked
+            if (!this.hudLocked) {
+                clearTimeout(this.hudTimeout);
+                this.hudTimeout = setTimeout(() => hud.classList.remove('visible'), 5000);
+            }
+        }
     },
 
     resizeLaserCanvas() {
@@ -247,9 +264,20 @@ const player = {
         if (laserLayer) {
             let isDrawing = false;
             let currentLine = null;
+            let lastTapTime = 0;
 
             const handleStart = (e) => {
-                if (this.activeTool === 'none') return;
+                const now = Date.now();
+                const isDoubleTap = now - lastTapTime < 300;
+                lastTapTime = now;
+
+                if (this.activeTool === 'none') {
+                    // Single tap to toggle HUD in player mode
+                    if (!isDoubleTap) {
+                        this.toggleHud();
+                    }
+                    return;
+                }
                 const pos = e.touches ? e.touches[0] : e;
                 const rect = laserLayer.getBoundingClientRect();
                 const x = pos.clientX - rect.left;
@@ -289,8 +317,15 @@ const player = {
             laserLayer.addEventListener('mousemove', handleMove);
             window.addEventListener('mouseup', handleEnd);
             
-            laserLayer.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e); }, { passive: false });
-            laserLayer.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e); }, { passive: false });
+            laserLayer.addEventListener('touchstart', (e) => { 
+                // Don't prevent default here to allow click events/tap detection unless tool active
+                if (this.activeTool !== 'none') e.preventDefault(); 
+                handleStart(e); 
+            }, { passive: false });
+            laserLayer.addEventListener('touchmove', (e) => { 
+                if (this.activeTool !== 'none') e.preventDefault(); 
+                handleMove(e); 
+            }, { passive: false });
             laserLayer.addEventListener('touchend', handleEnd);
         }
 
@@ -300,6 +335,7 @@ const player = {
             // HUD Toggle Shortcut
             if (e.key.toLowerCase() === 'h') {
                 this.toggleHudLock();
+                this.toggleHud();
                 return;
             }
 
@@ -322,6 +358,14 @@ const player = {
             if (touchEndX < touchStartX - 50) this.next();
             if (touchEndX > touchStartX + 50) this.prev();
         }, { passive: true });
+
+        // Add a click listener to the canvas to toggle HUD as well
+        this.canvas.addEventListener('click', (e) => {
+            // Only toggle if not clicking an interactive element
+            if (!e.target.closest('button') && !e.target.closest('.interactive-card')) {
+                this.toggleHud();
+            }
+        });
 
         window.addEventListener('resize', () => {
             if (app.state.view === 'player') this.updateView();
@@ -389,8 +433,8 @@ const player = {
     },
 
     renderMobileSnapped() {
-        this.canvas.className = 'has-snapping w-full h-full';
         this.canvas.innerHTML = '';
+        this.canvas.className = 'has-snapping w-full h-full';
         
         this.slides.forEach((slide, index) => {
             const section = document.createElement('section');
@@ -523,6 +567,7 @@ const player = {
     },
 
     renderLinear() {
+        this.canvas.innerHTML = '';
         // If participant and in interactive mode, render the native dashboard instead of full slides
         if (app.state.audienceMode === 'interactive' && !app.state.isHost) {
             this.renderParticipantDashboard();
@@ -550,6 +595,7 @@ const player = {
     },
 
     renderSpatial() {
+        this.canvas.innerHTML = '';
         if (app.state.audienceMode === 'interactive' && !app.state.isHost) {
             this.renderParticipantDashboard();
             return;
@@ -765,6 +811,16 @@ const player = {
     updateHUD() {
         document.getElementById('current-slide-num').textContent = this.currentIndex + 1;
         document.getElementById('total-slides-num').textContent = this.slides.length;
+        
+        // Mobile visibility logic for nav buttons
+        const hud = document.getElementById('player-hud');
+        if (hud) {
+            if (!app.state.isHost) {
+                hud.classList.add('is-participant');
+            } else {
+                hud.classList.remove('is-participant');
+            }
+        }
     },
 
     syncHost() {

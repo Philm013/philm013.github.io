@@ -75,6 +75,7 @@
                 <div class="grid grid-icons" id="iconsGrid" style="display:none;"></div>
                 <div class="grid grid-emojis" id="emojisGrid" style="display:none;"></div>
                 <div class="grid grid-images" id="stockGrid" style="display:none;"></div>
+                <div class="grid grid-sessions" id="favoritesGrid" style="display:none;"></div>
             </div>
             
             <div class="actions-bar" id="actionsBar">
@@ -104,19 +105,19 @@
                 <div id="mobileHeaderControls" style="display:flex; flex:1; justify-content:center; gap:4px; margin:0 8px;">
                     <!-- Browse mode: URL + Capture -->
                     <div id="mobHeaderBrowse" style="display:flex; width:100%; gap:4px; align-items:center;">
-                        <input type="text" class="url-input" id="urlInputMob" placeholder="URL..." style="flex:1; height:32px; font-size:12px; padding:0 8px;">
-                        <button class="btn btn-default btn-sm" id="goBtnMob" style="height:32px; padding:0 8px;">Go</button>
-                        <button class="btn btn-success btn-sm" id="captureBtnMobHeader" style="height:32px; padding:0 8px;">📷</button>
+                        <input type="text" class="url-input" id="urlInputMob" placeholder="URL..." style="flex:1; height:36px; font-size:13px; padding:0 10px;">
+                        <button class="btn btn-default btn-sm" id="goBtnMob" style="height:36px; padding:0 10px;">Go</button>
+                        <button class="btn btn-success btn-sm" id="captureBtnMobHeader" style="height:36px; padding:0 10px;">📷</button>
                     </div>
                     <!-- Markup mode: Zoom + Undo + Tools -->
                     <div id="mobHeaderMarkup" style="display:none; gap:1px; align-items:center;">
-                        <button class="tool-btn" id="undoBtnMobHeader" style="width:32px; height:32px;">↺</button>
-                        <button class="tool-btn" id="redoBtnMobHeader" style="width:32px; height:32px;">↻</button>
-                        <button class="tool-btn" id="zoomOutMobHeader" style="width:32px; height:32px;">−</button>
-                        <button class="tool-btn" id="zoomFitMobHeader" style="width:32px; height:32px;">⊡</button>
-                        <button class="tool-btn" id="zoomInMobHeader" style="width:32px; height:32px;">+</button>
-                        <button class="tool-btn" id="tool-select-mob-h" data-tool="select" style="width:32px; height:32px;">↖</button>
-                        <button class="tool-btn" id="tool-hand-mob-h" data-tool="hand" style="width:32px; height:32px;">✋</button>
+                        <button class="tool-btn" id="undoBtnMobHeader">↺</button>
+                        <button class="tool-btn" id="redoBtnMobHeader">↻</button>
+                        <button class="tool-btn" id="zoomOutMobHeader">−</button>
+                        <button class="tool-btn" id="zoomFitMobHeader">⊡</button>
+                        <button class="tool-btn" id="zoomInMobHeader">+</button>
+                        <button class="tool-btn" id="tool-select-mob-h" data-tool="select">↖</button>
+                        <button class="tool-btn" id="tool-hand-mob-h" data-tool="hand">✋</button>
                     </div>
                 </div>
 
@@ -316,7 +317,7 @@
             <span>Markup</span>
         </div>
         <div class="nav-item" id="navAssets">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Assets</span>
         </div>
     </div>
@@ -422,6 +423,15 @@
                         <p style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
                             Enter the URL to your <code>proxy.php</code> script to enable automated captures of restricted sites.
                         </p>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 24px;">
+                        <label>Default Startup View</label>
+                        <select id="settingDefaultView">
+                            <option value="library">📂 Library (Home)</option>
+                            <option value="browse">🌐 Browse</option>
+                            <option value="markup">🎨 Markup (Canvas)</option>
+                        </select>
                     </div>
 
                     <h3 class="settings-section-title" style="margin-top:32px;">Pro Screenshot API (Beautiful)</h3>

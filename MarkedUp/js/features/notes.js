@@ -72,7 +72,7 @@ const Notes = {
             }
             
             item.addEventListener('click', (e) => {
-                if (e.target.closest('.note-item-header')) return;
+                if (e.target.closest('.note-item-header') || e.target.closest('.note-content')) return;
                 Editor.session.shapes.forEach(s => s.selected = false);
                 p.selected = true;
                 Editor.draw();

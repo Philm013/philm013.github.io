@@ -11,7 +11,9 @@ const App = {
         this.setupEventListeners();
         this.renderMobileEditorTools();
         this.applyToolbarPosition();
-        this.setView('library');
+        
+        const defaultView = Settings.get('defaultView') || 'library';
+        this.setView(defaultView);
         
         window.addEventListener('paste', async e => {
             const item = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'));
@@ -431,7 +433,7 @@ const App = {
         // Mobile Nav
         const mobNav = document.getElementById('mobileNav');
         if (mobNav) {
-            mobNav.style.display = (isMob && mode !== 'library') ? 'flex' : 'none';
+            mobNav.style.display = isMob ? 'flex' : 'none';
             document.getElementById('navLibrary').classList.toggle('active', mode === 'library');
             document.getElementById('navBrowse').classList.toggle('active', mode === 'browse');
             document.getElementById('navMarkup').classList.toggle('active', mode === 'markup');

@@ -214,6 +214,29 @@ main { flex: 1; position: relative; overflow: hidden; }
     transform: translateY(0);
 }
 
+/* Player HUD Transitions */
+#player-hud {
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#player-hud.visible, #player-hud.locked {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#player-hud.is-participant .is-host-only {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    #player-hud:hover {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
 /* 
  * 5. ANIMATIONS & FEEDBACK
  */

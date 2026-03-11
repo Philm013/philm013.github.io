@@ -37,8 +37,8 @@ const parser = {
      */
     parseSlide(slideMd) {
         const blocks = [];
-        // More robust block detection: :::block {config}\nContent:::
-        const blockRegex = /:::block\s*?({.*?})\s*?\n?([\s\S]*?):::/g;
+        // Support both :::block {config}\nContent::: AND :::type\nContent::: (shorthand)
+        const blockRegex = /:::(block|text|poll|quiz|image|board|whiteboard)\s*?({.*?})?\s*?\n?([\s\S]*?):::/g;
         
         let lastIndex = 0;
         let match;
@@ -50,16 +50,33 @@ const parser = {
                 blocks.push(this.createDefaultTextBlock(precedingText));
             }
 
-            try {
-                const config = JSON.parse(match[1]);
+            const type = match[1];
+            const configStr = match[2];
+            const content = match[3].trim();
+
+            if (type === 'block') {
+                try {
+                    const config = configStr ? JSON.parse(configStr) : {};
+                    blocks.push({
+                        ...config,
+                        content: content
+                    });
+                } catch (e) {
+                    console.error("Block Config Parse Error:", e, configStr);
+                    blocks.push(this.createDefaultTextBlock(match[0]));
+                }
+            } else {
+                // Shorthand notation
                 blocks.push({
-                    ...config,
-                    content: match[2].trim()
+                    id: this.generateId(),
+                    type: type,
+                    x: 400,
+                    y: 200,
+                    w: 1120,
+                    h: 500,
+                    z: blocks.length + 1,
+                    content: content
                 });
-            } catch (e) {
-                console.error("Block Config Parse Error:", e, match[1]);
-                // Fallback: treat as raw text if JSON fails
-                blocks.push(this.createDefaultTextBlock(match[0]));
             }
 
             lastIndex = blockRegex.lastIndex;

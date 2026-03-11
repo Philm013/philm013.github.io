@@ -6,6 +6,8 @@ const app = {
     state: {
         view: 'creator', // 'creator' or 'player'
         isSpatial: false,
+        gridSnapping: true,
+        smartAlignment: true,
         currentDeck: {
             title: 'Welcome to LiveDeck',
             content: `:::block {"id":"blk-123","type":"text","x":400,"y":200,"w":1120,"h":300,"z":1}

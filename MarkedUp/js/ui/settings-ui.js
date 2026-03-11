@@ -94,6 +94,7 @@ const SettingsUI = {
         document.getElementById('settingPinchSensitivityDisplay').textContent = parseFloat(pinch).toFixed(1) + 'x';
         
         document.getElementById('settingMobileToolbarPosition').value = settings.mobileToolbarPosition || 'bottom';
+        document.getElementById('settingDefaultView').value = settings.defaultView || 'library';
         document.getElementById('settingCustomProxyUrl').value = settings.customProxyUrl || '';
         document.getElementById('settingScreenshotApiKey').value = settings.screenshotApiKey || '';
         document.getElementById('settingScreenshotApiProvider').value = settings.screenshotApiProvider || 'apiflash';
@@ -136,6 +137,7 @@ const SettingsUI = {
             defaultStrokeWidth: parseInt(document.getElementById('settingDefaultStrokeWidth').value),
             pinchSensitivity: parseFloat(document.getElementById('settingPinchSensitivity').value),
             mobileToolbarPosition: document.getElementById('settingMobileToolbarPosition').value,
+            defaultView: document.getElementById('settingDefaultView').value,
             customProxyUrl: document.getElementById('settingCustomProxyUrl').value.trim(),
             screenshotApiKey: document.getElementById('settingScreenshotApiKey').value.trim(),
             screenshotApiProvider: document.getElementById('settingScreenshotApiProvider').value

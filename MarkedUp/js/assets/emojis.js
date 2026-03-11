@@ -60,6 +60,13 @@ const Emojis = {
             const el = document.createElement('div');
             el.className = 'emoji-item' + (this.selected === emoji ? ' selected' : '');
             el.textContent = emoji;
+
+            const star = document.createElement('div');
+            star.className = 'favorite-btn' + (Library.isFavorite(emoji) ? ' active' : '');
+            star.innerHTML = '⭐';
+            star.onclick = (e) => Library.toggleFavorite(emoji, e);
+            el.appendChild(star);
+
             el.addEventListener('click', () => this.select(emoji));
             grid.appendChild(el);
         });

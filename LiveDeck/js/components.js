@@ -59,7 +59,7 @@ const components = {
     registerDefaultComponents() {
         this.register({
             type: 'text',
-            render: (block) => {
+            render: (block, contextPrefix) => {
                 const content = block.content || '';
                 let parsed = content;
                 
@@ -80,7 +80,7 @@ const components = {
 
         this.register({
             type: 'poll',
-            render: (block) => {
+            render: (block, contextPrefix) => {
                 const lines = block.content.split('\n').filter(l => l.trim() !== '');
                 const question = lines[0] ? lines[0].replace(/^#+\s*/, '') : 'Poll Question?';
                 const options = lines.slice(1).map(l => l.replace(/^[-*]\s*/, '').trim());
@@ -123,15 +123,40 @@ const components = {
 
         this.register({
             type: 'image',
-            render: (block) => {
+            render: (block, contextPrefix) => {
                 const url = block.content.trim() || 'https://via.placeholder.com/800x600?text=Image+URL';
                 return `<img src="${url}" class="w-full h-full object-cover rounded-xl shadow-lg border dark:border-slate-700" alt="Image" draggable="false">`;
             }
         });
 
         this.register({
+            type: 'quiz',
+            render: (block, contextPrefix) => {
+                const lines = block.content.split('\n').filter(l => l.trim() !== '');
+                const question = lines[0] ? lines[0].replace(/^#+\s*/, '') : 'Quiz Question?';
+                const options = lines.slice(1).map(l => l.replace(/^[-*]\s*/, '').trim());
+                
+                return `
+                    <div class="interactive-card p-8 w-full h-full shadow-2xl bg-rose-900/80 text-white border-rose-500/50 flex flex-col">
+                        <h3 class="text-3xl font-black tracking-tight mb-6 flex items-center gap-3">
+                            <span class="p-2 bg-rose-500 rounded-lg"><span class="iconify" data-icon="mdi:help-circle"></span></span>
+                            ${question}
+                        </h3>
+                        <div class="flex-1 overflow-y-auto no-scrollbar">
+                            ${options.map((opt, i) => `
+                                <div class="w-full p-4 bg-white/10 border border-white/20 rounded-2xl mb-2 flex justify-between items-center">
+                                    <span class="font-bold">${opt}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        this.register({
             type: 'board',
-            render: (block) => {
+            render: (block, contextPrefix) => {
                 const prompt = block.content.trim() || 'Add your thoughts...';
                 let sessionBoard = (window.session && session.state.boards[block.id]) || [];
                 
@@ -154,7 +179,7 @@ const components = {
                             </h3>
                             <button onclick="components.addBoardNote('${block.id}', '${prompt}')" class="bg-amber-500 px-4 py-2 rounded-xl font-bold uppercase hover:bg-amber-600 transition-all pointer-events-auto text-slate-900">+ Note</button>
                         </div>
-                        <div id="board-${block.id}" class="flex-1 grid grid-cols-2 gap-4 overflow-y-auto content-start">
+                        <div id="${contextPrefix}board-${block.id}" class="flex-1 grid grid-cols-2 gap-4 overflow-y-auto content-start">
                              ${notesHTML}
                         </div>
                     </div>
@@ -165,18 +190,91 @@ const components = {
         // Feature 1: Collaborative Whiteboard Registry
         this.register({
             type: 'whiteboard',
-            render: (block) => {
+            render: (block, contextPrefix) => {
                 return `
                     <div class="interactive-card p-4 w-full h-full shadow-2xl bg-white text-slate-900 border-slate-200 flex flex-col relative overflow-hidden group">
                         <div class="absolute top-4 left-4 z-10 flex gap-2">
                             <button onclick="components.setWhiteboardTool('${block.id}', 'pen')" class="p-2 bg-indigo-600 text-white rounded-lg shadow-sm border border-indigo-700 pointer-events-auto"><span class="iconify" data-icon="mdi:pencil"></span></button>
                             <button onclick="components.clearWhiteboard('${block.id}')" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg shadow-sm border border-slate-200 pointer-events-auto"><span class="iconify" data-icon="mdi:delete-sweep"></span></button>
                         </div>
-                        <canvas id="whiteboard-${block.id}" 
+                        <canvas id="${contextPrefix}whiteboard-${block.id}" 
                                 class="whiteboard-canvas flex-1 w-full h-full rounded-2xl cursor-crosshair bg-slate-50 border-2 border-dashed border-slate-200 pointer-events-auto"
-                                onmousedown="components.handleWhiteboardStart(event, '${block.id}')"
-                                ontouchstart="components.handleWhiteboardStart(event, '${block.id}')"></canvas>
+                                onmousedown="components.handleWhiteboardStart(event, '${block.id}', '${contextPrefix}')"
+                                ontouchstart="components.handleWhiteboardStart(event, '${block.id}', '${contextPrefix}')"></canvas>
                         <div class="absolute bottom-4 right-4 text-[8px] font-black uppercase text-slate-300">Whiteboard Component</div>
+                    </div>
+                `;
+            }
+        });
+
+        // Widget 1: Countdown Timer
+        this.register({
+            type: 'timer',
+            render: (block, contextPrefix) => {
+                const duration = parseInt(block.content) || 300; // default 5 mins
+                return `
+                    <div class="interactive-card p-8 w-full h-full shadow-2xl bg-emerald-900/80 text-white border-emerald-500/50 flex flex-col items-center justify-center text-center">
+                        <div class="p-4 bg-emerald-500 rounded-2xl mb-4 shadow-lg shadow-emerald-500/20">
+                            <span class="iconify text-4xl" data-icon="mdi:timer-outline"></span>
+                        </div>
+                        <div id="${contextPrefix}timer-display-${block.id}" class="text-7xl font-black tabular-nums tracking-tighter mb-4">00:00</div>
+                        <div class="flex gap-2">
+                            <button onclick="components.startTimer('${block.id}', ${duration}, '${contextPrefix}')" class="px-6 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl uppercase text-[10px] tracking-widest transition-all pointer-events-auto">Start</button>
+                            <button onclick="components.resetTimer('${block.id}', ${duration}, '${contextPrefix}')" class="px-6 py-2 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl uppercase text-[10px] tracking-widest transition-all pointer-events-auto">Reset</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // Widget 2: GitHub Stats Showcase
+        this.register({
+            type: 'github',
+            render: (block, contextPrefix) => {
+                const repo = block.content.trim() || 'philM013/livedeck';
+                return `
+                    <div class="interactive-card p-0 w-full h-full shadow-2xl bg-slate-900 text-white border-slate-700 overflow-hidden flex flex-col">
+                        <div class="bg-slate-800 p-4 flex items-center gap-3 border-b border-white/5">
+                            <span class="iconify text-2xl" data-icon="mdi:github"></span>
+                            <span class="font-bold text-sm truncate">${repo}</span>
+                        </div>
+                        <div class="flex-1 p-8 flex flex-col justify-center items-center text-center">
+                            <img src="https://opengraph.githubassets.com/1/${repo}" class="w-full h-auto rounded-xl border border-white/10 mb-6 shadow-2xl" alt="Repo Preview">
+                            <div class="flex gap-8">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Stars</span>
+                                    <span class="text-3xl font-black">--</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Forks</span>
+                                    <span class="text-3xl font-black">--</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-indigo-600 text-center text-[10px] font-black uppercase tracking-widest">Live Repository Showcase</div>
+                    </div>
+                `;
+            }
+        });
+
+        // Widget 3: Audio/Podcast Player
+        this.register({
+            type: 'audio',
+            render: (block, contextPrefix) => {
+                const url = block.content.trim() || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+                return `
+                    <div class="interactive-card p-8 w-full h-full shadow-2xl bg-violet-900/80 text-white border-violet-500/50 flex flex-col items-center justify-center">
+                        <div class="relative group cursor-pointer mb-6" onclick="components.toggleAudio('${block.id}', '${contextPrefix}')">
+                            <div class="w-32 h-32 bg-violet-500 rounded-full flex items-center justify-center shadow-2xl shadow-violet-500/40 group-hover:scale-110 transition-all active:scale-95">
+                                <span id="${contextPrefix}audio-icon-${block.id}" class="iconify text-5xl" data-icon="mdi:play"></span>
+                            </div>
+                            <div class="absolute inset-0 rounded-full border-4 border-white/20 animate-ping opacity-20 hidden" id="${contextPrefix}audio-pulse-${block.id}"></div>
+                        </div>
+                        <div class="text-center">
+                            <h4 class="font-black text-xl mb-1 truncate w-64">Audio Resource</h4>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-violet-300/60">Tap to Play/Pause</p>
+                        </div>
+                        <audio id="${contextPrefix}audio-el-${block.id}" src="${url}" class="hidden" onended="components.resetAudioUI('${block.id}', '${contextPrefix}')"></audio>
                     </div>
                 `;
             }
@@ -184,12 +282,86 @@ const components = {
     },
 
     /**
+     * Timer Logic
+     */
+    timerIntervals: {},
+
+    startTimer(id, duration, prefix) {
+        if (this.timerIntervals[id]) clearInterval(this.timerIntervals[id]);
+        
+        let remaining = duration;
+        const display = document.getElementById(`${prefix}timer-display-${id}`);
+        
+        const update = () => {
+            const mins = Math.floor(remaining / 60);
+            const secs = remaining % 60;
+            if (display) display.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            if (remaining <= 0) {
+                clearInterval(this.timerIntervals[id]);
+                ui.notify('Timer Finished!', 'warning');
+                return;
+            }
+            remaining--;
+        };
+
+        update();
+        this.timerIntervals[id] = setInterval(update, 1000);
+        
+        if (prefix === 'canvas-' && window.p2p) {
+            p2p.broadcast({ type: 'timer-start', blockId: id, duration });
+        }
+    },
+
+    resetTimer(id, duration, prefix) {
+        if (this.timerIntervals[id]) clearInterval(this.timerIntervals[id]);
+        const display = document.getElementById(`${prefix}timer-display-${id}`);
+        const mins = Math.floor(duration / 60);
+        const secs = duration % 60;
+        if (display) display.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        
+        if (prefix === 'canvas-' && window.p2p) {
+            p2p.broadcast({ type: 'timer-reset', blockId: id, duration });
+        }
+    },
+
+    /**
+     * Audio Logic
+     */
+    toggleAudio(id, prefix) {
+        const audio = document.getElementById(`${prefix}audio-el-${id}`);
+        const icon = document.getElementById(`${prefix}audio-icon-${id}`);
+        const pulse = document.getElementById(`${prefix}audio-pulse-${id}`);
+        
+        if (!audio) return;
+
+        if (audio.paused) {
+            audio.play();
+            if (icon) icon.setAttribute('data-icon', 'mdi:pause');
+            if (pulse) pulse.classList.remove('hidden');
+        } else {
+            audio.pause();
+            if (icon) icon.setAttribute('data-icon', 'mdi:play');
+            if (pulse) pulse.classList.add('hidden');
+        }
+        
+        if (window.Iconify) Iconify.scan();
+    },
+
+    resetAudioUI(id, prefix) {
+        const icon = document.getElementById(`${prefix}audio-icon-${id}`);
+        const pulse = document.getElementById(`${prefix}audio-pulse-${id}`);
+        if (icon) icon.setAttribute('data-icon', 'mdi:play');
+        if (pulse) pulse.classList.add('hidden');
+        if (window.Iconify) Iconify.scan();
+    },
+
+    /**
      * Whiteboard Logic
      */
     whiteboardState: {}, // { blockId: { ctx, isDrawing, lastPos, tool } }
 
-    initWhiteboard(id) {
-        const canvas = document.getElementById(`whiteboard-${id}`);
+    initWhiteboard(id, contextPrefix = 'canvas-') {
+        const canvas = document.getElementById(`${contextPrefix}whiteboard-${id}`);
         if (!canvas) return;
         
         // Ensure canvas internal size matches displayed size
@@ -211,13 +383,15 @@ const components = {
         };
     },
 
-    handleWhiteboardStart(e, id) {
-        if (!this.whiteboardState[id]) this.initWhiteboard(id);
+    handleWhiteboardStart(e, id, contextPrefix = 'canvas-') {
+        if (!this.whiteboardState[id]) this.initWhiteboard(id, contextPrefix);
         const state = this.whiteboardState[id];
-        state.isDrawing = true;
-        state.lastPos = this.getWhiteboardPos(e, id);
+        if (!state) return;
 
-        const moveHandler = (moveE) => this.handleWhiteboardMove(moveE, id);
+        state.isDrawing = true;
+        state.lastPos = this.getWhiteboardPos(e, id, contextPrefix);
+
+        const moveHandler = (moveE) => this.handleWhiteboardMove(moveE, id, contextPrefix);
         const endHandler = () => {
             state.isDrawing = false;
             window.removeEventListener('mousemove', moveHandler);
@@ -232,18 +406,19 @@ const components = {
         window.addEventListener('touchend', endHandler);
     },
 
-    handleWhiteboardMove(e, id) {
+    handleWhiteboardMove(e, id, contextPrefix = 'canvas-') {
         const state = this.whiteboardState[id];
         if (!state || !state.isDrawing) return;
         if (e.type === 'touchmove') e.preventDefault();
 
-        const currentPos = this.getWhiteboardPos(e, id);
-        this.drawOnWhiteboard(id, state.lastPos, currentPos, state.tool, true);
+        const currentPos = this.getWhiteboardPos(e, id, contextPrefix);
+        this.drawOnWhiteboard(id, state.lastPos, currentPos, state.tool, true, contextPrefix);
         state.lastPos = currentPos;
     },
 
-    getWhiteboardPos(e, id) {
-        const canvas = document.getElementById(`whiteboard-${id}`);
+    getWhiteboardPos(e, id, contextPrefix = 'canvas-') {
+        const canvas = document.getElementById(`${contextPrefix}whiteboard-${id}`);
+        if (!canvas) return { x: 0, y: 0 };
         const rect = canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -255,9 +430,10 @@ const components = {
         };
     },
 
-    drawOnWhiteboard(id, from, to, tool, shouldBroadcast = false) {
-        if (!this.whiteboardState[id]) this.initWhiteboard(id);
+    drawOnWhiteboard(id, from, to, tool, shouldBroadcast = false, contextPrefix = 'canvas-') {
+        if (!this.whiteboardState[id]) this.initWhiteboard(id, contextPrefix);
         const state = this.whiteboardState[id];
+        if (!state) return;
         const ctx = state.ctx;
 
         ctx.beginPath();
@@ -276,10 +452,10 @@ const components = {
         }
     },
 
-    clearWhiteboard(id, shouldBroadcast = true) {
-        if (!this.whiteboardState[id]) this.initWhiteboard(id);
+    clearWhiteboard(id, shouldBroadcast = true, contextPrefix = 'canvas-') {
+        if (!this.whiteboardState[id]) this.initWhiteboard(id, contextPrefix);
         const state = this.whiteboardState[id];
-        state.ctx.clearRect(0, 0, state.ctx.canvas.width, state.ctx.canvas.height);
+        if (state) state.ctx.clearRect(0, 0, state.ctx.canvas.width, state.ctx.canvas.height);
         
         if (shouldBroadcast && window.p2p) {
             p2p.broadcast({ type: 'whiteboard-clear', blockId: id });

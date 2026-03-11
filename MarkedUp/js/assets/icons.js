@@ -215,9 +215,34 @@ const Icons = {
                 `;
             }
             
+            const star = document.createElement('div');
+            star.className = 'favorite-btn' + (Library.isFavorite(icon) ? ' active' : '');
+            star.innerHTML = '⭐';
+            star.onclick = (e) => Library.toggleFavorite(icon, e);
+            el.appendChild(star);
+
             el.addEventListener('click', () => this.select(icon));
             grid.appendChild(el);
         });
+
+        if (this.provider === 'iconify' && this.filtered.length >= 60) {
+            const more = document.createElement('button');
+            more.className = 'btn btn-default btn-sm';
+            more.style.gridColumn = '1/-1';
+            more.style.margin = '10px 0';
+            more.textContent = 'Load More Icons';
+            more.onclick = () => this.loadMore();
+            grid.appendChild(more);
+        }
+    },
+
+    async loadMore() {
+        if (this.loading) return;
+        this.loading = true;
+        
+        // Iconify API search doesn't have offset easily but we can try to search again or suggest search
+        Toast.show('Try a specific search query for more targeted results');
+        this.loading = false;
     },
 
     select(icon) {

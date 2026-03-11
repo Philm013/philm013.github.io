@@ -409,7 +409,8 @@ const Library = {
             { id: 'captures', icon: '📷', label: 'Library' },
             { id: 'icons', icon: '⚡', label: 'Icons' },
             { id: 'emojis', icon: '😀', label: 'Emoji' },
-            { id: 'stock', icon: '🖼️', label: 'Stock' }
+            { id: 'stock', icon: '🖼️', label: 'Stock' },
+            { id: 'favorites', icon: '⭐', label: 'Favs' }
         ];
         tabs.forEach(tab => {
             const el = document.createElement('button');
@@ -426,7 +427,7 @@ const Library = {
         this.currentTab = tab;
         document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
         
-        const grids = { captures: 'capturesGrid', icons: 'iconsGrid', emojis: 'emojisGrid', stock: 'stockGrid' };
+        const grids = { captures: 'capturesGrid', icons: 'iconsGrid', emojis: 'emojisGrid', stock: 'stockGrid', favorites: 'favoritesGrid' };
         Object.keys(grids).forEach(k => {
             const el = document.getElementById(grids[k]);
             if (el) el.style.display = (k === tab) ? 'grid' : 'none';
@@ -447,6 +448,7 @@ const Library = {
         if (tab === 'icons' && typeof Icons !== 'undefined') Icons.render();
         if (tab === 'emojis' && typeof Emojis !== 'undefined') Emojis.render();
         if (tab === 'stock' && typeof Stock !== 'undefined') Stock.render();
+        if (tab === 'favorites') this.renderFavorites();
         
         if (typeof Icons !== 'undefined') Icons.updateApiStatus();
         
@@ -470,5 +472,95 @@ const Library = {
                 await DB.save(DB.STORES.CAPTURES, current);
             }
         }
+    },
+
+    isFavorite(item) {
+        const favs = Settings.get('favorites') || [];
+        // Unique ID for assets: 
+        // Icons: icon_${name}
+        // Emojis: emoji_${char}
+        // Stock: stock_${id}
+        const id = this.getAssetId(item);
+        return favs.some(f => f.favId === id);
+    },
+
+    getAssetId(item) {
+        if (item.fullName) return `icon_${item.fullName}`;
+        if (item.name && item.svg) return `icon_${item.name}`;
+        if (typeof item === 'string') return `emoji_${item}`;
+        if (item.thumb && item.full) return `stock_${item.id}`;
+        return null;
+    },
+
+    toggleFavorite(item, e) {
+        if (e) e.stopPropagation();
+        let favs = Settings.get('favorites') || [];
+        const id = this.getAssetId(item);
+        const index = favs.findIndex(f => f.favId === id);
+        
+        if (index > -1) {
+            favs.splice(index, 1);
+            Toast.show('Removed from favorites');
+        } else {
+            const favItem = { favId: id, data: item };
+            if (item.fullName || (item.name && item.svg)) favItem.favType = 'icon';
+            else if (typeof item === 'string') favItem.favType = 'emoji';
+            else favItem.favType = 'stock';
+            
+            favs.push(favItem);
+            Toast.show('Added to favorites');
+        }
+        
+        Settings.set('favorites', favs);
+        
+        // Re-render current tab to update stars
+        if (this.currentTab === 'icons') Icons.render();
+        else if (this.currentTab === 'emojis') Emojis.render();
+        else if (this.currentTab === 'stock') Stock.render();
+        else if (this.currentTab === 'favorites') this.renderFavorites();
+    },
+
+    renderFavorites() {
+        const grid = document.getElementById('favoritesGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        const favs = Settings.get('favorites') || [];
+        
+        if (favs.length === 0) {
+            grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-dim); opacity:0.5;">⭐ No favorites yet</div>`;
+            return;
+        }
+
+        favs.forEach(fav => {
+            const item = fav.data;
+            let el;
+            if (fav.favType === 'icon') {
+                el = document.createElement('div');
+                el.className = 'icon-item selected';
+                if (item.type === 'iconify') {
+                    el.innerHTML = `<img src="https://api.iconify.design/${item.fullName}.svg?color=%23fafafa" alt="${item.name}"><span>${item.name}</span>`;
+                } else {
+                    el.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${item.svg}</svg><span>${item.name}</span>`;
+                }
+                el.onclick = () => Icons.select(item);
+            } else if (fav.favType === 'emoji') {
+                el = document.createElement('div');
+                el.className = 'emoji-item selected';
+                el.textContent = item;
+                el.onclick = () => Emojis.select(item);
+            } else {
+                el = document.createElement('div');
+                el.className = 'image-item';
+                el.innerHTML = `<img src="${item.thumb}" alt="${item.alt}" crossorigin="anonymous"><div class="image-overlay">${item.author}</div>`;
+                el.onclick = () => Stock.addToCanvas(item);
+            }
+            
+            const star = document.createElement('div');
+            star.className = 'favorite-btn active';
+            star.innerHTML = '⭐';
+            star.onclick = (e) => this.toggleFavorite(item, e);
+            el.appendChild(star);
+            grid.appendChild(el);
+        });
     }
 };

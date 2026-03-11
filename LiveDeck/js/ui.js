@@ -233,13 +233,13 @@ const ui = {
             // Unique prefix for thumbnails to prevent DOM collision
             const blocksHTML = slide.blocks.map(b => components.renderBlock(b, `nav-${index}-`)).join('');
             
-            let thumbContent = `<div class="nav-thumb-content scale-[0.08] origin-top-left pointer-events-none">${blocksHTML}</div>`;
+            let thumbContent = `<div class="nav-thumb-content scale-[0.08] absolute top-1 left-[35px] origin-top-left pointer-events-none">${blocksHTML}</div>`;
             if (!blocksHTML.trim()) {
                 thumbContent = `<div class="flex items-center justify-center h-full text-slate-200 dark:text-slate-800"><span class="iconify text-4xl" data-icon="mdi:file-outline"></span></div>`;
             }
 
             item.innerHTML = `
-                <div class="nav-thumb bg-white dark:bg-slate-950 mb-2 flex items-center justify-center rounded-xl h-24 w-full relative overflow-hidden shadow-inner border dark:border-slate-800">
+                <div class="nav-thumb bg-white dark:bg-slate-950 mb-2 rounded-xl h-24 w-full relative overflow-hidden shadow-inner border dark:border-slate-800">
                     ${thumbContent}
                     <span class="absolute top-2 left-2 text-[10px] font-black text-slate-400 bg-white/80 dark:bg-black/50 px-2 py-0.5 rounded-lg z-10 shadow-sm">#${index + 1}</span>
                 </div>
@@ -247,6 +247,11 @@ const ui = {
             `;
             navEl.appendChild(item);
         });
+
+        // Trigger Iconify to scan for new icons in the thumbnails
+        if (window.Iconify) {
+            setTimeout(() => Iconify.scan(), 100);
+        }
     },
 
     updateContextualToolbar(blockId) {
@@ -454,6 +459,33 @@ const ui = {
         });
     },
 
+    showQuizWizard() {
+        this.showModal({
+            title: "Create Live Quiz",
+            body: `
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Question</label>
+                        <input id="quiz-wiz-q" type="text" placeholder="e.g. What is the capital of France?" class="w-full bg-slate-50 dark:bg-slate-950 border dark:border-slate-800 rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-rose-500">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Options (Comma separated)</label>
+                        <textarea id="quiz-wiz-opts" placeholder="Paris, London, Berlin, Madrid" class="w-full bg-slate-50 dark:bg-slate-950 border dark:border-slate-800 rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-rose-500 resize-none" rows="3"></textarea>
+                    </div>
+                </div>
+            `,
+            actions: [
+                { label: 'Create Quiz', primary: true, callback: () => {
+                    const q = document.getElementById('quiz-wiz-q').value;
+                    const opts = document.getElementById('quiz-wiz-opts').value.split(',').map(o => '- ' + o.trim()).join('\n');
+                    const content = `# ${q}\n${opts}`;
+                    editor.insertComponent('quiz', content);
+                }},
+                { label: 'Cancel', primary: false }
+            ]
+        });
+    },
+
     showBoardWizard() {
         this.showModal({
             title: "Create Interactive Board",
@@ -470,6 +502,103 @@ const ui = {
                 }},
                 { label: 'Cancel', primary: false }
             ]
+        });
+    },
+
+    showTimerWizard() {
+        this.showModal({
+            title: "Countdown Timer",
+            body: `
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Duration (Seconds)</label>
+                    <input id="timer-wiz-d" type="number" value="300" class="w-full bg-slate-50 dark:bg-slate-950 border dark:border-slate-800 rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-emerald-500">
+                </div>
+            `,
+            actions: [
+                { label: 'Add Timer', primary: true, callback: () => {
+                    const d = document.getElementById('timer-wiz-d').value;
+                    editor.insertComponent('timer', d);
+                }},
+                { label: 'Cancel', primary: false }
+            ]
+        });
+    },
+
+    showGithubWizard() {
+        this.showModal({
+            title: "GitHub Repository",
+            body: `
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Repository (User/Repo)</label>
+                    <input id="gh-wiz-r" type="text" placeholder="e.g. philM013/LiveDeck" class="w-full bg-slate-50 dark:bg-slate-950 border dark:border-slate-800 rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-slate-500">
+                </div>
+            `,
+            actions: [
+                { label: 'Add Repo', primary: true, callback: () => {
+                    const r = document.getElementById('gh-wiz-r').value;
+                    editor.insertComponent('github', r);
+                }},
+                { label: 'Cancel', primary: false }
+            ]
+        });
+    },
+
+    showAudioWizard() {
+        this.showModal({
+            title: "Audio Resource",
+            body: `
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">MP3 URL</label>
+                    <input id="audio-wiz-u" type="text" placeholder="https://example.com/audio.mp3" class="w-full bg-slate-50 dark:bg-slate-950 border dark:border-slate-800 rounded-2xl p-4 text-sm outline-none focus:ring-2 ring-violet-500">
+                </div>
+            `,
+            actions: [
+                { label: 'Add Audio', primary: true, callback: () => {
+                    const u = document.getElementById('audio-wiz-u').value;
+                    editor.insertComponent('audio', u);
+                }},
+                { label: 'Cancel', primary: false }
+            ]
+        });
+    },
+
+    toggleSettings() {
+        this.showModal({
+            title: "Workspace Settings",
+            body: `
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border dark:border-slate-800">
+                        <div>
+                            <p class="font-bold text-sm">Grid Snapping</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-widest">Snap components to 50px grid</p>
+                        </div>
+                        <button onclick="app.state.gridSnapping = !app.state.gridSnapping; ui.toggleSettings();" class="w-12 h-6 rounded-full p-1 transition-colors ${app.state.gridSnapping ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}">
+                            <div class="w-4 h-4 bg-white rounded-full transition-transform ${app.state.gridSnapping ? 'translate-x-6' : ''}"></div>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border dark:border-slate-800">
+                        <div>
+                            <p class="font-bold text-sm">Smart Alignment</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-widest">Snap to edges of other components</p>
+                        </div>
+                        <button onclick="app.state.smartAlignment = !app.state.smartAlignment; ui.toggleSettings();" class="w-12 h-6 rounded-full p-1 transition-colors ${app.state.smartAlignment ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}">
+                            <div class="w-4 h-4 bg-white rounded-full transition-transform ${app.state.smartAlignment ? 'translate-x-6' : ''}"></div>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border dark:border-slate-800">
+                        <div>
+                            <p class="font-bold text-sm">Dark Mode</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-widest">Toggle workspace theme</p>
+                        </div>
+                        <button onclick="document.documentElement.classList.toggle('dark'); ui.toggleSettings();" class="w-12 h-6 rounded-full p-1 transition-colors ${document.documentElement.classList.contains('dark') ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}">
+                            <div class="w-4 h-4 bg-white rounded-full transition-transform ${document.documentElement.classList.contains('dark') ? 'translate-x-6' : ''}"></div>
+                        </button>
+                    </div>
+                </div>
+            `,
+            actions: [{ label: "Close", primary: false }]
         });
     },
 
@@ -548,8 +677,11 @@ const ui = {
         let items = [
             { label: 'Text', icon: 'mdi:format-text', action: () => editor.insertComponent('text') },
             { label: 'Image', icon: 'mdi:image', action: () => editor.insertComponent('image') },
-            { label: 'Poll', icon: 'mdi:poll', action: () => editor.insertComponent('poll') },
-            { label: 'Board', icon: 'mdi:post-it-note-outline', action: () => editor.insertComponent('board') }
+            { label: 'Poll', icon: 'mdi:poll', action: () => ui.showPollWizard() },
+            { label: 'Board', icon: 'mdi:post-it-note-outline', action: () => ui.showBoardWizard() },
+            { label: 'Timer', icon: 'mdi:timer-outline', action: () => ui.showTimerWizard() },
+            { label: 'GitHub', icon: 'mdi:github', action: () => ui.showGithubWizard() },
+            { label: 'Audio', icon: 'mdi:music', action: () => ui.showAudioWizard() }
         ];
         if (blockEl) {
             items.unshift('divider');
@@ -573,7 +705,12 @@ const ui = {
                 <button onclick="editor.insertComponent('text'); ui.hideModal();" class="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 flex flex-col items-center gap-4 transition-all active:scale-90"><span class="p-4 bg-indigo-600 text-white rounded-3xl shadow-lg shadow-indigo-500/30"><span class="iconify text-3xl" data-icon="mdi:format-text"></span></span><span class="font-black text-[10px] uppercase tracking-widest text-slate-500">Text</span></button>
                 <button onclick="editor.insertComponent('image'); ui.hideModal();" class="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 flex flex-col items-center gap-4 transition-all active:scale-90"><span class="p-4 bg-indigo-600 text-white rounded-3xl shadow-lg shadow-indigo-500/30"><span class="iconify text-3xl" data-icon="mdi:image"></span></span><span class="font-black text-[10px] uppercase tracking-widest text-slate-500">Image</span></button>
                 <button onclick="ui.showPollWizard();" class="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 flex flex-col items-center gap-4 transition-all active:scale-90"><span class="p-4 bg-indigo-600 text-white rounded-3xl shadow-lg shadow-indigo-500/30"><span class="iconify text-3xl" data-icon="mdi:poll"></span></span><span class="font-black text-[10px] uppercase tracking-widest text-slate-500">Poll</span></button>
+                <button onclick="ui.showQuizWizard();" class="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 flex flex-col items-center gap-4 transition-all active:scale-90"><span class="p-4 bg-rose-600 text-white rounded-3xl shadow-lg shadow-rose-500/30"><span class="iconify text-3xl" data-icon="mdi:help-circle"></span></span><span class="font-black text-[10px] uppercase tracking-widest text-slate-500">Quiz</span></button>
                 <button onclick="ui.showBoardWizard();" class="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 flex flex-col items-center gap-4 transition-all active:scale-90"><span class="p-4 bg-indigo-600 text-white rounded-3xl shadow-lg shadow-indigo-500/30"><span class="iconify text-3xl" data-icon="mdi:post-it-note-outline"></span></span><span class="font-black text-[10px] uppercase tracking-widest text-slate-500">Board</span></button>
+                <button onclick="editor.insertComponent('whiteboard'); ui.hideModal();" class="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 flex flex-col items-center gap-4 transition-all active:scale-90"><span class="p-4 bg-indigo-600 text-white rounded-3xl shadow-lg shadow-indigo-500/30"><span class="iconify text-3xl" data-icon="mdi:draw"></span></span><span class="font-black text-[10px] uppercase tracking-widest text-slate-500">Whiteboard</span></button>
+                <button onclick="ui.showTimerWizard();" class="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 flex flex-col items-center gap-4 transition-all active:scale-90"><span class="p-4 bg-emerald-600 text-white rounded-3xl shadow-lg shadow-emerald-500/30"><span class="iconify text-3xl" data-icon="mdi:timer-outline"></span></span><span class="font-black text-[10px] uppercase tracking-widest text-slate-500">Timer</span></button>
+                <button onclick="ui.showGithubWizard();" class="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 flex flex-col items-center gap-4 transition-all active:scale-90"><span class="p-4 bg-slate-700 text-white rounded-3xl shadow-lg shadow-slate-500/30"><span class="iconify text-3xl" data-icon="mdi:github"></span></span><span class="font-black text-[10px] uppercase tracking-widest text-slate-500">GitHub</span></button>
+                <button onclick="ui.showAudioWizard();" class="p-8 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border dark:border-slate-800 flex flex-col items-center gap-4 transition-all active:scale-90"><span class="p-4 bg-violet-600 text-white rounded-3xl shadow-lg shadow-violet-500/30"><span class="iconify text-3xl" data-icon="mdi:music"></span></span><span class="font-black text-[10px] uppercase tracking-widest text-slate-500">Audio</span></button>
             </div>`,
             actions: []
         });

@@ -16,7 +16,9 @@ const Settings = {
         mobileToolbarPosition: 'bottom', // 'top', 'bottom', 'floating'
         customProxyUrl: 'https://TechieTeaching.com/res/capture.php?url=',
         screenshotApiKey: '', // e.g. for Screenshotlayer or ApiFlash
-        screenshotApiProvider: 'apiflash' // 'apiflash', 'screenshotlayer', or 'mshots'
+        screenshotApiProvider: 'apiflash', // 'apiflash', 'screenshotlayer', or 'mshots'
+        defaultView: 'browse', // 'browse' or 'markup'
+        favorites: [] // List of favorite asset objects
     },
     
     data: {},

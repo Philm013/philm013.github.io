@@ -175,9 +175,16 @@ const Stock = {
             const el = document.createElement('div');
             el.className = 'image-item';
             el.innerHTML = `
-                <img src="${img.thumb}" alt="${img.alt}" onerror="this.parentElement.style.display='none'">
+                <img src="${img.thumb}" alt="${img.alt}" crossorigin="anonymous" onerror="this.parentElement.style.display='none'">
                 <div class="image-overlay">${img.author}</div>
             `;
+
+            const star = document.createElement('div');
+            star.className = 'favorite-btn' + (Library.isFavorite(img) ? ' active' : '');
+            star.innerHTML = '⭐';
+            star.onclick = (e) => Library.toggleFavorite(img, e);
+            el.appendChild(star);
+
             el.addEventListener('click', () => this.addToCanvas(img));
             grid.appendChild(el);
         });
@@ -187,6 +194,15 @@ const Stock = {
         trigger.style.gridColumn = '1/-1';
         trigger.innerHTML = '<div class="spinner"></div>';
         grid.appendChild(trigger);
+        
+        // Add manual load more button for better UX
+        const moreBtn = document.createElement('button');
+        moreBtn.className = 'btn btn-default btn-sm';
+        moreBtn.style.gridColumn = '1/-1';
+        moreBtn.style.margin = '10px 0';
+        moreBtn.textContent = 'Load More Images';
+        moreBtn.onclick = () => this.load();
+        grid.appendChild(moreBtn);
         
         const observer = new IntersectionObserver(entries => {
             if (entries[0].isIntersecting && !this.loading) {
