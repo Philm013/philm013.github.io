@@ -5,6 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flipbook Anything!</title>
+    <script>
+        // Ensure trailing slash for correct relative path resolution
+        if (!window.location.pathname.endsWith('/') && !window.location.pathname.endsWith('.html')) {
+            window.location.replace(window.location.pathname + '/' + window.location.search + window.location.hash);
+        }
+    </script>
     <script src="pdf.min.js"></script>
     <link href="pdf_viewer.min.css" rel="stylesheet" type="text/css" />
     <link id="theme-style" rel="stylesheet" href="fbai_dark.css" type="text/css">
@@ -13,6 +19,9 @@
 	     <!-- Font Awesome for Icons (Optional but nice for chat icon) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script type="module">
+        import * as aiHelper from '../js/ai-helper.js';
+        window.aiHelper = aiHelper;
+
         try {
             const sdkUrl = "https://cdn.jsdelivr.net/npm/@google/generative-ai/dist/index.mjs";
             console.log(`Attempting to load Google AI SDK from: ${sdkUrl}`);

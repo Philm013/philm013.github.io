@@ -322,7 +322,7 @@ export async function showTeacherModule(moduleId) {
     persistSession();
 
     // Determine if this is a "stacked" module that we need to scroll to
-    const stackedModules = ['overview', 'lessons', 'snapshots', 'students', 'access', 'noticeboard', 'coaching', 'moderation', 'categories', 'icons', 'ngss', 'settings'];
+    const stackedModules = ['overview', 'lessons', 'snapshots', 'students', 'access', 'noticeboard', 'coaching', 'moderation', 'categories', 'icons', 'ngss', 'settings', 'livemodels', 'livedata', 'livegeneric'];
     const isStacked = stackedModules.includes(moduleId);
 
     if (isStacked) {

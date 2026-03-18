@@ -55,7 +55,7 @@ export const dataGatheringTools = {
         execute: async ({ query }) => {
             // REVISED: Using the new `ai.models.generateContent` API with a `config` object for tools.
             const response = await apiThrottler.enqueue(() => genAI.models.generateContent({
-                model: "gemini-2.0-flash",
+                model: process.env.TOOL_MODEL || "gemini-2.0-flash",
                 contents: [{ role: 'user', parts: [{ text: query }] }],
                 config: {
                     tools: [{ googleSearch: {} }]

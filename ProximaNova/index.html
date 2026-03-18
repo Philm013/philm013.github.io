@@ -6,6 +6,12 @@
     <title>Project Nova v23 - Strategic Expansion</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#05080f"/>
+    <script>
+        // Ensure trailing slash for correct relative path resolution
+        if (!window.location.pathname.endsWith('/') && !window.location.pathname.endsWith('.html')) {
+            window.location.replace(window.location.pathname + '/' + window.location.search + window.location.hash);
+        }
+    </script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>

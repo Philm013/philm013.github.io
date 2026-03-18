@@ -100,14 +100,30 @@ export const mapsManager = {
      */
     getCurrentGraphData: () => {
         const { nodes, links, nodeCounter, currentLayout, currentLinkStyle } = getGraphState();
+        const activeStep = document.querySelector('.step-indicator.active');
+        const researchStep = activeStep ? parseInt(activeStep.dataset.step) : 1;
         return {
-            nodes: nodes.map(n => ({ id: n.id, label: n.label, x: n.x, y: n.y, fx: n.fx, fy: n.fy, shape: n.shape, color: n.color, details: n.details || '' })),
+            nodes: nodes.map(n => ({ 
+                id: n.id, 
+                label: n.label, 
+                x: n.x, 
+                y: n.y, 
+                fx: n.fx, 
+                fy: n.fy, 
+                shape: n.shape, 
+                color: n.color, 
+                details: n.details || '',
+                notecard: n.notecard || {}
+            })),
             links: links.map(l => ({ source: l.source.id, target: l.target.id, label: l.label })),
             counter: nodeCounter,
             layout: currentLayout,
-            linkStyle: currentLinkStyle
+            linkStyle: currentLinkStyle,
+            researchStep: researchStep,
+            sources: window.projectSources || []
         };
     },
+
     /**
      * Saves the current state of an open map.
      * @param {string} currentMapId - The ID of the currently open map.

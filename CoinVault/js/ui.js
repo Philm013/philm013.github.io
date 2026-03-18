@@ -14,6 +14,7 @@ export const UI = {
         this.bindDataManagement();
         this.bindBottomSheet();
         
+        // Initial setup for models and CV settings
         import('./db.js').then(module => {
             module.DB.getSetting('geminiApiKey').then(key => {
                 if (key) {
@@ -24,110 +25,78 @@ export const UI = {
             module.DB.getSetting('geminiModel').then(model => {
                 if (model) document.getElementById('modelSelect').value = model;
             });
-        });
-    },
 
-    async refreshModelList() {
-        const { AI } = await import('./ai.js');
-        const models = await AI.fetchAvailableModels();
-        const select = document.getElementById('modelSelect');
-        const currentVal = select.value;
-        
-        if (models.length === 0) {
-            select.innerHTML = '<option value="gemini-1.5-flash">Default (Gemini 1.5 Flash)</option>';
-            return;
-        }
-
-        select.innerHTML = models.map(m => {
-            const shortName = m.name.replace('models/', '');
-            return `<option value="${shortName}">${m.displayName || shortName}</option>`;
-        }).join('');
-        
-        if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
-            select.value = currentVal;
-        }
-    },
-
-    bindBottomSheet() {
-        const overlay = document.getElementById('sheetOverlay');
-        const sheet = document.getElementById('itemBottomSheet');
-        overlay.addEventListener('click', () => this.closeBottomSheet());
-        
-        let touchStartY = 0;
-        sheet.querySelector('.sheet-handle').addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; });
-        sheet.querySelector('.sheet-handle').addEventListener('touchmove', (e) => {
-            if (e.touches[0].clientY - touchStartY > 50) this.closeBottomSheet();
-        });
-    },
-
-    openBottomSheet() {
-        document.getElementById('sheetOverlay').classList.add('show');
-        document.getElementById('itemBottomSheet').classList.add('open');
-        if (navigator.vibrate) navigator.vibrate(10);
-    },
-
-    closeBottomSheet() {
-        document.getElementById('sheetOverlay').classList.remove('show');
-        document.getElementById('itemBottomSheet').classList.remove('open');
-    },
-
-    bindCollectionControls() {
-        const applyFilters = () => {
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            const country = document.getElementById('countryFilter').value;
-            
-            let filtered = this.allItems.filter(i => {
-                const matchesSearch = i.country.toLowerCase().includes(query) || i.denomination.toLowerCase().includes(query) || i.year.toString().includes(query);
-                const matchesCountry = country === 'All' || i.country === country;
-                return matchesSearch && matchesCountry;
+            // Load Scan Mode
+            module.DB.getSetting('cvScanMode').then(mode => {
+                this.updateModeUI(mode || 'coin');
             });
 
-            const sort = document.getElementById('sortOrder').value;
-            filtered.sort((a, b) => {
-                if (sort === 'valueHigh') return (Number(b.estimatedValue) || 0) - (Number(a.estimatedValue) || 0);
-                return new Date(b.dateAdded) - new Date(a.dateAdded);
+            // Load CV Settings
+            const cvSettings = ['cvParam1', 'cvParam2', 'cvClahe', 'cvBilateral', 'cvBlur', 'cvMinRadius'];
+            cvSettings.forEach(s => {
+                module.DB.getSetting(s).then(val => {
+                    if (val) {
+                        const el = document.getElementById(s);
+                        if (el) el.value = val;
+                        
+                        // Sync the "Tune" sliders in capture view
+                        const tuneId = s.replace('cv', 'tune');
+                        const tuneEl = document.getElementById(tuneId);
+                        if (tuneEl) {
+                            tuneEl.value = val;
+                            const valDisplay = document.getElementById(tuneId.replace('tune', 'val'));
+                            if (valDisplay) valDisplay.textContent = val;
+                        }
+                    }
+                });
             });
-
-            this.renderGrid(filtered);
-        };
-
-        document.getElementById('searchInput').addEventListener('input', applyFilters);
-        document.getElementById('countryFilter').addEventListener('change', applyFilters);
-        document.getElementById('sortOrder').addEventListener('change', applyFilters);
+        });
+        
+        this.bindCvTuning();
     },
 
-    bindDataManagement() {
-        document.getElementById('exportDataBtn').addEventListener('click', async () => {
-            const module = await import('./db.js');
-            const items = await module.DB.getAllItems();
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(items));
-            const dl = document.createElement('a');
-            dl.setAttribute("href", dataStr);
-            dl.setAttribute("download", `CoinVault_Backup.json`);
-            dl.click();
-            this.showToast("Collection exported!", "success");
-        });
+    bindCvTuning() {
+        const sheet = document.getElementById('cvSettingsSheet');
+        const openBtn = document.getElementById('openCvTuneBtn');
+        const closeBtn = document.getElementById('closeCvTuneBtn');
 
-        document.getElementById('importFileInput').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                try {
-                    const items = JSON.parse(event.target.result);
-                    this.showLoading(`Importing ${items.length} items...`);
-                    const module = await import('./db.js');
-                    for (const item of items) await module.DB.updateItem(item);
-                    this.hideLoading();
-                    this.showToast("Import successful!", "success");
-                    this.app.loadCollection();
-                } catch (err) {
-                    console.error(err);
-                    this.hideLoading();
-                    this.showToast("Import failed", "error");
-                }
-            };
-            reader.readAsText(file);
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                sheet.classList.remove('hidden', 'lg:hidden');
+                setTimeout(() => sheet.classList.remove('translate-y-full'), 10);
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                sheet.classList.add('translate-y-full');
+                setTimeout(() => sheet.classList.add('hidden', 'lg:hidden'), 400);
+            });
+        }
+
+        // Live syncing of sliders
+        ['Param1', 'Param2', 'Clahe', 'Bilateral', 'Blur', 'MinRadius'].forEach(s => {
+            const tuneEl = document.getElementById('tune' + s);
+            const valDisplay = document.getElementById('val' + s);
+            const mainEl = document.getElementById('cv' + s);
+
+            if (tuneEl) {
+                tuneEl.addEventListener('input', async (e) => {
+                    const val = e.target.value;
+                    if (valDisplay) valDisplay.textContent = val;
+                    if (mainEl) mainEl.value = val;
+
+                    // Save instantly
+                    const { DB } = await import('./db.js');
+                    await DB.saveSetting('cv' + s, val);
+
+                    // Trigger re-detect if an image is active
+                    const { Capture } = await import('./capture.js');
+                    if (Capture.currentImage) {
+                        Capture.detectCircles();
+                    }
+                });
+            }
         });
     },
 
@@ -174,11 +143,57 @@ export const UI = {
         });
     },
 
+    updateModeUI(mode) {
+        const coinBtn = document.getElementById('modeCoinBtn');
+        const noteBtn = document.getElementById('modeNoteBtn');
+        const isCoin = mode === 'coin';
+        
+        coinBtn.classList.toggle('bg-white', isCoin);
+        coinBtn.classList.toggle('shadow-sm', isCoin);
+        coinBtn.classList.toggle('text-amber-700', isCoin);
+        coinBtn.classList.toggle('text-stone-400', !isCoin);
+
+        noteBtn.classList.toggle('bg-white', !isCoin);
+        noteBtn.classList.toggle('shadow-sm', !isCoin);
+        noteBtn.classList.toggle('text-amber-700', !isCoin);
+        noteBtn.classList.toggle('text-stone-400', isCoin);
+        
+        // Update guide UI
+        const guide = document.getElementById('captureGuide')?.firstElementChild;
+        if (guide) {
+            guide.classList.toggle('rounded-full', isCoin);
+            guide.classList.toggle('rounded-[2.5rem]', !isCoin);
+            guide.classList.toggle('aspect-square', isCoin);
+            guide.style.width = isCoin ? '16rem' : '100%';
+            guide.style.aspectRatio = isCoin ? '1/1' : '3/2';
+        }
+    },
+
     bindSettings() {
+        document.getElementById('modeCoinBtn').addEventListener('click', async () => {
+            const module = await import('./db.js');
+            await module.DB.saveSetting('cvScanMode', 'coin');
+            this.updateModeUI('coin');
+        });
+
+        document.getElementById('modeNoteBtn').addEventListener('click', async () => {
+            const module = await import('./db.js');
+            await module.DB.saveSetting('cvScanMode', 'note');
+            this.updateModeUI('note');
+        });
+
         document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
             const key = document.getElementById('apiKeyInput').value;
             const model = document.getElementById('modelSelect').value;
             await this.app.saveSettings(key, model);
+
+            // Save CV Settings
+            const module = await import('./db.js');
+            const cvSettings = ['cvParam1', 'cvParam2', 'cvBlur', 'cvMinRadius'];
+            for (const s of cvSettings) {
+                await module.DB.saveSetting(s, document.getElementById(s).value);
+            }
+
             this.refreshModelList();
         });
     },
@@ -188,17 +203,42 @@ export const UI = {
         document.getElementById(viewId).classList.remove('hidden');
         this.currentView = viewId;
 
-        document.getElementById('mainHeader').style.display = viewId === 'captureView' ? 'none' : 'flex';
-        document.getElementById('bottomNav').style.display = viewId === 'captureView' ? 'none' : 'flex';
+        // Header/Nav visibility
+        const isCapture = viewId === 'captureView';
+        document.getElementById('mainHeader').classList.toggle('hidden', isCapture);
+        document.getElementById('bottomNav').classList.toggle('hidden', isCapture);
 
+        // Sidebar/BottomNav active states
         document.querySelectorAll('[data-nav]').forEach(btn => {
             const isTarget = btn.getAttribute('data-nav') === viewId;
-            btn.classList.toggle('text-amber-700', isTarget);
-            btn.classList.toggle('text-stone-400', !isTarget);
+            const isSidebar = btn.closest('#sidebar');
+            
+            if (isSidebar) {
+                btn.classList.toggle('text-amber-700', isTarget);
+                btn.classList.toggle('bg-amber-50', isTarget);
+                btn.classList.toggle('text-stone-400', !isTarget);
+                btn.classList.toggle('bg-transparent', !isTarget);
+            } else {
+                btn.classList.toggle('text-amber-700', isTarget);
+                btn.classList.toggle('text-stone-400', !isTarget);
+            }
         });
 
         if (viewId === 'captureView') {
-            import('./capture.js').then(m => m.Capture.startCamera());
+            import('./capture.js').then(m => {
+                if (m.Capture.currentImage) {
+                    m.Capture.videoEl.style.display = 'none';
+                    m.Capture.canvasEl.style.display = 'block';
+                    m.Capture.detectCircles(); // Re-detect with potentially new settings
+                    
+                    document.getElementById('takePhotoBtn').classList.add('hidden');
+                    document.getElementById('retakePhotoBtn').classList.remove('hidden');
+                } else {
+                    m.Capture.startCamera();
+                    document.getElementById('takePhotoBtn').classList.remove('hidden');
+                    document.getElementById('retakePhotoBtn').classList.add('hidden');
+                }
+            });
         } else {
             import('./capture.js').then(m => m.Capture.stopCamera());
         }
@@ -249,7 +289,22 @@ export const UI = {
 
     renderDashboard(items) {
         document.getElementById('totalItemsStat').textContent = items.length;
-        document.getElementById('totalValueStat').textContent = '$' + items.reduce((sum, i) => sum + (Number(i.estimatedValue) || 0), 0).toFixed(2);
+        document.getElementById('totalValueStat').textContent = '$' + items.reduce((sum, i) => sum + (Number(i.estimatedValue) || 0), 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+        
+        // Render Recent Grid
+        const recent = [...items].sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded)).slice(0, 5);
+        const grid = document.getElementById('recentGrid');
+        if (grid) {
+            grid.innerHTML = '';
+            recent.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'bg-stone-50 rounded-2xl overflow-hidden aspect-square border border-stone-100 cursor-pointer hover:scale-105 transition-transform';
+                el.innerHTML = `<img src="${item.imageBlob}" class="w-full h-full object-cover">`;
+                el.onclick = () => this.showItemDetail(item);
+                grid.appendChild(el);
+            });
+        }
+
         this.renderChart(items);
     },
 
@@ -286,11 +341,16 @@ export const UI = {
         document.getElementById('editMetal').value = item.metal;
         document.getElementById('editGrade').value = item.grade;
         document.getElementById('editValue').value = item.estimatedValue;
+        document.getElementById('editCitation').value = item.citation || '';
         document.getElementById('editDesc').value = item.description || '';
 
         const saveBtn = document.getElementById('saveEditBtn');
         const newSaveBtn = saveBtn.cloneNode(true);
         saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+        const deleteBtn = document.getElementById('deleteDetailBtn');
+        const newDeleteBtn = deleteBtn.cloneNode(true);
+        deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
 
         newSaveBtn.addEventListener('click', () => {
             item.country = document.getElementById('editCountry').value;
@@ -300,9 +360,15 @@ export const UI = {
             item.metal = document.getElementById('editMetal').value;
             item.grade = document.getElementById('editGrade').value;
             item.estimatedValue = document.getElementById('editValue').value;
+            item.citation = document.getElementById('editCitation').value;
             item.description = document.getElementById('editDesc').value;
             this.app.saveItemEdit(item);
             this.closeBottomSheet();
+        });
+
+        newDeleteBtn.addEventListener('click', () => {
+            this.closeBottomSheet();
+            this.app.deleteItem(item.id);
         });
 
         document.getElementById('cancelEditBtn').onclick = () => this.closeBottomSheet();

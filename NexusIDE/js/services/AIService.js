@@ -22,7 +22,7 @@ export class AIService {
         this.patcher = patcherService;
         this.analysis = codeAnalysisService;
         this.apiKey = localStorage.getItem('nexus_gemini_key') || '';
-        this.modelName = localStorage.getItem('nexus_ai_model') || 'gemini-1.5-flash';
+        this.modelName = localStorage.getItem('nexus_ai_model') || 'gemini-3-flash-preview';
         this.temperature = parseFloat(localStorage.getItem('nexus_ai_temp')) || 0.7;
         this.customInstructions = localStorage.getItem('nexus_ai_instructions') || '';
         

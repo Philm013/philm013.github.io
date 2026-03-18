@@ -1,7 +1,6 @@
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold, Type } from "https://esm.run/@google/genai";
-import { HfInferenceEndpoint } from 'https://cdn.jsdelivr.net/npm/@huggingface/inference@2.7.0/+esm';
+import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
 import { toast, setAILoading, addMessageToChatHistory, researchProgressManager } from './ui.js';
-import { addNode, getGraphState } from './graph.js';
+import { addNode, getGraphState, deleteNodeById, editNodeLabel, connectNodesById } from './graph.js';
 import { dbManager } from './storage.js';
 
 // --- MODULE STATE ---
@@ -12,8 +11,11 @@ let state = {
     isAITaskRunning: false,
 };
 
+let isAIInitializing = false;
+let isAIReady = false;
+
 const getToolModelName = () => localStorage.getItem('tool_model') || 'gemini-2.0-flash';
-const getContentModelName = () => localStorage.getItem('content_model') || 'gemini-2.5-flash-preview-05-20';
+const getContentModelName = () => localStorage.getItem('content_model') || 'gemini-1.5-pro';
 
 // --- API Throttling Queue ---
 const apiThrottler = {
@@ -56,72 +58,182 @@ const apiThrottler = {
 };
 
 // --- AI INITIALIZATION ---
-export function initializeAI() {
-    const geminiKey = localStorage.getItem('gemini_key');
-    if (geminiKey) {
-        try {
-            // REVISED: Using the documented object-based configuration for the AI client.
-            state.aiClient = new GoogleGenAI({ apiKey: geminiKey });
-            toast('AI Assistant Ready');
-        } catch (error) {
-            console.error("Failed to initialize AI:", error);
-            toast('Error: Invalid Gemini API Key');
-            state.aiClient = null;
-        }
-    } else {
-        toast('Gemini API Key not set. AI features disabled.');
-        state.aiClient = null;
+export async function initializeAI(forceNewKey = false) {
+    if (isAIInitializing || (isAIReady && !forceNewKey)) return isAIReady;
+    isAIInitializing = true;
+    setAILoading(true);
+
+    if (forceNewKey && state.aiClient?.apiKey) {
+        window.aiHelper.markKeyOnCooldown(state.aiClient.apiKey);
     }
-    const hfKey = localStorage.getItem('hf_key');
-    state.hfClient = hfKey ? new HfInferenceEndpoint(hfKey) : null;
+
+    try {
+        if (!window.aiHelper) {
+            throw new Error("AI Helper module not loaded.");
+        }
+
+        const keys = window.aiHelper.getGeminiKeys();
+        if (keys.length === 0) {
+            const settingsModal = document.getElementById('settings-modal');
+            if (settingsModal) settingsModal.classList.remove('hidden');
+            throw new Error("No Gemini API keys found. Please add them in Settings.");
+        }
+
+        const apiKey = window.aiHelper.getAvailableKey(true); // Fallback to LRU if all on cooldown
+        if (!apiKey) {
+            throw new Error("API keys found but none are valid.");
+        }
+
+        // Initialize selectors from helper
+        const toolSelector = document.getElementById('tool-model-select');
+        const contentSelector = document.getElementById('content-model-select');
+        
+        if (toolSelector && toolSelector.options.length <= 1) {
+            await window.aiHelper.populateModelSelector(toolSelector, getToolModelName());
+        }
+        if (contentSelector && contentSelector.options.length <= 1) {
+            await window.aiHelper.populateModelSelector(contentSelector, getContentModelName());
+        }
+
+        state.aiClient = new GoogleGenAI({ apiKey });
+        isAIReady = true;
+        toast('AI Assistant Ready');
+        return true;
+    } catch (error) {
+        console.error("AI Initialization Error:", error);
+        toast(`AI: ${error.message}`);
+        isAIReady = false;
+        state.aiClient = null;
+        return false;
+    } finally {
+        isAIInitializing = false;
+        setAILoading(false);
+    }
 }
 
 // --- CHAT & TOOL INTEGRATION ---
 
-const SYSTEM_PROMPT = `You are a "Visual Knowledge Synthesizer," an expert AI assistant integrated into a visual mind mapping tool. Your goal is to help users research topics and build diagrams with maximum efficiency.
-        
-**Core Workflow:**
-1.  **Your primary tool is \`research_and_add_node\`**. When the user asks to add a new concept, person, place, or event (e.g., "Tell me about photosynthesis," "Add a node for the Eiffel Tower"), you **MUST** call this tool. It automatically handles the research, synthesizes the information, and creates a new node with detailed notes.
-2.  Use the simpler \`add_simple_node\` tool **ONLY** for structural or placeholder nodes that do not require research (e.g., if the user says "Add a 'Pros' and 'Cons' node under the current one").
-3.  For expanding existing nodes, use \`expandNodeWithAI\`.
-4.  Always confirm your actions to the user after the tool has run. When you provide information in your text responses, if you find relevant web pages, embed them as HTML links (\`<a href='...' target='_blank'>...</a>\`) directly in the text.
+const SYSTEM_PROMPT = `You are an "Expert Research Coach," a Socratic mentor integrated into a visual mind mapping tool. Your mission is to guide students through the academic research process (Steps 1-6) using the Socratic Method.
 
-**Tool Usage Rules:**
-*   You MUST only call the functions provided to you in the tool definitions.
-*   Do not invent or call any other functions, especially not Python code. For example, do NOT output text like \`print(google_search.search(...))\`.
-*   Stick strictly to the JSON format for function calls as specified.
+**Socratic Coaching Principles:**
+1. **Ask, Don't Tell:** Instead of giving answers, ask questions that lead the student to discover the answer themselves.
+2. **Scaffold with Choices:** Provide 2-3 interactive suggestion chips to help the student formulate their thoughts or choose a direction.
+3. **Reflect and Refine:** Encourage the student to look back at their map and identify contradictions or gaps in evidence.
+4. **Pedagogical Structure:** Use the 6 steps (Exploration, Questioning, Planning, Gathering, Synthesis, Review).
 
-You will be given the current list of nodes for context. Use their IDs when calling functions.`;
+**Response Formatting:**
+- Use \`<div class="coach-question">...\</div>\` for your primary guiding question.
+- Always include relevant links if you find them, using \`<a href='...' target='_blank'>...</a>\`.
+- Encourage students to save important links to their Bibliography using the bookmark icon that appears next to links.
+- CRITICAL: At the end of every response, provide 2-3 interactive choices using this exact HTML structure:
+  \`<div class="socratic-prompt-container">
+    <button class="suggestion-chip" data-input="Student response 1"><span class="iconify" data-icon="solar:alt-arrow-right-bold-duotone"></span> Choice 1</button>
+    <button class="suggestion-chip" data-input="Student response 2"><span class="iconify" data-icon="solar:alt-arrow-right-bold-duotone"></span> Choice 2</button>
+  \</div>\`
+- Use simple HTML for formatting (<strong>, <ul>, etc.). Do not use markdown fences.
+
+**Integration with the Tool:**
+- Remind students to add findings to their mind map as "Notecards".
+- Encourage them to use the "Sources" tab to manage their bibliography.
+- Explain that each "Notecard" can be linked to a specific source from their bibliography.
+
+**Your Primary Tools:**
+
+- \`update_research_step(step_number)\`: Transition the student through phases.
+- \`add_scaffold_node(label, parentNodeId, type)\`: Add "to-do" or "question" nodes to their map.
+- \`evaluate_student_input(content, context_type)\`: Analyze their drafts mentally before coaching.
+
+**Current Goal:** Always know what step the student is on and help them reach the next one through dialogue.`;
 
 const tools = {
-    research_and_add_node: {
-        declaration: { name: 'research_and_add_node', description: "Researches a topic using available tools, synthesizes the findings into a detailed summary, and adds a new, fully populated node to the map. Use this for creating content-rich nodes.", parameters: { type: Type.OBJECT, properties: { topic: { type: Type.STRING, description: "The topic to research and create a node for." }, parentNodeId: { type: Type.STRING, description: "Optional. The ID of an existing node to connect this new node to." } }, required: ['topic'] } },
-        execute: async ({ topic, parentNodeId }) => { 
-            const context = findNodeContext(parentNodeId);
-            const details = await _internal_researchTopicForDetails(topic, context);
-            const newNode = addNode(topic, parentNodeId, { details: details }); 
-            return { result: `Successfully researched and added a new node for '${topic}' with ID ${newNode.id}.`, newNodeId: newNode.id };
+    update_research_step: {
+        declaration: { 
+            name: 'update_research_step', 
+            description: "Updates the visual progress indicator to a specific step in the 6-step research process.", 
+            parameters: { 
+                type: Type.OBJECT, 
+                properties: { 
+                    step_number: { type: Type.NUMBER, description: "The step number (1-6) to activate." } 
+                }, 
+                required: ['step_number'] 
+            } 
+        },
+        execute: async ({ step_number }) => { 
+            window.dispatchEvent(new CustomEvent('research-step-changed', { detail: { step: step_number } }));
+            return { result: `Successfully updated research progress to Step ${step_number}.` };
         }
     },
-    add_simple_node: {
-        declaration: { name: 'add_simple_node', description: 'Adds a new, simple node to the map without researching it. Use for structural elements like "Pros" or "Cons".', parameters: { type: Type.OBJECT, properties: { label: { type: Type.STRING, description: "The text label for the new node." }, parentNodeId: { type: Type.STRING, description: "Optional. The ID of an existing node to connect this new node to." } }, required: ['label'] } },
-        execute: async ({ label, parentNodeId }) => { const newNode = addNode(label, parentNodeId); return { result: `Successfully added simple node '${label}' with ID ${newNode.id}.`, newNodeId: newNode.id }; }
+    add_scaffold_node: {
+        declaration: { 
+            name: 'add_scaffold_node', 
+            description: "Adds a placeholder or structural node to the map for the student to work on. Use this to help them organize their thoughts.", 
+            parameters: { 
+                type: Type.OBJECT, 
+                properties: { 
+                    label: { type: Type.STRING, description: "The text label for the scaffold node." },
+                    parentNodeId: { type: Type.STRING, description: "Optional. The parent node to connect to." },
+                    type: { type: Type.STRING, enum: ['placeholder', 'question', 'evidence', 'task'], description: "The type of scaffolding node." }
+                }, 
+                required: ['label'] 
+            } 
+        },
+        execute: async ({ label, parentNodeId, type }) => { 
+            const colorMap = { placeholder: '#64748b', question: '#fbbf24', evidence: '#2dd4bf', task: '#a855f7' };
+            const newNode = addNode(label, parentNodeId, { shape: 'rectangle', color: colorMap[type] || '#38bdf8' }); 
+            return { result: `Added a ${type} scaffold node with ID ${newNode.id}.`, newNodeId: newNode.id };
+        }
+    },
+    evaluate_student_input: {
+        declaration: { 
+            name: 'evaluate_student_input', 
+            description: "Analyzes student work (like a research question) and provides specific coaching feedback.", 
+            parameters: { 
+                type: Type.OBJECT, 
+                properties: { 
+                    content: { type: Type.STRING, description: "The student's drafted content." },
+                    context_type: { type: Type.STRING, enum: ['topic', 'question', 'keywords'], description: "What the student is working on." }
+                }, 
+                required: ['content', 'context_type'] 
+            } 
+        },
+        execute: async ({ context_type }) => { 
+            return { result: `Evaluation complete for ${context_type}. Please provide your coaching feedback now.` };
+        }
+    },
+    analyze_source_content: {
+        declaration: { 
+            name: 'analyze_source_content', 
+            description: "Helps the student analyze a snippet of text or a source they've found, identifying bias, key evidence, or interesting perspectives.", 
+            parameters: { 
+                type: Type.OBJECT, 
+                properties: { 
+                    text: { type: Type.STRING, description: "The source text to analyze." } 
+                }, 
+                required: ['text'] 
+            } 
+        },
+        execute: async () => { 
+            return { result: "Analysis complete. Please provide your coaching insights to the student." };
+        }
+    },
+    google_search: {
+        declaration: { name: 'google_search', description: 'Use to help the student find information or verify facts during the gathering phase.', parameters: { type: Type.OBJECT, properties: { query: { type: Type.STRING, description: 'The search query.' } }, required: ['query'] } },
+        execute: async ({ query }) => { 
+            const result = await apiThrottler.enqueue(() => state.aiClient.models.generateContent({ model: getToolModelName(), contents: query, config: { tools: [{ googleSearch: {} }] } }));
+            const text = result.text; const suggestionsHtml = result.candidates?.[0]?.groundingMetadata?.searchEntryPoint?.renderedContent; return { isGroundedResponse: true, text: text, suggestionsHtml: suggestionsHtml }; 
+        }
     },
     deleteNodeById: {
-        declaration: { name: 'deleteNodeById', description: 'Deletes a node and all its children from the map by its ID.', parameters: { type: Type.OBJECT, properties: { nodeId: { type: Type.STRING, description: "The ID of the node to delete." } }, required: ['nodeId'] } },
+        declaration: { name: 'deleteNodeById', description: 'Deletes a node from the map.', parameters: { type: Type.OBJECT, properties: { nodeId: { type: Type.STRING } }, required: ['nodeId'] } },
         execute: async ({ nodeId }) => { deleteNodeById(nodeId); return { result: `Successfully deleted node ${nodeId}.` }; }
     },
     editNodeLabel: {
-        declaration: { name: 'editNodeLabel', description: 'Edits the label of an existing node.', parameters: { type: Type.OBJECT, properties: { nodeId: { type: Type.STRING, description: "The ID of the node to edit." }, newLabel: { type: Type.STRING, description: "The new text label for the node." } }, required: ['nodeId', 'newLabel'] } },
+        declaration: { name: 'editNodeLabel', description: 'Edits the label of a node.', parameters: { type: Type.OBJECT, properties: { nodeId: { type: Type.STRING }, newLabel: { type: Type.STRING } }, required: ['nodeId', 'newLabel'] } },
         execute: async ({ nodeId, newLabel }) => { editNodeLabel(nodeId, newLabel); return { result: `Successfully edited node ${nodeId}.` }; }
     },
     connectNodesById: {
-        declaration: { name: 'connectNodesById', description: 'Creates a directional link from a source node to a target node.', parameters: { type: Type.OBJECT, properties: { sourceNodeId: { type: Type.STRING }, targetNodeId: { type: Type.STRING } }, required: ['sourceNodeId', 'targetNodeId'] } },
+        declaration: { name: 'connectNodesById', description: 'Connects two nodes.', parameters: { type: Type.OBJECT, properties: { sourceNodeId: { type: Type.STRING }, targetNodeId: { type: Type.STRING } }, required: ['sourceNodeId', 'targetNodeId'] } },
         execute: async ({ sourceNodeId, targetNodeId }) => { connectNodesById(sourceNodeId, targetNodeId); return { result: `Successfully connected ${sourceNodeId} to ${targetNodeId}.` }; }
-    },
-    expandNodeWithAI: {
-        declaration: { name: 'expandNodeWithAI', description: 'Generates several new, relevant child nodes connected to a specified parent node, researching each new node as it is created.', parameters: { type: Type.OBJECT, properties: { nodeId: { type: Type.STRING, description: "The ID of the parent node to expand from." }, instruction: { type: Type.STRING, description: "A brief instruction for the expansion, e.g., 'key components' or 'historical events'." } }, required: ['nodeId', 'instruction'] } },
-        execute: async ({ nodeId, instruction }) => { const { nodes } = getGraphState(); const node = nodes.find(n => n.id === nodeId); if (!node) return { error: "Node not found." }; await _internal_expandNodeWithAI(node, instruction); return { result: `Expanded and researched node ${nodeId} with new children.` }; }
     },
 };
 
@@ -131,14 +243,21 @@ const tools = {
  * ensuring robust and accurate interactions based on the latest SDK documentation.
  */
 export async function sendChatMessage(message, currentMapId) {
-    if (!state.aiClient || state.isAITaskRunning || !message.trim()) {
+    if ((!state.aiClient && !window.aiHelper.getAvailableKey()) || state.isAITaskRunning || !message.trim()) {
         if(!state.aiClient) toast("Please set your Gemini API key in Settings.");
         return;
     }
+    
+    // Ensure AI is initialized if we have keys but no client
+    if (!state.aiClient && window.aiHelper.getAvailableKey()) {
+        await initializeAI();
+    }
+
     setAILoading(true);
     addMessageToChatHistory('user', message, true, (role, content) => dbManager.saveMessage(currentMapId, { role, content }));
     
     const { nodes } = getGraphState();
+    const modelName = getToolModelName();
     
     // Start with the full history and add the current user message
     let currentContents = [
@@ -147,47 +266,64 @@ export async function sendChatMessage(message, currentMapId) {
     ];
 
     try {
-        let safetyStop = 5; // Prevent infinite loops
-        while (safetyStop > 0) {
-            safetyStop--;
+        let retryCount = 0;
+        const maxRetries = window.aiHelper.getGeminiKeys().length;
+        let accumulatedSuggestionsHtml = '';
 
-            const response = await apiThrottler.enqueue(() => state.aiClient.models.generateContent({
-                model: getToolModelName(),
-                contents: currentContents,
-                config: {
-                    tools: [{ functionDeclarations: Object.values(tools).map(t => t.declaration) }],
-                    systemInstruction: SYSTEM_PROMPT
-                }
-            }));
-            
-            // REVISED: Access function calls directly from the response property.
-            const functionCalls = response.functionCalls;
+        while (retryCount <= maxRetries) {
+            try {
+                let safetyStop = 5; // Prevent infinite loops
+                while (safetyStop > 0) {
+                    safetyStop--;
 
-            if (!functionCalls || functionCalls.length === 0) {
-                // No function calls, we have our final text response.
-                const finalText = response.text;
-                if (finalText) {
-                    addMessageToChatHistory('model', finalText, true, (role, content) => dbManager.saveMessage(currentMapId, { role, content }));
-                    state.conversationHistory = [...currentContents, { role: 'model', parts: [{ text: finalText }] }];
+                    const payload = {
+                        contents: currentContents,
+                        tools: [{ functionDeclarations: Object.values(tools).map(t => t.declaration) }],
+                        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }
+                    };
+                    
+                    const data = await window.aiHelper.callGeminiDirect('knowledge_mapper_chat', payload, modelName);
+                    const candidate = data.candidates[0];
+                    const responseParts = candidate.content.parts;
+                    const functionCalls = responseParts.filter(p => p.functionCall).map(p => p.functionCall);
+
+                    if (!functionCalls || functionCalls.length === 0) {
+                        const finalText = responseParts.filter(p => p.text).map(p => p.text).join('\n');
+                        if (finalText) {
+                            addMessageToChatHistory('model', finalText, true, (role, content) => dbManager.saveMessage(currentMapId, { role, content }), accumulatedSuggestionsHtml);
+                            state.conversationHistory = [...currentContents, candidate.content];
+                        }
+                        break; 
+                    }
+                    
+                    const callDetails = functionCalls.map(fc => `${fc.name}(${JSON.stringify(fc.args)})`).join(', ');
+                    addMessageToChatHistory('system', `<i>Executing: ${callDetails}...</i>`, false);
+
+                    const toolPromises = functionCalls.map(call =>
+                        tools[call.name].execute(call.args)
+                            .then(output => {
+                                if (output.suggestionsHtml) accumulatedSuggestionsHtml += output.suggestionsHtml;
+                                return { functionResponse: { name: call.name, response: { result: output } } };
+                            })
+                            .catch(error => ({ functionResponse: { name: call.name, response: { error: error.message } } }))
+                    );
+                    const toolResponses = await Promise.all(toolPromises);
+                    
+                    currentContents.push(candidate.content);
+                    currentContents.push({ role: 'user', parts: toolResponses });
                 }
-                break; // Exit the loop
+                break; // Break retry loop on success
+            } catch (error) {
+
+                const errorMsg = String(error.message);
+                if ((errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("rate limit")) && retryCount < maxRetries) {
+                    console.warn(`[API] Quota exceeded. Rotating key (Retry ${retryCount + 1}/${maxRetries})...`);
+                    await initializeAI(true);
+                    retryCount++;
+                    continue;
+                }
+                throw error;
             }
-            
-            // A function call was made.
-            const callDetails = functionCalls.map(fc => `${fc.name}(${JSON.stringify(fc.args)})`).join(', ');
-            addMessageToChatHistory('system', `<i>Executing: ${callDetails}...</i>`, false);
-
-            // REVISED: Prepare tool responses for the next turn, following the documented format.
-            const toolPromises = functionCalls.map(call =>
-                tools[call.name].execute(call.args)
-                    .then(output => ({ name: call.name, response: { result: output } }))
-                    .catch(error => ({ name: call.name, response: { error: error.message } }))
-            );
-            const toolResponses = await Promise.all(toolPromises);
-            
-            // REVISED: Add the model's turn (with the function call) and the user's turn (with the tool response) to the history.
-            currentContents.push({ role: 'model', parts: functionCalls.map(fc => ({ functionCall: fc })) });
-            currentContents.push({ role: 'user', parts: toolResponses.map(tr => ({ functionResponse: tr })) });
         }
     } catch (error) {
         console.error("Chat error:", error);
@@ -213,7 +349,15 @@ export async function _internal_researchTopicForDetails(topic, context = {}) {
     ${contextClause}
     Your response will be grounded on Google Search results to ensure accuracy.
     Synthesize the findings into a well-structured report.
-    CRITICAL: Format your entire response using simple HTML. Use tags like <h3>, <h4>, <p>, <ul>, <li>, and <strong> for structure and emphasis. Whenever possible, include relevant source links within your text using \`<a href='...' target='_blank'>...</a>\` tags. Do not use any markdown or code block fences (like \`\`\`). Your output must be only the raw HTML content.`;
+    CRITICAL: Format your entire response using simple HTML. Use tags like <h3>, <h4>, <p>, <ul>, <li>, and <strong>. 
+    
+    Structure your report to help a student fill out a "Notecard":
+    - Provide a concise summary (good for Paraphrasing).
+    - Provide 1-2 direct impactful quotes (good for the Quote section).
+    - Provide context or interesting facts.
+    
+    Whenever possible, include relevant source links within your text using \`<a href='...' target='_blank'>...</a>\` tags. Do not use any markdown or code block fences. Your output must be only the raw HTML content.`;
+
     
     try {
         const response = await apiThrottler.enqueue(() => state.aiClient.models.generateContent({

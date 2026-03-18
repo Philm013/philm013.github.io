@@ -88,20 +88,37 @@ Use these specific URLs to ensure compatibility across the monorepo.
 ## 🤖 4. AI Integration (Google Gemini)
 
 ### **Google Generative AI SDK**
-*   **Dynamic Loading:** Load as an ESM module to avoid global namespace pollution.
+*   **Dynamic Loading:** Load as an ESM module to avoid global namespace pollution, or use the "PhilM Standard" loader in `index.html`.
+*   **Recommended Models (2026 Standard):** 
+    *   `gemini-3-flash-preview`: Primary for fast, responsive interactions.
+    *   `gemini-3-pro-preview`: For complex reasoning, coding, and multi-file analysis.
+*   **Dynamic Model Listing:** Always fetch available models to ensure compatibility with the user's API key and region.
 *   **Implementation Pattern:**
     ```javascript
+    // 1. Fetch available models
+    async function listModels(apiKey) {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const data = await resp.json();
+        // Filter for models that support content generation
+        return data.models.filter(m => m.supportedGenerationMethods.includes('generateContent'));
+    }
+
+    // 2. Initialize with selected model
     const sdkUrl = "https://cdn.jsdelivr.net/npm/@google/generative-ai/dist/index.mjs";
     const module = await import(sdkUrl);
     const genAI = new module.GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-3-flash-preview",
+        systemInstruction: "You are a helpful assistant..."
+    });
 
-    // For document analysis:
+    // 3. For document analysis:
     const result = await model.generateContent([
         prompt,
         { inlineData: { data: base64Pdf, mimeType: "application/pdf" } }
     ]);
     ```
+*   **Mandate:** UI implementations **MUST** provide a model selector populated via `listModels()` to prevent hardcoding deprecated model names (like the legacy `gemini-1.5` series).
 
 ---
 

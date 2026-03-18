@@ -39,6 +39,7 @@ export const AI = {
                 "metal": "e.g., Copper, Silver, Gold, Nickel, Bi-Metallic",
                 "grade": "Estimated numismatic grade (e.g., G, F, VF, XF, AU, MS60)",
                 "estimatedValue": numeric value representing estimated market value in USD,
+                "citation": "Source or reasoning for the value estimation (e.g., Numista, recent auction prices)",
                 "description": "Brief historical or design detail"
             }
             If any information cannot be determined, use null for that field (or 0 for estimatedValue).

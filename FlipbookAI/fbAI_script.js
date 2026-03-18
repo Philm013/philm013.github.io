@@ -115,16 +115,22 @@ function promptForKey() {
     const key = prompt("Please enter your Google Gemini API Key to enable AI Chat:");
     if (key && key.trim()) {
         sessionStorage.setItem(GEMINI_API_KEY_SESSION_KEY, key.trim());
+        // Also add to centralized helper's possible sources
+        const currentKeys = window.aiHelper.getGeminiKeys();
+        if (!currentKeys.includes(key.trim())) {
+            const keysArray = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
+            keysArray.push(key.trim());
+            localStorage.setItem('gemini_api_keys', JSON.stringify(keysArray));
+        }
         return key.trim();
     }
     alert("API Key is required to use the AI Chat feature.");
     return null;
 }
 function getApiKey() {
-    let key = sessionStorage.getItem(GEMINI_API_KEY_SESSION_KEY);
-    if (!key) key = promptForKey();
-    return key;
+    return window.aiHelper.getAvailableKey() || promptForKey();
 }
+
 async function initializeAI() {
     if (isAIInitializing || isAIInitialized) return isAIInitialized;
     isAIInitializing = true;
@@ -136,6 +142,11 @@ async function initializeAI() {
             await new Promise(resolve => setTimeout(resolve, 500));
             if (typeof window.GoogleGenerativeAI === 'undefined') throw new Error("Google AI SDK failed to load.");
         }
+
+        // DYNAMIC MODEL LISTING via centralized helper
+        const selector = document.getElementById('chat-model-selector');
+        await window.aiHelper.populateModelSelector(selector, 'gemini-1.5-flash');
+
         genAI = new window.GoogleGenerativeAI(apiKey);
         isAIInitialized = true;
         chatToggleButton.disabled = !pdfDoc;
@@ -147,8 +158,7 @@ async function initializeAI() {
     } finally {
         isAIInitializing = false;
     }
-}
-async function getPdfDataForChat() {
+}async function getPdfDataForChat() {
     const fileParts = [];
     if (!currentPdfDataArrayBuffer) return null;
     try {

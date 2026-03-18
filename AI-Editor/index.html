@@ -5,6 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Edit.Me with AI - Draggable Modal - Function Calling - Context</title>
+    <script>
+        // Ensure trailing slash for correct relative path resolution
+        if (!window.location.pathname.endsWith('/') && !window.location.pathname.endsWith('.html')) {
+            window.location.replace(window.location.pathname + '/' + window.location.search + window.location.hash);
+        }
+    </script>
 
     <!-- CodeMirror CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -270,6 +276,10 @@
         });
     </script>
 
+    <script type="module">
+        import * as aiHelper from '../js/ai-helper.js';
+        window.aiHelper = aiHelper;
+    </script>
     <!-- Load Your Main App Module LAST -->
     <script type="module" src="main.js"></script>
 </body>

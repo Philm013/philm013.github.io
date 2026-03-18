@@ -31,7 +31,7 @@ import * as argument from './modules/argument.js';
 import * as communication from './modules/communication.js';
 
 // Teacher Tools
-import { launchTemplate, applyTemplate, previewTemplate, previewPreset, closeLessonPreview, saveCurrentAsLesson, deleteLesson, launchLesson, applyLessonToCurrent, removeFromPhenomenon } from './teacher/dashboard.js';
+import { launchTemplate, applyTemplate, previewTemplate, previewPreset, closeLessonPreview, saveCurrentAsLesson, deleteLesson, launchLesson, applyLessonToCurrent, removeFromPhenomenon, toggleDashboardMode, exitActivityDashboard } from './teacher/dashboard.js';
 import * as dashboard from './teacher/dashboard.js';
 import { switchViewerModule, stopViewingStudent, viewStudentWork, setFeedbackSticker, closeCommentModal, deleteComment, startCommentDrag, renderViewerNodes, handleViewerPointerDown, handleViewerWheel, handleViewerClick, openTableRowFeedback, addDataRowSticker } from './teacher/viewer.js';
 import * as viewer from './teacher/viewer.js';
@@ -97,6 +97,8 @@ window.saveCurrentAsLesson = saveCurrentAsLesson;
 window.deleteLesson = deleteLesson;
 window.launchLesson = launchLesson;
 window.applyLessonToCurrent = applyLessonToCurrent;
+window.toggleDashboardMode = toggleDashboardMode;
+window.exitActivityDashboard = exitActivityDashboard;
 window.setNgssBrowserSection = setNgssBrowserSection;
 window.setNgssFilter = setNgssFilter;
 window.toggleNgssDimFilter = toggleNgssDimFilter;

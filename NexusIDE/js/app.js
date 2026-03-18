@@ -2729,13 +2729,12 @@ const Nexus = {
     async refreshModelList() {
         const selector = document.getElementById('setting-ai-model'); if (!selector || !Nexus.ai.apiKey) return;
         try {
-            const models = await Nexus.ai.listModels(); 
-            // Broaden filter to show more available models
-            const filtered = models.filter(m => 
-                m.name.toLowerCase().includes('gemini') && 
+            const models = await Nexus.ai.listModels();
+            const filtered = models.filter(m =>
+                m.name.toLowerCase().includes('gemini') &&
                 m.supportedGenerationMethods.includes('generateContent')
             );
-            
+
             if (filtered.length > 0) {
                 const currentModel = localStorage.getItem('nexus_ai_model');
                 selector.innerHTML = filtered.map(m => {
@@ -2744,19 +2743,18 @@ const Nexus = {
                 }).join('');
             } else {
                 selector.innerHTML = `
-                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Default)</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
+                    <option value="gemini-3-flash-preview">Gemini 3 Flash (Default)</option>
+                    <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
+                    <option value="gemini-3-pro-image-preview">Gemini 3 Pro Image</option>
                 `;
             }
-        } catch (e) { 
-            console.error("Failed to refresh models list:", e); 
+        } catch (e) {
+            console.error("Failed to refresh models list:", e);
         }
     },
 
     closeSettings() { const s = document.getElementById('modal-settings'); if(s) { s.classList.add('hidden'); document.body.classList.remove('modal-open'); } },
-    
-    /** Synchronizes LocalStorage settings with the Settings modal inputs. @private */
+
     loadSettings() {
         const gi = document.getElementById('setting-gemini-key'); const mi = document.getElementById('setting-ai-model');
         const ti = document.getElementById('setting-ai-temp'); const ai = document.getElementById('setting-ai-instructions');
@@ -2767,7 +2765,7 @@ const Nexus = {
         const uk = document.getElementById('setting-unsplash-key'); const pk = document.getElementById('setting-pexels-key');
 
         if (gi) gi.value = localStorage.getItem('nexus_gemini_key') || '';
-        if (mi) mi.value = localStorage.getItem('nexus_ai_model') || 'gemini-1.5-flash';
+        if (mi) mi.value = localStorage.getItem('nexus_ai_model') || 'gemini-3-flash-preview';
         if (ti) ti.value = localStorage.getItem('nexus_ai_temp') || '0.7';
         if (ai) ai.value = localStorage.getItem('nexus_ai_instructions') || '';
         if (ww) ww.checked = localStorage.getItem('nexus_wordwrap') !== 'false';

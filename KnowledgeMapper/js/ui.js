@@ -3,14 +3,13 @@
  */
 export const ui = {
     landingPage: document.getElementById('landing-page'),
+    landingSettingsBtn: document.getElementById('landing-settings-btn'),
     appContainer: document.getElementById('app-container'),
     mapList: document.getElementById('map-list'),
     noMapsMessage: document.getElementById('no-maps-message'),
     newBlankMapBtn: document.getElementById('new-blank-map-btn'),
     importJsonBtn: document.getElementById('import-json-btn'),
-    importClipboardBtn: document.getElementById('import-clipboard-btn'),
     templateLibrary: document.getElementById('template-library'),
-    landingAiMapType: document.getElementById('landing-ai-map-type'),
     landingAiTopicInput: document.getElementById('landing-ai-topic-input'),
     landingAiGenerateBtn: document.getElementById('landing-ai-generate-btn'),
     
@@ -69,12 +68,28 @@ export const ui = {
     researchProgressOverlay: document.getElementById('research-progress-overlay'),
     researchProgressTitle: document.getElementById('research-progress-title'),
     researchChecklist: document.getElementById('research-checklist'),
+
+    // Workspace Tabs & Views
+    chatView: document.getElementById('chat-view'),
+    sourcesView: document.getElementById('sources-view'),
+    outlineView: document.getElementById('outline-view'),
+
+    sourcesList: document.getElementById('sources-list'),
+    outlineTree: document.getElementById('outline-tree'),
+    addSourceBtn: document.getElementById('add-source-btn'),
+    toggleViewBtn: document.getElementById('toggle-view-btn'),
+
+    // Notecard Fields
+    notecardSourceSelect: document.getElementById('notecard-source-select'),
+    notecardQuote: document.getElementById('notecard-quote'),
+    notecardParaphrase: document.getElementById('notecard-paraphrase'),
+    notecardThoughts: document.getElementById('notecard-thoughts'),
 };
 
 /**
  * An array of hex color codes used for the node color palette.
  */
-export const PRESET_COLORS = ['#4a90e2', '#50e3c2', '#f5a623', '#e24a4a', '#bd10e0', '#9013fe', '#7ed321', '#f8e71c'];
+export const PRESET_COLORS = ['#38bdf8', '#2dd4bf', '#fbbf24', '#f43f5e', '#a855f7', '#6366f1', '#84cc16', '#eab308'];
 
 /**
  * An array of objects defining the available node shapes, each with an ID and an SVG path string.
@@ -86,11 +101,6 @@ export const PRESET_SHAPES = [
     { id: 'hexagon', svg: '<path d="M10 2 L 18 6 V 14 L 10 18 L 2 14 V 6 Z" />' },
 ];
 
-export const AVAILABLE_MODELS = {
-    'gemini-2.0-flash': 'Gemini 2.0 Flash (Tool)',
-    'gemini-2.5-flash-preview-05-20': 'Gemini 2.5 Flash (Default)',
-};
-
 /**
  * Displays a short-lived notification message (a "toast") at the bottom of the screen.
  * @param {string} message - The message to display.
@@ -98,6 +108,7 @@ export const AVAILABLE_MODELS = {
  */
 export function toast(message, duration = 3000) {
     const el = document.getElementById('toast');
+    if (!el) return;
     el.textContent = message;
     el.classList.add('show');
     setTimeout(() => el.classList.remove('show'), duration);
@@ -197,14 +208,56 @@ export const researchProgressManager = {
  * @param {string} text - The HTML or text content of the message.
  * @param {boolean} [shouldSave=true] - Whether to trigger the callback to save the message.
  * @param {Function} [dbSaveCallback] - The callback function to save the message.
+ * @param {string} [extraHtml=''] - Optional HTML content to append to the message.
  */
-export function addMessageToChatHistory(role, text, shouldSave = true, dbSaveCallback) {
+export function addMessageToChatHistory(role, text, shouldSave = true, dbSaveCallback, extraHtml = '') {
     const el = document.createElement('div');
     el.classList.add('chat-message', role);
-    el.innerHTML = text.replace(/\n/g, '<br>');
+    
+    let contentHtml = text.replace(/\n/g, '<br>');
+    
+    if (role === 'user') {
+        el.innerHTML = `
+            <div class="message-content">${contentHtml}</div>
+            <button class="resend-btn" title="Resend message" data-text="${text.replace(/"/g, '&quot;')}">
+                <span class="iconify" data-icon="solar:restart-bold-duotone"></span>
+            </button>
+        `;
+    } else {
+        el.innerHTML = contentHtml + (extraHtml ? `<div class="chat-extra-content">${extraHtml}</div>` : '');
+        
+        // NEW: Add "Save Source" buttons to links in model responses
+        if (role === 'model') {
+            const links = el.querySelectorAll('a[href^="http"]');
+            links.forEach(link => {
+                if (link.closest('.chat-extra-content')) return; // Skip grounding chips for now
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'save-source-inline-btn';
+                saveBtn.innerHTML = '<span class="iconify" data-icon="solar:bookmark-opened-bold-duotone"></span>';
+                saveBtn.title = 'Add to Bibliography';
+                saveBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const title = link.textContent || 'Untitled Source';
+                    const url = link.href;
+                    if (window.projectSources) {
+                        window.projectSources.push({ title, url });
+                        window.dispatchEvent(new CustomEvent('sources-updated'));
+                        toast('Added to Bibliography!');
+                        saveBtn.classList.add('saved');
+                        saveBtn.disabled = true;
+                    }
+                };
+                link.parentNode.insertBefore(saveBtn, link.nextSibling);
+            });
+        }
+    }
+    
     ui.aiChatHistory.appendChild(el);
     ui.aiChatHistory.scrollTop = ui.aiChatHistory.scrollHeight;
     if (shouldSave && role !== 'system' && dbSaveCallback) {
         dbSaveCallback(role, text);
     }
 }
+
+

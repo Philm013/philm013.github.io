@@ -113,6 +113,18 @@ async function initApp() {
 
         // 4. Initialize AI Services and set up UI
         initializeAI(); // Checks window.genAiInstance and sets up the local 'genAI' in ai-analyzer.js
+        
+        // Dynamically populate model selectors
+        const modelSelectors = [
+            document.getElementById('aiModelSelectorIndicator'),
+            document.getElementById('aiModelSelectorChat')
+        ];
+        for (const selector of modelSelectors) {
+            if (selector) {
+                await window.aiHelper.populateModelSelector(selector, 'gemini-1.5-pro-latest');
+            }
+        }
+
         updateAiFeatureUI(); // Centralized function to enable/disable all AI UI based on current state
 
         // 6. Setup Modals (generic structures are defined in HTML)

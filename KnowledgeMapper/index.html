@@ -8,43 +8,66 @@
     <meta name="theme-color" content="#1a1a1a">
     
     <title>Gemini Visual Knowledge Tool</title>
+    <script>
+        // Ensure trailing slash for correct relative path resolution
+        if (!window.location.pathname.endsWith('/') && !window.location.pathname.endsWith('.html')) {
+            window.location.replace(window.location.pathname + '/' + window.location.search + window.location.hash);
+        }
+    </script>
     
     <!-- External Libraries -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
    
     <!-- Application Stylesheet -->
     <link rel="stylesheet" href="style.css">
+    
+    <!-- NEW: Centralized AI Helper -->
+    <script type="module">
+        async function loadAiHelper() {
+            const paths = ['/js/ai-helper.js', '/js-shared/ai-helper.js', '../js/ai-helper.js'];
+            for (const path of paths) {
+                try {
+                    const module = await import(path);
+                    window.aiHelper = module;
+                    console.log(`[AI Helper] Successfully loaded from: ${path}`);
+                    return;
+                } catch (e) {
+                    console.warn(`[AI Helper] Failed to load from ${path}, trying next...`);
+                }
+            }
+            console.error('[AI Helper] Could not load from any path!');
+        }
+        loadAiHelper();
+    </script>
 </head>
 <body>
 
     <!-- Landing Page: Initial view for creating/loading maps -->
     <div id="landing-page">
+        <button id="landing-settings-btn" class="icon-button top-right" title="Settings">
+            <span class="iconify" data-icon="solar:settings-bold-duotone"></span>
+        </button>
         <div class="landing-content">
             <div class="landing-header">
-                <h1>Visual Knowledge Tool</h1>
-                <p>A Gemini-Powered Mind Mapping and Research Assistant</p>
+                <div class="logo-container">
+                    <span class="iconify logo-icon" data-icon="solar:graph-up-bold-duotone"></span>
+                </div>
+                <h1>Visual Knowledge</h1>
+                <p>Gemini-Powered Research & Mind Mapping</p>
             </div>
             <div class="landing-section">
-                <h2>Create New</h2>
+                <h2>New Project</h2>
                 <div class="new-map-actions" style="margin-bottom: 20px;">
-                    <button id="new-blank-map-btn" class="primary-button">Start Blank</button>
-                    <button id="import-json-btn" class="secondary-button">Import from File</button>
-                    <button id="import-clipboard-btn" class="secondary-button">Import from Clipboard</button>
+                    <button id="new-blank-map-btn" class="primary-button">Start Freeform</button>
+                    <button id="import-json-btn" class="secondary-button">Import Project</button>
                 </div>
-                <h4>Or, Generate with AI</h4>
+                <h4>Start a Guided Research Journey</h4>
                 <div class="ai-group">
-                    <select id="landing-ai-map-type" class="ai-input">
-                        <option value="mindmap">Mind Map</option>
-                        <option value="flowchart">Flowchart</option>
-                    </select>
-                    <div id="landing-ai-research-options" class="hidden" style="margin: 10px 0; display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="landing-ai-research-toggle" checked style="width: 18px; height: 18px; margin: 0;">
-                        <label for="landing-ai-research-toggle" style="font-weight: normal; font-size: 14px; margin-bottom: 0;">Auto-research each step</label>
-                    </div>
-                    <input type="text" id="landing-ai-topic-input" class="ai-input" placeholder="e.g., The History of Space Exploration">
-                    <button id="landing-ai-generate-btn" class="primary-button">Generate New Map</button>
+                    <input type="text" id="landing-ai-topic-input" class="ai-input" placeholder="What topic are you curious about? (e.g., Renewable Energy)">
+                    <button id="landing-ai-generate-btn" class="primary-button"><span class="iconify" data-icon="solar:compass-bold-duotone"></span> Begin Journey</button>
                 </div>
             </div>
             <div class="landing-section">
@@ -59,7 +82,6 @@
         </div>
     </div>
 
-    <!-- Main Application Container: Hidden until a map is loaded -->
     <div id="app-container" class="hidden">
         <!-- Graph Container: Where the D3.js graph is rendered -->
         <div id="graph-container">
@@ -67,45 +89,100 @@
         </div>
         <!-- Toolbar: Main navigation and action buttons -->
         <div id="toolbar">
-            <button class="tool-button" id="homeBtn" title="Back to My Maps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></button>
-            <button class="tool-button" id="saveBtn" title="Save Map (Right-click to Save as Template)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M7 21v-8h10v8M7 3v5h8"/></svg></button>
-            <button class="tool-button" id="exportBtn" title="Export Map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
-            <button class="tool-button" id="selectModeBtn" title="Select Tool (for Mobile)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4 2" fill="none" /></svg></button>
-            <button class="tool-button" id="addNodeBtn" title="Add Node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14" /></svg></button>
-            <button class="tool-button" id="layoutBtn" title="Cycle Layout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6l3 6h12l3-6H3zm0 12h18M9 6V3m6 3V3"/></svg></button>
-            <button class="tool-button" id="linkStyleBtn" title="Cycle Link Style"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 12h8M12 12l4 4M12 12l4-4M12 4v16"/></svg></button>
-            <button class="tool-button" id="aiPanelBtn" title="AI Assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a10 10 0 00-3.53 19.47A10 10 0 0012 2zm0 18a8 8 0 110-16 8 8 0 010 16z"/><path d="M12 12a2 2 0 11-2-2 2 2 0 012 2zM8 12a2 2 0 11-2-2 2 2 0 012 2zM16 12a2 2 0 11-2-2 2 2 0 012 2z"/></svg></button>
-            <button class="tool-button" id="settingsBtn" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
-            <button class="tool-button" id="helpBtn" title="Help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></button>
+            <button class="tool-button" id="homeBtn" title="Back to My Maps"><span class="iconify" data-icon="solar:home-2-bold-duotone"></span><span class="label">Home</span></button>
+            <button class="tool-button" id="saveBtn" title="Save Map (Right-click to Save as Template)"><span class="iconify" data-icon="solar:diskette-bold-duotone"></span><span class="label">Save</span></button>
+            <button class="tool-button" id="exportBtn" title="Export Map"><span class="iconify" data-icon="solar:export-bold-duotone"></span><span class="label">Export</span></button>
+            <button class="tool-button" id="selectModeBtn" title="Select Tool (for Mobile)"><span class="iconify" data-icon="solar:selection-bold-duotone"></span><span class="label">Select</span></button>
+            <button class="tool-button" id="addNodeBtn" title="Add Node"><span class="iconify" data-icon="solar:add-circle-bold-duotone"></span><span class="label">Add</span></button>
+            <button class="tool-button" id="layoutBtn" title="Cycle Layout"><span class="iconify" data-icon="solar:widget-2-bold-duotone"></span><span class="label">Layout</span></button>
+            <button class="tool-button" id="linkStyleBtn" title="Cycle Link Style"><span class="iconify" data-icon="solar:graph-bold-duotone"></span><span class="label">Style</span></button>
+            <button class="tool-button" id="toggleViewBtn" title="Toggle Dashboard View"><span class="iconify" data-icon="solar: mirror-left-bold-duotone"></span><span class="label">View</span></button>
+            <button class="tool-button" id="aiPanelBtn" title="AI Assistant"><span class="iconify" data-icon="solar:magic-stick-3-bold-duotone"></span><span class="label">AI</span></button>
+
+            <button class="tool-button" id="settingsBtn" title="Settings"><span class="iconify" data-icon="solar:settings-bold-duotone"></span><span class="label">Config</span></button>
+            <button class="tool-button" id="helpBtn" title="Help"><span class="iconify" data-icon="solar:question-square-bold-duotone"></span><span class="label">Help</span></button>
         </div>
     </div>
 
     <!-- Side Panels -->
     <div id="ai-panel" class="side-panel">
-        <div class="side-panel-header"><span>AI Assistant</span><span id="ai-panel-close" class="side-panel-close">×</span></div>
+        <div class="panel-drawer-handle"></div>
+        <div class="side-panel-header"><span>Research Toolset</span><span id="ai-panel-close" class="side-panel-close"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></span></div>
+        
+        <!-- Workspace Tabs -->
+        <div id="workspace-tabs-container" style="display: flex; background: rgba(15, 23, 42, 0.2); border-bottom: 1px solid var(--border-color);">
+            <button class="workspace-tab active" data-tab="chat">Coach</button>
+            <button class="workspace-tab" data-tab="sources">Sources</button>
+            <button class="workspace-tab" data-tab="questions">Outline</button>
+        </div>
+
+        <div id="research-progress-stepper">
+            <div class="step-indicator" data-step="1" title="Exploration">1</div>
+            <div class="step-indicator" data-step="2" title="Questioning">2</div>
+            <div class="step-indicator" data-step="3" title="Planning">3</div>
+            <div class="step-indicator" data-step="4" title="Gathering">4</div>
+            <div class="step-indicator" data-step="5" title="Synthesis">5</div>
+            <div class="step-indicator" data-step="6" title="Review">6</div>
+        </div>
         <div class="side-panel-content">
-            <div id="ai-chat-history"></div>
-            <div class="ai-input-area">
-                <input type="text" id="ai-chat-input" class="ai-input" placeholder="Ask me to research or build...">
-                <button id="ai-chat-send-btn" class="primary-button">Send</button>
+            <!-- Chat View -->
+            <div id="chat-view" class="view-container">
+                <div id="ai-chat-history"></div>
+                <div class="ai-input-area">
+                    <input type="text" id="ai-chat-input" class="ai-input" placeholder="Chat with your research coach...">
+                    <button id="ai-chat-send-btn" class="primary-button"><span class="iconify" data-icon="solar:plain-2-bold-duotone"></span></button>
+                </div>
+            </div>
+
+            <!-- Sources View -->
+            <div id="sources-view" class="view-container hidden" style="padding: 24px; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin:0;">Bibliography</h3>
+                    <button id="add-source-btn" class="secondary-button" style="padding: 8px 12px; font-size: 12px; border-radius: 8px;">Add Source</button>
+                </div>
+                <div id="sources-list" class="sources-list" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+
+            <!-- Outline View -->
+            <div id="outline-view" class="view-container hidden" style="padding: 24px; overflow-y: auto;">
+                <h3 style="margin-bottom: 20px;">Project Outline</h3>
+                <div id="outline-tree" class="outline-tree"></div>
             </div>
         </div>
     </div>
 
     <div id="node-detail-panel" class="side-panel">
-        <div id="node-detail-header" class="side-panel-header"><span id="node-detail-title">Node Details</span><span id="node-detail-close" class="side-panel-close">×</span></div>
-        <div id="node-detail-content" class="side-panel-content">
-            <div id="rte-toolbar" class="rte-toolbar">
-                <button class="rte-button" data-command="bold" title="Bold"><b>B</b></button>
-                <button class="rte-button" data-command="italic" title="Italic"><i>I</i></button>
-                <button class="rte-button" data-command="underline" title="Underline"><u>U</u></button>
-                <button class="rte-button" data-command="insertUnorderedList" title="Bullet List">●</button>
-                <button class="rte-button" data-command="insertOrderedList" title="Numbered List">1.</button>
+        <div class="panel-drawer-handle"></div>
+        <div id="node-detail-header" class="side-panel-header"><span id="node-detail-title">Notecard Details</span><span id="node-detail-close" class="side-panel-close"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></span></div>
+        <div id="node-detail-content" class="side-panel-content" style="overflow-y: auto;">
+            <div style="padding: 20px 24px 0;">
+                <div class="form-group">
+                    <label for="notecard-source-select">Source</label>
+                    <select id="notecard-source-select" class="ai-input"></select>
+                </div>
             </div>
-            <div id="node-detail-area" class="editable-content" contenteditable="true" placeholder="Add notes, links, or more information here..."></div>
-            <button id="generate-details-btn" class="primary-button">Enrich Details with AI ✨</button>
+            
+            <div class="notecard-sections" style="padding: 0 24px; flex-grow: 1; display: flex; flex-direction: column; gap: 16px;">
+                <div class="notecard-section">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">Quote</label>
+                    <div id="notecard-quote" class="editable-content" contenteditable="true" placeholder="Paste important quotes here..." style="min-height: 80px; border-radius: 12px;"></div>
+                </div>
+                <div class="notecard-section">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">Paraphrase</label>
+                    <div id="notecard-paraphrase" class="editable-content" contenteditable="true" placeholder="Rewrite the idea in your own words..." style="min-height: 80px; border-radius: 12px;"></div>
+                </div>
+                <div class="notecard-section">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">My Thoughts</label>
+                    <div id="notecard-thoughts" class="editable-content" contenteditable="true" placeholder="How does this connect to your research?" style="min-height: 80px; border-radius: 12px;"></div>
+                </div>
+            </div>
+
+            <div style="padding: 24px; border-top: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.2);">
+                <button id="generate-details-btn" class="primary-button" style="width: 100%;"><span class="iconify" data-icon="solar:magic-stick-3-bold-duotone"></span> Enrich with AI</button>
+            </div>
         </div>
     </div>
+
 
     <!-- Popups and Context Menus -->
     <div id="context-menu" class="popup-menu hidden">
@@ -145,11 +222,11 @@
     <!-- Modals -->
     <div id="settings-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <div class="modal-header"><h2>Settings</h2><button class="modal-close-btn">×</button></div>
+            <div class="modal-header"><h2>Settings</h2><button class="modal-close-btn"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></button></div>
             <div class="modal-body">
                 <h3>API Key Settings</h3>
-                <p>Keys are saved in your browser's local storage and are required for AI features.</p>
-                <div class="form-group"><label for="gemini-key">Google Gemini API Key</label><input type="password" id="gemini-key"></div>
+                <p>Keys are saved in your browser's local storage and are rotated automatically. Separate multiple keys with commas.</p>
+                <div class="form-group"><label for="gemini-key">Google Gemini API Keys (comma separated)</label><textarea id="gemini-key" rows="3" class="ai-input" style="height: auto; font-family: monospace;"></textarea></div>
                 <div class="form-group"><label for="hf-key">Hugging Face API Token</label><input type="password" id="hf-key"></div>
                 <div class="form-group"><label for="newsapi-key">NewsAPI Key</label><input type="password" id="newsapi-key"></div>
                 <div class="form-group"><label for="finnhub-key">Finnhub API Key</label><input type="password" id="finnhub-key"></div>
@@ -174,7 +251,7 @@
 
     <div id="help-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <div class="modal-header"><h2>Help & Information</h2><button class="modal-close-btn">×</button></div>
+            <div class="modal-header"><h2>Help & Information</h2><button class="modal-close-btn"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></button></div>
             <div class="modal-body">
                 <h3>Layouts & Map Types</h3>
                 <ul>
@@ -215,7 +292,7 @@
         <div class="modal-content" style="width: 500px;">
             <div class="modal-header">
                 <h2>Export Map</h2>
-                <button class="modal-close-btn">×</button>
+                <button class="modal-close-btn"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></button>
             </div>
             <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px;">
                 <div>

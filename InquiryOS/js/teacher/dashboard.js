@@ -1016,3 +1016,16 @@ export async function openActivityDashboard() {
     App.work = App.teacherSettings.exemplars[App.currentModule];
     updateModeUI(); toast('Exemplar Mode', 'info');
 }
+
+export function toggleDashboardMode(monitor) {
+    App.viewerState.isMonitoring = monitor;
+    renderTeacherContent();
+}
+
+export async function exitActivityDashboard() {
+    App.isExemplarMode = false;
+    App.viewerState.isMonitoring = false;
+    const { loadFromStorage } = await import('../core/sync.js');
+    await loadFromStorage();
+    updateModeUI();
+}

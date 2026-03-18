@@ -1,3 +1,4 @@
+/* global cv */
 import { DB } from './db.js';
 import { AI } from './ai.js';
 import { Capture } from './capture.js';
@@ -6,6 +7,18 @@ import { UI } from './ui.js';
 export const App = {
     async init() {
         try {
+            // Wait for OpenCV to be ready
+            if (typeof cv === 'undefined' || !cv.getBuildInformation) {
+                await new Promise(resolve => {
+                    const checkCV = setInterval(() => {
+                        if (typeof cv !== 'undefined' && cv.getBuildInformation) {
+                            clearInterval(checkCV);
+                            resolve();
+                        }
+                    }, 100);
+                });
+            }
+
             await DB.init();
             await AI.init();
             
@@ -15,6 +28,13 @@ export const App = {
             // Initial View
             this.loadCollection();
             
+            // Hide CV Loading screen
+            const loader = document.getElementById('cvLoading');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.remove(), 500);
+            }
+
             // Check if API key is set
             if (!AI.apiKey) {
                 UI.showToast("Please configure your Gemini API Key in Settings.", "warning");
@@ -66,6 +86,7 @@ export const App = {
                     team: aiData.team || 'Unknown',
                     estimatedCondition: aiData.estimatedCondition || 'Raw',
                     estimatedValue: aiData.estimatedValue || 0,
+                    citation: aiData.citation || 'AI Market Estimation',
                     dateAdded: new Date().toISOString(),
                     tags: []
                 };

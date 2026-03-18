@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Archie's IDE</title>
+    <script>
+        // Ensure trailing slash for correct relative path resolution
+        if (!window.location.pathname.endsWith('/') && !window.location.pathname.endsWith('.html')) {
+            window.location.replace(window.location.pathname + '/' + window.location.search + window.location.hash);
+        }
+    </script>
     <style>
         :root {
             --bg-color: #1e1e1e;
@@ -688,8 +694,10 @@
     <input type="file" id="import-project-input" webkitdirectory directory multiple style="display: none;">
 
     <script type="module">
-        import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
-
+        import * as aiHelper from '../js/ai-helper.js';
+        window.aiHelper = aiHelper;
+    </script>
+    <script type="module">
         const $ = (selector) => document.querySelector(selector);
         
         let ai, isGenerating = false, conversationHistory = [];
@@ -1740,89 +1748,19 @@ Your entire operation is driven by the \`PROJECT_ARCHITECTURE.md\` file. This is
             toggleLoading(true, promptText);
 
             try {
-                const result = await callGemini(promptText, image);
+                const result = await callGeminiWithRotation(promptText, image);
                 renderAll();
                 updateChangesUI();
                 return result;
             } catch (error) {
-                // The error is already logged inside callGemini.
-                // This catch block prevents the error from crashing the auto-mode loop.
                 console.error("Error during submitPrompt, but it was handled.", error);
-                return null; // Return null to indicate failure to the caller.
+                return null;
             } finally {
-                // This is the crucial part: always re-enable the UI.
                 toggleLoading(false);
             }
         }
 
-        function pruneHistoryForApiCall(history) {
-            const MAX_HISTORY_LENGTH = 30; // Keep up to 30 entries (15 user/ai pairs)
-            if (history.length <= MAX_HISTORY_LENGTH) {
-                return history;
-            }
-
-            logToTerminal(`History exceeds ${MAX_HISTORY_LENGTH} entries. Pruning for API call...`, 'system');
-            
-            // Always keep the system prompt and the first AI response.
-            const systemMessages = history.slice(0, 2); 
-            // Keep the most recent N-2 messages.
-            const recentMessages = history.slice(history.length - (MAX_HISTORY_LENGTH - 2));
-
-            return [...systemMessages, ...recentMessages];
-        }
-
-        async function throttleApiCall(apiFunction) {
-            let retries = 3; 
-            while (retries > 0) {
-                const now = Date.now();
-                const timeSinceLastCall = now - lastApiCallTimestamp;
-                if (timeSinceLastCall < MIN_API_CALL_INTERVAL_MS) {
-                    const delay = MIN_API_CALL_INTERVAL_MS - timeSinceLastCall;
-                    logToTerminal(`Rate limit protection: Waiting for ${Math.round(delay/1000)}s...`, 'system');
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-                
-                lastApiCallTimestamp = Date.now();
-
-                try {
-                    const result = await apiFunction();
-                    return result;
-                } catch (error) {
-                    let shouldRetry = false;
-                    let delayMs = 0;
-
-                    if (error.message && error.message.includes('429')) {
-                        logToTerminal(`Hit 429 Rate Limit error. Checking for retry delay...`, 'error');
-                        const retryDelayMatch = error.message.match(/"retryDelay":\s*"(\d+)s"/);
-                        if (retryDelayMatch && retries > 1) {
-                            const delaySeconds = parseInt(retryDelayMatch[1], 10);
-                            delayMs = (delaySeconds + 1) * 1000; // Add a 1s buffer
-                            logToTerminal(`API suggests retrying in ${delaySeconds}s. Waiting...`, 'system');
-                            shouldRetry = true;
-                        }
-                    } else if (error.message && (error.message.includes('503') || error.message.toLowerCase().includes('model is overloaded'))) {
-                        if (retries > 1) {
-                            // Exponential backoff with jitter: 1s, 2s, 4s... + random up to 1s
-                            const backoff = (2 ** (4 - retries)) * 1000;
-                            delayMs = backoff + Math.random() * 1000;
-                            logToTerminal(`Model is overloaded (503). Retrying in ~${Math.round(delayMs / 1000)}s... (${retries-1} retries left)`, 'error');
-                            shouldRetry = true;
-                        }
-                    }
-
-                    if (shouldRetry) {
-                        await new Promise(resolve => setTimeout(resolve, delayMs));
-                        retries--;
-                        continue; // Retry the loop
-                    }
-                    
-                    // If not a recognized retryable error, or retries exhausted, re-throw
-                    throw error;
-                }
-            }
-        }
-
-        async function callGemini(prompt, image = null) {
+        async function callGeminiWithRotation(prompt, image = null) {
             let projectIsComplete = false;
             let result;
 
@@ -1842,43 +1780,46 @@ Your entire operation is driven by the \`PROJECT_ARCHITECTURE.md\` file. This is
                 contextBlock += `\nNo file is currently active.`;
             }
 
-            const userPartsWithContext = [{ text: prompt + contextBlock }];
+            const promptWithContext = prompt + contextBlock;
+            const userParts = [{ text: promptWithContext }];
             if (image) {
-                userPartsWithContext.push({
+                userParts.push({
                     inlineData: { data: image.base64.split(',')[1], mimeType: image.mimeType }
                 });
             }
-            apiHistory.push({ role: 'user', parts: userPartsWithContext });
+            apiHistory.push({ role: 'user', parts: userParts });
 
             try {
-                const generate = () => ai.models.generateContent({ model: App.selectedModel, contents: pruneHistoryForApiCall(apiHistory), config: { tools: toolsConfig } });
-                result = await throttleApiCall(generate);
+                // Initial generation call
+                const payload = {
+                    contents: pruneHistoryForApiCall(apiHistory),
+                    tools: toolsConfig,
+                    generationConfig: { temperature: 0.7 }
+                };
 
-                if (result.usageMetadata) {
-                    const { promptTokenCount, candidatesTokenCount, totalTokenCount } = result.usageMetadata;
-                    logToTerminal(`Token Usage: ${promptTokenCount} prompt, ${candidatesTokenCount} candidates, ${totalTokenCount} total.`, 'system');
-                }
+                result = await window.aiHelper.callGeminiDirect('archie_ide_chat', payload, App.selectedModel);
 
                 while (true) {
-                    const functionCalls = result.functionCalls;
+                    const candidate = result.candidates[0];
+                    const parts = candidate.content.parts;
+                    const functionCalls = parts.filter(p => p.functionCall).map(p => p.functionCall);
+                    
+                    apiHistory.push(candidate.content);
+
                     if (!functionCalls || functionCalls.length === 0) {
-                        const aiResponseText = result.text;
+                        const aiResponseText = parts.map(p => p.text).join('\n');
                         if(aiResponseText) {
                             logToTerminal(aiResponseText, 'ai');
                             $('#commit-message').value = aiResponseText;
                         }
-                        apiHistory.push(result.candidates[0].content);
                         break; 
                     }
                     
-                    apiHistory.push(result.candidates[0].content);
                     const functionResponses = [];
-                    const reasoning = result.text;
+                    const reasoning = parts.filter(p => p.text).map(p => p.text).join('\n');
 
                     for (const call of functionCalls) {
-                        if (call.name === 'projectComplete') {
-                            projectIsComplete = true;
-                        }
+                        if (call.name === 'projectComplete') projectIsComplete = true;
                         const handler = functionHandlers[call.name];
                         if (handler) {
                             const response = await handler(call.args);
@@ -1888,26 +1829,19 @@ Your entire operation is driven by the \`PROJECT_ARCHITECTURE.md\` file. This is
                     
                     logToolCallSummary(reasoning, functionCalls, functionResponses);
 
-                    if (functionResponses.length === 0) {
-                        logToTerminal('AI tried to call a function that does not exist. Halting operation.', 'error');
-                        console.error("AI hallucinated function calls with no matching handlers:", functionCalls);
-                        break;
-                    }
+                    if (functionResponses.length === 0) break;
 
                     apiHistory.push({ role: 'user', parts: functionResponses });
                     
-                    const nextGenerate = () => ai.models.generateContent({ model: App.selectedModel, contents: pruneHistoryForApiCall(apiHistory), config: { tools: toolsConfig } });
-                    result = await throttleApiCall(nextGenerate);
-                    
-                    if (result.usageMetadata) {
-                        const { promptTokenCount, candidatesTokenCount, totalTokenCount } = result.usageMetadata;
-                        logToTerminal(`Token Usage: ${promptTokenCount} prompt, ${candidatesTokenCount} candidates, ${totalTokenCount} total.`, 'system');
-                    }
+                    const nextPayload = {
+                        contents: pruneHistoryForApiCall(apiHistory),
+                        tools: toolsConfig
+                    };
+                    result = await window.aiHelper.callGeminiDirect('archie_ide_tool_followup', nextPayload, App.selectedModel);
                 }
 
                 const newMessages = apiHistory.slice(originalHistoryLength);
-                const cleanedMessages = pruneHistoryForStorage(newMessages);
-                conversationHistory.push(...cleanedMessages);
+                conversationHistory.push(...pruneHistoryForStorage(newMessages));
             } catch (error) {
                 console.error("Error during Gemini interaction:", error);
                 logToTerminal(`An error occurred: ${error.message}. Check console.`, 'error');
@@ -1916,13 +1850,11 @@ Your entire operation is driven by the \`PROJECT_ARCHITECTURE.md\` file. This is
                     App.isAutoMode = false;
                     $('#auto-mode-btn').classList.remove('active');
                 }
-                throw error; // Re-throw the error so the caller (submitPrompt) can handle it
+                throw error;
             } 
 
-            const lastAiResponse = result.text || "";
-            const screenshotRequested = lastAiResponse.includes('[ACTION:screenshot]');
-            
-            return { projectIsComplete, screenshotRequested, finalText: lastAiResponse };
+            const lastAiResponse = result?.candidates?.[0]?.content?.parts?.map(p => p.text).join('\n') || "";
+            return { projectIsComplete, screenshotRequested: lastAiResponse.includes('[ACTION:screenshot]'), finalText: lastAiResponse };
         }
         
         // --- Persistence & Project Management ---

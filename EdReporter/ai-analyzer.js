@@ -29,6 +29,17 @@ const DEFAULT_SAFETY_SETTINGS = [
  */
 function initializeAI() {
     console.log("[AI Analyzer] Initializing AI service check...");
+    
+    // Check for centralized helper first
+    if (window.aiHelper && window.aiHelper.getGeminiKeys().length > 0) {
+        const apiKey = window.aiHelper.getAvailableKey();
+        if (apiKey && window.GoogleGenerativeAI) {
+            genAI = new window.GoogleGenerativeAI(apiKey);
+            console.log("[AI Analyzer] Initialized genAI via window.aiHelper and GoogleGenerativeAI SDK.");
+            return true;
+        }
+    }
+
     if (window.genAiInstance) {
         genAI = window.genAiInstance;
         console.log("[AI Analyzer] Google AI SDK instance found and assigned.");
@@ -353,76 +364,40 @@ const finalAnalysisResponseSchema = {
 
 /**
  * A generic helper function to make a call to the Google AI API.
- * @param {string} modelName - The name of the AI model to use.
- * @param {object[]} contents - The contents array for the API call.
- * @param {object} [generationConfig={}] - Optional generation configuration for the API call.
- * @param {object[]} [safetySettings=[]] - Optional safety settings configuration.
- * @returns {Promise<string>} A promise that resolves with the AI's text response.
- * @throws {Error} If the API call fails or is blocked.
+ * Uses centralized aiHelper for REST calls with key rotation and cooldown.
  */
 async function genericAICall(modelName, contents, generationConfig = {}, safetySettings = []) {
-    let generateContentFunc;
+    const payload = {
+        contents: contents,
+        generationConfig: generationConfig,
+        safetySettings: safetySettings
+    };
 
-    // Adapt to the SDK structure
-    if (genAI.models && typeof genAI.models.generateContent === 'function') {
-        generateContentFunc = (params) => genAI.models.generateContent(params);
-    } else if (typeof genAI.getGenerativeModel === 'function') {
-        const modelInstance = genAI.getGenerativeModel({ model: modelName, generationConfig, safetySettings });
-        if (modelInstance && typeof modelInstance.generateContent === 'function') {
-            generateContentFunc = ({ contents }) => modelInstance.generateContent({ contents });
-        }
-    }
-    if (!generateContentFunc) {
-        throw new Error("Google AI SDK instance does not have a usable 'generateContent' method.");
-    }
-    
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('API request timed out (10 minutes)')), 600000));
-    
-    let result;
     try {
-        result = await Promise.race([
-            generateContentFunc({ model: modelName, contents: contents, generationConfig: generationConfig, safetySettings: safetySettings }),
-            timeoutPromise
-        ]);
-    } catch (e) {
-        console.error("[AI Analyzer - genericAICall] Caught raw error during API call:", e);
-        throw new Error(`API call failed: ${e.message}`);
-    }
-
-    const response = result.response || result;
-    const finishReason = response?.candidates?.[0]?.finishReason;
-    const blockReason = response?.promptFeedback?.blockReason;
-
-    if (blockReason) {
-        const blockMessage = `Request blocked by API. Reason: ${blockReason}. See details in console.`;
-        console.error(blockMessage, response.promptFeedback);
-        throw new Error(blockMessage);
-    }
-
-    if (finishReason && !['STOP', 'MAX_TOKENS'].includes(finishReason)) {
-        const finishMessage = `API response terminated unexpectedly. Reason: ${finishReason}.`;
-        console.error(finishMessage, response.candidates[0]);
-        throw new Error(finishMessage);
-    }
-    
-    const aiResponseText = response?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!aiResponseText) {
-        const emptyResponseMessage = "AI returned an empty response, but no block or finish reason was provided. See full response object in console.";
-        console.error(emptyResponseMessage, response);
-        throw new Error(emptyResponseMessage);
-    }
-    
-    // For JSON responses, the model sometimes wraps the output in markdown. Clean it.
-    if (generationConfig.responseMimeType === 'application/json') {
-        let cleanedJsonString = aiResponseText.trim();
-        const markdownBlockRegex = /^```(?:json)?\s*([\s\S]*?)\s*```$/;
-        const match = cleanedJsonString.match(markdownBlockRegex);
-        if (match && match[1]) {
-            return match[1]; // Return the cleaned JSON string
+        const data = await window.aiHelper.callGeminiDirect('edreporter_analysis', payload, modelName);
+        
+        const aiResponseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!aiResponseText) {
+            const emptyResponseMessage = "AI returned an empty response. See full response object in console.";
+            console.error(emptyResponseMessage, data);
+            throw new Error(emptyResponseMessage);
         }
+        
+        // For JSON responses, the model sometimes wraps the output in markdown. Clean it.
+        if (generationConfig.responseMimeType === 'application/json') {
+            let cleanedJsonString = aiResponseText.trim();
+            const markdownBlockRegex = /^```(?:json)?\s*([\s\S]*?)\s*```$/;
+            const match = cleanedJsonString.match(markdownBlockRegex);
+            if (match && match[1]) {
+                return match[1]; // Return the cleaned JSON string
+            }
+        }
+        
+        return aiResponseText;
+    } catch (e) {
+        console.error("[AI Analyzer - genericAICall] Error during centralized AI call:", e);
+        throw e;
     }
-    
-    return aiResponseText;
 }
 
 

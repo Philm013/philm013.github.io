@@ -1,3 +1,4 @@
+/* global d3 */
 import { ui, toast } from './ui.js';
 
 // --- MODULE STATE ---
@@ -10,6 +11,7 @@ let currentLinkStyle = 'straight';
 let selectedNodeForDetails = null;
 
 let simulation;
+
 let g; // The main D3 group for graph elements
 let zoom;
 let lasso;
@@ -118,7 +120,13 @@ export function setSelectedNodeForDetails(node) {
  * @param {object} graphData - The graph data to load.
  */
 export function loadGraphData(graphData) {
-    nodes = graphData.nodes.map(n => ({...n, shape: n.shape || 'rectangle', color: n.color || 'var(--node-color)', details: n.details || ''})) || [];
+    nodes = graphData.nodes.map(n => ({
+        ...n, 
+        shape: n.shape || 'rectangle', 
+        color: n.color || 'var(--node-color)', 
+        details: n.details || '',
+        notecard: n.notecard || {}
+    })) || [];
     links = (graphData.links || []).map(l => ({source: nodes.find(n => n.id === l.source), target: nodes.find(n => n.id === l.target), label: l.label || ''})).filter(l => l.source && l.target);
     nodeCounter = graphData.counter || 0;
     currentLayout = graphData.layout || 'sunburst';
@@ -152,7 +160,7 @@ export function updateGraph(reapplyLayout = false) {
  * @returns {object} The newly created node object.
  */
 export function addNode(label, parentId = null, options = {}) {
-    const { coords, shape = 'rectangle', color = 'var(--node-color)', details = '' } = options;
+    const { coords, shape = 'rectangle', color = 'var(--node-color)', details = '', notecard = {} } = options;
     const transform = d3.zoomTransform(d3.select("#graph-canvas").node());
     const parentNode = nodes.find(n => n.id === parentId);
     let x, y;
@@ -166,7 +174,7 @@ export function addNode(label, parentId = null, options = {}) {
         x = parentNode ? parentNode.x + Math.random() * 80 - 40 : (width() / 2 - transform.x) / transform.k;
         y = parentNode ? parentNode.y + Math.random() * 80 - 40 : (height() / 2 - transform.y) / transform.k;
     }
-    const newNode = { id: `node-${++nodeCounter}`, label, shape, color, x, y, fx: x, fy: y, details };
+    const newNode = { id: `node-${++nodeCounter}`, label, shape, color, x, y, fx: x, fy: y, details, notecard };
     nodes.push(newNode);
     if (parentId && parentNode) {
         links.push({ source: parentNode, target: newNode, label: '' });
@@ -174,6 +182,7 @@ export function addNode(label, parentId = null, options = {}) {
     updateGraph();
     return newNode;
 }
+
 
 /**
  * Deletes a specified node and all of its descendants from the graph.

@@ -49,7 +49,7 @@ export const CODEMIRROR_LANGUAGE_MAP = {
 };
 
 // --- AI Configuration ---
-export const GEMINI_DEFAULT_MODEL_NAME = "gemini-3-pro-preview"; // Preferring flash for speed if capabilities are sufficient
+export const GEMINI_DEFAULT_MODEL_NAME = "gemini-3-flash-preview"; // Preferring flash for speed if capabilities are sufficient
 export const GEMINI_APPLY_MODEL_NAME = "gemini-3-pro-preview"; // Can be same or different
 
 export const MAX_CHAT_HISTORY_LENGTH = 12;

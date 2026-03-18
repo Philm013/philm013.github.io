@@ -42,7 +42,8 @@ export const AI = {
                 "cardNumber": "Card number if visible",
                 "team": "Team name",
                 "estimatedCondition": "e.g., NM-MT 8, Mint 9",
-                "estimatedValue": numeric value representing estimated market value in USD
+                "estimatedValue": numeric value representing estimated market value in USD,
+                "citation": "Source or reasoning for the value estimation (e.g., Recent eBay sales for similar grade)"
             }
             If any information cannot be determined, use null for that field (or 0 for estimatedValue).
         `;

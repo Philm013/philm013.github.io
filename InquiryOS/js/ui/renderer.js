@@ -51,7 +51,7 @@ export function switchMode(mode) {
 /**
  * Updates the global UI state, headers, and navigation.
  */
-export function updateModeUI() {
+export async function updateModeUI() {
     try {
         const isTeacher = App.mode === 'teacher';
         const isFullscreen = App.modelState?.isFullscreen || false;
@@ -138,7 +138,11 @@ export function updateModeUI() {
         }
 
         renderNavigation();
-        if (isTeacher) renderTeacherContent(); else renderStudentContent();
+        if (isTeacher) {
+            await renderTeacherContent();
+        } else {
+            renderStudentContent();
+        }
     } catch (e) { console.error('UI Error:', e); }
 }
 
@@ -350,20 +354,34 @@ export async function renderTeacherContent(force = false) {
     const content = document.getElementById('mainContent');
     if (!content) return;
 
-    // Check if we are in a live view or specialized tool
-    if (['livemodels', 'livedata', 'livegeneric'].includes(App.teacherModule) || App._editingAssetBank) {
+    // Check if we are in a specialized tool that DOES NOT fit in the stack
+    if (App._editingAssetBank) {
         content.style.scrollSnapType = 'none';
-        const liveRenderer = App._editingAssetBank ? renderIconManager : { livemodels: renderLiveModels, livedata: renderLiveData, livegeneric: renderLiveGeneric }[App.teacherModule];
-        content.innerHTML = await liveRenderer();
-        if (App.teacherModule === 'livemodels') setTimeout(() => initViewerCanvas(), 50);
+        content.innerHTML = await renderIconManager();
         return;
     }
 
     // Stacked Dashboard Mode
     content.style.scrollSnapType = 'y mandatory';
 
-    const modules = ['overview', 'lessons', 'snapshots', 'students', 'access', 'noticeboard', 'coaching', 'moderation', 'categories', 'icons', 'ngss', 'settings'];
-    const renderers = { overview: renderTeacherOverview, lessons: renderTeacherLessons, snapshots: renderTeacherSnapshots, students: renderTeacherStudents, access: renderTeacherAccess, noticeboard: renderTeacherNoticeBoard, coaching: renderCoachingManager, moderation: renderModeration, categories: renderCategoryManager, icons: renderIconManager, ngss: renderNGSSBrowser, settings: renderSessionSettings };
+    const modules = ['overview', 'lessons', 'snapshots', 'students', 'access', 'noticeboard', 'coaching', 'livemodels', 'livedata', 'livegeneric', 'moderation', 'categories', 'icons', 'ngss', 'settings'];
+    const renderers = { 
+        overview: renderTeacherOverview, 
+        lessons: renderTeacherLessons, 
+        snapshots: renderTeacherSnapshots, 
+        students: renderTeacherStudents, 
+        access: renderTeacherAccess, 
+        noticeboard: renderTeacherNoticeBoard, 
+        coaching: renderCoachingManager, 
+        livemodels: renderLiveModels,
+        livedata: renderLiveData,
+        livegeneric: renderLiveGeneric,
+        moderation: renderModeration, 
+        categories: renderCategoryManager, 
+        icons: renderIconManager, 
+        ngss: renderNGSSBrowser, 
+        settings: renderSessionSettings 
+    };
 
     // Optimization: Check if stack is already built
     const sections = Array.from(content.querySelectorAll('.teacher-section'));
@@ -373,23 +391,25 @@ export async function renderTeacherContent(force = false) {
             const section = content.querySelector(`[data-teacher-module="${id}"]`);
             if (section) {
                 const html = await renderers[id]();
-                // Simple check to avoid unnecessary innerHTML writes (optional)
                 if (section.innerHTML !== html) {
                     section.innerHTML = html;
                 }
+                // Post-render init for live views if they are visible
+                if (id === 'livemodels' && App.teacherModule === 'livemodels') initViewerCanvas();
             }
         }
         setupTeacherModuleObserver();
         return;
     }
 
-    // Full render (only if stack is missing or forced)
+    // Full render
     const stack = await Promise.all(modules.map(async id => {
         const html = await renderers[id]();
-        return `<div class="teacher-section w-full" data-teacher-module="${id}">${html}</div>`;
+        return `<div class="teacher-section w-full min-h-[calc(100dvh-var(--header-height))] snap-start snap-always" data-teacher-module="${id}">${html}</div>`;
     }));
 
     content.innerHTML = stack.join('');
+    if (App.teacherModule === 'livemodels') setTimeout(() => initViewerCanvas(), 50);
     
     // Only restore scroll position if we are not explicitly navigating/scrolling to a module
     if (!App._isScrollingToModule) {
@@ -461,8 +481,9 @@ export function renderModuleHeader(title, icon, sep, customButtons = '', infoTip
             </div>
             
             <div class="flex items-center gap-1.5 md:gap-2">
-                ${App.teacherSettings.exemplars?.[App.currentModule] && App.mode === 'student' ? `
-                    <button onclick="window.toggleExemplarView()" class="p-2 md:px-3 md:py-1.5 bg-purple-50 text-purple-600 rounded-lg text-[8px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 hover:bg-purple-100 transition-all">
+                ${(App.mode === 'teacher' || App.teacherSettings.exemplars?.[App.currentModule]) ? `
+                    <button onclick="${App.mode === 'teacher' ? 'window.openActivityDashboard()' : 'window.toggleExemplarView()'}" 
+                        class="p-2 md:px-3 md:py-1.5 bg-purple-50 text-purple-600 rounded-lg text-[8px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 hover:bg-purple-100 transition-all">
                         <span class="iconify" data-icon="mdi:lightbulb-on" data-width="14" data-height="14"></span>
                         <span class="hidden sm:inline">Exemplar</span>
                     </button>
@@ -588,9 +609,18 @@ export async function renderPresentationLayer() {
 
 export async function toggleExemplarView() {
     App.isViewingExemplar = !App.isViewingExemplar;
-    if (App.isViewingExemplar) { App.studentWorkCache = deepClone(App.work); const ex = App.teacherSettings.exemplars?.[App.currentModule]; App.work = ex ? deepClone(ex) : getInitialWorkState(); }
-    else { if (App.studentWorkCache) App.work = App.studentWorkCache; App.studentWorkCache = null; }
-    renderNavigation(); renderStudentContent();
+    if (App.isViewingExemplar) { 
+        App.studentWorkCache = deepClone(App.work); 
+        const ex = App.teacherSettings.exemplars?.[App.currentModule]; 
+        App.work = ex ? deepClone(ex) : getInitialWorkState(); 
+    }
+    else { 
+        if (App.studentWorkCache) App.work = App.studentWorkCache; 
+        App.studentWorkCache = null; 
+    }
+    renderNavigation(); 
+    if (App.mode === 'teacher') await renderTeacherContent();
+    else renderStudentContent();
 }
 
 export function renderEmptyState(title, message, icon = 'mdi:folder-open-outline', showQR = false) {

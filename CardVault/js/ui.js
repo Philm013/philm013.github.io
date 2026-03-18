@@ -13,6 +13,7 @@ export const UI = {
         this.bindCollectionControls();
         this.bindDataManagement();
         this.bindBottomSheet();
+        this.bindCvTuning();
         
         import('./db.js').then(module => {
             module.DB.getSetting('geminiApiKey').then(key => {
@@ -24,6 +25,71 @@ export const UI = {
             module.DB.getSetting('geminiModel').then(model => {
                 if (model) document.getElementById('modelSelect').value = model;
             });
+
+            // Load CV Settings
+            const cvSettings = ['cvCannyHigh', 'cvCannyLow', 'cvClahe', 'cvBilateral', 'cvMorph', 'cvAccuracy'];
+            cvSettings.forEach(s => {
+                module.DB.getSetting(s).then(val => {
+                    if (val) {
+                        const el = document.getElementById(s);
+                        if (el) el.value = val;
+                        
+                        // Sync the "Tune" sliders in capture view
+                        const tuneId = s.replace('cv', 'tune');
+                        const tuneEl = document.getElementById(tuneId);
+                        if (tuneEl) {
+                            tuneEl.value = val;
+                            const valDisplay = document.getElementById(tuneId.replace('tune', 'val'));
+                            if (valDisplay) valDisplay.textContent = val;
+                        }
+                    }
+                });
+            });
+        });
+    },
+
+    bindCvTuning() {
+        const sheet = document.getElementById('cvSettingsSheet');
+        const openBtn = document.getElementById('openCvTuneBtn');
+        const closeBtn = document.getElementById('closeCvTuneBtn');
+
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                sheet.classList.remove('hidden', 'lg:hidden');
+                setTimeout(() => sheet.classList.remove('translate-y-full'), 10);
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                sheet.classList.add('translate-y-full');
+                setTimeout(() => sheet.classList.add('hidden', 'lg:hidden'), 400);
+            });
+        }
+
+        // Live syncing of sliders
+        ['CannyHigh', 'CannyLow', 'Clahe', 'Bilateral', 'Morph', 'Accuracy'].forEach(s => {
+            const tuneEl = document.getElementById('tune' + s);
+            const valDisplay = document.getElementById('val' + s);
+            const mainEl = document.getElementById('cv' + s);
+
+            if (tuneEl) {
+                tuneEl.addEventListener('input', async (e) => {
+                    const val = e.target.value;
+                    if (valDisplay) valDisplay.textContent = val;
+                    if (mainEl) mainEl.value = val; // Sync main settings page
+
+                    // Save instantly
+                    const { DB } = await import('./db.js');
+                    await DB.saveSetting('cv' + s, val);
+
+                    // Trigger re-detect if an image is active
+                    const { Capture } = await import('./capture.js');
+                    if (Capture.currentImage) {
+                        Capture.detectCards();
+                    }
+                });
+            }
         });
     },
 
@@ -184,6 +250,13 @@ export const UI = {
             const key = document.getElementById('apiKeyInput').value;
             const model = document.getElementById('modelSelect').value;
             await this.app.saveSettings(key, model);
+
+            // Save CV Settings
+            const module = await import('./db.js');
+            await module.DB.saveSetting('cvCannyHigh', document.getElementById('cvCannyHigh').value);
+            await module.DB.saveSetting('cvBlur', document.getElementById('cvBlur').value);
+            await module.DB.saveSetting('cvAccuracy', document.getElementById('cvAccuracy').value);
+
             this.refreshModelList();
         });
     },
@@ -193,17 +266,42 @@ export const UI = {
         document.getElementById(viewId).classList.remove('hidden');
         this.currentView = viewId;
 
-        document.getElementById('mainHeader').style.display = viewId === 'captureView' ? 'none' : 'flex';
-        document.getElementById('bottomNav').style.display = viewId === 'captureView' ? 'none' : 'flex';
+        // Header/Nav visibility
+        const isCapture = viewId === 'captureView';
+        document.getElementById('mainHeader').classList.toggle('hidden', isCapture);
+        document.getElementById('bottomNav').classList.toggle('hidden', isCapture);
 
+        // Sidebar/BottomNav active states
         document.querySelectorAll('[data-nav]').forEach(btn => {
             const isTarget = btn.getAttribute('data-nav') === viewId;
-            btn.classList.toggle('text-blue-600', isTarget);
-            btn.classList.toggle('text-gray-400', !isTarget);
+            const isSidebar = btn.closest('#sidebar');
+            
+            if (isSidebar) {
+                btn.classList.toggle('text-blue-600', isTarget);
+                btn.classList.toggle('bg-blue-50', isTarget);
+                btn.classList.toggle('text-gray-400', !isTarget);
+                btn.classList.toggle('bg-transparent', !isTarget);
+            } else {
+                btn.classList.toggle('text-blue-600', isTarget);
+                btn.classList.toggle('text-gray-400', !isTarget);
+            }
         });
 
         if (viewId === 'captureView') {
-            import('./capture.js').then(m => m.Capture.startCamera());
+            import('./capture.js').then(m => {
+                if (m.Capture.currentImage) {
+                    m.Capture.videoEl.style.display = 'none';
+                    m.Capture.canvasEl.style.display = 'block';
+                    m.Capture.detectCards(); // Re-detect with potentially new settings
+                    
+                    document.getElementById('takePhotoBtn').classList.add('hidden');
+                    document.getElementById('retakePhotoBtn').classList.remove('hidden');
+                } else {
+                    m.Capture.startCamera();
+                    document.getElementById('takePhotoBtn').classList.remove('hidden');
+                    document.getElementById('retakePhotoBtn').classList.add('hidden');
+                }
+            });
         } else {
             import('./capture.js').then(m => m.Capture.stopCamera());
         }
@@ -255,7 +353,22 @@ export const UI = {
 
     renderDashboard(cards) {
         document.getElementById('totalCardsStat').textContent = cards.length;
-        document.getElementById('totalValueStat').textContent = '$' + cards.reduce((sum, c) => sum + (Number(c.estimatedValue) || 0), 0).toFixed(2);
+        document.getElementById('totalValueStat').textContent = '$' + cards.reduce((sum, c) => sum + (Number(c.estimatedValue) || 0), 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+        
+        // Render Recent Grid
+        const recent = [...cards].sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded)).slice(0, 5);
+        const grid = document.getElementById('recentGrid');
+        if (grid) {
+            grid.innerHTML = '';
+            recent.forEach(card => {
+                const el = document.createElement('div');
+                el.className = 'bg-gray-50 rounded-2xl overflow-hidden aspect-square border border-gray-100 cursor-pointer hover:scale-105 transition-transform';
+                el.innerHTML = `<img src="${card.imageBlob}" class="w-full h-full object-cover">`;
+                el.onclick = () => this.showCardDetail(card);
+                grid.appendChild(el);
+            });
+        }
+
         this.renderChart(cards);
     },
 
@@ -292,21 +405,40 @@ export const UI = {
         document.getElementById('editPlayer').value = card.player;
         document.getElementById('editSport').value = card.sport || '';
         document.getElementById('editYear').value = card.year;
+        document.getElementById('editBrand').value = card.brand || '';
+        document.getElementById('editSet').value = card.set || '';
+        document.getElementById('editCardNumber').value = card.cardNumber || '';
+        document.getElementById('editTeam').value = card.team || '';
         document.getElementById('editCondition').value = card.estimatedCondition;
         document.getElementById('editValue').value = card.estimatedValue;
+        document.getElementById('editCitation').value = card.citation || '';
 
         const saveBtn = document.getElementById('saveEditBtn');
         const newSaveBtn = saveBtn.cloneNode(true);
         saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
 
+        const deleteBtn = document.getElementById('deleteDetailBtn');
+        const newDeleteBtn = deleteBtn.cloneNode(true);
+        deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+
         newSaveBtn.addEventListener('click', () => {
             card.player = document.getElementById('editPlayer').value;
             card.sport = document.getElementById('editSport').value;
             card.year = document.getElementById('editYear').value;
+            card.brand = document.getElementById('editBrand').value;
+            card.set = document.getElementById('editSet').value;
+            card.cardNumber = document.getElementById('editCardNumber').value;
+            card.team = document.getElementById('editTeam').value;
             card.estimatedCondition = document.getElementById('editCondition').value;
             card.estimatedValue = document.getElementById('editValue').value;
+            card.citation = document.getElementById('editCitation').value;
             this.app.saveCardEdit(card);
             this.closeBottomSheet();
+        });
+
+        newDeleteBtn.addEventListener('click', () => {
+            this.closeBottomSheet();
+            this.app.deleteCard(card.id);
         });
 
         document.getElementById('cancelEditBtn').onclick = () => this.closeBottomSheet();

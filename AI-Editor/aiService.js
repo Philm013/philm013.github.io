@@ -45,9 +45,30 @@ const AIChatServiceInternal = (() => {
     const OPEN_FILE_REGISTRY_HEADER_ACTUAL = OPEN_FILE_REGISTRY_HEADER;
     const FULL_DOCUMENT_CONTEXT_HEADER_ACTUAL = FULL_DOCUMENT_CONTEXT_HEADER;
 
-    async function initializeAI() {
-        if (isAIInitializing || isAIReady) return isAIReady;
+    async function listModels(apiKey) {
+        return await window.aiHelper.listModels(apiKey);
+    }
+
+    function updateModelSelector(models) {
+        const selectors = [
+            document.getElementById('aiModelSelectorChat'),
+            document.getElementById('model-selector')
+        ];
+        
+        selectors.forEach(selector => {
+            if (!selector) return;
+            window.aiHelper.populateModelSelector(selector, GEMINI_DEFAULT_MODEL_NAME);
+        });
+    }
+
+    async function initializeAI(forceNewKey = false) {
+        if (isAIInitializing || (isAIReady && !forceNewKey)) return isAIReady;
         isAIInitializing = true;
+        
+        if (forceNewKey && window.genAiInstance?.apiKey) {
+            window.aiHelper.markKeyOnCooldown(window.genAiInstance.apiKey);
+        }
+
         isAIReady = false;
         genAI = null; currentChatSession = null; currentChatModelInstance = null;
         console.log("Attempting AI Initialization...");
@@ -67,17 +88,22 @@ const AIChatServiceInternal = (() => {
                 throw new Error("GoogleGenerativeAI SDK Class (window.AiClass) not found after loader finished.");
             }
 
-            const storageKey = `${APP_NAMESPACE}_gemini_api_key`;
-            let apiKey = localStorage.getItem(storageKey);
+            let apiKey = window.aiHelper.getAvailableKey();
 
             if (!apiKey) {
                 apiKey = prompt("Please enter your Gemini API Key:");
-                if (!apiKey?.trim()) throw new Error("API Key is required for AI features.");
+                if (!apiKey?.trim()) throw new Error("No available Gemini API keys and no key provided via prompt.");
                 apiKey = apiKey.trim();
-                if (confirm("Remember Gemini API Key for this session? (Will be stored in localStorage)")) {
-                    localStorage.setItem(storageKey, apiKey);
+                const keysArray = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
+                if (!keysArray.includes(apiKey)) {
+                    keysArray.push(apiKey);
+                    localStorage.setItem('gemini_api_keys', JSON.stringify(keysArray));
                 }
             }
+
+            // DYNAMIC MODEL LISTING
+            updateModelSelector();
+
             genAI = new window.AiClass(apiKey);
             window.genAiInstance = genAI; 
 
@@ -97,6 +123,10 @@ const AIChatServiceInternal = (() => {
             console.log("AI Service Initialized Successfully.");
             isAIReady = true;
             showNotification("AI Assistant Ready.", "success", 3000);
+            
+            // Re-enable UI
+            uiElementsToDisable.forEach(el => { if (el) el.disabled = false; });
+            
             return true;
         } catch (error) {
             console.error("AI Initialization Error:", error);
@@ -501,7 +531,40 @@ const AIChatServiceInternal = (() => {
                  currentChatSession = currentChatModelInstance.startChat({ history: historyForNewChat });
             }
             console.log("[AIChatService] Sending message to AI model...");
-            const result = await currentChatSession.sendMessage(userMessageForApi);
+            
+            let retryCount = 0;
+            const maxRetries = window.aiHelper.getGeminiKeys().length;
+            let result;
+
+            while (retryCount <= maxRetries) {
+                try {
+                    result = await currentChatSession.sendMessage(userMessageForApi);
+                    break; // Success!
+                } catch (error) {
+                    const errorMsg = String(error.message);
+                    if ((errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("rate limit")) && retryCount < maxRetries) {
+                        console.warn(`[AIChatService] Quota exceeded for current key. Attempting rotation (Retry ${retryCount + 1}/${maxRetries})...`);
+                        const reInitSuccess = await initializeAI(true);
+                        if (!reInitSuccess) throw error; // Re-throw if we can't get a new key
+                        
+                        // Re-create session with new genAI instance
+                        currentChatModelInstance = genAI.getGenerativeModel({
+                            model: modelName,
+                            tools: availableTools,
+                            systemInstruction: SYSTEM_INSTRUCTION_TEXT_ACTUAL,
+                            generationConfig,
+                            safetySettings
+                        });
+                        currentChatSession = currentChatModelInstance.startChat({
+                            history: getHistoryForNewSession()
+                        });
+                        retryCount++;
+                        continue;
+                    }
+                    throw error; // Re-throw other errors or if max retries reached
+                }
+            }
+
             console.log("[AIChatService] Received response from AI model (raw):", JSON.parse(JSON.stringify(result || {})));
             if (!result || !result.response) throw new Error("Received no response from AI chat.");
             await processAIResponse(result.response, thinkingId);
@@ -584,7 +647,36 @@ const AIChatServiceInternal = (() => {
             padChatSession = padModelInstance.startChat({ history: historyForSDK });
     
             console.log("[PAD Service] Sending message to AI model...");
-            const result = await padChatSession.sendMessage(promptForApi);
+            
+            let retryCount = 0;
+            const maxRetries = window.aiHelper.getGeminiKeys().length;
+            let result;
+
+            while (retryCount <= maxRetries) {
+                try {
+                    result = await padChatSession.sendMessage(promptForApi);
+                    break; // Success!
+                } catch (error) {
+                    const errorMsg = String(error.message);
+                    if ((errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("rate limit")) && retryCount < maxRetries) {
+                        console.warn(`[PAD Service] Quota exceeded for current key. Attempting rotation (Retry ${retryCount + 1}/${maxRetries})...`);
+                        const reInitSuccess = await initializeAI(true);
+                        if (!reInitSuccess) throw error; // Re-throw if we can't get a new key
+                        
+                        const newPadModelInstance = genAI.getGenerativeModel({
+                            model: modelName,
+                            tools: availableTools,
+                            systemInstruction: SYSTEM_INSTRUCTION_PAD_ACTUAL
+                        });
+                        padChatSession = newPadModelInstance.startChat({
+                            history: ApplicationStateService.getState().padState.history.map(h => ({ role: h.role, parts: h.parts }))
+                        });
+                        retryCount++;
+                        continue;
+                    }
+                    throw error; // Re-throw other errors or if max retries reached
+                }
+            }
     
             await processPadResponse(result.response, promptText);
     
