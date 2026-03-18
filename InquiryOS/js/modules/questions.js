@@ -19,7 +19,8 @@ export function renderQuestionsModule() {
     const categories = [
         { id: 'notices', label: 'Notices', icon: 'mdi:eye', color: 'blue', action: 'window.addNotice()', inputId: 'noticeInput', listRenderer: renderNoticesList },
         { id: 'wonders', label: 'Wonders', icon: 'mdi:lightbulb', color: 'yellow', action: 'window.addWonder()', inputId: 'wonderInput', listRenderer: renderWondersList },
-        { id: 'ideas', label: 'Ideas', icon: 'mdi:thought-bubble', color: 'purple', action: 'window.addIdea()', inputId: 'ideaInput', listRenderer: renderIdeasList }
+        { id: 'ideas', label: 'Ideas', icon: 'mdi:thought-bubble', color: 'purple', action: 'window.addIdea()', inputId: 'ideaInput', listRenderer: renderIdeasList },
+        { id: 'testableQuestions', label: 'Questions', icon: 'mdi:comment-question', color: 'green', action: 'window.addTestableQuestion()', inputId: 'questionInput', listRenderer: renderTestableQuestionsList }
     ];
 
     return `
@@ -50,7 +51,7 @@ export function renderQuestionsModule() {
                 ${renderModuleHeader('Inquiry Board', 'mdi:bulletin-board', 'SEP1', '', 'Document observations, questions, and initial ideas.')}
                 
                 <div class="flex-1 flex flex-col min-h-0 bg-gray-50/30">
-                    <div class="grid grid-cols-3 gap-px bg-gray-200 border-b shrink-0">
+                    <div class="grid grid-cols-4 gap-px bg-gray-200 border-b shrink-0">
                         ${categories.map(cat => `
                             <button onclick="window.switchInquiryTab('${cat.id}')" 
                                 class="py-3 px-2 text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === cat.id ? 'bg-white text-primary' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}">
@@ -121,7 +122,7 @@ window.quickAddInquiry = () => {
     const val = input?.value.trim();
     if (!val) return;
 
-    const map = { notices: 'notices', wonders: 'wonders', ideas: 'ideas' };
+    const map = { notices: 'notices', wonders: 'wonders', ideas: 'ideas', testableQuestions: 'testableQuestions' };
     const category = map[activeTab];
     if (!App.work[category]) App.work[category] = [];
     
@@ -138,12 +139,20 @@ window.switchInquiryTab = (tabId) => {
 };
 
 function renderInquiryItem(item, category, color) {
+    const tags = item.tags || [];
     return `
         <div class="p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-${color}-200 transition-all group relative">
             <p class="text-xs font-bold text-gray-700 leading-snug cursor-pointer pr-6" onclick="window.editInquiryItem('${item.id}', '${category}')">"${item.text}"</p>
+            
+            ${tags.length > 0 ? `
+                <div class="flex flex-wrap gap-1 mt-2">
+                    ${tags.map(t => renderStudentTagBadge(t)).join('')}
+                </div>
+            ` : ''}
+
             <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
                 <button onclick="window.showTagPicker('${item.id}', '${category}')" class="text-[7px] font-black text-gray-400 uppercase tracking-widest hover:text-primary flex items-center gap-1">
-                    <span class="iconify" data-icon="mdi:tag-outline" data-width="10" data-height="10"></span> ${item.tags?.length || 'Tag'}
+                    <span class="iconify" data-icon="mdi:tag-outline" data-width="10" data-height="10"></span> Manage Tags
                 </button>
                 ${category === 'wonders' ? `
                     <button onclick="window.promoteWonderToTestable('${item.id}')" class="text-[7px] font-black text-green-500 uppercase tracking-widest hover:bg-green-50 px-1.5 py-0.5 rounded">Promote</button>
@@ -154,6 +163,31 @@ function renderInquiryItem(item, category, color) {
             </button>
         </div>
     `;
+}
+
+function renderStudentTagBadge(tagId) {
+    // Standardized scientific practice name resolution
+    const element = App.ngssData?.elementMap?.get(tagId);
+    if (element) {
+        const color = element.dimensionCode === 'SEP' ? 'blue' : element.dimensionCode === 'CCC' ? 'amber' : 'green';
+        const label = element.name.includes(':') ? element.name.split(':')[1].trim() : element.name;
+        return `<span class="px-1.5 py-0.5 bg-${color}-50 text-${color}-600 rounded text-[6px] font-black uppercase border border-${color}-100">${label}</span>`;
+    }
+
+    const septip = window.getSeptipById ? window.getSeptipById(tagId) : null;
+    if (septip) {
+        return `<span class="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[6px] font-black uppercase border border-blue-100">${septip.label}</span>`;
+    }
+
+    const ccctip = window.getCccTipById ? window.getCccTipById(tagId) : null;
+    if (ccctip) {
+        return `<span class="px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded text-[6px] font-black uppercase border border-amber-100">${ccctip.label}</span>`;
+    }
+
+    const custom = (App.teacherSettings.categories || []).find(c => c.id === tagId);
+    if (custom) return `<span class="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[6px] font-black uppercase border border-gray-200" style="color: ${custom.color}; border-color: ${custom.color}30; background: ${custom.color}10;">${custom.name}</span>`;
+    
+    return `<span class="px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded text-[6px] font-black uppercase border border-gray-200">${tagId}</span>`;
 }
 
 export function renderNoticesList() { return (App.work.notices || []).map(n => renderInquiryItem(n, 'notices', 'blue')).join('') || `<p class="text-[9px] text-gray-300 text-center py-4 uppercase font-black">No notices</p>`; }

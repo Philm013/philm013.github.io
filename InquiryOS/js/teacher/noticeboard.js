@@ -130,10 +130,25 @@ function renderTeacherTagBadge(tagId) {
     const element = App.ngssData?.elementMap?.get(tagId);
     if (element) {
         const color = element.dimensionCode === 'SEP' ? 'blue' : element.dimensionCode === 'CCC' ? 'amber' : 'green';
-        return `<span class="px-1.5 py-0.5 bg-${color}-50 text-${color}-600 rounded text-[7px] font-black uppercase border border-${color}-100">${tagId}</span>`;
+        // Extract friendly name if it's in Code: Name format
+        const label = element.name.includes(':') ? element.name.split(':')[1].trim() : element.name;
+        return `<span class="px-1.5 py-0.5 bg-${color}-50 text-${color}-600 rounded text-[7px] font-black uppercase border border-${color}-100" title="${element.name}">${label}</span>`;
     }
+
+    // Check for specific element IDs (like sep1_explanatory)
+    const septip = window.getSeptipById ? window.getSeptipById(tagId) : null;
+    if (septip) {
+        return `<span class="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[7px] font-black uppercase border border-blue-100" title="${septip.text}">${septip.label}</span>`;
+    }
+
+    const ccctip = window.getCccTipById ? window.getCccTipById(tagId) : null;
+    if (ccctip) {
+        return `<span class="px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded text-[7px] font-black uppercase border border-amber-100" title="${ccctip.text}">${ccctip.label}</span>`;
+    }
+
     const custom = (App.teacherSettings.categories || []).find(c => c.id === tagId);
     if (custom) return `<span class="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[7px] font-black uppercase border border-gray-200" style="color: ${custom.color}; border-color: ${custom.color}30; background: ${custom.color}10;">${custom.name}</span>`;
+    
     return `<span class="px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded text-[7px] font-black uppercase border border-gray-200">${tagId}</span>`;
 }
 

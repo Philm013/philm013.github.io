@@ -172,7 +172,7 @@ window.switchCoachingTip = (index) => {
             swiper.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
             setTimeout(() => { 
                 App._isScrollingToCoaching = false; 
-                updateSwipeDots(swiper, 'coachingDots');
+                window.updateSwipeDots(swiper, 'coachingDots');
             }, 500);
         }
     }
@@ -181,7 +181,7 @@ window.switchCoachingTip = (index) => {
 
 window.handleCoachingScroll = (el) => {
     if (App._isScrollingToCoaching) return;
-    updateSwipeDots(el, 'coachingDots');
+    window.updateSwipeDots(el, 'coachingDots');
     const width = el.offsetWidth;
     const index = Math.round(el.scrollLeft / width);
     if (!App.uiState) App.uiState = {};
@@ -201,9 +201,6 @@ window.toggleRandomTips = async () => {
 /**
  * Handles dot navigation for horizontal swipers.
  */
-/**
- * Handles dot navigation for horizontal swipers.
- */
 window.updateSwipeDots = (swiper, dotsId) => {
     const dotsContainer = document.getElementById(dotsId);
     if (!dotsContainer || !swiper) return;
@@ -218,21 +215,6 @@ window.updateSwipeDots = (swiper, dotsId) => {
 window.jumpToInquiryTab = (tabId) => {
     window.switchInquiryTab(tabId);
 };
-
-/**
- * Syncs swipe dots with horizontal scroll position.
- */
-export function updateSwipeDots(container, dotContainerId) {
-    const dots = document.getElementById(dotContainerId);
-    if (!dots) return;
-    
-    const width = container.offsetWidth;
-    const index = Math.round(container.scrollLeft / width);
-    
-    dots.querySelectorAll('.swipe-dot').forEach((dot, i) => {
-        dot.classList.toggle('active', i === index);
-    });
-}
 
 /**
  * Toggles the visibility of the sidebar on mobile devices.
@@ -293,7 +275,12 @@ export async function showStudentModule(moduleId) {
     persistSession();
     
     if (isMobile) {
-        // ... (Mobile logic remains same)
+        const target = document.querySelector(`[data-module-id="${moduleId}"]`);
+        if (target) {
+            App._isScrollingToModule = true;
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(() => { App._isScrollingToModule = false; }, 800);
+        }
     } else {
         // Desktop Dashboard: Re-render and reset focus
         if (!App.uiState) App.uiState = {};

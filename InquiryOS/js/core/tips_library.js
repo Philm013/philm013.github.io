@@ -375,6 +375,7 @@ export function getSeptipById(id) {
 
     return null;
 }
+window.getSeptipById = getSeptipById;
 
 /**
  * Helper to get a specific CCC tip by ID
@@ -405,3 +406,4 @@ export function getCccTipById(id) {
 
     return CCCTipsLibrary[id]?.elements?.[0] || null;
 }
+window.getCccTipById = getCccTipById;

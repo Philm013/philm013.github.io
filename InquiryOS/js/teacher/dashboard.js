@@ -41,6 +41,19 @@ export async function stopPresentation() {
     toast('Presentation stopped', 'info');
 }
 
+export async function updatePhenomenon() {
+    const title = document.getElementById('phenomTitle')?.value || '';
+    const description = document.getElementById('phenomDesc')?.value || '';
+    
+    App.teacherSettings.phenomenon.title = title;
+    App.teacherSettings.phenomenon.description = description;
+    
+    await saveToStorage();
+    const { p2p } = await import('../core/sync-peer.js');
+    p2p.sendBroadcast('teacherSettings.phenomenon', App.teacherSettings.phenomenon);
+    toast('Phenomenon updated', 'success');
+}
+
 export async function renderTeacherOverview() {
     const phenomenon = App.teacherSettings?.phenomenon || { title: '', description: '', tags: [], ngssStandards: [] };
     const stats = App.classStats || { notices: 0, wonders: 0, nodes: 0, posts: 0 };
@@ -110,7 +123,7 @@ export async function renderTeacherOverview() {
                 </div>
             </div>
 
-            <div class="panels-container lg:grid lg:grid-cols-12 gap-6 flex-1 px-4 md:px-6 pb-6">
+            <div class="panels-container lg:grid lg:grid-cols-12 gap-6 flex-1 px-4 md:px-6 pb-6 w-full max-w-none">
                 <div class="lg:col-span-7 flex flex-col h-full" data-card-title="Lesson Focus">
                     <div class="sticky-panel-header md:hidden">
                         <div class="flex items-center gap-3">
@@ -972,20 +985,53 @@ export const forceAllToModule = async (moduleId) => { App.teacherSettings.forceM
 
 export async function renderActivityDashboard() {
     const isMonitoring = App.viewerState.isMonitoring;
+    const activeModule = App.teacherSettings.forceModule || App.currentModule;
+    
     return `
-        <div class="h-full flex flex-col -m-6">
-            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl z-50">
+        <div class="h-full flex flex-col -m-6 bg-gray-50 overflow-hidden">
+            <!-- Focused Header -->
+            <div class="bg-gray-900 text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-2xl z-50">
                 <div class="flex items-center gap-6">
-                    <button onclick="window.exitActivityDashboard()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all"><span class="iconify text-2xl" data-icon="mdi:arrow-left"></span></button>
-                    <div><div class="flex items-center gap-2"><h2 class="font-black text-2xl uppercase tracking-tighter">${App.currentModule}</h2><span class="px-2 py-0.5 bg-orange-500 text-white rounded text-[10px] font-black uppercase">Guided</span></div><p class="text-xs text-gray-400 font-bold uppercase mt-1">Command Center</p></div>
+                    <button onclick="window.exitActivityDashboard()" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all group">
+                        <span class="iconify text-2xl group-hover:-translate-x-1 transition-transform" data-icon="mdi:arrow-left"></span>
+                    </button>
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h2 class="font-black text-2xl uppercase tracking-tighter text-white">Focus: ${activeModule.toUpperCase()}</h2>
+                            <span class="px-3 py-1 bg-orange-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-orange-500/20">Guided Mode</span>
+                        </div>
+                        <p class="text-xs text-gray-400 font-bold uppercase mt-1 tracking-widest opacity-70">Classroom Command Center</p>
+                    </div>
                 </div>
+
+                <!-- Mode Switcher -->
                 <div class="flex items-center gap-1 bg-white/5 p-1.5 rounded-2xl border border-white/10">
-                    <button onclick="window.toggleDashboardMode(false)" class="px-6 py-3 rounded-xl text-sm font-black transition-all ${!isMonitoring ? 'bg-white text-gray-900 shadow-xl scale-105' : 'text-gray-400 hover:text-white'}">Edit Exemplar</button>
                     <button onclick="window.toggleDashboardMode(true)" class="px-6 py-3 rounded-xl text-sm font-black transition-all ${isMonitoring ? 'bg-white text-gray-900 shadow-xl scale-105' : 'text-gray-400 hover:text-white'}">Monitor Class</button>
+                    <button onclick="window.toggleDashboardMode(false)" class="px-6 py-3 rounded-xl text-sm font-black transition-all ${!isMonitoring ? 'bg-white text-gray-900 shadow-xl scale-105' : 'text-gray-400 hover:text-white'}">Edit Exemplar</button>
                 </div>
             </div>
-            <div class="flex-1 overflow-auto bg-gray-50 p-8">
-                <div class="max-w-7xl mx-auto h-full">${isMonitoring ? await renderMonitorView() : `<div class="bg-white rounded-[40px] shadow-sm border border-gray-100 min-h-full flex flex-col overflow-hidden"><div class="p-8 border-b border-gray-50 bg-orange-50/30 flex items-center justify-between"><div><h3 class="text-xl font-black text-gray-900 uppercase">Class Exemplar Editor</h3><p class="text-xs text-gray-500 font-bold uppercase mt-1">Creating reference work</p></div><div class="flex items-center gap-2 px-4 py-2 bg-white rounded-2xl border border-orange-100 text-orange-600 text-[10px] font-black uppercase shadow-sm"><span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>LIVE</div></div><div class="flex-1 p-8">${window.renderStudentContentHtml()}</div></div>`}</div>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto p-6 md:p-10">
+                <div class="w-full h-full">
+                    ${isMonitoring ? await renderMonitorView() : `
+                        <div class="bg-white rounded-[3rem] shadow-xl border border-gray-100 min-h-full flex flex-col overflow-hidden animate-in zoom-in-95 duration-500">
+                            <div class="p-10 border-b border-gray-50 bg-orange-50/20 flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-2xl font-black text-gray-900 uppercase tracking-tight">Class Exemplar Editor</h3>
+                                    <p class="text-sm text-gray-500 font-bold uppercase mt-1 tracking-widest opacity-60">Defining high-quality scientific work for this practice</p>
+                                </div>
+                                <div class="flex items-center gap-3 px-6 py-3 bg-white rounded-2xl border border-orange-100 text-orange-600 text-xs font-black uppercase shadow-sm">
+                                    <span class="w-2.5 h-2.5 bg-orange-500 rounded-full animate-pulse"></span>
+                                    Broadcasting Live
+                                </div>
+                            </div>
+                            <div class="flex-1 p-10">
+                                ${window.renderActiveModuleHtml()}
+                            </div>
+                        </div>
+                    `}
+                </div>
             </div>
         </div>`;
 }
@@ -995,19 +1041,126 @@ async function renderMonitorView() {
     const students = allUsers.filter(u => u.mode === 'student');
     const classData = await dbGetByPrefix(STORE_SESSIONS, App.classCode + ':work:');
     const workMap = new Map(classData.map(item => [item.code, item.work]));
-    const htmls = students.map(s => {
-        const isOnline = (Date.now() - s.lastSeen < 15000);
+    
+    const activeModule = App.teacherSettings.forceModule || App.currentModule;
+    
+    // Aggregated Metrics for the active module
+    let totalItems = 0;
+    let studentActivity = [];
+    
+    students.forEach(s => {
         const work = workMap.get(App.classCode + ':work:' + s.visitorId);
-        const progress = work ? calculateStudentProgress(work) : 0;
-        return `
-            <div class="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm hover:shadow-xl transition-all group">
-                <div class="flex items-center justify-between mb-6"><div class="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-2xl shadow-inner border border-white group-hover:scale-110 transition-transform">${s.avatar || s.name.charAt(0).toUpperCase()}</div><span class="w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-300'}"></span></div>
-                <h4 class="font-black text-gray-900 text-lg mb-1">${s.name}</h4>
-                <div class="flex items-center gap-2 mb-6"><div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-primary" style="width:${progress}%"></div></div><span class="text-[10px] font-black text-primary">${progress}%</span></div>
-                <button onclick="window.viewStudentWork('${s.visitorId}')" class="w-full py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all">View Work Board</button>
-            </div>`;
+        if (!work) return;
+        
+        let count = 0;
+        if (activeModule === 'questions') count = (work.notices?.length || 0) + (work.wonders?.length || 0);
+        else if (activeModule === 'models') count = (work.modelNodes?.length || 0);
+        else if (activeModule === 'investigation') count = (work.variables?.length || 0) + (work.dataTable?.rows?.length || 0);
+        else if (activeModule === 'analysis') count = work.analysisTrend ? 1 : 0;
+        else if (activeModule === 'explanations') count = work.claim ? 1 : 0;
+        
+        totalItems += count;
+        studentActivity.push({ student: s, work, count, progress: calculateStudentProgress(work) });
     });
-    return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">${htmls.join('')}${students.length === 0 ? `<div class="col-span-full">${renderEmptyState('No students', 'Waiting for join...', 'mdi:monitor-dashboard', true)}</div>` : ''}</div>`;
+
+    return `
+        <div class="space-y-8">
+            <!-- Class Control Bar -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex items-center justify-between overflow-hidden relative">
+                    <div class="absolute -right-4 -top-4 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl"></div>
+                    <div class="flex items-center gap-6 relative z-10">
+                        <div class="w-16 h-16 bg-orange-50 text-orange-600 rounded-3xl flex items-center justify-center text-3xl shadow-inner border border-orange-100">
+                            <span class="iconify" data-icon="${activeModule === 'questions' ? 'mdi:help-circle' : 'mdi:cube-outline'}"></span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-black text-gray-900 uppercase tracking-tight">Active Focus: ${activeModule.toUpperCase()}</h3>
+                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">${students.length} Students • ${totalItems} Total Contributions</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 relative z-10">
+                        <button onclick="window.guidedMove(-1)" class="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-100 transition-all"><span class="iconify text-xl" data-icon="mdi:chevron-left"></span></button>
+                        <button onclick="window.guidedMove(1)" class="p-4 bg-orange-500 text-white rounded-2xl shadow-lg hover:bg-orange-600 transition-all"><span class="iconify text-xl" data-icon="mdi:chevron-right"></span></button>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-900 rounded-[2.5rem] p-8 text-white shadow-xl flex items-center justify-center text-center">
+                    <div>
+                        <p class="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-2">Class Engagement</p>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-5xl font-black tracking-tighter">${Math.round(studentActivity.reduce((acc, s) => acc + s.progress, 0) / (students.length || 1))}%</span>
+                            <span class="text-xs font-bold text-blue-400 uppercase">Avg. Completion</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                ${studentActivity.map(item => {
+                    const isOnline = (Date.now() - item.student.lastSeen < 15000);
+                    return `
+                        <div class="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm hover:shadow-xl transition-all group">
+                            <div class="flex items-center justify-between mb-6">
+                                <div class="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-2xl shadow-inner border border-white group-hover:scale-110 transition-transform">
+                                    ${item.student.avatar || item.student.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div class="flex flex-col items-end">
+                                    <span class="w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-300'} mb-1"></span>
+                                    <span class="text-[8px] font-black text-gray-400 uppercase">${isOnline ? 'Online' : 'Away'}</span>
+                                </div>
+                            </div>
+                            <h4 class="font-black text-gray-900 text-lg mb-4 truncate">${item.student.name}</h4>
+                            
+                            <div class="space-y-4 mb-6">
+                                <div class="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-gray-400">
+                                    <span>Focus Practice</span>
+                                    <span class="text-primary">${item.count} items</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div class="h-full bg-primary transition-all duration-1000" style="width:${item.progress}%"></div>
+                                    </div>
+                                    <span class="text-[10px] font-black text-primary w-8 text-right">${item.progress}%</span>
+                                </div>
+                            </div>
+
+                            <button onclick="window.viewStudentWork('${item.student.visitorId}')" 
+                                class="w-full py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-md active:scale-95">
+                                Inspect Board
+                            </button>
+                        </div>`;
+                }).join('')}
+                ${students.length === 0 ? `<div class="col-span-full">${renderEmptyState('No students', 'Waiting for class to join...', 'mdi:monitor-dashboard', true)}</div>` : ''}
+            </div>
+
+            <!-- Live Stream (Optional for specific modules) -->
+            ${activeModule === 'questions' ? `
+                <div class="bg-blue-50/50 rounded-[3rem] p-8 border border-blue-100">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="text-xl font-black text-blue-900 uppercase tracking-tight">Recent Notices & Wonders</h3>
+                            <p class="text-xs font-bold text-blue-400 uppercase tracking-widest mt-1">Live Feed</p>
+                        </div>
+                        <button onclick="window.showTeacherModule('noticeboard')" class="px-6 py-3 bg-white text-blue-600 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm hover:shadow-md transition-all">View Full Board</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${studentActivity.flatMap(s => [
+                            ...(s.work.notices || []).map(n => ({...n, studentName: s.student.name, type: 'Notice'})),
+                            ...(s.work.wonders || []).map(w => ({...w, studentName: s.student.name, type: 'Wonder'}))
+                        ]).sort((a,b) => b.time - a.time).slice(0, 6).map(item => `
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-blue-50">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="px-2 py-0.5 ${item.type === 'Notice' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'} rounded text-[8px] font-black uppercase">${item.type}</span>
+                                    <span class="text-[8px] font-bold text-gray-400 uppercase">${item.studentName}</span>
+                                </div>
+                                <p class="text-xs font-bold text-gray-700 italic">"${item.text}"</p>
+                            </div>
+                        `).join('') || '<p class="col-span-full text-center py-10 text-blue-300 italic uppercase text-[10px] font-black">No contributions yet</p>'}
+                    </div>
+                </div>
+            ` : ''}
+        </div>`;
 }
 
 export async function openActivityDashboard() {

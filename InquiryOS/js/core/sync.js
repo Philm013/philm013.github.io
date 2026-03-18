@@ -5,7 +5,7 @@
  */
 
 import { App, getInitialWorkState } from './state.js';
-import { dbPut, dbGet, dbGetByIndex, dbPutMany, dbGetByPrefix, STORE_SESSIONS, STORE_USERS, isDBReady } from './storage.js';
+import { dbPut, dbGetByIndex, dbPutMany, dbGetByPrefix, STORE_SESSIONS, STORE_USERS, isDBReady } from './storage.js';
 import { updateHealthIndicator, deepClone } from '../ui/utils.js';
 import { renderNavigation } from '../ui/navigation.js';
 import { renderStudentContent, renderTeacherContent, renderEvidenceBank } from '../ui/renderer.js';
@@ -245,6 +245,8 @@ export async function saveAndBroadcast(path, value) {
         App.teacherSettings.categories = value;
     } else if (path === 'lessonEmojis') {
         App.teacherSettings.lessonEmojis = value;
+    } else if (path.startsWith('teacherSettings')) {
+        setNestedValue(App, path, value);
     } else {
         setNestedValue(App.work, path, value);
     }

@@ -46,10 +46,6 @@ export async function loadSimulationsData() {
             let s = url.trim();
             // Upgrade to HTTPS
             if (s.startsWith('http://')) s = s.replace('http://', 'https://');
-            // Fix deprecated screenshots domain
-            if (s.includes('screenshots.lab.concord.org')) {
-                s = s.replace('screenshots.lab.concord.org', 'lab.concord.org/screenshots');
-            }
             return s;
         };
 

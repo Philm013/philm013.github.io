@@ -12,7 +12,7 @@ let currentMediaType = 'image';
 let searchDebounceTimer = null;
 let currentSearchResults = [];
 let resultsShownCount = 0;
-const RESULTS_BATCH_SIZE = 12;
+const RESULTS_BATCH_SIZE = 24;
 
 export function openMediaPicker() {
     const modal = document.getElementById('mediaPickerModal');
@@ -110,10 +110,32 @@ async function executeSearch() {
         } else if (currentMediaType === 'data') {
             await searchDataLocal(query);
         }
+        
+        // Proactive check: if container isn't full enough to scroll, load more
+        checkAndLoadMore();
     } catch (e) {
         console.error(e);
         resultsContainer.innerHTML = `<div class="col-span-full py-20 text-center text-red-500"><p class="font-black">API Error</p><p class="text-xs">${e.message}</p></div>`;
     }
+}
+
+/**
+ * Checks if the results area is scrollable. If not, and there are more results, loads the next batch.
+ */
+function checkAndLoadMore() {
+    const container = document.getElementById('mediaResults');
+    if (!container) return;
+
+    // Small delay to allow layout/rendering to settle
+    setTimeout(() => {
+        if (container.scrollHeight <= container.clientHeight + 50) {
+            if (resultsShownCount < currentSearchResults.length) {
+                loadMoreResults();
+                // Check again after loading more
+                checkAndLoadMore();
+            }
+        }
+    }, 100);
 }
 
 async function searchSimsLocal(query) {
@@ -337,6 +359,7 @@ export function applyQuickFilter(query) {
 }
 
 export async function addMediaToPhenomenon(item) {
+    if (!App.teacherSettings.phenomenon) App.teacherSettings.phenomenon = {};
     if (!App.teacherSettings.phenomenon.media) App.teacherSettings.phenomenon.media = [];
     
     // Prevent duplicates
@@ -348,6 +371,8 @@ export async function addMediaToPhenomenon(item) {
     App.teacherSettings.phenomenon.media.push(item);
     await saveAndBroadcast('teacherSettings.phenomenon.media', App.teacherSettings.phenomenon.media);
     toast(`${item.type.charAt(0).toUpperCase() + item.type.slice(1)} added!`, 'success');
+    
+    const { renderTeacherContent } = await import('../ui/renderer.js');
     renderTeacherContent();
 }
 

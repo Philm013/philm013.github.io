@@ -217,7 +217,7 @@ html, body {
         left: -100%;
         top: 0;
         bottom: 0;
-        z-index: 300;
+        z-index: 400;
         width: 85%;
         transition: left 0.3s ease;
         box-shadow: 4px 0 15px rgb(0,0,0,0.1);
@@ -237,7 +237,7 @@ html, body {
     #bottomNav {
         height: var(--bottom-nav-height);
         flex-shrink: 0;
-        z-index: 100;
+        z-index: 200;
         background: var(--bg-card);
         border-top: 1px solid var(--border-color);
         display: flex !important;
@@ -1066,6 +1066,14 @@ html, body {
 
 .toast { animation: slideIn 0.3s ease; }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+.readonly-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    background: transparent;
+    pointer-events: auto;
+}
 
 .ngss-tag {
     font-size: 0.65rem;

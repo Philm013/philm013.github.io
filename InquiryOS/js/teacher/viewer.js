@@ -3,8 +3,6 @@
  * @description specialized logic for real-time monitoring and feedback on student models and data. 
  */
 
-/* global Fuse */
-
 import { App } from '../core/state.js';
 import { dbGet, dbGetByIndex, STORE_USERS, STORE_SESSIONS } from '../core/storage.js';
 import { saveAndBroadcast, loadFromStorage, saveToStorage } from '../core/sync.js';
@@ -97,6 +95,10 @@ export async function renderLiveModels() {
                 </div>
                 ${renderViewerModuleTabs()}
                 <div class="flex items-center gap-2">
+                    <button onclick="window.toggleNotesFeed()" class="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all relative" title="Student Notes Feed">
+                        <span class="iconify text-xl" data-icon="mdi:note-text-outline"></span>
+                        ${App.work.modelNotes?.length > 0 ? `<span class="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full text-[8px] font-black flex items-center justify-center border border-gray-900">${App.work.modelNotes.length}</span>` : ''}
+                    </button>
                     <button onclick="window.presentToClass('model')" class="px-6 py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center gap-2">
                         <span class="iconify text-lg" data-icon="mdi:presentation"></span>
                         Present
@@ -119,13 +121,52 @@ export async function renderLiveModels() {
                 </div>
                 <div class="readonly-overlay"></div>
                 ${renderViewerToolbar()}
+                ${renderNotesFeed()}
             </div>
         </div>
     `;
 }
 
+function renderNotesFeed() {
+    const notes = App.work.modelNotes || [];
+    return `
+        <div id="notesFeed" class="absolute top-0 right-0 bottom-0 w-80 bg-white shadow-2xl z-[70] transform transition-transform duration-300 border-l border-gray-100 ${App.viewerState.showNotesFeed ? 'translate-x-0' : 'translate-x-full'}">
+            <div class="p-6 border-b flex items-center justify-between bg-gray-50/50">
+                <h3 class="font-black text-gray-900 uppercase text-xs tracking-widest">Student Notes</h3>
+                <button onclick="window.toggleNotesFeed()" class="p-2 hover:bg-gray-200 rounded-lg"><span class="iconify" data-icon="mdi:close"></span></button>
+            </div>
+            <div class="overflow-y-auto h-full p-4 space-y-4 custom-scrollbar pb-24">
+                ${notes.map(n => `
+                    <div class="p-4 rounded-2xl border-2 border-orange-100 bg-orange-50/30 group hover:bg-orange-50 transition-all cursor-pointer" onclick="window.focusNote('${n.id}')">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="iconify text-orange-400" data-icon="mdi:note-text"></span>
+                            <span class="text-[8px] font-black text-orange-400 uppercase tracking-widest">Model Note</span>
+                        </div>
+                        <p class="text-sm font-bold text-gray-800 leading-relaxed">${n.text}</p>
+                    </div>
+                `).join('') || '<div class="py-20 text-center text-gray-300 italic uppercase text-[10px] font-black">No student notes found</div>'}
+            </div>
+        </div>
+    `;
+}
+
+export function toggleNotesFeed() {
+    App.viewerState.showNotesFeed = !App.viewerState.showNotesFeed;
+    renderTeacherContent();
+}
+
+export function focusNote(id) {
+    const note = App.work.modelNotes.find(n => n.id === id);
+    if (note) {
+        // Simple zoom/pan to note center
+        App.viewerState.pan = { x: -note.x + 200, y: -note.y + 200 };
+        App.viewerState.zoom = 1.2;
+        initViewerCanvas();
+    }
+}
+
 export async function renderLiveGeneric() {
-    if (!App.viewingStudentId) return renderStudentSelectionTiles('View Student Work', 'livegeneric');
+    if (!App.viewingStudentId) return renderStudentSelectionTiles('View Student Work');
     const users = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
     const currentStudent = users.find(u => u.visitorId === App.viewingStudentId);
 
@@ -153,7 +194,7 @@ export async function renderLiveGeneric() {
                 </div>
             </div>
             <div class="flex-1 overflow-auto bg-gray-50 p-8 custom-scrollbar">
-                <div class="max-w-7xl mx-auto h-full bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 relative overflow-hidden">
+                <div class="w-full h-full bg-white rounded-[40px] shadow-sm border border-gray-100 p-8 relative overflow-hidden">
                     <div class="readonly-overlay pointer-events-auto"></div>
                     <div class="pointer-events-none opacity-90">
                         ${window.renderStudentContentHtml()}
@@ -171,29 +212,42 @@ export async function renderLiveGeneric() {
 }
 
 function renderViewerToolbar() {
+    const stickers = ['⭐', '✅', '❓', '💡', '🎯', '👏', '🧠', '🔬', '🧪'];
     return `
-        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-[2rem] shadow-2xl p-2 flex items-center gap-2 z-[60] border border-white/10 backdrop-blur-xl">
-            <button onclick="window.setViewerTool('comment')" 
-                class="flex items-center gap-3 px-6 py-3 rounded-[1.5rem] transition-all ${App.viewerState.addingComment ? 'bg-primary text-white shadow-lg' : 'hover:bg-white/10 text-gray-400'}">
-                <span class="iconify text-xl" data-icon="mdi:comment-plus"></span>
-                <span class="text-xs font-black uppercase tracking-widest">Add Feedback</span>
-            </button>
-            <div class="w-px h-8 bg-white/10 mx-1"></div>
-            <button onclick="window.clearViewerFeedback()" 
-                class="p-3 text-red-400 hover:bg-red-500/20 rounded-full transition-all" title="Clear All Feedback">
-                <span class="iconify text-xl" data-icon="mdi:delete-sweep"></span>
-            </button>
+        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-[2rem] shadow-2xl p-2 flex flex-col items-center gap-2 z-[60] border border-white/10 backdrop-blur-xl">
+            <div id="stickerPalette" class="flex items-center gap-1 p-1 bg-white/5 rounded-full overflow-hidden transition-all ${App.viewerState.addingSticker ? 'max-w-md opacity-100' : 'max-w-0 opacity-0 pointer-events-none'}">
+                ${stickers.map(s => `
+                    <button onclick="window.setViewerSticker('${s}')" class="w-10 h-10 flex items-center justify-center text-xl rounded-full hover:bg-white/10 transition-all ${App.viewerState.selectedSticker === s ? 'bg-primary scale-110 shadow-lg' : ''}">${s}</button>
+                `).join('')}
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="window.setViewerTool('comment')" 
+                    class="flex items-center gap-3 px-6 py-3 rounded-[1.5rem] transition-all ${App.viewerState.addingComment ? 'bg-primary text-white shadow-lg' : 'hover:bg-white/10 text-gray-400'}">
+                    <span class="iconify text-xl" data-icon="mdi:comment-plus"></span>
+                    <span class="text-xs font-black uppercase tracking-widest">Comment</span>
+                </button>
+                <button onclick="window.toggleStickerPalette()" 
+                    class="flex items-center gap-3 px-6 py-3 rounded-[1.5rem] transition-all ${App.viewerState.addingSticker ? 'bg-primary text-white shadow-lg' : 'hover:bg-white/10 text-gray-400'}">
+                    <span class="iconify text-xl" data-icon="mdi:sticker-emoji"></span>
+                    <span class="text-xs font-black uppercase tracking-widest">Sticker</span>
+                </button>
+                <div class="w-px h-8 bg-white/10 mx-1"></div>
+                <button onclick="window.clearViewerFeedback()" 
+                    class="p-3 text-red-400 hover:bg-red-500/20 rounded-full transition-all" title="Clear All Feedback">
+                    <span class="iconify text-xl" data-icon="mdi:delete-sweep"></span>
+                </button>
+            </div>
         </div>
     `;
 }
 
-async function renderStudentSelectionTiles(title, targetModule) {
+async function renderStudentSelectionTiles(title) {
     const allUsers = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
     const students = allUsers.filter(u => u.mode === 'student');
     const now = Date.now();
 
     return `
-        <div class="max-w-6xl mx-auto py-8">
+        <div class="w-full px-6 py-8">
             <div class="mb-8">
                 <h2 class="text-3xl font-black text-gray-900">${title}</h2>
                 <p class="text-gray-500 mt-1">Select a student to monitor their work in real-time.</p>
@@ -221,7 +275,7 @@ async function renderStudentSelectionTiles(title, targetModule) {
 }
 
 export async function renderLiveData() {
-    if (!App.viewingStudentId) return renderStudentSelectionTiles('View Student Data', 'livedata');
+    if (!App.viewingStudentId) return renderStudentSelectionTiles('View Student Data');
     const dt = App.work.dataTable;
     const users = await dbGetByIndex(STORE_USERS, 'classCode', App.classCode);
     const currentStudent = users.find(u => u.visitorId === App.viewingStudentId);
@@ -251,7 +305,7 @@ export async function renderLiveData() {
                 </div>
             </div>
             <div class="flex-1 overflow-auto bg-gray-50 p-8 custom-scrollbar">
-                <div class="max-w-7xl mx-auto space-y-8">
+                <div class="w-full space-y-8">
                     <div class="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-xl">
                         <table class="w-full border-collapse">
                             <thead><tr class="bg-gray-50 border-b border-gray-100"><th class="border p-2 w-10"></th>${dt.columns.map(c => `<th class="p-5 text-left font-black text-gray-400 uppercase tracking-widest text-[10px] border-r border-gray-100 last:border-0">${c.name} ${c.unit ? `(${c.unit})` : ''}</th>`).join('')}<th class="p-5 text-center font-black text-gray-400 uppercase tracking-widest text-[10px] w-32">Feedback</th></tr></thead>
@@ -655,7 +709,7 @@ export async function loadIconsForManager() {
             const isSelected = App.teacherSettings.lessonIcons?.includes(icon);
             return `<button onclick="window.addLessonIcon('${icon}')" class="aspect-square bg-white/5 border-2 rounded-2xl flex items-center justify-center transition-all ${isSelected ? 'border-primary bg-primary/20 scale-105 shadow-lg shadow-primary/20' : 'border-white/5 hover:border-white/20 hover:bg-white/10'}"><span class="iconify text-3xl ${isSelected ? 'text-white' : 'text-white/40'}" data-icon="${icon}"></span></button>`;
         }).join('');
-    } catch (e) { grid.innerHTML = '<div class="col-span-full py-20 text-center text-red-400">Connection Error</div>'; }
+    } catch { grid.innerHTML = '<div class="col-span-full py-20 text-center text-red-400">Connection Error</div>'; }
 }
 
 export function openTableRowFeedback(rowIndex) {
@@ -710,13 +764,100 @@ export const toggleShowAllIcons = async () => { App.teacherSettings.showAllIcons
 export function initViewerCanvas() {
     const content = document.getElementById('viewerCanvasContent'); if (!content) return;
     content.style.transform = `translate(${App.viewerState.pan?.x || 0}px, ${App.viewerState.pan?.y || 0}px) scale(${App.viewerState.zoom || 1})`;
-    const layers = { nodes: document.getElementById('viewerNodesLayer'), shapes: document.getElementById('viewerShapesLayer'), comments: document.getElementById('viewerCommentsLayer'), paths: document.getElementById('viewerPathsSvg'), conns: document.getElementById('viewerConnectionsSvg'), explain: document.getElementById('viewerExplainLayer') };
-    if (layers.nodes) layers.nodes.innerHTML = App.work.modelNodes.map(n => `<div class="model-node absolute pointer-events-none border-2 rounded-xl p-3 bg-white shadow-sm flex items-center gap-2" style="left:${n.x}px; top:${n.y}px; width:${n.width || 120}px; border-color:${n.color}"><span class="text-xl">${n.icon?.includes(':') ? `<span class="iconify" data-icon="${n.icon}"></span>` : n.icon}</span><span class="text-xs font-bold truncate">${n.label}</span></div>`).join('');
-    if (layers.shapes) layers.shapes.innerHTML = (App.work.modelShapes || []).map(s => `<div class="model-shape absolute pointer-events-none" style="left:${s.x}px; top:${s.y}px; width:${s.width}px; height:${s.height}px; transform: rotate(${s.rotation || 0}deg)"><svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">${window.getShapeSvgContent(s)}</svg></div>`).join('');
-    if (layers.paths) layers.paths.innerHTML = (App.work.modelPaths || []).map(path => `<path d="${path.points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')}" stroke="${path.color}" stroke-width="${path.width}" fill="none" />`).join('');
-    if (layers.explain) layers.explain.innerHTML = (App.work.modelExplanations || []).map((p, i) => `<div class="absolute w-6 h-6 bg-primary text-white font-bold rounded-full flex items-center justify-center shadow-lg border border-white text-[10px] transform -translate-x-1/2 -translate-y-1/2" style="left:${p.x}px; top:${p.y}px;">${i + 1}</div>`).join('');
-    if (layers.comments) layers.comments.innerHTML = (App.work.modelComments || []).map(c => `<div class="comment-bubble group/comment" style="left:${c.x}px; top:${c.y}px; cursor: move;" onpointerdown="window.startCommentDrag(event, '${c.id}')"><div class="flex items-start gap-3">${c.sticker ? `<div class="w-10 h-10 bg-white rounded-xl shadow-inner border border-gray-100 flex items-center justify-center text-2xl shrink-0">${c.sticker}</div>` : ''}<div class="flex-1 min-w-[120px]"><p class="font-black text-[9px] text-red-600 uppercase mb-1 tracking-widest">${c.author}</p><p class="text-xs font-medium text-gray-700 leading-relaxed">${c.text || 'Checked!'}</p></div></div><button onclick="window.deleteComment('${c.id}')" class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/comment:opacity-100 transition-opacity shadow-sm">×</button></div>`).join('');
-    if (layers.conns) { layers.conns.querySelectorAll('path').forEach(p => p.remove()); App.work.modelConnections.forEach(conn => { const from = App.work.modelNodes.find(n => n.id === conn.from); const to = App.work.modelNodes.find(n => n.id === conn.to); if (from && to) { const start = window.getHandlePosition(from, conn.fromHandle); const end = window.getHandlePosition(to, conn.toHandle); const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', `M ${start.x} ${start.y} Q ${(start.x+end.x)/2} ${start.y}, ${(start.x+end.x)/2} ${(start.y+end.y)/2} T ${end.x} ${end.y}`); path.setAttribute('stroke', '#64748b'); path.setAttribute('stroke-width', '2'); path.setAttribute('fill', 'none'); path.setAttribute('marker-end', 'url(#viewerArrowhead)'); layers.conns.appendChild(path); } }); }
+    
+    const layers = { 
+        nodes: document.getElementById('viewerNodesLayer'), 
+        shapes: document.getElementById('viewerShapesLayer'), 
+        comments: document.getElementById('viewerCommentsLayer'), 
+        paths: document.getElementById('viewerPathsSvg'), 
+        conns: document.getElementById('viewerConnectionsSvg'), 
+        explain: document.getElementById('viewerExplainLayer') 
+    };
+
+    if (layers.nodes) {
+        layers.nodes.innerHTML = App.work.modelNodes.map(n => `
+            <div class="model-node absolute pointer-events-none border-2 rounded-xl p-3 bg-white shadow-sm flex flex-col items-center justify-center gap-2" style="left:${n.x}px; top:${n.y}px; width:${n.width || 120}px; height:${n.height || 80}px; border-color:${n.color}; transform: rotate(${n.rotation || 0}deg)">
+                <span class="text-2xl">${n.icon?.includes(':') ? `<span class="iconify" data-icon="${n.icon}" style="color:${n.color}"></span>` : n.icon}</span>
+                <span class="text-[10px] font-black uppercase text-center leading-tight truncate w-full">${n.label}</span>
+            </div>
+        `).join('');
+    }
+
+    if (layers.shapes) {
+        let html = (App.work.modelShapes || []).map(s => `
+            <div class="model-shape absolute pointer-events-none" style="left:${s.x}px; top:${s.y}px; width:${s.width}px; height:${s.height}px; transform: rotate(${s.rotation || 0}deg)">
+                <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">${window.getShapeSvgContent(s)}</svg>
+            </div>`).join('');
+        
+        // Model Notes
+        html += (App.work.modelNotes || []).map(n => `
+            <div class="note-shape absolute pointer-events-none shadow-md p-3 border rounded flex flex-col" style="left:${n.x}px; top:${n.y}px; width:${n.width}px; min-height:${n.height}px; transform: rotate(${n.rotation || 0}deg); background:${n.color || '#fef3c7'}; border-color:${n.borderColor || '#f59e0b'}">
+                <div class="text-xs font-bold text-gray-800 leading-relaxed">${n.text}</div>
+            </div>`).join('');
+
+        // Model Stickers (from student)
+        html += (App.work.modelStickers || []).map(s => {
+            const isIcon = s.emoji?.includes(':');
+            const w = s.width || 60; const h = s.height || 60;
+            return `<div class="absolute pointer-events-none select-none" style="left:${s.x}px; top:${s.y}px; width:${w}px; height:${h}px; display:flex; align-items:center; justify-content:center; transform: rotate(${s.rotation || 0}deg)">
+                ${isIcon ? `<span class="iconify" style="width: 100%; height: 100%; color: #64748b" data-icon="${s.emoji}"></span>` : `<span style="font-size: ${Math.min(w, h) * 0.8}px; line-height: 1;">${s.emoji}</span>`}
+            </div>`;
+        }).join('');
+
+        layers.shapes.innerHTML = html;
+    }
+
+    if (layers.paths) {
+        layers.paths.innerHTML = (App.work.modelPaths || []).map(path => `
+            <path d="${path.points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')}" stroke="${path.color}" stroke-width="${path.width}" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        `).join('');
+    }
+
+    if (layers.explain) {
+        layers.explain.innerHTML = (App.work.modelExplanations || []).map((p, i) => `
+            <div class="absolute w-8 h-8 bg-primary text-white font-black rounded-full flex items-center justify-center shadow-lg border-2 border-white text-xs transform -translate-x-1/2 -translate-y-1/2" style="left:${p.x}px; top:${p.y}px;">
+                ${i + 1}
+            </div>
+        `).join('');
+    }
+
+    if (layers.comments) {
+        layers.comments.innerHTML = (App.work.modelComments || []).map(c => `
+            <div class="comment-bubble group/comment transition-transform hover:scale-105" style="left:${c.x}px; top:${c.y}px; cursor: move;" onpointerdown="window.startCommentDrag(event, '${c.id}')">
+                <div class="flex items-start gap-3">
+                    ${c.sticker ? `<div class="w-12 h-12 bg-white rounded-2xl shadow-inner border border-gray-100 flex items-center justify-center text-3xl shrink-0">${c.sticker}</div>` : ''}
+                    <div class="flex-1 min-w-[140px]">
+                        <p class="font-black text-[9px] text-red-600 uppercase mb-1 tracking-[0.2em] opacity-70">${c.author}</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">${c.text || ''}</p>
+                    </div>
+                </div>
+                <button onclick="window.deleteComment('${c.id}')" class="absolute -top-3 -right-3 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/comment:opacity-100 transition-all shadow-xl hover:bg-red-600">
+                    <span class="iconify text-sm" data-icon="mdi:close"></span>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    if (layers.conns) {
+        layers.conns.querySelectorAll('path').forEach(p => p.remove());
+        const allObjs = [...App.work.modelNodes, ...App.work.modelShapes, ...App.work.modelNotes, ...App.work.modelStickers];
+        App.work.modelConnections.forEach(conn => {
+            const from = allObjs.find(n => n.id === conn.from);
+            const to = allObjs.find(n => n.id === conn.to);
+            if (from && to) {
+                const start = window.getHandlePosition(from, conn.fromHandle);
+                const end = window.getHandlePosition(to, conn.toHandle);
+                const midX = (start.x + end.x) / 2;
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${start.x} ${start.y} C ${midX} ${start.y}, ${midX} ${end.y}, ${end.x} ${end.y}`);
+                path.setAttribute('stroke', '#64748b');
+                path.setAttribute('stroke-width', '2');
+                path.setAttribute('fill', 'none');
+                path.setAttribute('marker-end', 'url(#viewerArrowhead)');
+                layers.conns.appendChild(path);
+            }
+        });
+    }
 }
 
 export const renderViewerNodes = initViewerCanvas;
@@ -728,7 +869,49 @@ export async function saveComment() { if (App.editingPostId) { const arg = await
 export function startCommentDrag(e, id) { if (e.target.closest('button')) return; e.preventDefault(); const comment = App.work.modelComments.find(c => c.id === id); if (!comment) return; const startX = e.clientX, startY = e.clientY, initX = comment.x, initY = comment.y, zoom = App.viewerState.zoom || 1; const onMove = (me) => { comment.x = initX + (me.clientX - startX) / zoom; comment.y = initY + (me.clientY - startY) / zoom; initViewerCanvas(); }; const onUp = async () => { document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); await saveAndBroadcast('modelComments', App.work.modelComments); }; document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); }
 export async function deleteComment(id) { App.work.modelComments = (App.work.modelComments || []).filter(c => c.id !== id); await saveAndBroadcast('modelComments', App.work.modelComments); initViewerCanvas(); }
 export async function clearViewerFeedback() { if (confirm('Clear feedback?')) { App.work.modelComments = []; await saveAndBroadcast('modelComments', []); renderTeacherContent(); } }
-export const handleViewerClick = (e) => { if (App.viewerState.isPanning) return; if (App.viewerState.addingComment) { const canvas = document.getElementById('viewerCanvas'); if (!canvas) return; const rect = canvas.getBoundingClientRect(); App.viewerState.commentPosition = { x: (e.clientX - rect.left - (App.viewerState.pan?.x || 0)) / (App.viewerState.zoom || 1), y: (e.clientY - rect.top - (App.viewerState.pan?.y || 0)) / (App.viewerState.zoom || 1) }; const modal = document.getElementById('commentModal'); if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); document.getElementById('commentText')?.focus(); } } };
+export function toggleStickerPalette() {
+    App.viewerState.addingSticker = !App.viewerState.addingSticker;
+    App.viewerState.addingComment = false;
+    renderTeacherContent();
+}
+
+export function setViewerSticker(s) {
+    App.viewerState.selectedSticker = (App.viewerState.selectedSticker === s) ? null : s;
+    renderTeacherContent();
+}
+
+export const handleViewerClick = async (e) => { 
+    if (App.viewerState.isPanning) return; 
+    
+    const canvas = document.getElementById('viewerCanvas'); 
+    if (!canvas) return; 
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left - (App.viewerState.pan?.x || 0)) / (App.viewerState.zoom || 1);
+    const y = (e.clientY - rect.top - (App.viewerState.pan?.y || 0)) / (App.viewerState.zoom || 1);
+
+    if (App.viewerState.addingComment) { 
+        App.viewerState.commentPosition = { x, y }; 
+        const modal = document.getElementById('commentModal'); 
+        if (modal) { 
+            modal.classList.remove('hidden'); 
+            modal.classList.add('flex'); 
+            document.getElementById('commentText')?.focus(); 
+        } 
+    } else if (App.viewerState.addingSticker && App.viewerState.selectedSticker) {
+        if (!App.work.modelComments) App.work.modelComments = [];
+        App.work.modelComments.push({
+            id: 'c_' + Date.now(),
+            text: '',
+            sticker: App.viewerState.selectedSticker,
+            x, y,
+            author: App.user.name,
+            time: Date.now()
+        });
+        await saveAndBroadcast('modelComments', App.work.modelComments);
+        initViewerCanvas();
+        toast('Sticker placed!', 'success');
+    }
+};
 export function handleViewerPointerDown(e) { if (!App.viewerState.addingComment && !App.viewerState.selectedSticker) { App.viewerState.isPanning = true; const startX = e.clientX - (App.viewerState.pan?.x || 0), startY = e.clientY - (App.viewerState.pan?.y || 0); const onMove = (me) => { if (!App.viewerState.pan) App.viewerState.pan = { x: 0, y: 0 }; App.viewerState.pan.x = me.clientX - startX; App.viewerState.pan.y = me.clientY - startY; initViewerCanvas(); }; const onUp = () => { document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); setTimeout(() => { App.viewerState.isPanning = false; }, 50); }; document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); } }
 export function handleViewerWheel(e) { e.preventDefault(); const delta = -e.deltaY, zoomSpeed = 0.001, oldZoom = App.viewerState.zoom || 1, newZoom = Math.min(Math.max(0.1, oldZoom + delta * zoomSpeed), 5), rect = e.currentTarget.getBoundingClientRect(), mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top; App.viewerState.pan.x = mouseX - (mouseX - (App.viewerState.pan.x || 0)) * (newZoom / oldZoom); App.viewerState.pan.y = mouseY - (mouseY - (App.viewerState.pan.y || 0)) * (newZoom / oldZoom); App.viewerState.zoom = newZoom; initViewerCanvas(); }
 export const setViewerTool = (t) => { App.viewerState.addingComment = (t === 'comment'); App.viewerState.selectedSticker = null; renderTeacherContent(); };

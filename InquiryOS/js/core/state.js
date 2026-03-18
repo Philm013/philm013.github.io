@@ -164,6 +164,8 @@ export const App = {
         currentStudentId: null,
         viewType: null,
         addingComment: false,
+        addingSticker: false,
+        showNotesFeed: false,
         commentPosition: null,
         selectedSticker: null,
         isMonitoring: false
