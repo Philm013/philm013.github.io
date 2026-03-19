@@ -22,6 +22,14 @@
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
     --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+
+    /* Phase-Specific Colors */
+    --phase-1: #0ea5e9; /* Exploration - Blue */
+    --phase-2: #8b5cf6; /* Questioning - Purple */
+    --phase-3: #f59e0b; /* Planning - Amber */
+    --phase-4: #10b981; /* Gathering - Green */
+    --phase-5: #f43f5e; /* Synthesis - Rose */
+    --phase-6: #64748b; /* Review - Slate */
 }
 
 /* --- Base Reset & Typography --- */
@@ -37,6 +45,10 @@ html, body {
     color: var(--text-primary);
     overflow: hidden;
     height: 100dvh; width: 100vw;
+}
+
+.font-serif {
+    font-family: 'Lora', serif;
 }
 
 /* Mobile-First Snapping (1024px and below) */
@@ -255,15 +267,22 @@ html, body {
 @media (max-width: 1024px) {
     #strategy-bar {
         top: auto !important;
-        bottom: 100px !important;
+        bottom: 180px !important; /* Higher up to avoid coach hud */
         left: 50% !important;
         width: 90% !important;
-        max-width: 400px !important;
-        padding: 8px !important;
-        border-radius: 20px !important;
-        background: rgba(255, 255, 255, 0.95) !important;
+        max-width: 450px !important;
+        padding: 6px !important;
+        border-radius: 24px !important;
+        background: rgba(255, 255, 255, 0.98) !important;
         backdrop-filter: blur(20px) !important;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15) !important;
+        display: flex !important;
+        justify-content: space-around !important;
+    }
+    
+    #strategy-bar .strategy-btn {
+        padding: 10px 8px !important;
+        font-size: 10px !important;
     }
 }
 
@@ -407,7 +426,13 @@ html, body {
     box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
 }
 
-/* --- Editable Content --- */
+/* --- Notecard Sections --- */
+#notecard-quote {
+    font-family: 'Lora', serif;
+    font-style: italic;
+    font-size: 1.125rem; /* text-lg */
+}
+
 .editable-content {
     outline: none;
     transition: all 0.2s;
@@ -485,6 +510,32 @@ html, body {
 
 #toast.show {
     transform: translate(-50%, 0);
+}
+
+/* --- Phase-Specific Classes --- */
+body[data-phase="1"] { --accent-primary: var(--phase-1); }
+body[data-phase="2"] { --accent-primary: var(--phase-2); }
+body[data-phase="3"] { --accent-primary: var(--phase-3); }
+body[data-phase="4"] { --accent-primary: var(--phase-4); }
+body[data-phase="5"] { --accent-primary: var(--phase-5); }
+body[data-phase="6"] { --accent-primary: var(--phase-6); }
+
+/* Canvas Background Variations */
+body[data-phase="1"] #graph-container { background-color: #fdfdf7; } /* Exploration - Parchment */
+body[data-phase="2"] #graph-container { background-color: #f8fafc; } /* Questioning - Slate 50 */
+body[data-phase="3"] #graph-container { background-color: #fffbeb; } /* Planning - Amber 50 */
+body[data-phase="4"] #graph-container { background-color: #f0fdf4; } /* Gathering - Green 50 */
+body[data-phase="5"] #graph-container { background-color: #fff1f2; } /* Synthesis - Rose 50 */
+body[data-phase="6"] #graph-container { background-color: #f1f5f9; } /* Review - Slate 100 */
+
+/* Badge Pulse */
+.badge-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .5; }
 }
 
 /* --- Responsive Adjustments --- */

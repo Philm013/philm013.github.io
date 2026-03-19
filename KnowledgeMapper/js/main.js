@@ -343,20 +343,43 @@ function renderLandingPage() {
         ui.noMapsMessage?.classList.add('hidden');
         mapIds.sort((a, b) => maps[b].lastModified - maps[a].lastModified).forEach(mapId => {
             const map = maps[mapId];
+            const graph = map.graphData || {};
+            const stats = graph.stats || { notecards: 0, sources: 0 };
+            const step = graph.researchStep || 1;
+            
+            const phaseNames = ["Exploration", "Questioning", "Planning", "Gathering", "Synthesis", "Review"];
+            const phaseName = phaseNames[step - 1] || "Exploration";
+
             const li = document.createElement('li');
-            li.className = 'group bg-slate-950/40 backdrop-blur-md border border-slate-800 hover:border-sky-500/50 rounded-2xl p-4 transition-all duration-300 flex items-center justify-between gap-4';
+            li.className = 'group bg-white border border-slate-200 hover:border-sky-500 rounded-3xl p-6 transition-all duration-300 shadow-sm hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6';
             li.innerHTML = `
-                <button class="flex-grow text-left focus:outline-none rounded-xl p-1" data-action="open" data-id="${mapId}" aria-label="Open project">
-                    <div class="font-bold text-slate-200 group-hover:text-sky-400 transition-colors">${map.name}</div>
-                    <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mt-1">Edited ${new Date(map.lastModified).toLocaleDateString()}</div>
-                </button>
-                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all" data-action="rename" data-id="${mapId}" title="Rename">
-                        <span class="iconify w-4 h-4" data-icon="solar:pen-new-square-bold-duotone"></span>
-                    </button>
-                    <button class="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all" data-action="delete" data-id="${mapId}" title="Delete">
-                        <span class="iconify w-4 h-4" data-icon="solar:trash-bin-trash-bold-duotone"></span>
-                    </button>
+                <div class="flex-grow flex flex-col gap-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-2 h-6 rounded-full" style="background-color: var(--phase-${step})"></div>
+                        <button class="text-left focus:outline-none" data-action="open" data-id="${mapId}" aria-label="Open project">
+                            <h3 class="font-black text-slate-900 text-lg group-hover:text-sky-600 transition-colors">${map.name}</h3>
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400 ml-5">
+                        <span class="flex items-center gap-1.5"><span class="iconify text-sky-500" data-icon="solar:notes-bold-duotone"></span> ${stats.notecards} Notes</span>
+                        <span class="flex items-center gap-1.5"><span class="iconify text-purple-500" data-icon="solar:link-bold-duotone"></span> ${stats.sources} Sources</span>
+                        <span class="text-slate-300">•</span>
+                        <span>Edited ${new Date(map.lastModified).toLocaleDateString()}</span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between md:justify-end gap-4">
+                    <div class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter" style="background-color: var(--phase-${step})20; color: var(--phase-${step})">
+                        Phase ${step}: ${phaseName}
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button class="p-2 text-slate-300 hover:text-sky-500 hover:bg-sky-50 rounded-xl transition-all" data-action="rename" data-id="${mapId}" title="Rename">
+                            <span class="iconify w-5 h-5" data-icon="solar:pen-new-square-bold-duotone"></span>
+                        </button>
+                        <button class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" data-action="delete" data-id="${mapId}" title="Delete">
+                            <span class="iconify w-5 h-5" data-icon="solar:trash-bin-trash-bold-duotone"></span>
+                        </button>
+                    </div>
                 </div>
             `;
             ui.mapList.appendChild(li);
@@ -721,7 +744,7 @@ async function main() {
     ui.newBlankMapBtn?.addEventListener('click', () => {
         const name = prompt("Project Name:", "Untitled Project");
         if (name) {
-            const newMapId = mapsManager.create(name, { canvasData: null, sources: [], researchStep: 1 });
+            const newMapId = mapsManager.create(name, { canvasData: null, sources: [], researchStep: 1, stats: { notecards: 0, sources: 0 } });
             loadMap(newMapId);
         }
     });
@@ -729,7 +752,7 @@ async function main() {
     ui.landingAiGenerateBtn?.addEventListener('click', async () => {
         const topic = ui.landingAiTopicInput?.value?.trim();
         if (!topic) { toast("Please enter a topic."); return; }
-        const newMapId = mapsManager.create(topic, { canvasData: null, sources: [], researchStep: 1 });
+        const newMapId = mapsManager.create(topic, { canvasData: null, sources: [], researchStep: 1, stats: { notecards: 0, sources: 0 } });
         await loadMap(newMapId);
         
         // Guided Launch Overlay
@@ -763,16 +786,58 @@ async function main() {
         }
     });
 
-    // --- Research Step Transition Handler ---
-    window.addEventListener('research-step-changed', (e) => {
-        const step = e.detail.step;
-        document.querySelectorAll('.step-indicator').forEach(el => {
-            const s = parseInt(el.dataset.step);
-            el.classList.toggle('active', s === step);
-            el.classList.toggle('completed', s < step);
-        });
-        if (ui.researchPhaseName) ui.researchPhaseName.textContent = `Step ${step}`;
+// --- Research Step Transition Handler ---
+const PHASE_CONFIG = {
+    1: { name: 'Exploration', icon: 'solar:compass-bold-duotone', goal: "Let's start by brainstorming your main topic. Add some initial notes or links to get the conversation started." },
+    2: { name: 'Questioning', icon: 'solar:question-square-bold-duotone', goal: "What's the one big question you want to answer? Focus on refining your research goal with your coach." },
+    3: { name: 'Planning', icon: 'solar:notes-bold-duotone', goal: "Map out the sub-topics you need to investigate. Create an outline of how your research will be structured." },
+    4: { name: 'Gathering', icon: 'solar:link-bold-duotone', goal: "Time to find sources! Add bibliography items and link them to your notecards with quotes and thoughts." },
+    5: { name: 'Synthesis', icon: 'solar:magic-stick-3-bold-duotone', goal: "Look for patterns. Use the AI to synthesize your findings and connect different concepts together." },
+    6: { name: 'Review', icon: 'solar:check-circle-bold-duotone', goal: "The final polish. Review your structure, citations, and logic. You're almost ready to export!" }
+};
+
+window.addEventListener('research-step-changed', (e) => {
+    const step = e.detail.step;
+    
+    // Update Step Indicators
+    document.querySelectorAll('.step-indicator').forEach(el => {
+        const s = parseInt(el.dataset.step);
+        el.classList.toggle('active', s === step);
+        el.classList.toggle('completed', s < step);
     });
+    if (ui.researchPhaseName) ui.researchPhaseName.textContent = `Step ${step}`;
+
+    // Update Phase Goal HUD
+    const config = PHASE_CONFIG[step];
+    if (config) {
+        if (ui.phaseLabel) ui.phaseLabel.textContent = `Phase ${step}`;
+        if (ui.phaseName) ui.phaseName.textContent = config.name;
+        if (ui.phaseGoalText) ui.phaseGoalText.textContent = config.goal;
+        if (ui.phaseIcon) ui.phaseIcon.setAttribute('data-icon', config.icon);
+        
+        const container = document.getElementById('phase-icon-container');
+        if (container) container.style.backgroundColor = `var(--phase-${step})`;
+    }
+
+    // Set body data attribute for CSS phase styling
+    document.body.setAttribute('data-phase', step);
+
+    // Contextual Workspace Adjustments
+    if (step === 3 || step === 6) {
+        // Planning or Review - Suggest Outline tab
+        const outlineTab = document.querySelector('[data-tab="questions"]');
+        if (outlineTab) outlineTab.click();
+    } else if (step === 4) {
+        // Gathering - Suggest Sources tab
+        const sourcesTab = document.querySelector('[data-tab="sources"]');
+        if (sourcesTab) sourcesTab.click();
+    }
+
+    // Phase Celebration
+    if (step > 1 && window.Effects) {
+        window.Effects.celebratePhase();
+    }
+});
 
     ui.headerSaveBtn?.addEventListener('click', (e) => { mapsManager.saveCurrent(currentMapId); Effects.sparkleElement(e.currentTarget); });
     ui.headerHomeBtn?.addEventListener('click', () => { mapsManager.saveCurrent(currentMapId); hideNodeDetailPanel(); showLandingPage(); });

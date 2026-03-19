@@ -102,14 +102,20 @@ export const mapsManager = {
         const researchStep = activeStep ? parseInt(activeStep.dataset.step) : 1;
         
         let canvasData = null;
+        let notecardCount = 0;
         if (window.tldrawEditor) {
             canvasData = window.tldrawEditor.store.getSnapshot();
+            notecardCount = window.tldrawEditor.getCurrentPageShapes().filter(s => s.type === 'research-note').length;
         }
 
         return {
             canvasData,
             researchStep: researchStep,
-            sources: window.projectSources || []
+            sources: window.projectSources || [],
+            stats: {
+                notecards: notecardCount,
+                sources: (window.projectSources || []).length
+            }
         };
     },
 

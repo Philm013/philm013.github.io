@@ -218,20 +218,20 @@
                 <span id="header-project-name" class="header-project-name text-lg font-[900] text-slate-900 tracking-tight leading-tight">Untitled Project</span>
             </div>
             <div class="flex items-center gap-2">
-                <button id="header-layout-btn" class="icon-button" title="Toggle Layout" aria-label="Switch Layout">
+                <button id="header-layout-btn" class="icon-button" title="Zoom to Fit" aria-label="Zoom canvas to fit all content">
                     <span class="iconify" data-icon="solar:widget-2-bold-duotone"></span>
                 </button>
-                <button id="header-help-btn" class="icon-button" title="Help" aria-label="Open Help">
+                <button id="header-help-btn" class="icon-button" title="Help" aria-label="Open help and research tips">
                     <span class="iconify" data-icon="solar:question-square-bold-duotone"></span>
                 </button>
-                <button id="header-export-btn" class="icon-button" title="Export" aria-label="Export Project">
+                <button id="header-export-btn" class="icon-button" title="Export" aria-label="Export project as file or document">
                     <span class="iconify" data-icon="solar:export-bold-duotone"></span>
                 </button>
-                <button id="header-save-btn" class="icon-button" title="Save" aria-label="Save Project">
+                <button id="header-save-btn" class="icon-button" title="Save" aria-label="Save current research project">
                     <span class="iconify" data-icon="solar:diskette-bold-duotone"></span>
                 </button>
-                <div class="w-px h-6 bg-slate-200 mx-2"></div>
-                <button id="header-home-btn" class="icon-button hover:bg-slate-100 rounded-xl transition-all" title="Home" aria-label="Back to My Projects">
+                <div class="w-px h-6 bg-slate-200 mx-2" aria-hidden="true"></div>
+                <button id="header-home-btn" class="icon-button hover:bg-slate-100 rounded-xl transition-all" title="Home" aria-label="Save and return to project dashboard">
                     <span class="iconify w-6 h-6" data-icon="solar:home-2-bold-duotone"></span>
                 </button>
             </div>
@@ -304,7 +304,7 @@
                 <div id="strategy-bar" class="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-xl border border-slate-200 p-2 rounded-2xl shadow-xl z-[100] transition-all opacity-0 pointer-events-none">
                     <div class="flex items-center gap-1 px-2 border-r border-slate-100">
                         <span class="iconify w-4 h-4 text-purple-500" data-icon="solar:magic-stick-3-bold-duotone"></span>
-                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Contextual Coach</span>
+                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Notecard Tools</span>
                     </div>
                     <button class="strategy-btn px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-lg transition-all" data-action="synthesize">Synthesize</button>
                     <button class="strategy-btn px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-lg transition-all" data-action="gaps">Find Gaps</button>
@@ -312,13 +312,30 @@
                     <button class="strategy-btn px-3 py-1.5 text-xs font-bold text-sky-600 hover:bg-sky-50 rounded-lg transition-all border-l border-slate-100 ml-1" data-action="details">Details</button>
                 </div>
 
+                <!-- NEW: Phase Goal HUD -->
+                <div id="phase-goal-hud" class="absolute top-6 left-6 right-6 md:left-auto md:right-6 md:w-[320px] bg-white/90 backdrop-blur-xl border border-slate-200 p-5 rounded-[2rem] shadow-xl z-[100] transition-all transform translate-y-[-120%] md:translate-y-0">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div id="phase-icon-container" class="p-2 bg-sky-500 rounded-xl text-white shadow-lg shadow-sky-200">
+                            <span id="phase-icon" class="iconify w-5 h-5" data-icon="solar:compass-bold-duotone"></span>
+                        </div>
+                        <div>
+                            <div id="phase-label" class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 leading-none mb-1">Phase 1</div>
+                            <div id="phase-name" class="text-sm font-black text-slate-900 leading-none">Exploration</div>
+                        </div>
+                    </div>
+                    <p id="phase-goal-text" class="text-xs font-semibold text-slate-500 leading-relaxed">Let's start by brainstorming your main topic. Add some initial notes or links to get the conversation started.</p>
+                </div>
+
                 <!-- NEW: Coach HUD (Dialogue & Input) -->
-                <div id="coach-hud" class="absolute bottom-32 left-1/2 -translate-x-1/2 w-[90%] max-w-[600px] z-[1000] pointer-events-none flex flex-col items-center gap-4">
-                    <div id="ai-chat-history" class="w-full max-h-[200px] overflow-y-auto scroll-container p-4 space-y-4 flex flex-col pointer-events-auto bg-white/80 backdrop-blur-xl border border-slate-200 rounded-[2rem] shadow-2xl transition-all opacity-0"></div>
+                <div id="coach-hud" class="absolute bottom-32 left-1/2 -translate-x-1/2 w-[95%] max-w-[650px] z-[1000] pointer-events-none flex flex-col items-center gap-4">
+                    <div id="ai-chat-history" class="w-full max-h-[250px] overflow-y-auto scroll-container p-6 space-y-4 flex flex-col pointer-events-auto bg-white/80 backdrop-blur-2xl border border-slate-200 rounded-[2.5rem] shadow-2xl transition-all opacity-0"></div>
                     
-                    <div id="coach-input-container" class="w-full pointer-events-auto bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-xl p-2 flex items-center gap-2 transition-all opacity-0">
-                        <input type="text" id="ai-chat-input" class="flex-grow bg-transparent border-none px-4 py-2 text-sm font-medium text-slate-900 placeholder-slate-400 outline-none" placeholder="Reply to your coach..." />
-                        <button id="ai-chat-send-btn" class="p-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-all active:scale-95">
+                    <div id="coach-input-container" class="w-full pointer-events-auto bg-white/95 backdrop-blur-xl border border-slate-200 rounded-3xl shadow-2xl p-2.5 flex items-center gap-3 transition-all opacity-0">
+                        <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-sky-500 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-purple-200/50">
+                            <span class="iconify w-6 h-6 text-white" data-icon="solar:magic-stick-3-bold-duotone"></span>
+                        </div>
+                        <input type="text" id="ai-chat-input" class="flex-grow bg-transparent border-none px-2 py-2 text-sm font-bold text-slate-900 placeholder-slate-400 outline-none" placeholder="Ask your coach for help..." />
+                        <button id="ai-chat-send-btn" class="p-3 bg-slate-900 text-white rounded-2xl hover:bg-sky-600 transition-all active:scale-95 shadow-lg">
                             <span class="iconify w-5 h-5" data-icon="solar:plain-2-bold-duotone"></span>
                         </button>
                     </div>
@@ -345,7 +362,7 @@
         <div id="node-detail-panel" class="absolute inset-0 md:top-6 md:left-6 md:bottom-6 md:w-[450px] md:max-w-[calc(100vw-48px)] bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl md:rounded-[2.5rem] flex flex-col overflow-hidden translate-x-[calc(-100%-48px)] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-[3000]" role="region" aria-label="Notecard Details">
             <div class="p-8 border-b border-slate-100 flex items-center justify-between">
                 <h2 id="node-detail-title" class="text-xl font-black text-slate-900 tracking-tight truncate mr-4">Notecard Details</h2>
-                <button id="node-detail-close" class="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-2xl transition-all shrink-0">
+                <button id="node-detail-close" class="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-2xl transition-all shrink-0" aria-label="Close notecard details">
                     <span class="iconify w-8 h-8" data-icon="solar:close-circle-bold-duotone"></span>
                 </button>
             </div>
@@ -393,7 +410,7 @@
                     <button id="source-external-btn" class="icon-button" title="Open in New Tab">
                         <span class="iconify" data-icon="solar:share-circle-bold-duotone"></span>
                     </button>
-                    <button id="source-viewer-close" class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
+                    <button id="source-viewer-close" class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all" aria-label="Close source viewer">
                         <span class="iconify w-8 h-8" data-icon="solar:close-circle-bold-duotone"></span>
                     </button>
                 </div>
@@ -415,50 +432,50 @@
             <div class="bg-white max-w-md w-full rounded-[2.5rem] shadow-2xl overflow-hidden p-8 space-y-6">
                 <h3 class="text-2xl font-black text-slate-900 text-center">Add Research Note</h3>
                 <div class="grid grid-cols-1 gap-4">
-                    <button id="create-simple-note" class="flex items-center gap-4 p-6 bg-slate-50 hover:bg-sky-50 border-2 border-transparent hover:border-sky-500 rounded-3xl transition-all group">
-                        <div class="p-4 bg-sky-500 text-white rounded-2xl shadow-lg shadow-sky-200">
-                            <span class="iconify w-6 h-6" data-icon="solar:pen-bold-duotone"></span>
-                        </div>
-                        <div class="text-left">
-                            <div class="font-black text-slate-900">Simple Note</div>
-                            <div class="text-xs text-slate-500">Manual entry from scratch</div>
-                        </div>
-                    </button>
-                    <button id="create-coached-note" class="flex items-center gap-4 p-6 bg-slate-50 hover:bg-purple-50 border-2 border-transparent hover:border-purple-500 rounded-3xl transition-all group">
-                        <div class="p-4 bg-purple-500 text-white rounded-2xl shadow-lg shadow-purple-200">
-                            <span class="iconify w-6 h-6" data-icon="solar:magic-stick-3-bold-duotone"></span>
-                        </div>
-                        <div class="text-left">
-                            <div class="font-black text-slate-900">Coached Note</div>
-                            <div class="text-xs text-slate-500">AI-powered research help</div>
-                        </div>
-                    </button>
+                    <button id="create-simple-note" class="flex items-center gap-4 p-6 bg-slate-50 hover:bg-sky-50 border-2 border-transparent hover:border-sky-500 rounded-3xl transition-all group" aria-label="Create a simple manual note">
+                    <div class="p-4 bg-sky-500 text-white rounded-2xl shadow-lg shadow-sky-200" aria-hidden="true">
+                        <span class="iconify w-6 h-6" data-icon="solar:pen-bold-duotone"></span>
+                    </div>
+                    <div class="text-left">
+                        <div class="font-black text-slate-900">Simple Note</div>
+                        <div class="text-xs text-slate-500">Manual entry from scratch</div>
+                    </div>
+                </button>
+                <button id="create-coached-note" class="flex items-center gap-4 p-6 bg-slate-50 hover:bg-purple-50 border-2 border-transparent hover:border-purple-500 rounded-3xl transition-all group" aria-label="Create a coached research note with AI help">
+                    <div class="p-4 bg-purple-500 text-white rounded-2xl shadow-lg shadow-purple-200" aria-hidden="true">
+                        <span class="iconify w-6 h-6" data-icon="solar:magic-stick-3-bold-duotone"></span>
+                    </div>
+                    <div class="text-left">
+                        <div class="font-black text-slate-900">Coached Note</div>
+                        <div class="text-xs text-slate-500">AI-powered research help</div>
+                    </div>
+                </button>
                 </div>
                 <button id="cancel-node-creation" class="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancel</button>
             </div>
         </div>
 
         <!-- Fixed Bottom Navigation (Mobile Only) -->
-        <nav id="mobile-nav" class="fixed bottom-0 left-0 right-0 h-20 bg-white/90 backdrop-blur-xl border-t border-slate-200 flex items-center justify-around px-4 z-[2500] md:hidden" role="navigation">
-            <button class="mobile-nav-btn flex flex-col items-center gap-1 active" data-section="left-sidebar">
-                <span class="iconify w-6 h-6" data-icon="solar:book-bookmark-bold-duotone"></span>
+        <nav id="mobile-nav" class="fixed bottom-0 left-0 right-0 h-20 bg-white/90 backdrop-blur-xl border-t border-slate-200 flex items-center justify-around px-4 z-[2500] md:hidden" role="navigation" aria-label="Main Navigation">
+            <button class="mobile-nav-btn flex flex-col items-center gap-1 active" data-section="left-sidebar" aria-label="View bibliography and research tools">
+                <span class="iconify w-6 h-6" data-icon="solar:book-bookmark-bold-duotone" aria-hidden="true"></span>
                 <span class="text-[9px] font-black uppercase tracking-widest">Sources</span>
             </button>
-            <button class="mobile-nav-btn flex flex-col items-center gap-1" data-section="graph-container">
-                <span class="iconify w-6 h-6" data-icon="solar:graph-up-bold-duotone"></span>
+            <button class="mobile-nav-btn flex flex-col items-center gap-1" data-section="graph-container" aria-label="View research canvas">
+                <span class="iconify w-6 h-6" data-icon="solar:graph-up-bold-duotone" aria-hidden="true"></span>
                 <span class="text-[9px] font-black uppercase tracking-widest">Canvas</span>
             </button>
-            <button id="mobile-add-node-btn" class="flex flex-col items-center -translate-y-4">
-                <div class="w-14 h-14 bg-sky-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-sky-200">
+            <button id="mobile-add-node-btn" class="flex flex-col items-center -translate-y-4" aria-label="Add new notecard">
+                <div class="w-14 h-14 bg-sky-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-sky-200" aria-hidden="true">
                     <span class="iconify w-8 h-8" data-icon="solar:add-circle-bold-duotone"></span>
                 </div>
             </button>
-            <button class="mobile-nav-btn flex flex-col items-center gap-1" data-section="right-sidebar">
-                <span class="iconify w-6 h-6" data-icon="solar:list-bold-duotone"></span>
+            <button class="mobile-nav-btn flex flex-col items-center gap-1" data-section="right-sidebar" aria-label="View project outline">
+                <span class="iconify w-6 h-6" data-icon="solar:list-bold-duotone" aria-hidden="true"></span>
                 <span class="text-[9px] font-black uppercase tracking-widest">Outline</span>
             </button>
-            <button id="mobile-settings-btn" class="flex flex-col items-center gap-1">
-                <span class="iconify w-6 h-6" data-icon="solar:settings-bold-duotone"></span>
+            <button id="mobile-settings-btn" class="flex flex-col items-center gap-1" aria-label="Open settings">
+                <span class="iconify w-6 h-6" data-icon="solar:settings-bold-duotone" aria-hidden="true"></span>
                 <span class="text-[9px] font-black uppercase tracking-widest">Settings</span>
             </button>
         </nav>

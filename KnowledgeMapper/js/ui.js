@@ -86,6 +86,13 @@ export const ui = {
     notecardParaphrase: document.getElementById('notecard-paraphrase'),
     notecardThoughts: document.getElementById('notecard-thoughts'),
 
+    // Phase Goal HUD
+    phaseGoalHud: document.getElementById('phase-goal-hud'),
+    phaseIcon: document.getElementById('phase-icon'),
+    phaseLabel: document.getElementById('phase-label'),
+    phaseName: document.getElementById('phase-name'),
+    phaseGoalText: document.getElementById('phase-goal-text'),
+
     // Coach HUD
     coachHud: document.getElementById('coach-hud'),
     coachInputContainer: document.getElementById('coach-input-container'),
