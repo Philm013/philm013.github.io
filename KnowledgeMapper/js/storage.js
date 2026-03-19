@@ -1,4 +1,3 @@
-import { getGraphState } from './graph.js';
 import { toast } from './ui.js';
 
 const MAPS_STORAGE_KEY = 'visualKnowledgeTool_allMaps';
@@ -17,7 +16,7 @@ export const dbManager = {
     init: function() {
         return new Promise((resolve, reject) => {
             const req = indexedDB.open('VisualKnowledgeDB', this.DB_VERSION);
-            req.onerror = e => reject("DB Error: " + e.target.errorCode);
+            req.onerror = () => reject("DB Error: " + req.error);
             req.onsuccess = e => {
                 this.db = e.target.result;
                 resolve();
@@ -83,7 +82,7 @@ export const mapsManager = {
         try {
             const maps = localStorage.getItem(MAPS_STORAGE_KEY);
             return maps ? JSON.parse(maps) : {};
-        } catch (e) {
+        } catch {
             return {};
         }
     },
@@ -99,26 +98,16 @@ export const mapsManager = {
      * @returns {object}
      */
     getCurrentGraphData: () => {
-        const { nodes, links, nodeCounter, currentLayout, currentLinkStyle } = getGraphState();
         const activeStep = document.querySelector('.step-indicator.active');
         const researchStep = activeStep ? parseInt(activeStep.dataset.step) : 1;
+        
+        let canvasData = null;
+        if (window.tldrawEditor) {
+            canvasData = window.tldrawEditor.store.getSnapshot();
+        }
+
         return {
-            nodes: nodes.map(n => ({ 
-                id: n.id, 
-                label: n.label, 
-                x: n.x, 
-                y: n.y, 
-                fx: n.fx, 
-                fy: n.fy, 
-                shape: n.shape, 
-                color: n.color, 
-                details: n.details || '',
-                notecard: n.notecard || {}
-            })),
-            links: links.map(l => ({ source: l.source.id, target: l.target.id, label: l.label })),
-            counter: nodeCounter,
-            layout: currentLayout,
-            linkStyle: currentLinkStyle,
+            canvasData,
             researchStep: researchStep,
             sources: window.projectSources || []
         };
@@ -208,7 +197,7 @@ export const templatesManager = {
         try {
             const t = localStorage.getItem(TEMPLATES_STORAGE_KEY);
             return t ? JSON.parse(t) : {};
-        } catch (e) {
+        } catch {
             return {};
         }
     },

@@ -46,24 +46,25 @@ export const ui = {
     generateDetailsBtn: document.getElementById('generate-details-btn'),
     rteToolbar: document.getElementById('rte-toolbar'),
 
-    settingsModal: document.getElementById('settings-modal'),
     helpModal: document.getElementById('help-modal'),
     exportModal: document.getElementById('export-modal'),
-    saveSettingsBtn: document.getElementById('save-settings-btn'),
     exportInteractiveBtn: document.getElementById('export-interactive-btn'),
     exportPrintableBtn: document.getElementById('export-printable-btn'),
     exportJsonBtn: document.getElementById('export-json-btn'),
-    apiKeys: { 
-        gemini: document.getElementById('gemini-key'), 
-        hf: document.getElementById('hf-key'),
-        newsapi: document.getElementById('newsapi-key'), 
-        finnhub: document.getElementById('finnhub-key'), 
-        wolfram: document.getElementById('wolfram-key'), 
-    },
-    modelSelectors: {
-        tool: document.getElementById('tool-model-select'),
-        content: document.getElementById('content-model-select'),
-    },
+    selectModeBtn: document.getElementById('selectModeBtn'),
+
+    // Header Elements
+    headerProjectName: document.getElementById('header-project-name'),
+    headerLayoutBtn: document.getElementById('header-layout-btn'),
+    headerHelpBtn: document.getElementById('header-help-btn'),
+    headerExportBtn: document.getElementById('header-export-btn'),
+    headerSaveBtn: document.getElementById('header-save-btn'),
+    headerHomeBtn: document.getElementById('header-home-btn'),
+
+    // Research Progress UI
+    researchProgressStepper: document.getElementById('research-progress-stepper'),
+    researchPhaseName: document.getElementById('research-phase-name'),
+    nextPhaseBtn: document.getElementById('next-phase-btn'),
 
     researchProgressOverlay: document.getElementById('research-progress-overlay'),
     researchProgressTitle: document.getElementById('research-progress-title'),
@@ -84,6 +85,44 @@ export const ui = {
     notecardQuote: document.getElementById('notecard-quote'),
     notecardParaphrase: document.getElementById('notecard-paraphrase'),
     notecardThoughts: document.getElementById('notecard-thoughts'),
+
+    // Coach HUD
+    coachHud: document.getElementById('coach-hud'),
+    coachInputContainer: document.getElementById('coach-input-container'),
+
+    // Source Viewer
+    sourceViewerPanel: document.getElementById('source-viewer-panel'),
+    sourceViewerTitle: document.getElementById('source-viewer-title'),
+    sourceViewerClose: document.getElementById('source-viewer-close'),
+    sourceViewerLoader: document.getElementById('source-viewer-loader'),
+    sourceIframe: document.getElementById('source-iframe'),
+    sourcePdfObject: document.getElementById('source-pdf-object'),
+    pdfViewerContainer: document.getElementById('pdf-viewer-container'),
+    pdfDownloadLink: document.getElementById('pdf-download-link'),
+    sourceExternalBtn: document.getElementById('source-external-btn'),
+    openSourceViewerBtn: document.getElementById('open-source-viewer-btn'),
+
+    // Layout Elements
+    workspaceLayout: document.getElementById('workspace-layout'),
+    leftSidebar: document.getElementById('left-sidebar'),
+    rightSidebar: document.getElementById('right-sidebar'),
+    centerViewBtn: document.getElementById('center-view-btn'),
+
+    // Mobile Navigation
+    mobileNav: document.getElementById('mobile-nav'),
+    mobileAddNodeBtn: document.getElementById('mobile-add-node-btn'),
+    mobileSettingsBtn: document.getElementById('mobile-settings-btn'),
+    nodeCreationChoice: document.getElementById('node-creation-choice'),
+    createSimpleNote: document.getElementById('create-simple-note'),
+    createCoachedNote: document.getElementById('create-coached-note'),
+    cancelNodeCreation: document.getElementById('cancel-node-creation'),
+
+    // Badges
+    badges: {
+        coach: document.getElementById('badge-coach'),
+        sources: document.getElementById('badge-sources'),
+        outline: document.getElementById('badge-outline'),
+    }
 };
 
 /**
@@ -119,11 +158,15 @@ export function toast(message, duration = 3000) {
  * @param {boolean} isLoading - Whether the AI is currently processing a task.
  */
 export function setAILoading(isLoading) {
-    ui.landingAiGenerateBtn.disabled = isLoading;
-    ui.aiChatSendBtn.disabled = isLoading;
-    ui.generateDetailsBtn.disabled = isLoading;
-    ui.landingAiGenerateBtn.textContent = isLoading ? 'Thinking...' : 'Generate New Map';
-    ui.generateDetailsBtn.textContent = isLoading ? 'Generating...' : 'Enrich Details with AI ✨';
+    if (ui.landingAiGenerateBtn) {
+        ui.landingAiGenerateBtn.disabled = isLoading;
+        ui.landingAiGenerateBtn.textContent = isLoading ? 'Thinking...' : 'Generate New Map';
+    }
+    if (ui.aiChatSendBtn) ui.aiChatSendBtn.disabled = isLoading;
+    if (ui.generateDetailsBtn) {
+        ui.generateDetailsBtn.disabled = isLoading;
+        ui.generateDetailsBtn.textContent = isLoading ? 'Generating...' : 'Enrich Details with AI ✨';
+    }
 }
 
 /**
@@ -189,6 +232,7 @@ export const researchProgressManager = {
             statusEl.textContent = '...';
         } else if (status === 'Done') {
             statusEl.textContent = '✓';
+            if (window.Effects) window.Effects.sparkleElement(item);
         } else if (status === 'Error') {
             statusEl.textContent = '✕';
         } else { // Queued
@@ -211,6 +255,8 @@ export const researchProgressManager = {
  * @param {string} [extraHtml=''] - Optional HTML content to append to the message.
  */
 export function addMessageToChatHistory(role, text, shouldSave = true, dbSaveCallback, extraHtml = '') {
+    if (!ui.aiChatHistory) return;
+
     const el = document.createElement('div');
     el.classList.add('chat-message', role);
     
@@ -255,6 +301,15 @@ export function addMessageToChatHistory(role, text, shouldSave = true, dbSaveCal
     
     ui.aiChatHistory.appendChild(el);
     ui.aiChatHistory.scrollTop = ui.aiChatHistory.scrollHeight;
+
+    // Show HUD elements when there's dialogue
+    if (ui.aiChatHistory.classList.contains('opacity-0')) {
+        ui.aiChatHistory.classList.remove('opacity-0');
+    }
+    if (ui.coachInputContainer && ui.coachInputContainer.classList.contains('opacity-0')) {
+        ui.coachInputContainer.classList.remove('opacity-0');
+    }
+
     if (shouldSave && role !== 'system' && dbSaveCallback) {
         dbSaveCallback(role, text);
     }

@@ -1,18 +1,137 @@
-/* global d3 */
-import { ui, PRESET_COLORS, PRESET_SHAPES, toast, setAILoading, addMessageToChatHistory } from './ui.js';
-import { initGraph, updateGraph, addNode, deleteNodeById, connectNodesById, changeLayout, getGraphState, loadGraphData, clearSelection, toggleNodeSelection, copySelection, pasteSelection, groupSelectedNodes, ungroupNode, getSelectedNodeForDetails, setSelectedNodeForDetails } from './graph.js';
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { ui, toast, addMessageToChatHistory } from './ui.js';
 import { dbManager, mapsManager, templatesManager } from './storage.js';
-import { initializeAI, sendChatMessage, _internal_expandNodeWithAI } from './api.js';
+import { initializeAI, sendChatMessage } from './api.js';
+import { Effects } from './effects.js';
 
+
+window.Effects = Effects;
+window.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
 // --- GLOBAL STATE & SETUP ---
 let currentMapId = null;
-let selectedNodeForContextMenu = null;
-let selectedLinkForContextMenu = null;
-let selectedNodeForSettings = null;
 let isSelectModeActive = false;
 
 window.projectSources = []; // Global bibliography for the current map
+
+// --- TLDRAW COMPATIBILITY HELPERS ---
+let activeNodeId = null;
+
+function getSelectedNodeForDetails() {
+    if (!activeNodeId || !window.tldrawEditor) return null;
+    const shape = window.tldrawEditor.getShape(activeNodeId);
+    if (!shape || shape.type !== 'research-note') return null;
+    return {
+        id: shape.id,
+        label: shape.props.label,
+        notecard: {
+            quote: shape.props.quote,
+            thoughts: shape.props.thoughts,
+            sourceIndex: shape.props.sourceIndex
+        }
+    };
+}
+
+function setSelectedNodeForDetails(node) {
+    activeNodeId = node ? node.id : null;
+}
+
+function clearSelection() {
+    if (window.tldrawEditor) window.tldrawEditor.selectNone();
+}
+
+function addNode(label) {
+    if (window.isMobile) {
+        // Show choice overlay on mobile
+        const overlay = ui.nodeCreationChoice;
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            setTimeout(() => overlay.style.opacity = '1', 10);
+            
+            // Temporary storage for label to use in listeners
+            overlay.dataset.label = label || 'New Notecard';
+        }
+    } else {
+        // Desktop behavior (simple note for now or as per existing logic)
+        if (window.tldrawEditor) {
+            const { x, y } = window.tldrawEditor.getCamera();
+            window.tldrawEditor.createShape({
+                type: 'research-note',
+                x: -x + 100, y: -y + 100,
+                props: { label: label || 'New Notecard' }
+            });
+        }
+    }
+}
+
+/**
+ * Updates notification badges based on the current project state.
+ */
+function updateBadges() {
+    if (!window.tldrawEditor) return;
+    const notes = window.tldrawEditor.getCurrentPageShapes().filter(s => s.type === 'research-note');
+    
+    // 1. Outline Badge (Check for empty notecards)
+    const emptyNotecards = notes.filter(n => !n.props.quote && !n.props.thoughts);
+    if (ui.badges.outline) {
+        ui.badges.outline.classList.toggle('hidden', emptyNotecards.length === 0);
+        ui.badges.outline.classList.add('badge-pulse');
+    }
+
+    // 2. Sources Badge (Count of sources)
+    if (ui.badges.sources) {
+        ui.badges.sources.textContent = window.projectSources.length;
+        ui.badges.sources.classList.toggle('hidden', window.projectSources.length === 0);
+    }
+}
+
+/**
+ * Opens a source in the dedicated viewer panel.
+ */
+function openSourceInViewer(sourceIndex) {
+    const source = window.projectSources[sourceIndex];
+    if (!source) return;
+
+    if (ui.sourceViewerTitle) ui.sourceViewerTitle.textContent = source.title || 'Source Material';
+    
+    const url = source.url || '';
+    const isPdf = url.toLowerCase().endsWith('.pdf');
+
+    // Show loader
+    if (ui.sourceViewerLoader) ui.sourceViewerLoader.classList.remove('hidden');
+    
+    if (isPdf) {
+        if (ui.sourceIframe) ui.sourceIframe.classList.add('hidden');
+        if (ui.pdfViewerContainer) ui.pdfViewerContainer.classList.remove('hidden');
+        if (ui.sourcePdfObject) ui.sourcePdfObject.data = url;
+    } else {
+        if (ui.pdfViewerContainer) ui.pdfViewerContainer.classList.add('hidden');
+        if (ui.sourceIframe) {
+            ui.sourceIframe.classList.remove('hidden');
+            ui.sourceIframe.src = url;
+            ui.sourceIframe.onload = () => {
+                if (ui.sourceViewerLoader) ui.sourceViewerLoader.classList.add('hidden');
+            };
+        }
+    }
+
+    if (ui.sourceExternalBtn) {
+        ui.sourceExternalBtn.onclick = () => window.open(url, '_blank');
+    }
+
+    // Ensure mutually exclusive on mobile, but on desktop we can keep panels
+    if (window.isMobile) {
+        ui.aiPanel?.classList.remove('visible');
+    }
+    
+    ui.sourceViewerPanel?.classList.add('visible');
+    ui.sourceViewerPanel?.style.setProperty('opacity', '1');
+    ui.sourceViewerPanel?.style.setProperty('pointer-events', 'auto');
+    ui.sourceViewerPanel?.style.setProperty('transform', 'scale(1)');
+    
+    Effects.celebratePhase(); 
+}
 
 /**
  * Updates the bibliography list in the UI and notecard select dropdowns.
@@ -28,14 +147,14 @@ function updateSourcesUI() {
     window.projectSources.forEach((source, index) => {
         // Update Bibliography List
         const item = document.createElement('div');
-        item.className = 'source-item';
+        item.className = 'group bg-slate-50 border border-slate-100 rounded-2xl p-4 transition-all hover:border-sky-500 hover:bg-white hover:shadow-lg flex items-center justify-between gap-4';
         item.innerHTML = `
-            <div class="source-info">
-                <h4>${source.title || 'Untitled Source'}</h4>
-                <p>${source.url || 'No URL'}</p>
-            </div>
-            <button class="icon-button danger" onclick="window.removeSource(${index})">
-                <span class="iconify" data-icon="solar:trash-bin-trash-bold-duotone"></span>
+            <button class="flex-grow text-left focus:outline-none rounded-xl p-1" onclick="window.viewSource(${index})" aria-label="View source">
+                <div class="font-bold text-slate-900 text-sm">${source.title || 'Untitled Source'}</div>
+                <div class="text-[10px] text-slate-400 mt-1 truncate max-w-[180px]">${source.url || 'No URL'}</div>
+            </button>
+            <button class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" onclick="window.removeSource(${index})">
+                <span class="iconify w-5 h-5" data-icon="solar:trash-bin-trash-bold-duotone"></span>
             </button>
         `;
         list.appendChild(item);
@@ -46,7 +165,11 @@ function updateSourcesUI() {
         option.textContent = source.title || source.url;
         select.appendChild(option);
     });
+
+    updateBadges();
 }
+
+window.viewSource = (index) => openSourceInViewer(index);
 
 window.removeSource = (index) => {
     window.projectSources.splice(index, 1);
@@ -59,46 +182,65 @@ window.addEventListener('sources-updated', updateSourcesUI);
  * Builds a structured outline from the graph hierarchy.
  */
 function updateOutline() {
-    const { nodes, links } = getGraphState();
+    if (!window.tldrawEditor) return;
     const tree = ui.outlineTree;
     if (!tree) return;
 
     tree.innerHTML = '';
     
-    const nodeMap = new Map(nodes.map(n => [n.id, { ...n, children: [] }]));
-    const roots = [];
+    const editor = window.tldrawEditor;
+    const shapes = editor.getCurrentPageShapes();
+    const notes = shapes.filter(s => s.type === 'research-note');
+    const arrows = shapes.filter(s => s.type === 'arrow');
+
+    // Build adjacency map from arrows
+    const childrenMap = new Map();
     const hasParent = new Set();
 
-    links.forEach(link => {
-        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-        const sourceNode = nodeMap.get(sourceId);
-        const targetNode = nodeMap.get(targetId);
-        if (sourceNode && targetNode) {
-            sourceNode.children.push(targetNode);
-            hasParent.add(targetId);
+    arrows.forEach(arrow => {
+        if (arrow.props.start.type === 'binding' && arrow.props.end.type === 'binding') {
+            const sourceId = arrow.props.start.boundShapeId;
+            const targetId = arrow.props.end.boundShapeId;
+            if (sourceId && targetId) {
+                if (!childrenMap.has(sourceId)) childrenMap.set(sourceId, []);
+                childrenMap.get(sourceId).push(targetId);
+                hasParent.add(targetId);
+            }
         }
     });
 
-    nodeMap.forEach(node => {
-        if (!hasParent.has(node.id)) roots.push(node);
-    });
+    const roots = notes.filter(n => !hasParent.has(n.id));
 
-    const renderLevel = (node, depth) => {
+    const renderLevel = (shapeId, depth) => {
+        const shape = editor.getShape(shapeId);
+        if (!shape) return;
+
         const div = document.createElement('div');
-        div.className = 'outline-node';
-        div.style.paddingLeft = `${depth * 24}px`;
+        div.className = 'outline-node transition-all hover:bg-slate-50 rounded-xl cursor-pointer p-2 mb-1';
+        div.style.paddingLeft = `${depth * 16 + 8}px`;
         div.innerHTML = `
             <div class="outline-node-content">
-                <strong>${node.label}</strong>
-                ${node.notecard?.paraphrase ? `<p>${node.notecard.paraphrase}</p>` : ''}
+                <strong class="text-xs text-slate-700">${shape.props.label || 'Note'}</strong>
+                ${shape.props.thoughts ? `<p class="text-[10px] text-slate-400 italic line-clamp-1">${shape.props.thoughts}</p>` : ''}
             </div>
         `;
+        div.onclick = () => {
+            editor.select(shape.id);
+            editor.zoomToSelection();
+            showNodeDetailPanel({
+                id: shape.id,
+                label: shape.props.label,
+                notecard: { quote: shape.props.quote, thoughts: shape.props.thoughts }
+            });
+        };
         tree.appendChild(div);
-        node.children.forEach(child => renderLevel(child, depth + 1));
+
+        const children = childrenMap.get(shapeId) || [];
+        children.forEach(childId => renderLevel(childId, depth + 1));
     };
 
-    roots.forEach(root => renderLevel(nodeMap.get(root.id), 0));
+    roots.forEach(root => renderLevel(root.id, 0));
+    updateBadges();
 }
 
 // --- Notecard Sync ---
@@ -112,78 +254,62 @@ const syncNotecardToUI = (node) => {
 };
 
 const syncUIToNotecard = () => {
+    const editor = window.tldrawEditor;
     const node = getSelectedNodeForDetails();
-    if (!node) return;
-    if (!node.notecard) node.notecard = {};
-    
-    if (ui.notecardSourceSelect) node.notecard.sourceIndex = ui.notecardSourceSelect.value;
-    if (ui.notecardQuote) node.notecard.quote = ui.notecardQuote.innerHTML;
-    if (ui.notecardParaphrase) node.notecard.paraphrase = ui.notecardParaphrase.innerHTML;
-    if (ui.notecardThoughts) node.notecard.thoughts = ui.notecardThoughts.innerHTML;
-    
-    // Also update standard details for backward compatibility/export
-    node.details = `
-        ${node.notecard.quote ? `<h4>Quote</h4><blockquote>${node.notecard.quote}</blockquote>` : ''}
-        ${node.notecard.paraphrase ? `<h4>Paraphrase</h4><p>${node.notecard.paraphrase}</p>` : ''}
-        ${node.notecard.thoughts ? `<h4>My Thoughts</h4><p>${node.notecard.thoughts}</p>` : ''}
-    `;
+    if (!editor || !node) return;
+
+    editor.updateShape({
+        id: node.id,
+        props: {
+            sourceIndex: ui.notecardSourceSelect.value,
+            quote: ui.notecardQuote.innerHTML,
+            thoughts: ui.notecardThoughts.innerHTML
+        }
+    });
 };
 
 // --- CONSTANTS ---
 const TEMPLATES = {
-    swot: {
-        name: "SWOT Analysis",
+    literature_review: {
+        name: "Literature Review",
         graphData: {
             nodes: [
-                { id: 'node-1', label: 'Analysis Subject', shape: 'rectangle', color: '#4a90e2' },
-                { id: 'node-2', label: 'Strengths', shape: 'rectangle', color: '#7ed321' },
-                { id: 'node-3', label: 'Weaknesses', shape: 'rectangle', color: '#f5a623' },
-                { id: 'node-4', label: 'Opportunities', shape: 'rectangle', color: '#50e3c2' },
-                { id: 'node-5', label: 'Threats', shape: 'rectangle', color: '#e24a4a' }
+                { id: 'node-1', label: 'Central Research Topic', shape: 'rectangle', color: '#0ea5e9' },
+                { id: 'node-2', label: 'Theory A', shape: 'rectangle', color: '#8b5cf6' },
+                { id: 'node-3', label: 'Theory B', shape: 'rectangle', color: '#8b5cf6' },
+                { id: 'node-4', label: 'Gap in Research', shape: 'diamond', color: '#f59e0b' },
+                { id: 'node-5', label: 'Key Source 1', shape: 'ellipse', color: '#10b981' }
+            ],
+            links: [
+                { source: 'node-1', target: 'node-2' },
+                { source: 'node-1', target: 'node-3' },
+                { source: 'node-2', target: 'node-4' },
+                { source: 'node-3', target: 'node-4' },
+                { source: 'node-2', target: 'node-5' }
+            ],
+            counter: 5, layout: 'mindmap', linkStyle: 'straight'
+        }
+    },
+    essay_planner: {
+        name: "Argument Essay",
+        graphData: {
+            nodes: [
+                { id: 'node-1', label: 'Main Claim / Thesis', shape: 'rectangle', color: '#0ea5e9' },
+                { id: 'node-2', label: 'Supporting Point 1', shape: 'rectangle', color: '#8b5cf6' },
+                { id: 'node-3', label: 'Supporting Point 2', shape: 'rectangle', color: '#8b5cf6' },
+                { id: 'node-4', label: 'Counter-Argument', shape: 'rectangle', color: '#f43f5e' },
+                { id: 'node-5', label: 'Rebuttal', shape: 'rectangle', color: '#10b981' }
             ],
             links: [
                 { source: 'node-1', target: 'node-2' },
                 { source: 'node-1', target: 'node-3' },
                 { source: 'node-1', target: 'node-4' },
-                { source: 'node-1', target: 'node-5' }
+                { source: 'node-4', target: 'node-5' }
             ],
-            counter: 5, layout: 'mindmap', linkStyle: 'curved'
-        }
-    },
-    pros_cons: {
-        name: "Pros & Cons List",
-        graphData: {
-            nodes: [
-                { id: 'node-1', label: 'Decision Topic', shape: 'rectangle' },
-                { id: 'node-2', label: 'Pros', shape: 'rectangle', color: '#7ed321' },
-                { id: 'node-3', label: 'Cons', shape: 'rectangle', color: '#e24a4a' }
-            ],
-            links: [ { source: 'node-1', target: 'node-2' }, { source: 'node-1', target: 'node-3' } ],
-            counter: 3, layout: 'mindmap', linkStyle: 'straight'
-        }
-    },
-    decision_tree: {
-        name: "Decision Tree",
-        graphData: {
-            nodes: [
-                { id: 'node-1', label: 'Decision?', shape: 'diamond' },
-                { id: 'node-2', label: 'Option A', shape: 'rectangle' },
-                { id: 'node-3', label: 'Option B', shape: 'rectangle' }
-            ],
-            links: [
-                { source: 'node-1', target: 'node-2', label: 'Condition 1' },
-                { source: 'node-1', target: 'node-3', label: 'Condition 2' }
-            ],
-            counter: 3, layout: 'flowchart', linkStyle: 'orthogonal'
+            counter: 5, layout: 'mindmap', linkStyle: 'straight'
         }
     }
 };
-
-/**
- * Triggers the device's vibration hardware for a specified duration, if supported by the browser.
- * @param {number} [duration=30] - The duration of the vibration in milliseconds.
- */
-const vibrate = (duration = 30) => navigator.vibrate && navigator.vibrate(duration);
 
 /**
  * Displays the landing page and hides the main application container. Renders the list of saved maps.
@@ -218,16 +344,19 @@ function renderLandingPage() {
         mapIds.sort((a, b) => maps[b].lastModified - maps[a].lastModified).forEach(mapId => {
             const map = maps[mapId];
             const li = document.createElement('li');
-            li.className = 'map-list-item';
+            li.className = 'group bg-slate-950/40 backdrop-blur-md border border-slate-800 hover:border-sky-500/50 rounded-2xl p-4 transition-all duration-300 flex items-center justify-between gap-4';
             li.innerHTML = `
-                <div class="map-info" data-action="open" data-id="${mapId}">
-                    <strong>${map.name}</strong>
-                    <span>Last modified: ${new Date(map.lastModified).toLocaleString()}</span>
-                </div>
-                <div class="map-actions">
-                    <button data-action="rename" data-id="${mapId}">Rename</button>
-                    <button data-action="duplicate" data-id="${mapId}">Duplicate</button>
-                    <button data-action="delete" data-id="${mapId}" class="danger">Delete</button>
+                <button class="flex-grow text-left focus:outline-none rounded-xl p-1" data-action="open" data-id="${mapId}" aria-label="Open project">
+                    <div class="font-bold text-slate-200 group-hover:text-sky-400 transition-colors">${map.name}</div>
+                    <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mt-1">Edited ${new Date(map.lastModified).toLocaleDateString()}</div>
+                </button>
+                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all" data-action="rename" data-id="${mapId}" title="Rename">
+                        <span class="iconify w-4 h-4" data-icon="solar:pen-new-square-bold-duotone"></span>
+                    </button>
+                    <button class="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all" data-action="delete" data-id="${mapId}" title="Delete">
+                        <span class="iconify w-4 h-4" data-icon="solar:trash-bin-trash-bold-duotone"></span>
+                    </button>
                 </div>
             `;
             ui.mapList.appendChild(li);
@@ -241,81 +370,61 @@ function renderLandingPage() {
  */
 function renderTemplateLibrary() {
     if (!ui.templateLibrary) return;
-    ui.templateLibrary.innerHTML = ''; // Clear existing
+    ui.templateLibrary.innerHTML = ''; 
     const allTemplates = { ...TEMPLATES, ...templatesManager.getCustom() };
 
     ui.templateLibrary.innerHTML = Object.entries(allTemplates).map(([id, t]) => {
-        const isCustom = id.startsWith('template_');
-        const deleteBtnHtml = isCustom ? `<button class="template-delete-btn" data-template-id="${id}" title="Delete Template">×</button>` : '';
-        return `<div class="template-item-wrapper">
-                    ${deleteBtnHtml}
-                    <button class="secondary-button" data-template-id="${id}">${t.name}</button>
-                </div>`;
+        return `
+            <div class="group relative">
+                <button class="w-full text-left bg-slate-950/40 backdrop-blur-md border border-slate-800 hover:border-orange-500/50 rounded-2xl p-4 transition-all duration-300 active:scale-[0.98] outline-none" data-template-id="${id}" aria-label="Template">
+                    <div class="font-bold text-slate-200 group-hover:text-orange-400 transition-colors text-sm">${t.name}</div>
+                </button>
+            </div>`;
     }).join('');
 }
 
 /**
  * Loads the specified map's data from storage, initializes the graph and chat history, and displays the main app container.
- * @param {string} mapId - The ID of the map to load.
  */
 async function loadMap(mapId) {
     const maps = mapsManager.getAll();
     let mapData = maps[mapId];
-    if (!mapData) {
-        toast("Error: Map not found.");
-        showLandingPage();
-        return;
-    }
+    if (!mapData) { toast("Error: Map not found."); showLandingPage(); return; }
+    
     const graph = mapData.graphData;
-    if (!graph || !graph.nodes) {
-        toast("Error: Map data is corrupted.");
-        return;
-    }
     currentMapId = mapId;
+    if (ui.headerProjectName) ui.headerProjectName.textContent = mapData.name || 'Untitled Project';
+
+    // Load Tldraw Snapshot
+    if (graph.canvasData && window.tldrawEditor) {
+        window.tldrawEditor.store.loadSnapshot(graph.canvasData);
+    }
     
-    loadGraphData(graph);
-    
-    // Restore sources
     window.projectSources = graph.sources || [];
     window.dispatchEvent(new CustomEvent('sources-updated'));
 
-    if (graph.researchStep) {
-
-        window.dispatchEvent(new CustomEvent('research-step-changed', { detail: { step: graph.researchStep } }));
-    }
+    const step = graph.researchStep || 1;
+    window.dispatchEvent(new CustomEvent('research-step-changed', { detail: { step: step } }));
     
     await loadChatHistory(mapId);
     showAppContainer();
-    updateGraph(true);
-    
-    const svg = d3.select("#graph-canvas");
-    const zoom = d3.zoom().scaleExtent([0.1, 4]).on("zoom", e => {
-        if (getGraphState().currentLayout !== 'sunburst') {
-            d3.select("#graph-canvas g").attr("transform", e.transform);
-        }
-    });
-    svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
 }
 
 /**
  * Retrieves and displays the chat history for a specific map from IndexedDB.
- * @param {string} mapId - The ID of the map whose chat history to load.
  */
 async function loadChatHistory(mapId) {
     if (!ui.aiChatHistory) return;
     ui.aiChatHistory.innerHTML = '';
     const messages = await dbManager.getMapMessages(mapId);
-    const conversationHistory = [];
 
     if (messages.length > 0) {
         messages.forEach(msg => {
-            addMessageToChatHistory(msg.role, msg.content, false); // Don't re-save
-            conversationHistory.push({ role: msg.role, parts: [{ text: msg.content }] });
+            addMessageToChatHistory(msg.role, msg.content, false); 
         });
     } else {
         addMessageToChatHistory('system', 'Chat with me to research topics and build your map!', false);
     }
-    // The API module will manage its own history state
     ui.aiChatHistory.scrollTop = ui.aiChatHistory.scrollHeight;
 }
 
@@ -330,430 +439,328 @@ function hidePopups() {
 }
 
 /**
+ * Hides all side panels to clear the workspace.
+ */
+function hideAllSidePanels() {
+    ui.nodeDetailPanel?.classList.remove('visible');
+    ui.nodeDetailPanel?.style.setProperty('transform', 'translateX(calc(-100% - 48px))');
+    ui.sourceViewerPanel?.classList.remove('visible');
+    ui.sourceViewerPanel?.style.setProperty('opacity', '0');
+    ui.sourceViewerPanel?.style.setProperty('pointer-events', 'none');
+    ui.sourceViewerPanel?.style.setProperty('scale', '0.95');
+    setSelectedNodeForDetails(null);
+}
+
+/**
  * Opens the node detail panel, populates it with the selected node's data, and highlights the node on the graph.
- * @param {object} nodeData - The data object for the node to display.
  */
 function showNodeDetailPanel(nodeData) {
-    if (getSelectedNodeForDetails() && getGraphState().currentLayout !== 'sunburst') {
-        d3.selectAll('.node').filter(d => d.id === getSelectedNodeForDetails().id).classed('selected', false);
-    }
     clearSelection();
+    hideAllSidePanels();
+
     setSelectedNodeForDetails(nodeData);
     if (ui.nodeDetailTitle) ui.nodeDetailTitle.textContent = nodeData.label || 'Notecard Details';
     syncNotecardToUI(nodeData);
+    
     ui.nodeDetailPanel?.classList.add('visible');
+    ui.nodeDetailPanel?.style.setProperty('transform', 'translateX(0)');
 }
 
 /**
  * Closes the node detail panel and deselects the current node.
  */
 function hideNodeDetailPanel() {
-    if (getSelectedNodeForDetails() && getGraphState().currentLayout !== 'sunburst') {
-        d3.selectAll('.node').filter(n => n.id === getSelectedNodeForDetails().id).classed('selected', false);
-    }
     setSelectedNodeForDetails(null);
     ui.nodeDetailPanel?.classList.remove('visible');
-}
-
-function showSettingsPalette(nodeData) {
-    selectedNodeForSettings = nodeData;
-    const transform = d3.zoomTransform(d3.select("#graph-canvas").node());
-    const screenX = transform.applyX(nodeData.x);
-    const screenY = transform.applyY(nodeData.y);
-    if (ui.nodeSettingsPalette) {
-        ui.nodeSettingsPalette.style.left = `${screenX + nodeData.width / 2 + 10}px`;
-        ui.nodeSettingsPalette.style.top = `${screenY - 20}px`;
-        ui.nodeSettingsPalette.classList.remove('hidden');
-    }
-}
-
-// --- EXPORT FUNCTIONS ---
-function generateDownload(filename, content, mimeType = 'text/plain') {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast(`${filename} exported!`);
-}
-
-function exportInteractiveViewer() {
-    if (!currentMapId) return;
-
-    const maps = mapsManager.getAll();
-    const mapName = maps[currentMapId]?.name || 'Untitled Map';
-    const sanitizedName = mapName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    const filename = `${sanitizedName}-viewer.html`;
-
-    const { nodes, links, currentLayout } = getGraphState();
-    const exportNodes = JSON.parse(JSON.stringify(nodes));
-    const exportLinks = links.map(l => ({ source: l.source.id, target: l.target.id, label: l.label || '' }));
-    const exportLayout = currentLayout === 'sunburst' ? 'mindmap' : currentLayout;
-
-    const dataScript = `const graphData = ${JSON.stringify({ nodes: exportNodes, links: exportLinks, layout: exportLayout }, null, 2)};`;
-
-    const viewerCSS = `
-        :root { --background: #1a1a1a; --canvas-bg: #212121; --text-primary: #f0f0f0; --text-secondary: #a0a0a0; --node-color: #4a90e2; --node-text: #ffffff; }
-        html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; overflow: hidden; height: 100%; width: 100%; background-color: var(--background); color: var(--text-primary); }
-        .node { cursor: pointer; } .node-shape { stroke: rgba(0,0,0,0.4); stroke-width: 2px; }
-        .node-foreign-object div { font-size: 14px; font-weight: 600; color: var(--node-text); text-align: center; padding: 8px; box-sizing: border-box; height: 100%; display: flex; align-items: center; justify-content: center; line-height: 1.3; word-break: break-word; }
-        .link { stroke: #777; stroke-opacity: 0.8; stroke-width: 2.5px; pointer-events: none; }
-        .link-label { font-size: 12px; fill: var(--text-secondary); text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 3px; stroke-linejoin: round; }
-        .details-panel { position: absolute; top: 15px; left: 15px; width: 350px; max-width: 90vw; background: #2c2c2c; border-radius: 12px; border: 1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 50; display: flex; flex-direction: column; max-height: calc(100vh - 40px); transition: transform 0.4s ease; transform: translateX(-120%); }
-        .details-panel.visible { transform: translateX(0); }
-        .details-header { padding: 10px 15px; font-weight: 600; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; }
-        .details-close { cursor: pointer; font-size: 20px; line-height: 1; }
-        .details-content { padding: 15px; overflow-y: auto; flex-grow: 1; }
-        .details-content h3, .details-content h4 { margin-top: 1em; margin-bottom: 0.5em; color: #50e3c2; border-bottom: 1px solid #4a4a4a; padding-bottom: 4px; }
-        .details-content a { color: #4a90e2; }
-    `;
-
-    const fullViewerScript = `
-        const svg = d3.select("#graph-canvas"); const g = svg.append("g");
-        const detailsPanel = document.getElementById('details-panel'); const detailsTitle = document.getElementById('details-title'); const detailsContent = document.getElementById('details-content');
-        document.getElementById('details-close').addEventListener('click', () => detailsPanel.classList.remove('visible'));
-        let { nodes, links, layout } = graphData;
-        links = links.map(l => ({ source: nodes.find(n => n.id === l.source), target: nodes.find(n => n.id === l.target), label: l.label || '' })).filter(l => l.source && l.target);
-        const width = () => document.body.clientWidth; const height = () => document.body.clientHeight;
-        function showDetails(node) { detailsTitle.textContent = "Details for \"" + node.label + "\""; detailsContent.innerHTML = node.details || '<p>No details available.</p>'; detailsPanel.classList.add('visible');}
-        const zoom = d3.zoom().scaleExtent([0.1, 4]).on("zoom", e => g.attr("transform", e.transform));
-        svg.call(zoom);
-        const textMeasurer = document.getElementById('text-measurer');
-        nodes.forEach(d => { textMeasurer.style.width = d.label.length > 30 ? '180px' : 'auto'; textMeasurer.textContent = d.label; const rect = textMeasurer.getBoundingClientRect(); d.width = Math.max(60, rect.width + 16); d.height = Math.max(40, rect.height + 16); });
-        g.append("g").attr("class", "links").selectAll("line").data(links).enter().append("line").attr("class", "link");
-        g.append("g").selectAll("text").data(links).enter().append("text").attr("class", "link-label").text(d => d.label || '');
-        const node = g.append("g").attr("class", "nodes").selectAll("g").data(nodes, d => d.id).enter().append("g").attr("class", "node").on('click', (e,d) => showDetails(d));
-        node.append('path').attr('fill', d => d.color || 'var(--node-color)').attr('d', d => { const w = d.width; const h = d.height; const r = 8; switch(d.shape) { case 'ellipse': return \`M \${\\-w/2},0 a \${w/2},\${h/2} 0 1,0 \${w},0 a \${w/2},\${h/2} 0 1,0 \${\\-w},0 Z\`; case 'diamond': return \`M 0,\${\\-h/2} L \${w/2},0 L 0,\${h/2} L \${\\-w/2},0 Z\`; case 'hexagon': return \`M \${\\-w/2+4},\\\${\\-h/2} L \${w/2-4},\\\${\\-h/2} L \${w/2},0 L \${w/2-4},\\\${h/2} L \${\\-w/2+4},\\\${h/2} L \${\\-w/2},0 Z\`; default: return \`M \${\\-w/2+r},\\\${\\-h/2} h \${w-2*r} a \${r},\\\${r} 0 0 1 \${r},\${r} v \${h-2*r} a \${r},\\\${r} 0 0 1 \${\\-r},\${r} h \${\\-(w-2*r)} a \${r},\\\${r} 0 0 1 \${\\-r},\\\${\\-r} v \${\\-(h-2*r)} a \${r},\\\${r} 0 0 1 \${r},\\\${\\-r} z\`; } });
-        node.append('foreignObject').attr('pointer-events', 'none').attr('x', d => -d.width / 2).attr('y', d => -d.height / 2).attr('width', d => d.width).attr('height', d => d.height).append('xhtml:div').html(d => d.label);
-        function buildHierarchy(nodes, links) { const nm = new Map(nodes.map(n=>[n.id,{...n,children:[]}])); const rts=[]; const hp=new Set(); links.forEach(l=>{const s=nm.get(l.source.id); const t=nm.get(l.target.id); if(s&&t){s.children.push(t);hp.add(t.id);}});nm.forEach(n=>{if(!hp.has(n.id))rts.push(n);}); return rts.length > 0 ? rts[0] : (nodes.length > 0 ? nm.get(nodes[0].id) : null);}
-        function layoutMindmap(ns, ls) { const h=buildHierarchy(ns,ls); if(!h)return ns; const r=d3.hierarchy(h); const tl=d3.tree().size([2*Math.PI,Math.min(width(),height()) + 240]).separation((a,b)=>(a.parent==b.parent?4:3)/a.depth);const tr=tl(r);const nm=new Map(ns.map(n=>[n.id,n])); tr.each(d=>{ const{x:a,y:rd}=d; const cx=rd*Math.cos(a-Math.PI/2)+width()/2;const cy=rd*Math.sin(a-Math.PI/2)+height()/2; const o=nm.get(d.data.id); if(o){o.x=o.fx=cx;o.y=o.fy=cy;}}); return ns; }
-        function layoutFlowchart(ns, ls) { const w=width();const vs=180;const hs=220;const adj = new Map(ns.map(n=>[n.id,[]])); const id = new Map(ns.map(n=>[n.id,0]));(ls||[]).forEach(l=>{const si=l.source.id;const ti=l.target.id;if(adj.has(si)&&id.has(ti)){adj.get(si).push(ti);id.set(ti,id.get(ti)+1);}});const lvs=[];let q=ns.filter(n=>id.get(n.id)===0);while(q.length>0){lvs.push(q); const nq=[]; for(const nd of q){for(const ni of(adj.get(nd.id)||[])){const nn=ns.find(n=>n.id===ni);if(nn&&id.has(ni)){id.set(ni,id.get(ni)-1);if(id.get(ni)===0)nq.push(nn);}}}q=nq;}lvs.forEach((ln,li)=>{const lw=ln.length*hs;const sx=(w/2)-(lw/2)+(hs/2);const y=li*vs+100;ln.forEach((nd,ni)=>{const x=sx+ni*hs;nd.x=nd.fx=x;nd.y=nd.fy=y;});}); return ns;}
-        if (layout === 'mindmap') layoutMindmap(nodes, links); else if (layout === 'flowchart') layoutFlowchart(nodes, links);
-        const sim = d3.forceSimulation(nodes).on("tick",()=>{g.selectAll(".link").attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);g.selectAll(".link-label").attr("x",d=>(d.source.x+d.target.x)/2).attr("y",d=>(d.source.y+d.target.y)/2);g.selectAll(".node").attr("transform",d=>"translate(" + d.x + "," + d.y + ")");});
-        sim.force("link",d3.forceLink(links).id(d=>d.id).distance(150).strength(layout==='flowchart'?0:0.1)).force("collision",d3.forceCollide().radius(d=>Math.max(d.width,d.height)/2+20)); if(layout==='flowchart'){sim.force("charge",null)}
-    `;
-
-    const fullHtml = `<!DOCTYPE html>
-<html><head><title>${mapName} - Viewer</title><meta charset="UTF-8">
-<script src="https://d3js.org/d3.v7.min.js"></script><style>${viewerCSS}</style></head>
-<body>
-<div style="width:100vw; height:100vh;"><svg id="graph-canvas" width="100%" height="100%"></svg></div>
-<div id="details-panel" class="details-panel"><div class="details-header"><span id="details-title"></span><span id="details-close">×</span></div><div id="details-content" class="details-content"></div></div>
-<div id="text-measurer" style="position:absolute; visibility:hidden; height:auto; width:auto; white-space:pre-wrap; font-size:14px; font-weight:600;"></div>
-<script>${dataScript}</script><script>${fullViewerScript}</script></body></html>`;
-    generateDownload(filename, fullHtml, 'text/html');
-    ui.exportModal?.classList.add('hidden');
-}
-
-function exportPrintableDocument() {
-    if (!currentMapId) return;
-    const maps = mapsManager.getAll();
-    const mapName = maps[currentMapId]?.name || 'Untitled Map';
-    const sanitizedName = mapName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    const filename = `${sanitizedName}-document.html`;
-    const printCSS = `
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 40px auto; padding: 0 20px; }
-        h1, h2, h3, h4, h5, h6 { color: #111; line-height: 1.2; margin-top: 1.5em; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-        h1 { font-size: 2.5em; border-bottom: 2px solid #ccc; }
-        .node-block { margin-bottom: 2em; padding-left: 1em; border-left: 3px solid #eee; }
-        .node-details { margin-top: 1em; } .node-details a { color: #0066cc; }
-        .cross-links { margin-top: 1em; font-size: 0.9em; color: #555; }
-        .cross-links ul { list-style: none; padding-left: 0; }
-        .cross-links li { display: inline-block; background-color: #f0f0f0; padding: 2px 8px; border-radius: 4px; margin-right: 5px; }
-        @media print { body { max-width: 100%; margin: 20px; font-size: 10pt; } a { text-decoration: none; color: #0066cc; } .node-block { page-break-inside: avoid; } }
-    `;
-    const { nodes, links } = getGraphState();
-    const nodeMap = new Map(nodes.map(n => [n.id, n]));
-    const childrenMap = new Map(nodes.map(n => [n.id, []]));
-    const parentMap = new Map();
-    links.forEach(l => {
-        if (childrenMap.has(l.source.id)) childrenMap.get(l.source.id).push(l.target.id);
-        parentMap.set(l.target.id, l.source.id);
-    });
-    const rootNodes = nodes.filter(n => !parentMap.has(n.id));
-    let htmlContent = '';
-    const visited = new Set();
-    function traverseAndBuild(nodeId, level) {
-        if (visited.has(nodeId)) return;
-        visited.add(nodeId);
-        const node = nodeMap.get(nodeId);
-        if (!node) return;
-        htmlContent += `<div class="node-block" style="margin-left: ${(level - 1) * 25}px;"><h${level}>${node.label}</h${level}>`;
-        if (node.details) htmlContent += `<div class="node-details">${node.details}</div>`;
-        const nodeLinks = links.filter(l => l.source.id === nodeId);
-        const childIds = new Set(childrenMap.get(nodeId));
-        const crossLinks = nodeLinks.filter(l => !childIds.has(l.target.id));
-        if (crossLinks.length > 0) {
-            htmlContent += `<div class="cross-links"><strong>Cross-references:</strong><ul>`;
-            crossLinks.forEach(l => { htmlContent += `<li>${l.target.label}</li>`; });
-            htmlContent += `</ul></div>`;
-        }
-        htmlContent += `</div>`;
-        (childrenMap.get(nodeId) || []).forEach(childId => traverseAndBuild(childId, Math.min(6, level + 1)));
-    }
-    rootNodes.forEach(root => traverseAndBuild(root.id, 2));
-    const fullHtml = `<!DOCTYPE html><html><head><title>${mapName} - Document</title><meta charset="UTF-8"><style>${printCSS}</style></head>
-<body><h1>${mapName}</h1>${htmlContent}</body></html>`;
-    generateDownload(filename, fullHtml, 'text/html');
-    ui.exportModal?.classList.add('hidden');
-}
-
-function exportAsJSON() {
-    if (!currentMapId) return;
-    const maps = mapsManager.getAll();
-    const mapName = maps[currentMapId]?.name || 'Untitled Map';
-    const sanitizedName = mapName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    const filename = `${sanitizedName}.json`;
-    const data = mapsManager.getCurrentGraphData();
-    generateDownload(filename, JSON.stringify(data, null, 2), 'application/json');
-    ui.exportModal?.classList.add('hidden');
+    ui.nodeDetailPanel?.style.setProperty('transform', 'translateX(calc(-100% - 48px))');
 }
 
 // --- SETUP FUNCTIONS ---
+let settingsRoot = null;
+
 function setupSettings() {
-    // Populate dropdowns
-    const populateSelect = async (selectEl, defaultValue) => {
-        if (window.aiHelper) {
-            await window.aiHelper.populateModelSelector(selectEl, defaultValue);
-        } else {
-            selectEl.innerHTML = '<option value="gemini-2.0-flash">Gemini 2.0 Flash</option>';
+    const renderSettings = (isOpen) => {
+        if (!settingsRoot) {
+            const rootEl = document.getElementById('react-settings-root');
+            if (rootEl) settingsRoot = ReactDOM.createRoot(rootEl);
+        }
+        if (settingsRoot && window.SettingsModal) {
+            settingsRoot.render(React.createElement(window.SettingsModal, {
+                isOpen: isOpen,
+                onClose: () => renderSettings(false),
+                onSave: async () => { await initializeAI(); toast('Settings saved.'); }
+            }));
+        } else if (isOpen) {
+             setTimeout(() => renderSettings(isOpen), 100);
         }
     };
-    
-    const savedToolModel = localStorage.getItem('tool_model') || 'gemini-2.0-flash';
-    const savedContentModel = localStorage.getItem('content_model') || 'gemini-1.5-pro';
-    
-    populateSelect(ui.modelSelectors.tool, savedToolModel);
-    populateSelect(ui.modelSelectors.content, savedContentModel);
 
-    // Load saved values
-    Object.keys(ui.apiKeys).forEach(key => {
-        if (key === 'gemini') {
-            const keysArray = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
-            ui.apiKeys[key].value = keysArray.join(', ');
-        } else {
-            ui.apiKeys[key].value = localStorage.getItem(`${key}_key`) || '';
-        }
-    });
-    
-    // Save handler
-    ui.saveSettingsBtn.onclick = async () => {
-        Object.keys(ui.apiKeys).forEach(key => {
-            const val = ui.apiKeys[key].value.trim();
-            if (key === 'gemini') {
-                const keysArray = val.split(',').map(k => k.trim()).filter(k => k.length > 5);
-                localStorage.setItem('gemini_api_keys', JSON.stringify(keysArray));
-                
-                // Clear cooldowns for newly saved keys to allow immediate testing
-                if (window.aiHelper) {
-                    keysArray.forEach(k => window.aiHelper.removeCooldown(k));
-                }
-                
-                // Set the primary key for legacy compatibility if needed
-                if (keysArray.length > 0) localStorage.setItem('gemini_key', keysArray[0]);
-            } else {
-                localStorage.setItem(`${key}_key`, val);
-            }
-        });
-        
-        localStorage.setItem('tool_model', ui.modelSelectors.tool.value);
-        localStorage.setItem('content_model', ui.modelSelectors.content.value);
-        
-        await initializeAI();
-        ui.settingsModal.classList.add('hidden');
-        toast('Settings saved.');
-    };
-
-    ui.settingsBtn.addEventListener('click', () => ui.settingsModal.classList.remove('hidden'));
-    ui.landingSettingsBtn.addEventListener('click', () => ui.settingsModal.classList.remove('hidden'));
-    ui.settingsModal.querySelector('.modal-close-btn').addEventListener('click', () => ui.settingsModal.classList.add('hidden'));
+    ui.settingsBtn?.addEventListener('click', () => renderSettings(true));
+    ui.landingSettingsBtn?.addEventListener('click', () => renderSettings(true));
 }
 
-function setupHelp() {
-    ui.helpBtn.addEventListener('click', () => ui.helpModal.classList.remove('hidden'));
-    ui.helpModal.querySelector('.modal-close-btn').addEventListener('click', () => ui.helpModal.classList.add('hidden'));
+let modalsRoot = null;
+
+function renderModals(modalState = {}) {
+    if (!modalsRoot) {
+        const rootEl = document.getElementById('react-modals-root');
+        if (rootEl) modalsRoot = ReactDOM.createRoot(rootEl);
+    }
+    if (modalsRoot && window.HelpModal && window.ExportModal) {
+        modalsRoot.render(
+            React.createElement(React.Fragment, null,
+                React.createElement(window.HelpModal, {
+                    isOpen: modalState.helpOpen || false,
+                    onClose: () => renderModals({ helpOpen: false })
+                }),
+                React.createElement(window.ExportModal, {
+                    isOpen: modalState.exportOpen || false,
+                    onClose: () => renderModals({ exportOpen: false }),
+                    onExportInteractive: () => { exportInteractiveViewer(); renderModals({ exportOpen: false }); },
+                    onExportPrintable: () => { exportPrintableDocument(); renderModals({ exportOpen: false }); },
+                    onExportJson: () => { exportAsJSON(); renderModals({ exportOpen: false }); }
+                })
+            )
+        );
+    } else {
+         setTimeout(() => renderModals(modalState), 100);
+    }
+}
+
+// --- STUBS FOR TLDRAW EXPORT ---
+function exportInteractiveViewer() { toast("Interactive Viewer Exporting... (Coming Soon for Tldraw)"); }
+function exportPrintableDocument() { toast("Printable Document Exporting... (Coming Soon for Tldraw)"); }
+function exportAsJSON() {
+    if (window.tldrawEditor) {
+        const snapshot = window.tldrawEditor.store.getSnapshot();
+        const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `project-${Date.now()}.json`; a.click();
+    }
 }
 
 /**
- * The primary entry point for the application. It initializes the database, the graph, and sets up all major event listeners for UI elements.
+ * The primary entry point for the application.
  */
 async function main() {
-    // Initialize UI components
-    if (ui.paletteColors) ui.paletteColors.innerHTML = PRESET_COLORS.map(c => `<div class="palette-color" data-color="${c}" style="background-color:${c};"></div>`).join('');
-    if (ui.paletteShapes) ui.paletteShapes.innerHTML = PRESET_SHAPES.map(s => `<div class="palette-shape" data-shape="${s.id}" title="${s.id}"><svg viewBox="0 0 20 20">${s.svg}</svg></div>`).join('');
-    
+    // Wait for Babel modules to load (initResearchCanvas)
+    if (!window.initResearchCanvas) {
+        setTimeout(main, 50);
+        return;
+    }
+
     // Setup Modals
     setupSettings();
-    setupHelp();
+    const helpBtn = ui.headerHelpBtn || ui.helpBtn;
+    if (helpBtn) helpBtn.addEventListener('click', () => renderModals({ helpOpen: true }));
+    const exportBtn = ui.headerExportBtn || ui.exportBtn;
+    if (exportBtn) exportBtn.addEventListener('click', () => renderModals({ exportOpen: true }));
     
     // Initialize backend/storage components
     initializeAI();
     await dbManager.init();
     
-    // Initialize Graph with callbacks
-    initGraph({
-        onNodeClick: (e, d) => {
-            if (isSelectModeActive || e.ctrlKey || e.metaKey) {
-                toggleNodeSelection(d.id);
-                hideNodeDetailPanel();
-                return;
-            }
-            if (getSelectedNodeForDetails() === d) {
-                hideNodeDetailPanel();
-            } else {
-                showNodeDetailPanel(d);
-            }
-        },
-        onNodeContextMenu: (e, d) => {
-            e.preventDefault();
-            e.stopPropagation();
-            hidePopups();
-            hideNodeDetailPanel();
-            if (!getGraphState().selectedNodes.has(d.id)) {
-                clearSelection();
-                toggleNodeSelection(d.id, true);
-            }
-            selectedNodeForContextMenu = d;
-            const { links } = getGraphState();
-            const hasChildren = links.some(l => l.source.id === d.id);
-            const isGroup = hasChildren && d.label.toLowerCase().includes('group');
-            if (ui.groupActionsMenu) {
-                ui.groupActionsMenu.querySelector('[data-action="group"]').style.display = getGraphState().selectedNodes.size > 1 ? 'block' : 'none';
-                ui.groupActionsMenu.querySelector('[data-action="ungroup"]').style.display = isGroup ? 'block' : 'none';
-            }
-            if (ui.contextMenu) {
-                ui.contextMenu.style.top = `${e.pageY}px`;
-                ui.contextMenu.style.left = `${e.pageX}px`;
-                ui.contextMenu.classList.remove('hidden');
-            }
-        },
-        onLinkContextMenu: (e, d) => {
-            e.preventDefault();
-            e.stopPropagation();
-            hidePopups();
-            hideNodeDetailPanel();
-            clearSelection();
-            selectedLinkForContextMenu = d;
-            if (ui.linkContextMenu) {
-                ui.linkContextMenu.style.top = `${e.pageY}px`;
-                ui.linkContextMenu.style.left = `${e.pageX}px`;
-                ui.linkContextMenu.classList.remove('hidden');
-            }
-        },
-        onCanvasContextMenu: (e) => {
-            e.preventDefault();
-            hidePopups();
-            const { x, y } = d3.pointer(e, d3.select("#graph-canvas").node());
-            if (ui.canvasContextMenu) {
-                ui.canvasContextMenu.dataset.x = x;
-                ui.canvasContextMenu.dataset.y = y;
-                const pasteItem = ui.canvasContextMenu.querySelector('[data-action="paste"]');
-                if (pasteItem) pasteItem.style.display = getGraphState().clipboard ? 'block' : 'none';
-                ui.canvasContextMenu.style.top = `${e.pageY}px`;
-                ui.canvasContextMenu.style.left = `${e.pageX}px`;
-                ui.canvasContextMenu.classList.remove('hidden');
+    // Initialize Canvas
+    if (window.initResearchCanvas) {
+        window.initResearchCanvas('canvas-root');
+    }
+
+    // --- Baked-in AI: Canvas Handlers ---
+    window.onCanvasDoubleClick = ({ x, y }) => {
+        const label = prompt("What are you researching?");
+        if (!label) return;
+
+        // Choice Popover (Simulated with confirm)
+        if (confirm("✨ Use Coached Start for '" + label + "'?")) {
+            sendChatMessage(`I'm researching '${label}'. Please give me a 3-node starter pack including a definition, a key question, and a logical next step. Use the spawn_notecards tool with shape type 'research-note'.`, currentMapId);
+        } else {
+            // Simple Note
+            if (window.tldrawEditor) {
+                window.tldrawEditor.createShape({
+                    type: 'research-note',
+                    x, y,
+                    props: { label }
+                });
             }
         }
+    };
+
+    window.onNodeDoubleClick = (shape) => {
+        if (shape.type === 'research-note') {
+            showNodeDetailPanel({
+                id: shape.id,
+                label: shape.props.label,
+                notecard: {
+                    quote: shape.props.quote,
+                    thoughts: shape.props.thoughts
+                }
+            });
+        }
+    };
+
+    window.onNodeSelect = (selectedShapes) => {
+        const bar = document.getElementById('strategy-bar');
+        if (!bar) return;
+
+        if (selectedShapes.length > 0) {
+            bar.classList.remove('opacity-0', 'pointer-events-none');
+        } else {
+            bar.classList.add('opacity-0', 'pointer-events-none');
+            hideNodeDetailPanel();
+        }
+    };
+
+    // --- Strategy Bar Actions ---
+    document.querySelectorAll('.strategy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            const editor = window.tldrawEditor;
+            if (!editor) return;
+
+            const selected = editor.getSelectedShapes();
+            if (selected.length === 0) return;
+
+            const labels = selected.map(s => s.props.label || s.props.text || s.id).filter(Boolean).join(', ');
+
+            switch(action) {
+                case 'details':
+                    if (selected.length === 1 && selected[0].type === 'research-note') {
+                        const shape = selected[0];
+                        showNodeDetailPanel({
+                            id: shape.id,
+                            label: shape.props.label,
+                            notecard: {
+                                quote: shape.props.quote,
+                                thoughts: shape.props.thoughts
+                            }
+                        });
+                    } else {
+                        toast("Select a single research note to view details.");
+                    }
+                    break;
+                case 'synthesize':                    sendChatMessage(`Please synthesize these concepts into a summary card: ${labels}`, currentMapId);
+                    break;
+                case 'gaps':
+                    sendChatMessage(`Analyze the evidence gaps for these topics: ${labels}`, currentMapId);
+                    break;
+                case 'expand':
+                    sendChatMessage(`Suggest 3 sub-topics to expand on: ${labels}`, currentMapId);
+                    break;
+            }
+        });
+    });
+
+    // --- Desktop Dot Navigation ---
+    const setupDesktopDots = () => {
+        const dotContainer = document.getElementById('desktop-nav-dots');
+        if (!dotContainer) return;
+
+        const sections = [
+            { id: 'left-sidebar', label: 'Sources' },
+            { id: 'graph-container', label: 'Canvas' },
+            { id: 'right-sidebar', label: 'Outline' }
+        ];
+
+        dotContainer.innerHTML = '';
+        sections.forEach(s => {
+            const dot = document.createElement('div');
+            dot.className = 'nav-dot';
+            dot.title = s.label;
+            dot.onclick = () => {
+                const el = document.getElementById(s.id);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            };
+            dot.dataset.id = s.id;
+            dotContainer.appendChild(dot);
+        });
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    dotContainer.querySelectorAll('.nav-dot').forEach(d => {
+                        d.classList.toggle('active', d.dataset.id === entry.target.id);
+                    });
+                }
+            });
+        }, { threshold: 0.5 });
+
+        sections.forEach(s => {
+            const el = document.getElementById(s.id);
+            if (el) observer.observe(el);
+        });
+    };
+
+    if (!window.isMobile) {
+        setupDesktopDots();
+    }
+
+    // Resize Observer for Graph
+    const resizeObserver = new ResizeObserver(() => {
+        if (!ui.appContainer.classList.contains('hidden')) {
+            // Tldraw handles resize internally
+        }
+    });
+    resizeObserver.observe(ui.workspaceLayout);
+
+    // Center View Logic
+    ui.centerViewBtn?.addEventListener('click', () => {
+        if (window.tldrawEditor) {
+            window.tldrawEditor.zoomToFit();
+        }
+    });
+
+    // --- Sidebar Toggle Logic (Desktop) ---
+    // (Removed AI side panel toggle)
+
+    ui.settingsBtn?.addEventListener('click', () => {
+        // Settings logic already handled by setupSettings
     });
 
     // --- Landing Page Event Listeners ---
     ui.newBlankMapBtn?.addEventListener('click', () => {
-        const name = prompt("Enter a name for your new map:", "Untitled Map");
+        const name = prompt("Project Name:", "Untitled Project");
         if (name) {
-            const clientWidth = ui.appContainer ? ui.appContainer.clientWidth : window.innerWidth;
-            const clientHeight = ui.appContainer ? ui.appContainer.clientHeight : window.innerHeight;
-            const initialNode = { id: 'node-1', label: 'Central Idea', x: clientWidth / 2, y: clientHeight / 2, fx: clientWidth / 2, fy: clientHeight / 2, shape: 'rectangle', color: 'var(--node-color)', details: 'This is the starting point of your map. Double-click to edit this label, or chat with the AI to expand on it.' };
-            const newMapId = mapsManager.create(name, { nodes: [initialNode], links: [], counter: 1, layout: 'mindmap', linkStyle: 'straight' });
+            const newMapId = mapsManager.create(name, { canvasData: null, sources: [], researchStep: 1 });
             loadMap(newMapId);
-        }
-    });
-
-    ui.importJsonBtn?.addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = e => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = re => {
-                try {
-                    const data = JSON.parse(re.target.result);
-                    if (data.nodes) {
-                        const mapName = prompt('Enter a name for the imported map:', file.name.replace('.json', ''));
-                        if (mapName) {
-                            mapsManager.create(mapName, data);
-                            renderLandingPage();
-                            toast('Map imported successfully!');
-                        }
-                    } else {
-                        toast('Error: Invalid JSON map file.');
-                    }
-                } catch (e) {
-                    toast('Error: Could not parse file.');
-                }
-            };
-            reader.readAsText(file);
-        };
-        input.click();
-    });
-
-    ui.templateLibrary?.addEventListener('click', e => {
-        const deleteBtn = e.target.closest('.template-delete-btn');
-        if (deleteBtn) {
-            const tId = deleteBtn.dataset.templateId;
-            if (confirm(`Are you sure you want to delete this template?`)) {
-                templatesManager.delete(tId);
-            }
-            return;
-        }
-        const btn = e.target.closest('button[data-template-id]');
-        if (btn) {
-            const tId = btn.dataset.templateId;
-            const allTemplates = { ...TEMPLATES, ...templatesManager.getCustom() };
-            const template = allTemplates[tId];
-            if (template) {
-                const newMapId = mapsManager.create(template.name, JSON.parse(JSON.stringify(template.graphData)));
-                loadMap(newMapId);
-            }
         }
     });
 
     ui.landingAiGenerateBtn?.addEventListener('click', async () => {
         const topic = ui.landingAiTopicInput?.value?.trim();
         if (!topic) { toast("Please enter a topic."); return; }
-        
-        const clientWidth = ui.appContainer ? ui.appContainer.clientWidth : window.innerWidth;
-        const clientHeight = ui.appContainer ? ui.appContainer.clientHeight : window.innerHeight;
-        
-        const initialNode = { 
-            id: 'node-1', 
-            label: topic, 
-            x: clientWidth / 2, 
-            y: clientHeight / 2, 
-            fx: clientWidth / 2, 
-            fy: clientHeight / 2, 
-            shape: 'rectangle', 
-            color: 'var(--accent-primary)', 
-            details: `Research Topic: ${topic}` 
-        };
-        
-        const newMapId = mapsManager.create(topic, { 
-            nodes: [initialNode], 
-            links: [], 
-            counter: 1, 
-            layout: 'mindmap', 
-            linkStyle: 'straight',
-            researchStep: 1 
-        });
-        
+        const newMapId = mapsManager.create(topic, { canvasData: null, sources: [], researchStep: 1 });
         await loadMap(newMapId);
-        if (ui.aiPanel) ui.aiPanel.classList.add('visible');
-        sendChatMessage(`Hi Coach! I want to start a guided research journey on the topic: "${topic}". Let's start with Step 1: Exploration.`, newMapId);
+        
+        // Guided Launch Overlay
+        const overlay = document.getElementById('guided-launch-overlay');
+        const input = document.getElementById('guided-question-input');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            setTimeout(() => overlay.style.opacity = '1', 10);
+            if (input) input.value = `How does ${topic} affect...`;
+        }
+    });
+
+    // --- Guided Launch Handlers ---
+    document.getElementById('guided-launch-btn')?.addEventListener('click', () => {
+        const question = document.getElementById('guided-question-input')?.value;
+        const overlay = document.getElementById('guided-launch-overlay');
+        if (question) {
+            sendChatMessage(`I'm launching a new project. My driving question is: "${question}". Please set up my research canvas with a 5-node starter pack including core concepts and initial investigation paths using the spawn_notecards tool.`, currentMapId);
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }
+        }
+    });
+
+    document.getElementById('guided-skip-btn')?.addEventListener('click', () => {
+        const overlay = document.getElementById('guided-launch-overlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.classList.add('hidden'), 500);
+        }
     });
 
     // --- Research Step Transition Handler ---
@@ -764,39 +771,31 @@ async function main() {
             el.classList.toggle('active', s === step);
             el.classList.toggle('completed', s < step);
         });
-        toast(`Research Phase: ${document.querySelector(`.step-indicator[data-step="${step}"]`).title}`);
+        if (ui.researchPhaseName) ui.researchPhaseName.textContent = `Step ${step}`;
     });
 
-    ui.mapList.addEventListener('click', (e) => {
+    ui.headerSaveBtn?.addEventListener('click', (e) => { mapsManager.saveCurrent(currentMapId); Effects.sparkleElement(e.currentTarget); });
+    ui.headerHomeBtn?.addEventListener('click', () => { mapsManager.saveCurrent(currentMapId); hideNodeDetailPanel(); showLandingPage(); });
+
+    ui.mapList?.addEventListener('click', (e) => {
         const target = e.target.closest('[data-action]');
         if (!target) return;
         const action = target.dataset.action;
         const id = target.dataset.id;
-        switch (action) {
-            case 'open': loadMap(id); break;
-            case 'rename': const newName = prompt("Enter new name:", mapsManager.getAll()[id].name); mapsManager.rename(id, newName); break;
-            case 'duplicate': mapsManager.duplicate(id); break;
-            case 'delete': if (confirm(`Are you sure you want to delete "${mapsManager.getAll()[id].name}"? This cannot be undone.`)) { mapsManager.delete(id); } break;
-        }
+        if (action === 'open') loadMap(id);
+        else if (action === 'rename') { const n = prompt("New Name:", mapsManager.getAll()[id].name); mapsManager.rename(id, n, renderLandingPage); }
+        else if (action === 'delete') { if (confirm("Delete project?")) mapsManager.delete(id, renderLandingPage); }
     });
 
-    // --- Main App Event Listeners ---
-    ui.homeBtn?.addEventListener('click', () => { mapsManager.saveCurrent(currentMapId); hideNodeDetailPanel(); showLandingPage(); });
-    ui.saveBtn?.addEventListener('click', () => mapsManager.saveCurrent(currentMapId));
-    
     // --- Workspace Tabs ---
     document.querySelectorAll('.workspace-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.workspace-tab').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            
             const view = tab.dataset.tab;
-            ui.chatView?.classList.toggle('hidden', view !== 'chat');
             ui.sourcesView?.classList.toggle('hidden', view !== 'sources');
             ui.outlineView?.classList.toggle('hidden', view !== 'questions');
             if (view === 'questions') updateOutline();
-
-            // Graph is always background, handled via z-index
         });
     });
 
@@ -804,38 +803,25 @@ async function main() {
         const title = prompt("Source Title:");
         const url = prompt("Source URL:");
         if (title || url) {
-            window.projectSources.push({ title, url });
+            let domain = 'External Source';
+            try { if (url) domain = new URL(url).hostname; } catch {}
+
+            window.projectSources.push({ title, url, domain });
             window.dispatchEvent(new CustomEvent('sources-updated'));
+
+            // Spawn on canvas
+            if (window.tldrawEditor) {
+                const { x, y } = window.tldrawEditor.getCamera();
+                window.tldrawEditor.createShape({
+                    type: 'source-card',
+                    x: -x + 100 + (Math.random() * 50),
+                    y: -y + 100 + (Math.random() * 50),
+                    props: { title, url, domain }
+                });
+                toast("Source added to bibliography and canvas!");
+            }
         }
     });
-
-    // --- Notecard Sync ---
-    const syncNotecardToUI = (node) => {
-        if (!node) return;
-        if (!node.notecard) node.notecard = {};
-        ui.notecardSourceSelect.value = node.notecard.sourceIndex !== undefined ? node.notecard.sourceIndex : "";
-        ui.notecardQuote.innerHTML = node.notecard.quote || "";
-        ui.notecardParaphrase.innerHTML = node.notecard.paraphrase || "";
-        ui.notecardThoughts.innerHTML = node.notecard.thoughts || "";
-    };
-
-    const syncUIToNotecard = () => {
-        const node = getSelectedNodeForDetails();
-        if (!node) return;
-        if (!node.notecard) node.notecard = {};
-        
-        node.notecard.sourceIndex = ui.notecardSourceSelect.value;
-        node.notecard.quote = ui.notecardQuote.innerHTML;
-        node.notecard.paraphrase = ui.notecardParaphrase.innerHTML;
-        node.notecard.thoughts = ui.notecardThoughts.innerHTML;
-        
-        // Also update standard details for backward compatibility/export
-        node.details = `
-            ${node.notecard.quote ? `<h4>Quote</h4><blockquote>${node.notecard.quote}</blockquote>` : ''}
-            ${node.notecard.paraphrase ? `<h4>Paraphrase</h4><p>${node.notecard.paraphrase}</p>` : ''}
-            ${node.notecard.thoughts ? `<h4>My Thoughts</h4><p>${node.notecard.thoughts}</p>` : ''}
-        `;
-    };
 
     ['input', 'blur', 'change'].forEach(evtType => {
         ui.notecardSourceSelect?.addEventListener(evtType, syncUIToNotecard);
@@ -844,45 +830,40 @@ async function main() {
         ui.notecardThoughts?.addEventListener(evtType, syncUIToNotecard);
     });
 
-    ui.addNodeBtn?.addEventListener('click', () => { vibrate(); addNode('New Notecard'); });
-    ui.toggleViewBtn?.addEventListener('click', () => {
-        if (!ui.sourcesView?.classList.contains('hidden')) {
-            document.querySelector('.workspace-tab[data-tab="questions"]')?.click();
-        } else if (!ui.outlineView?.classList.contains('hidden')) {
-            document.querySelector('.workspace-tab[data-tab="chat"]')?.click();
-        } else {
-            document.querySelector('.workspace-tab[data-tab="sources"]')?.click();
-        }
-    });
-
+    // Re-add missing general listeners
     ui.selectModeBtn?.addEventListener('click', () => {
         isSelectModeActive = !isSelectModeActive;
         ui.selectModeBtn?.classList.toggle('active', isSelectModeActive);
-        ui.appContainer?.querySelector('#graph-container')?.classList.toggle('select-mode-active', isSelectModeActive);
         if (isSelectModeActive) {
-            toast("Select Mode ON. Tap nodes to select.");
-            clearSelection();
-            hideNodeDetailPanel();
+            if (window.tldrawEditor) window.tldrawEditor.setCurrentTool('select');
+            toast("Select Mode ON");
         } else {
-            toast("Select Mode OFF.");
+            toast("Select Mode OFF");
         }
     });
-    ui.layoutBtn?.addEventListener('click', () => {
-        const layouts = ['sunburst', 'mindmap', 'flowchart'];
-        const { currentLayout } = getGraphState();
-        const currentIndex = layouts.indexOf(currentLayout);
-        const nextIndex = (currentIndex + 1) % layouts.length;
-        changeLayout(layouts[nextIndex]);
-    });
-    ui.aiPanelBtn.addEventListener('click', () => ui.aiPanel.classList.toggle('visible'));
-    ui.aiPanelClose.addEventListener('click', () => ui.aiPanel.classList.remove('visible'));
 
-    // Socratic Chip Interaction
-    ui.aiChatHistory.addEventListener('click', (e) => {
+    ui.addNodeBtn?.addEventListener('click', () => addNode('New Notecard'));
+
+    // --- Coach HUD Listeners ---
+    ui.aiChatSendBtn?.addEventListener('click', () => {
+        if (ui.aiChatInput?.value.trim()) {
+            sendChatMessage(ui.aiChatInput.value, currentMapId);
+            ui.aiChatInput.value = '';
+        }
+    });
+
+    ui.aiChatInput?.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && ui.aiChatInput?.value.trim()) {
+            sendChatMessage(ui.aiChatInput.value, currentMapId);
+            ui.aiChatInput.value = '';
+        }
+    });
+
+    // Handle suggestion chips and resend buttons in history
+    ui.aiChatHistory?.addEventListener('click', (e) => {
         const chip = e.target.closest('.suggestion-chip');
         if (chip && chip.dataset.input) {
             sendChatMessage(chip.dataset.input, currentMapId);
-            // Optional: disable or remove other chips in the same container after use
             const container = chip.closest('.socratic-prompt-container');
             if (container) {
                 container.style.opacity = '0.5';
@@ -896,153 +877,108 @@ async function main() {
             sendChatMessage(resendBtn.dataset.text, currentMapId);
         }
     });
-
-    ui.aiChatSendBtn.addEventListener('click', () => sendChatMessage(ui.aiChatInput.value, currentMapId));
-    ui.aiChatInput?.addEventListener('keydown', e => e.key === 'Enter' && sendChatMessage(ui.aiChatInput?.value, currentMapId));
     
-    // --- Hint Logic ---
-    const hintBtn = document.getElementById('ai-hint-btn');
-    if (hintBtn) {
-        hintBtn.addEventListener('click', () => {
-            sendChatMessage(`[SYSTEM: User requested a hint for their current project state.]`, currentMapId);
-        });
-    }
-
     ui.nodeDetailClose?.addEventListener('click', hideNodeDetailPanel);
-    
-    ui.generateDetailsBtn?.addEventListener('click', async () => {
-        const selectedNode = getSelectedNodeForDetails();
-        if (selectedNode) {
-            setAILoading(true);
-            const quote = ui.notecardQuote?.innerText;
-            if (!quote) {
-                toast("Please add a quote first!");
-                setAILoading(false);
-                return;
-            }
-            const prompt = `Help me paraphrase this quote for my research notecard: "${quote}"`;
-            sendChatMessage(prompt, currentMapId);
-            setAILoading(false);
+    ui.sourceViewerClose?.addEventListener('click', hideAllSidePanels);
+    ui.openSourceViewerBtn?.addEventListener('click', () => {
+        const idx = ui.notecardSourceSelect?.value;
+        if (idx !== "") openSourceInViewer(idx);
+        else toast("Select a source first!");
+    });
+
+    ui.headerLayoutBtn?.addEventListener('click', () => {
+        if (window.tldrawEditor) {
+            window.tldrawEditor.zoomToFit();
+            toast("Zoomed to Fit");
         }
     });
+
+    // Global Click to close popups
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.popup-menu, .node, .side-panel, .link-group, .sunburst-arc, .modal-overlay')) {
+        if (!e.target.closest('.popup-menu, .node, .sidebar-container, .modal-overlay, #node-creation-choice, #mobile-nav')) {
             hidePopups();
             if (!isSelectModeActive) clearSelection();
         }
     });
-    ui.contextMenu?.addEventListener('click', (e) => {
-        const action = e.target.dataset.action;
-        if (action && selectedNodeForContextMenu) {
-            const d = selectedNodeForContextMenu;
-            switch (action) {
-                case 'details': showNodeDetailPanel(d); break;
-                case 'expand':
-                    const expandInstruction = prompt("How should I expand on this node?", "Generate 3-5 related ideas");
-                    if (expandInstruction) { _internal_expandNodeWithAI(d, expandInstruction); }
-                    break;
-                case 'rephrase':
-                    const rephraseInstruction = prompt("How to rephrase? (e.g., 'more concise')", "more concise");
-                    if (rephraseInstruction) sendChatMessage(`Rephrase the label for node "${d.label}" (ID: ${d.id}) to be ${rephraseInstruction}.`, currentMapId);
-                    break;
-                case 'group': groupSelectedNodes(); break;
-                case 'ungroup': if (confirm(`Ungroup "${d.label}"? This will delete the group node but keep its children.`)) { ungroupNode(d.id); } break;
-                case 'settings': if (getGraphState().currentLayout !== 'sunburst') { showSettingsPalette(d); } else { toast("Appearance settings not available in Sunburst view."); } break;
-                case 'copy-map': navigator.clipboard.writeText(JSON.stringify(mapsManager.getCurrentGraphData(), null, 2)).then(() => toast("Map JSON data copied to clipboard.")); break;
-                case 'delete': if (confirm(`Delete "${d.label}" and all its children?`)) { deleteNodeById(d.id); } break;
+
+    // --- Mobile Bottom Navigation Logic ---
+    if (window.isMobile) {
+        const sections = [ui.leftSidebar, ui.graphContainer || document.getElementById('graph-container'), ui.rightSidebar];
+        const navButtons = document.querySelectorAll('.mobile-nav-btn');
+
+        const observerOptions = {
+            root: ui.workspaceLayout,
+            threshold: 0.5
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    navButtons.forEach(btn => {
+                        const targetSectionId = btn.dataset.section;
+                        btn.classList.toggle('active', entry.target.id === targetSectionId);
+                    });
+                }
+            });
+        }, observerOptions);
+
+        sections.forEach(section => {
+            if (section) observer.observe(section);
+        });
+
+        // Wiring Nav Buttons to Scroll
+        navButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.section;
+                const targetEl = document.getElementById(targetId);
+                if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Mobile Add Node Button
+        ui.mobileAddNodeBtn?.addEventListener('click', () => {
+            // Scroll to canvas first if not there
+            const canvasEl = document.getElementById('graph-container');
+            if (canvasEl) canvasEl.scrollIntoView({ behavior: 'smooth' });
+            
+            // Show creation choice
+            addNode('New Notecard');
+        });
+
+        // Mobile Settings Button
+        ui.mobileSettingsBtn?.addEventListener('click', () => {
+             ui.settingsBtn?.click();
+        });
+
+        // Node Creation Choice Handlers
+        ui.createSimpleNote?.addEventListener('click', () => {
+            const label = ui.nodeCreationChoice.dataset.label;
+            if (window.tldrawEditor) {
+                const { x, y } = window.tldrawEditor.getCamera();
+                window.tldrawEditor.createShape({
+                    type: 'research-note',
+                    x: -x + 100, y: -y + 100,
+                    props: { label }
+                });
             }
-        }
-        if (action !== 'settings') {
-            hidePopups();
-        } else {
-            ui.contextMenu?.classList.add('hidden');
-        }
-    });
-    ui.canvasContextMenu?.addEventListener('click', (e) => {
-        const action = e.target.dataset.action;
-        if (!action) return;
-        switch (action) {
-            case 'add-node':
-                const coords = { x: parseFloat(ui.canvasContextMenu.dataset.x), y: parseFloat(ui.canvasContextMenu.dataset.y) };
-                addNode('New Node', null, { coords });
-                break;
-            case 'paste': pasteSelection(); break;
-            case 'force-mindmap': changeLayout('mindmap', true, true); break;
-            case 'force-flowchart': changeLayout('flowchart', true, true); break;
-        }
-        hidePopups();
-    });
-    ui.nodeSettingsPalette?.addEventListener('click', (e) => {
-        const target = e.target.closest('[data-color]') || e.target.closest('[data-shape]');
-        if (target && selectedNodeForSettings) {
-            if (target.dataset.color) { selectedNodeForSettings.color = target.dataset.color; }
-            if (target.dataset.shape) { selectedNodeForSettings.shape = target.dataset.shape; }
-            updateGraph();
-        }
-    });
-    ui.rteToolbar?.addEventListener('mousedown', e => {
-        e.preventDefault();
-        const button = e.target.closest('.rte-button');
-        if (button) { document.execCommand(button.dataset.command, false, null); }
-    });
-    ui.linkContextMenu?.addEventListener('click', e => {
-        const action = e.target.dataset.action;
-        const d = selectedLinkForContextMenu;
-        if (!action || !d) return;
-        switch (action) {
-            case 'edit-label':
-                const newLabel = prompt("Enter link label:", d.label || "");
-                if (newLabel !== null) { d.label = newLabel; updateGraph(true); }
-                break;
-            case 'insert-node':
-                const { source, target } = d;
-                const newX = (source.x + target.x) / 2;
-                const newY = (source.y + target.y) / 2;
-                const newNode = addNode('Intermediate', null, { coords: { x: newX, y: newY } });
-                connectNodesById(source.id, newNode.id);
-                connectNodesById(newNode.id, target.id);
-                const { links } = getGraphState();
-                const linkIndex = links.findIndex(l => l.source.id === d.source.id && l.target.id === d.target.id);
-                if (linkIndex > -1) links.splice(linkIndex, 1);
-                updateGraph();
-                break;
-            case 'delete':
-                const { links: currentLinks } = getGraphState();
-                const linkToDeleteIndex = currentLinks.findIndex(l => l.source.id === d.source.id && l.target.id === d.target.id);
-                if (linkToDeleteIndex > -1) currentLinks.splice(linkToDeleteIndex, 1);
-                updateGraph();
-                break;
-        }
-        hidePopups();
-    });
-    
-    // Export event listeners
-    ui.exportBtn?.addEventListener('click', () => ui.exportModal?.classList.remove('hidden'));
-    ui.exportModal?.querySelector('.modal-close-btn')?.addEventListener('click', () => ui.exportModal?.classList.add('hidden'));
-    ui.exportInteractiveBtn?.addEventListener('click', exportInteractiveViewer);
-    ui.exportPrintableBtn?.addEventListener('click', exportPrintableDocument);
-    ui.exportJsonBtn?.addEventListener('click', exportAsJSON);
+            ui.cancelNodeCreation.click();
+        });
 
-    // Global keydown listener
-    window.addEventListener('keydown', e => {
-        if (ui.appContainer?.classList.contains('hidden')) return;
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-        const isCtrl = isMac ? e.metaKey : e.ctrlKey;
-        if (isCtrl && e.key === 'c') { e.preventDefault(); copySelection(); }
-        if (isCtrl && e.key === 'v') { e.preventDefault(); pasteSelection(); }
-    });
+        ui.createCoachedNote?.addEventListener('click', () => {
+            const label = ui.nodeCreationChoice.dataset.label;
+            sendChatMessage(`I'm researching '${label}'. Please give me a 3-node starter pack including a definition, a key question, and a logical next step. Use the spawn_notecards tool with shape type 'research-note'.`, currentMapId);
+            ui.cancelNodeCreation.click();
+        });
 
-    // Initial Page Load
+        ui.cancelNodeCreation?.addEventListener('click', () => {
+            ui.nodeCreationChoice.style.opacity = '0';
+            setTimeout(() => ui.nodeCreationChoice.classList.add('hidden'), 500);
+        });
+    }
+
     showLandingPage();
-
-    // Global Haptic Feedback for Mobile
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('.tool-button, .primary-button, .secondary-button, .context-menu-item, .map-list-item, .icon-button')) {
-            vibrate(10);
-        }
-    }, { passive: true });
 }
 
-// Start the application
 main();

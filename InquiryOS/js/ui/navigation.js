@@ -201,7 +201,7 @@ window.toggleRandomTips = async () => {
 /**
  * Handles dot navigation for horizontal swipers.
  */
-window.updateSwipeDots = (swiper, dotsId) => {
+export function updateSwipeDots(swiper, dotsId) {
     const dotsContainer = document.getElementById(dotsId);
     if (!dotsContainer || !swiper) return;
     const width = swiper.offsetWidth;
@@ -210,7 +210,8 @@ window.updateSwipeDots = (swiper, dotsId) => {
     dots.forEach((dot, idx) => {
         dot.classList.toggle('active', idx === index);
     });
-};
+}
+window.updateSwipeDots = updateSwipeDots;
 
 window.jumpToInquiryTab = (tabId) => {
     window.switchInquiryTab(tabId);
