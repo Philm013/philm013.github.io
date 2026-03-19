@@ -761,7 +761,13 @@ async function main() {
         if (overlay) {
             overlay.classList.remove('hidden');
             setTimeout(() => overlay.style.opacity = '1', 10);
-            if (input) input.value = `How does ${topic} affect...`;
+            
+            // Smarter question suggestion: if it looks like a question, use it as is.
+            if (topic.toLowerCase().match(/^(why|how|what|when|where|who|is|are|can|could|should)/)) {
+                if (input) input.value = topic + (topic.endsWith('?') ? '' : '?');
+            } else {
+                if (input) input.value = `Why ${topic.charAt(0).toLowerCase() + topic.slice(1)}...`;
+            }
         }
     });
 
@@ -770,11 +776,32 @@ async function main() {
         const question = document.getElementById('guided-question-input')?.value;
         const overlay = document.getElementById('guided-launch-overlay');
         if (question) {
+            // 1. Add the Driving Question as the ROOT note manually
+            if (window.tldrawEditor) {
+                const center = window.tldrawEditor.getViewportScreenCenter();
+                window.tldrawEditor.createShape({
+                    type: 'research-note',
+                    x: center.x - 100,
+                    y: center.y - 75,
+                    props: { 
+                        label: 'Driving Question',
+                        thoughts: question,
+                        color: '#8b5cf6' // Purple for Step 2 focus
+                    }
+                });
+                window.tldrawEditor.zoomToFit();
+            }
+
+            // 2. Trigger the AI Coach to start the journey
             sendChatMessage(`I'm launching a new project. My driving question is: "${question}". Please set up my research canvas with a 5-node starter pack including core concepts and initial investigation paths using the spawn_notecards tool.`, currentMapId);
+            
             if (overlay) {
                 overlay.style.opacity = '0';
                 setTimeout(() => overlay.classList.add('hidden'), 500);
             }
+            
+            // Move to Questioning phase
+            window.dispatchEvent(new CustomEvent('research-step-changed', { detail: { step: 2 } }));
         }
     });
 

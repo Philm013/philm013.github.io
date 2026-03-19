@@ -284,6 +284,15 @@ html, body {
         padding: 10px 8px !important;
         font-size: 10px !important;
     }
+
+    #coach-hud {
+        bottom: 90px !important; /* Above mobile bottom nav */
+        right: 5% !important;
+        left: 5% !important;
+        width: 90% !important;
+        max-width: 100% !important;
+        items-center: center !important;
+    }
 }
 
 .strategy-btn {
