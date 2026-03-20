@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>KnowledgeMapper Prototype - Ultimate Socratic Experience</title>
+    
+    <!-- External Libraries -->
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* --- CORE STYLES (MATCHING style.css) --- */
+        :root {
+            --background: #fffdfa;
+            --canvas-bg: #fdf6e3;
+            --toolbar-bg: rgb(255 255 255 / 0.85);
+            --panel-bg: rgb(255 255 255 / 0.95);
+            --text-primary: #2d3436;
+            --text-secondary: #636e72;
+            --border-color: #dfe6e9;
+            --accent-primary: #6c5ce7;
+            --accent-secondary: #00cec9;
+            --accent-tertiary: #ff7675;
+            --accent-quaternary: #fab1a0;
+            --accent-danger: #d63031;
+            --shadow-sm: 0 4px 6px rgb(0 0 0 / 0.05);
+            --shadow-md: 0 8px 16px rgb(0 0 0 / 0.08);
+            --shadow-lg: 0 15px 30px rgb(0 0 0 / 0.12);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+
+        html, body {
+            margin: 0; padding: 0;
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow: hidden; height: 100dvh; width: 100vw;
+            background-color: var(--background); color: var(--text-primary);
+        }
+
+        .hidden { display: none !important; }
+
+        /* Simulation Controller - Top Bar */
+        #sim-master-overlay { 
+            position: fixed; top: 0; left: 0; right: 0; 
+            background: #1a1a1a; color: white; padding: 12px 40px; 
+            z-index: 5000; display: flex; align-items: center; justify-content: space-between;
+            box-shadow: var(--shadow-md); border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sim-step-num { width: 20px; height: 20px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: white; font-weight: 800; font-size: 9px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .sim-step-num.active { background: var(--accent-secondary); border-color: var(--accent-secondary); color: black; transform: scale(1.1); }
+
+        /* Buttons */
+        .primary-button {
+            padding: 14px 28px; border-radius: 20px; border: none;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 8px 15px rgb(108 92 231 / 0.2); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .primary-button:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 20px rgb(108 92 231 / 0.3); }
+        .secondary-button {
+            padding: 14px 28px; border-radius: 20px; border: 2px solid var(--border-color);
+            background: var(--panel-bg); color: var(--text-primary); font-weight: 700;
+            cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s;
+        }
+        .secondary-button:hover { border-color: var(--accent-primary); transform: translateY(-2px); }
+
+        /* Layout */
+        #app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; position: relative; padding-top: 54px; }
+        #graph-container { flex-grow: 1; background-color: var(--canvas-bg); position: relative; overflow: hidden; height: 100%; cursor: crosshair; }
+
+        /* Toolbar */
+        #toolbar {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 12px; background-color: var(--toolbar-bg); padding: 12px 16px;
+            border-radius: 32px; border: 1px solid rgb(255 255 255 / 0.5); backdrop-filter: blur(20px); box-shadow: var(--shadow-lg); z-index: 1000;
+        }
+        .tool-button {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+            width: 68px; height: 64px; border-radius: 20px; background: transparent; border: none;
+            color: var(--text-secondary); cursor: pointer; transition: all 0.3s;
+        }
+        .tool-button:hover { transform: translateY(-4px); color: var(--accent-primary); }
+        .tool-button.active { background-color: var(--accent-primary); color: white; box-shadow: 0 8px 15px rgba(108,92,231,0.3); }
+        .tool-button .iconify { width: 26px; height: 26px; }
+        .tool-button .label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Panels */
+        .side-panel {
+            width: 380px; height: 100%; background: #fff;
+            display: flex; flex-direction: column; overflow: hidden; z-index: 500;
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #node-detail-panel { border-right: 1px solid var(--border-color); transform: translateX(-100%); }
+        #node-detail-panel.visible { transform: translateX(0); }
+        #ai-panel { border-left: 1px solid var(--border-color); }
+
+        .side-panel-header { padding: 24px 32px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .side-panel-header span { font-weight: 900; font-size: 20px; }
+
+        /* Workspace Components */
+        #research-progress-stepper { display: flex; justify-content: space-around; padding: 16px; border-bottom: 1px solid var(--border-color); background: #fdfdfd; }
+        .step-indicator { width: 42px; height: 42px; border-radius: 14px; background: #f1f2f6; border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.4s; }
+        .step-indicator.active { background: var(--accent-primary); border-color: var(--accent-primary); color: white; transform: scale(1.1); box-shadow: 0 8px 20px rgba(108,92,231,0.3); }
+
+        #workspace-tabs-container { display: flex; border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,0.5); }
+        .workspace-tab { flex: 1; padding: 12px; background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-secondary); font-size: 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; }
+        .workspace-tab.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
+
+        /* Chat history */
+        #ai-chat-history { padding: 24px; display: flex; flex-direction: column; gap: 20px; flex-grow: 1; overflow-y: auto; background: #fff; }
+        .chat-message { padding: 16px 20px; border-radius: 24px; max-width: 95%; font-size: 15px; line-height: 1.6; box-shadow: var(--shadow-sm); animation: slideIn 0.4s; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .chat-message.user { align-self: flex-end; background: linear-gradient(135deg, var(--accent-primary), #a29bfe); color: white; border-bottom-right-radius: 6px; }
+        .chat-message.model { align-self: flex-start; background: #fff; border: 1px solid var(--border-color); border-bottom-left-radius: 6px; }
+
+        .ai-input-area { background: #fff; border-top: 1px solid var(--border-color); padding: 12px 20px; display: flex; gap: 8px; align-items: center; }
+        .ai-input { flex-grow: 1; background: #f1f2f6; border: none; border-radius: 14px; padding: 12px 16px; font-weight: 600; outline: none; }
+        
+        .editable-content { background: #fdfdfd; border-radius: 20px; border: 2px solid var(--border-color); padding: 16px; min-height: 80px; outline: none; transition: all 0.2s; }
+        .editable-content:focus { border-color: var(--accent-primary); background: #fff; }
+
+        /* Dashboard */
+        #landing-page { position: fixed; inset: 0; background: radial-gradient(circle at top right, #fff9f2, #fdf6e3); z-index: 1000; display: flex; flex-direction: column; align-items: center; padding: 80px 40px 0; overflow-y: auto; }
+        .landing-content { max-width: 1200px; width: 100%; display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; padding-bottom: 60px; }
+        .landing-section { background-color: var(--panel-bg); border-radius: 32px; padding: 32px; border: 1px solid var(--border-color); box-shadow: var(--shadow-md); display: flex; flex-direction: column; }
+
+        /* Items */
+        .source-item { background: #fff; border-radius: 20px; padding: 20px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); margin-bottom: 12px; transition: all 0.2s; cursor: pointer; }
+        .outline-node { margin-bottom: 12px; padding: 12px 16px; border-radius: 16px; background: rgb(0 0 0 / 0.02); border-left: 4px solid var(--accent-primary); font-weight: 800; font-size: 14px; }
+        
+        .suggestion-chip { background: #fff; border: 2px solid var(--accent-primary); color: var(--accent-primary); padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; transition: all 0.2s; margin-right: 6px; }
+        .suggestion-chip:hover { background: var(--accent-primary); color: white; }
+        .suggestion-chip.hint { border-color: var(--accent-tertiary); color: var(--accent-tertiary); }
+        .suggestion-chip.hint:hover { background: var(--accent-tertiary); color: white; }
+
+        /* Context Menu Simulation */
+        .context-menu { position: absolute; background: #fff; border: 1px solid var(--border-color); border-radius: 16px; box-shadow: var(--shadow-lg); z-index: 2000; padding: 8px 0; min-width: 220px; display: none; }
+        .context-menu-item { padding: 12px 20px; cursor: pointer; color: var(--text-primary); display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600; }
+        .context-menu-item:hover { background-color: rgb(108 92 231 / 0.1); color: var(--accent-primary); }
+
+        /* Toast */
+        #toast { position: fixed; top: 100px; left: 50%; transform: translateX(-50%) translateY(20px); background: #2d3436; color: white; padding: 12px 24px; border-radius: 20px; font-weight: 700; z-index: 4000; opacity: 0; transition: all 0.4s; pointer-events: none; }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* SVG Node Visuals */
+        .proto-node-card { cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .proto-node-card.selected rect { stroke: var(--accent-primary); stroke-width: 4px; }
+
+        @media (min-width: 1024px) {
+            #app-container { display: grid; grid-template-columns: 350px 1fr 350px; }
+            .side-panel { position: relative !important; width: 100% !important; transform: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast">Message</div>
+
+    <!-- SCENARIO CONTROLLER - TOP BAR -->
+    <div id="sim-master-overlay">
+        <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 9px; font-weight: 900; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.1em;">Engine: KnowledgeMapper</span>
+            <span id="sim-stage-indicator" style="font-weight: 800; font-size: 14px; color: var(--accent-secondary);">Step 0: Startup</span>
+        </div>
+        <div style="display: flex; gap: 4px; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 10px;">
+            <button class="sim-step-num" id="bn1" onclick="advanceSimulation(1)">1</button>
+            <button class="sim-step-num" id="bn2" onclick="advanceSimulation(2)">2</button>
+            <button class="sim-step-num" id="bn3" onclick="advanceSimulation(3)">3</button>
+            <button class="sim-step-num" id="bn4" onclick="advanceSimulation(4)">4</button>
+            <button class="sim-step-num" id="bn5" onclick="advanceSimulation(5)">5</button>
+            <button class="sim-step-num" id="bn6" onclick="advanceSimulation(6)">6</button>
+            <button class="sim-step-num" id="bn7" onclick="advanceSimulation(7)">7</button>
+            <button class="sim-step-num" id="bn8" onclick="advanceSimulation(8)">8</button>
+            <button class="sim-step-num" id="bn9" onclick="advanceSimulation(9)">9</button>
+            <button class="sim-step-num" id="bn10" onclick="advanceSimulation(10)">10</button>
+            <button class="sim-step-num" id="bn11" onclick="advanceSimulation(11)">11</button>
+            <button class="sim-step-num" id="bn12" onclick="advanceSimulation(12)">12</button>
+            <button class="sim-step-num" id="bn13" onclick="advanceSimulation(13)">13</button>
+            <button class="sim-step-num" id="bn14" onclick="advanceSimulation(14)">14</button>
+            <button class="sim-step-num" id="bn15" onclick="advanceSimulation(15)">15</button>
+            <button class="sim-step-num" id="bn16" onclick="advanceSimulation(16)">16</button>
+            <button class="sim-step-num" id="bn17" onclick="advanceSimulation(17)">17</button>
+            <button class="sim-step-num" id="bn18" onclick="advanceSimulation(18)">18</button>
+            <button class="sim-step-num" id="bn19" onclick="advanceSimulation(19)">19</button>
+            <button class="sim-step-num" id="bn20" onclick="advanceSimulation(20)">20</button>
+            <button class="sim-step-num" id="bn21" onclick="advanceSimulation(21)">21</button>
+            <button class="sim-step-num" id="bn22" onclick="advanceSimulation(22)">22</button>
+        </div>
+        <button class="primary-button" style="padding: 8px 20px; font-size: 11px; border-radius: 10px;" onclick="advanceSimulation()">
+            Next <span class="iconify" data-icon="solar:play-bold"></span>
+        </button>
+    </div>
+
+    <!-- 1. LANDING PAGE -->
+    <div id="landing-page">
+        <div style="width: 100%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center; padding: 20px 0; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="width: 48px; height: 48px; background: rgba(108, 92, 231, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--accent-primary);">
+                    <span class="iconify" data-icon="solar:rocket-bold-duotone" data-width="28"></span>
+                </div>
+                <div>
+                    <h1 style="margin:0; font-size: 24px; font-weight: 900;">Curiosity Coach</h1>
+                    <p style="margin:0; font-size: 13px; color: var(--text-secondary); font-weight: 600;">Research Dashboard</p>
+                </div>
+            </div>
+            <button class="secondary-button" style="padding: 10px 16px; border-radius: 12px; font-size: 13px;" onclick="showSettings()"><span class="iconify" data-icon="solar:settings-bold-duotone"></span> Settings</button>
+        </div>
+
+        <div class="landing-content">
+            <div style="display: flex; flex-direction: column; gap: 32px;">
+                <div class="landing-section">
+                    <h2 style="font-size: 18px; margin-bottom: 20px;"><span class="iconify" data-icon="solar:add-circle-bold-duotone"></span> New Project</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                        <button class="primary-button" style="padding: 16px;" onclick="advanceSimulation(1)">Freeform Map</button>
+                        <button class="secondary-button" style="padding: 16px;">Import File</button>
+                    </div>
+                    <div class="ai-group" style="padding-top: 24px; border-top: 1px solid var(--border-color);">
+                        <label style="font-weight: 800; font-size: 14px; margin-bottom: 12px; display: block;">Start a Guided Journey</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" class="ai-input" id="sim-topic-input" value="Venus Flytrap Paradox">
+                            <button class="primary-button" style="width: 52px; height: 52px; padding: 0; border-radius: 16px;" onclick="advanceSimulation(1)"><span class="iconify" data-icon="solar:compass-bold-duotone" data-width="24"></span></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="landing-section">
+                    <h2 style="font-size: 18px; margin-bottom: 20px;"><span class="iconify" data-icon="solar:library-bold-duotone"></span> Frameworks</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="template-card" onclick="advanceSimulation(1)"><div class="template-card-icon"><span class="iconify" data-icon="solar:test-tube-bold"></span></div><h4>Scientific Inquiry</h4></div>
+                        <div class="template-card" onclick="advanceSimulation(1)"><div class="template-card-icon"><span class="iconify" data-icon="solar:book-bold"></span></div><h4>CER Framework</h4></div>
+                    </div>
+                </div>
+            </div>
+            <div class="landing-section">
+                <h2 style="font-size: 18px; margin-bottom: 20px;"><span class="iconify" data-icon="solar:planet-3-bold-duotone"></span> Your Worlds</h2>
+                <div id="sim-worlds-list">
+                    <div class="source-item" onclick="advanceSimulation(1)"><strong>Evolutionary Biology</strong><br><small>Edited today</small></div>
+                    <div class="source-item" onclick="advanceSimulation(1)"><strong>Quantum Computing</strong><br><small>Edited 2 days ago</small></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. APP CONTAINER -->
+    <div id="app-container" class="hidden">
+        
+        <!-- SIDE PANEL LEFT: NOTECARD -->
+        <div id="node-detail-panel" class="side-panel">
+            <div class="side-panel-header"><span>Notecard Details</span><span style="cursor:pointer;" onclick="hideNodeDetailPanel()"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></span></div>
+            <div style="flex-grow: 1; overflow-y: auto;">
+                <div style="padding: 24px; border-bottom: 1px solid var(--border-color);">
+                    <label style="font-size:11px; font-weight:800; text-transform:uppercase; margin-bottom:8px; display:block;">Primary Source</label>
+                    <select id="sim-nc-source-select" class="ai-input">
+                        <option value="">No source linked</option>
+                        <option value="givnish">Givnish (1984)</option>
+                        <option value="epa">EPA Soil Survey (2022)</option>
+                    </select>
+                </div>
+                <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+                    <div><label style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px;">Direct Quote</label><div id="sim-nc-quote" class="editable-content" contenteditable="true"></div></div>
+                    <div><label style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px;">Paraphrase</label><div id="sim-nc-paraphrase" class="editable-content" contenteditable="true"></div></div>
+                    <div><label style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px;">My Thoughts</label><div id="sim-nc-thoughts" class="editable-content" contenteditable="true"></div></div>
+                </div>
+            </div>
+            <div style="padding: 24px; border-top: 1px solid var(--border-color);">
+                <button class="primary-button" style="width: 100%;" onclick="sparkCuriosity()"><span class="iconify" data-icon="solar:magic-stick-3-bold-duotone"></span> Spark Curiosity ✨</button>
+            </div>
+        </div>
+
+        <!-- CENTER: GRAPH -->
+        <div id="graph-container">
+            <svg id="graph-canvas" width="100%" height="100%">
+                <g id="sim-links-layer"></g>
+                <g id="sim-nodes-layer"></g>
+            </svg>
+            <div id="toolbar">
+                <button class="tool-button" onclick="goToDashboard()"><span class="iconify" data-icon="solar:planet-3-bold-duotone"></span><span class="label">Worlds</span></button>
+                <button class="tool-button" onclick="showToast('Project cached.')"><span class="iconify" data-icon="solar:star-fall-bold-duotone"></span><span class="label">Keep</span></button>
+                <button class="tool-button" onclick="showExportModal()"><span class="iconify" data-icon="solar:share-circle-bold-duotone"></span><span class="label">Share</span></button>
+                <button class="tool-button" id="pick-btn" onclick="togglePick()"><span class="iconify" data-icon="solar:hand-stars-bold-duotone"></span><span class="label">Pick</span></button>
+                <button class="tool-button" onclick="addMockNode()"><span class="iconify" data-icon="solar:add-circle-bold-duotone"></span><span class="label">New</span></button>
+                <button class="tool-button" onclick="magicShuffle()"><span class="iconify" data-icon="solar:magic-stick-2-bold-duotone"></span><span class="label">Magic</span></button>
+                <button class="tool-button" onclick="showToast('Fit view.')"><span class="iconify" data-icon="solar:maximize-square-3-bold-duotone"></span><span class="label">Fit</span></button>
+                <button class="tool-button" id="connect-btn" onclick="toggleConnect()"><span class="iconify" data-icon="solar:graph-bold-duotone"></span><span class="label">Connect</span></button>
+                <button class="tool-button active"><span class="iconify" data-icon="solar:rocket-bold-duotone"></span><span class="label">Coach</span></button>
+                <button class="tool-button" onclick="showSettings()"><span class="iconify" data-icon="solar:settings-bold-duotone"></span><span class="label">Setup</span></button>
+                <button class="tool-button" onclick="showHelp()"><span class="iconify" data-icon="solar:chat-round-help-bold-duotone"></span><span class="label">Tips</span></button>
+            </div>
+        </div>
+
+        <!-- SIDE PANEL RIGHT: AI COACH -->
+        <div id="ai-panel" class="side-panel">
+            <div class="side-panel-header"><span>Coach 🚀</span></div>
+            <div id="research-progress-stepper">
+                <div class="step-indicator active" id="s1" data-step="1"><span class="iconify" data-icon="solar:map-point-search-bold-duotone"></span></div>
+                <div class="step-indicator" id="s2" data-step="2"><span class="iconify" data-icon="solar:help-list-bold-duotone"></span></div>
+                <div class="step-indicator" id="s3" data-step="3"><span class="iconify" data-icon="solar:notes-bold-duotone"></span></div>
+                <div class="step-indicator" id="s4" data-step="4"><span class="iconify" data-icon="solar:library-bold-duotone"></span></div>
+                <div class="step-indicator" id="s5" data-step="5"><span class="iconify" data-icon="solar:magic-stick-3-bold-duotone"></span></div>
+                <div class="step-indicator" id="s6" data-step="6"><span class="iconify" data-icon="solar:verified-check-bold-duotone"></span></div>
+            </div>
+            <div id="workspace-tabs-container">
+                <button class="workspace-tab active" id="tab-buddy" onclick="switchTab('buddy')">Buddy</button>
+                <button class="workspace-tab" id="tab-sources" onclick="switchTab('sources')">Sources</button>
+                <button class="workspace-tab" id="tab-outline" onclick="switchTab('outline')">Outline</button>
+            </div>
+            <div id="view-buddy" class="side-panel-content" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <div id="ai-chat-history"></div>
+                <div id="thinking-ui" class="hidden" style="padding: 16px 24px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--accent-primary); font-weight: 700;">
+                    <span class="iconify animate-spin" data-icon="solar:refresh-bold"></span>
+                    <span id="thinking-text">Thinking...</span>
+                </div>
+                <div class="ai-input-area">
+                    <button class="secondary-button" style="padding: 12px; width: 48px; height: 48px; border-radius: 14px;" onclick="advanceSimulation()"><span class="iconify" data-icon="solar:magic-stick-3-bold-duotone"></span></button>
+                    <input type="text" class="ai-input" id="sim-user-input" placeholder="Type a thought..." onkeypress="if(event.key==='Enter') simulateUserChat()">
+                    <button class="primary-button" style="padding: 0; width: 44px; height: 44px; border-radius: 12px;" onclick="simulateUserChat()"><span class="iconify" data-icon="solar:plain-2-bold"></span></button>
+                </div>
+            </div>
+            <div id="view-sources" class="side-panel-content hidden" style="padding: 24px; overflow-y: auto; flex-grow: 1;">
+                <h3 style="margin: 0 0 20px; font-weight: 900;">Bibliography</h3>
+                <div id="sim-sources-list"><p style="color: var(--text-secondary); font-style: italic;">No sources yet.</p></div>
+            </div>
+            <div id="view-outline" class="side-panel-content hidden" style="padding: 24px; overflow-y: auto; flex-grow: 1;">
+                <h3 style="margin: 0 0 20px; font-weight: 900;">Project Outline</h3>
+                <div id="sim-outline-tree"><p style="color: var(--text-secondary); font-style: italic;">Structure builds as you map.</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="generic-modal" class="modal-overlay hidden" onclick="hideModals()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header"><h3 id="m-title">Title</h3><button onclick="hideModals()"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></button></div>
+            <div id="m-body" class="modal-body">Message</div>
+        </div>
+    </div>
+
+    <div id="export-modal" class="modal-overlay hidden" onclick="hideModals()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header"><h3>Export World</h3><button onclick="hideModals()"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></button></div>
+            <div class="modal-body">
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div class="secondary-button" onclick="showToast('Generating Interactive Viewer...')" style="justify-content: flex-start;"><span class="iconify" data-icon="solar:globus-bold-duotone"></span> Interactive Web Viewer</div>
+                    <div class="secondary-button" onclick="showToast('Preparing PDF Report...')" style="justify-content: flex-start;"><span class="iconify" data-icon="solar:printer-bold-duotone"></span> Printable PDF Outline</div>
+                    <div class="secondary-button" onclick="showToast('Exporting JSON backup...')" style="justify-content: flex-start;"><span class="iconify" data-icon="solar:code-file-bold-duotone"></span> JSON World Backup</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="source-preview-modal" class="modal-overlay hidden" onclick="hideModals()">
+        <div class="modal-content" style="max-width: 90vw; height: 85vh;" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="preview-title">Source Preview</h3>
+                <div style="display: flex; gap: 8px;">
+                    <button class="primary-button" id="preview-add-btn" style="padding: 8px 16px; font-size: 12px;" onclick="saveSourceSim()">Add to Bibliography</button>
+                    <button onclick="hideModals()"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></button>
+                </div>
+            </div>
+            <div class="modal-body" style="background: white; padding: 40px; overflow-y: auto;">
+                <h1 id="p-doc-title">Document Title</h1>
+                <p id="p-doc-author" style="color: #636e72; font-style: italic;">By Author</p>
+                <hr>
+                <div id="p-doc-content" style="line-height:1.6; color:var(--text-primary);">Content...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        let selectedNodeId = null;
+        let lastParentId = 'flytrap';
+        
+        const ui = {
+            landing: document.getElementById('landing-page'),
+            app: document.getElementById('app-container'),
+            chat: document.getElementById('ai-chat-history'),
+            thinking: document.getElementById('thinking-ui'),
+            stage: document.getElementById('sim-stage-indicator'),
+            nodes: document.getElementById('sim-nodes-layer'),
+            links: document.getElementById('sim-links-layer'),
+            sources: document.getElementById('sim-sources-list'),
+            outline: document.getElementById('sim-outline-tree'),
+            ncSource: document.getElementById('sim-nc-source-select'),
+            ncQuote: document.getElementById('sim-nc-quote'),
+            ncParaphrase: document.getElementById('sim-nc-paraphrase'),
+            ncThoughts: document.getElementById('sim-nc-thoughts'),
+            userInput: document.getElementById('sim-user-input')
+        };
+
+        const nodeRegistry = {
+            'Venus Flytrap': { id: 'flytrap', x: 400, y: 300, icon: 'solar:leaf-bold-duotone', color: '#27ae60' },
+            'Wilmington Center': { id: 'wilm', x: 200, y: 200, icon: 'solar:map-point-bold-duotone', color: '#e67e22' },
+            'Carolina Bogs': { id: 'bogs', x: 650, y: 200, icon: 'solar:map-point-bold-duotone', color: '#3498db' },
+            'Question: Nutrient Desert?': { id: 'q_nutrients', x: 800, y: 300, icon: 'solar:help-list-bold-duotone', color: '#fab1a0' },
+            'Nutrient Leaching': { id: 'leaching', x: 850, y: 150, icon: 'solar:water-drops-bold', color: '#1abc9c' },
+            'Nitrogen Deficiency': { id: 'nitrogen', x: 850, y: 450, icon: 'solar:danger-bold', color: '#e74c3c' },
+            'Necessity Step': { id: 'necessity', x: 650, y: 550, icon: 'solar:medal-star-bold', color: '#f1c40f' },
+            'Insects as "Nutrient Pills"': { id: 'pill', x: 400, y: 550, icon: 'solar:heart-bold', color: '#ff7675' }
+        };
+
+        function addMessage(text, role = 'model', extra = null) {
+            const div = document.createElement('div');
+            div.className = `chat-message ${role}`;
+            
+            if (role === 'model' && !text.includes('hint')) {
+                text += `\n\n<button class="suggestion-chip hint" onclick="showSimHint()">💡 Hint</button>`;
+            }
+
+            const chipRegex = /<button class="suggestion-chip" data-action="([^"]+)" data-label="([^"]+)">.*?<\/button>/g;
+            let processedText = text.replace(chipRegex, (match, action, label) => {
+                const addPrefix = action === 'add_node' ? '➕ ' : '';
+                return `<button class="suggestion-chip" onclick="simulateChipClick('${action}', '${label}')">${addPrefix}${label}</button>`;
+            });
+            
+            div.innerHTML = marked.parse(processedText);
+            if (extra) div.appendChild(extra);
+            ui.chat.appendChild(div);
+            ui.chat.scrollTop = ui.chat.scrollHeight;
+        }
+
+        function simulateUserChat() {
+            const val = ui.userInput.value.trim();
+            if (!val) return;
+            addMessage(val, 'user');
+            ui.userInput.value = '';
+            ui.thinking.classList.remove('hidden');
+            setTimeout(() => {
+                ui.thinking.classList.add('hidden');
+                addMessage("That's a vital connection! Let's build on that student-led thought. What else do you notice?", 'model');
+            }, 1000);
+        }
+
+        window.showSimHint = function() {
+            const hints = [
+                "Examine the geography around Wilmington, NC.",
+                "Phase 2: Questioning. Focus on what you 'Notice' and 'Wonder'.",
+                "Phase 3: Planning. Look for processes like Leaching that remove nutrients.",
+                "Phase 4: Gathering. Check the nitrogen levels in the research study.",
+                "Phase 5: Synthesis. If the soil is empty, how does an external pulse of N help?"
+            ];
+            const idx = Math.min(Math.floor(currentStep/4), hints.length-1);
+            showToast(`💡 Coach: ${hints[idx]}`);
+        }
+
+        window.simulateChipClick = function(action, label) {
+            addMessage(`I'll pick: ${label}`, 'user');
+            ui.thinking.classList.remove('hidden');
+            setTimeout(() => {
+                ui.thinking.classList.add('hidden');
+                if (action === 'add_node') {
+                    const cleanLabel = label.replace('➕ ', '');
+                    const nodeData = nodeRegistry[cleanLabel] || { id: Date.now(), x: 500, y: 500, icon: 'solar:star-bold', color: '#f1c40f' };
+                    addNode(nodeData.id, cleanLabel, nodeData.x, nodeData.y, nodeData.icon, nodeData.color);
+                    const parentNode = nodeRegistry[Object.keys(nodeRegistry).find(k => nodeRegistry[k].id === lastParentId)];
+                    if (parentNode) addLink(parentNode.x, parentNode.y, nodeData.x, nodeData.y);
+                    lastParentId = nodeData.id;
+                    updateNotecardUI(cleanLabel);
+                    openNodeDetails();
+                    addMessage(`Great! I've added **${cleanLabel}**. How does this shape your evolving research story?`, 'model');
+                } else if (action === 'search') {
+                    advanceSimulation(12);
+                } else {
+                    addMessage("Correct. That lead connects directly to our model.", 'model');
+                }
+            }, 800);
+        }
+
+        function addNode(id, label, x, y, icon, color) {
+            if (document.getElementById(`node-${id}`)) return;
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.setAttribute("class", "proto-node-card");
+            g.setAttribute("id", `node-${id}`);
+            g.setAttribute("data-label", label);
+            g.setAttribute("transform", `translate(${x - 90}, ${y - 50}) scale(0.5)`);
+            g.style.opacity = "0";
+            g.style.transition = "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)";
+            g.innerHTML = `
+                <rect width="180" height="100" rx="24" fill="white" stroke="#dfe6e9" stroke-width="2" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05))"></rect>
+                <foreignObject width="180" height="100">
+                    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:12px; text-align:center;">
+                        <span class="iconify" data-icon="${icon}" data-width="24" style="color: ${color}; margin-bottom: 8px;"></span>
+                        <div style="font-size:13px; font-weight:800; color:#2d3436; line-height:1.2;">${label}</div>
+                    </div>
+                </foreignObject>
+            `;
+            ui.nodes.appendChild(g);
+            setTimeout(() => { g.setAttribute("transform", `translate(${x - 90}, ${y - 50}) scale(1)`); g.style.opacity = "1"; }, 50);
+            g.onclick = (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.proto-node-card').forEach(n => n.classList.remove('selected'));
+                g.classList.add('selected');
+                updateNotecardUI(label);
+            };
+        }
+
+        function addLink(x1, y1, x2, y2) {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", x1); line.setAttribute("y1", y1); line.setAttribute("x2", x2); line.setAttribute("y2", y2);
+            line.setAttribute("stroke", "#b2bec3"); line.setAttribute("stroke-width", "3"); line.setAttribute("stroke-dasharray", "5,5");
+            ui.links.appendChild(line);
+        }
+
+        function advanceSimulation(target = null) {
+            if (target !== null) currentStep = target - 1;
+            currentStep++;
+            if (currentStep > 22) currentStep = 22;
+            
+            document.querySelectorAll('.sim-step-num').forEach((el, i) => el.classList.toggle('active', (i + 1) === currentStep));
+            const phase = Math.ceil(currentStep / 3.7);
+            document.querySelectorAll('.step-indicator').forEach((el, i) => el.classList.toggle('active', (i + 1) === phase));
+
+            switch(currentStep) {
+                case 1: 
+                    ui.landing.classList.add('hidden'); ui.app.classList.remove('hidden'); 
+                    addNode('flytrap', 'Venus Flytrap', 400, 300); updateNotecardUI('Venus Flytrap'); openNodeDetails(); 
+                    addMessage("Phase 1: **Exploration**. What do you know about the Venus Flytrap?\n\n" + 
+                               '<button class="suggestion-chip" data-action="chat" data-label="They eat bugs">They eat bugs</button>' +
+                               '<button class="suggestion-chip" data-action="chat" data-label="They are monotypic">One species only</button>'); 
+                    break;
+                case 2: addMessage("They are rare and eat insects. Usually, plants get food from soil. Why the side hustle?", "model"); break;
+                case 3: addMessage("Maybe the soil is missing something?", "user"); break;
+                case 4: 
+                    updateNotecardUI('Wilmington Center'); addNode('wilm', 'Wilmington Center', 200, 200, 'solar:map-point-bold-duotone', '#e67e22'); addLink(400, 300, 200, 200); 
+                    addMessage("Phase 2: **Questioning**. They only grow here, near Wilmington. What do you **notice** about this map location?\n\n" + 
+                               '<button class="suggestion-chip" data-action="chat" data-label="It is coastal">Coastal leads</button>' +
+                               '<button class="suggestion-chip" data-action="add_node" data-label="Carolina Bogs">➕ Carolina Bogs</button>'); 
+                    break;
+                case 5: addMessage("I notice it's all marshland and swampy pockets.", "user"); break;
+                case 6: 
+                    addMessage("Exactly. Let's form a **Driving Question**. If the land is a swamp, what do we **wonder** about the soil?\n\n" + 
+                               '<button class="suggestion-chip" data-action="add_node" data-label="Question: Nutrient Desert?">➕ Question: Nutrient Desert?</button>'); 
+                    break;
+                case 7: 
+                    updateNotecardUI('Question: Nutrient Desert?'); simulateChipClick('add_node', 'Question: Nutrient Desert?');
+                    addMessage("Phase 3: **Planning**. How can we test if the swamp soil is actually a 'desert'? What process removes nutrients?\n\n" + 
+                               '<button class="suggestion-chip" data-action="add_node" data-label="Nutrient Leaching">➕ Nutrient Leaching</button>'); 
+                    break;
+                case 8: addMessage("Water pulls nutrients away. Leaching.", "user"); break;
+                case 9: addMessage("Spot on. Documentation check: record this leaching theory in our Carolina Bogs notecard.", "model"); break;
+                case 10: 
+                    updateNotecardUI('Nutrient Leaching'); addNode('leaching', 'Nutrient Leaching', 850, 150, 'solar:water-drops-bold', '#1abc9c'); addLink(650, 200, 850, 150); 
+                    addMessage("Phase 4: **Gathering**. Let's find some chemical proof. Should we search for soil Nitrogen data?\n\n" + 
+                               '<button class="suggestion-chip" data-action="search" data-label="Soil Nitrogen">🔍 Search: Bog Soil</button>'); 
+                    break;
+                case 11: addMessage("Researching Givnish (1984) and soil chemical reports...", "user"); break;
+                case 12: 
+                    const res = document.createElement('div'); res.innerHTML = `<div class="source-item" style="border-left:4px solid var(--accent-secondary);"><strong>Givnish (1984)</strong><br><small>Finding: N < 5ppm.</small><br><button class="suggestion-chip" onclick="showPreview('N-Levels', 'Givnish', 'Nitrogen is near-zero...')">🔍 Preview</button><button class="suggestion-chip primary" onclick="saveSourceSim()">➕ Add</button></div>`; 
+                    addMessage("Proof found! Compare this data to normal soil. What's your conclusion?", 'model', res); 
+                    break;
+                case 13: addMessage("Nitrogen is almost zero. Soil is a biological desert.", "user"); break;
+                case 14: addMessage("Phase 5: **Synthesis**. Link this deficiency to the plant's unique behavior. How do we solve the desert problem?", "model"); break;
+                case 15: 
+                    updateNotecardUI('Nitrogen Deficiency'); addNode('nitrogen', 'Nitrogen Deficiency', 850, 450, 'solar:danger-bold', '#e74c3c'); addLink(850, 150, 850, 450); 
+                    addMessage("Biological necessity! If the soil is empty, where is the external Nitrogen source?\n\n" + 
+                               '<button class="suggestion-chip" data-action="add_node" data-label="Necessity Step">➕ Add: Necessity Logic</button>'); 
+                    break;
+                case 16: addMessage("Insects act as vitamin shots!", "user"); break;
+                case 17: addMessage("Exactly. Let's update the Necessity notecard with this 'survival hack' synthesis.", "model"); break;
+                case 18: 
+                    updateNotecardUI('Biological Necessity'); addNode('necessity', 'Necessity Step', 650, 550, 'solar:medal-star-bold', '#f1c40f'); addLink(850, 450, 650, 550); 
+                    addMessage("Breakthrough! Now add the final solution node.\n\n" + 
+                               '<button class="suggestion-chip" data-action="add_node" data-label="Insects as &quot;Nutrient Pills&quot;">➕ Add: Solution</button>'); 
+                    break;
+                case 19: addMessage("Insects provide the pulse of Nitrogen required for growth.", "user"); break;
+                case 20: addMessage("Solved. Phase 6: **Review**. Your logical chain is complete. Look at the Project Outline.", "model"); break;
+                case 21: 
+                    updateNotecardUI('Insects as "Nutrient Pills"'); addNode('pill', 'Insects as "Nutrient Pills"', 400, 550, 'solar:heart-bold', '#ff7675'); addLink(650, 550, 400, 550); addLink(400, 550, 400, 300); 
+                    switchTab('outline'); updateOutlineUI(); break;
+                case 22: showToast('Project fully cohesive.'); addMessage("Tour Complete! Map, Notecards, and Outline are fully synced. Ready to explore?", "model"); break;
+            }
+        }
+
+        function updateNotecardUI(label) {
+            const data = {
+                'Venus Flytrap': { source: '', quote: 'Dionaea muscipula is monotypic.', paraphrase: 'Only one species exists globally.', thoughts: 'Investigating why it\'s only in NC.' },
+                'Wilmington Center': { source: '', quote: 'NC Coastal Plain hub.', paraphrase: '60-mile radius boundary.', thoughts: 'This hub is the specific center of the mystery.' },
+                'Carolina Bogs': { source: '', quote: 'Evergreen shrub bogs.', paraphrase: 'Marshy habitats.', thoughts: 'Wondering how nutrients survive this moisture.' },
+                'Question: Nutrient Desert?': { source: '', quote: 'Submerged roots questioning.', paraphrase: 'Does the water leach nutrients?', thoughts: 'Driving Question: How do they survive in nutrient-poor soil?' },
+                'Nutrient Leaching': { source: 'epa', quote: 'Sandy soil pulls nutrients away.', paraphrase: 'Creates nutrient deserts.', thoughts: 'Roots can\'t find minerals—it\'s a biological hurdle.' },
+                'Nitrogen Deficiency': { source: 'givnish', quote: 'N levels < 5ppm.', paraphrase: 'Usable Nitrogen is near zero.', thoughts: 'Evidence confirmed via study data.' },
+                'Biological Necessity': { source: 'givnish', quote: 'Carnivory is high-energy cost.', paraphrase: 'Requirement vs preference.', thoughts: 'Insects act like pulse fertilizer shots.' },
+                'Insects as "Nutrient Pills"': { source: 'givnish', quote: 'Bugs provide a nitrogen pulse.', paraphrase: 'External nutrient intake.', thoughts: 'Evolutionary hack to survive the bog.' }
+            };
+            const entry = data[label] || { source: '', quote: 'Recording...', paraphrase: '', thoughts: '' };
+            if (entry.source) ui.ncSource.value = entry.source; else ui.ncSource.value = '';
+            ui.ncQuote.innerText = entry.quote; ui.ncParaphrase.innerText = entry.paraphrase; ui.ncThoughts.innerText = entry.thoughts;
+        }
+
+        function updateOutlineUI() {
+            ui.outline.innerHTML = `<div class="outline-node">1. Central Mystery: Range Isolation</div><div class="outline-node" style="margin-left:20px;">1.1 Wilmington Hub</div><div class="outline-node">2. Environmental Context: Carolina Bogs</div><div class="outline-node" style="margin-left:20px;">2.1 Driving Question: Nutrient Desert?</div><div class="outline-node" style="margin-left:20px;">2.2 Soil Leaching Dynamics</div><div class="outline-node">3. Conclusion: Evolutionary Solution</div><div class="outline-node" style="margin-left:20px;">3.1 Insects as Nutrient Pills</div>`;
+        }
+
+        window.saveSourceSim = function() { hideModals(); switchTab('sources'); ui.sources.innerHTML = `<div class="source-item" style="border-left:4px solid var(--accent-primary);"><strong>Givnish (1984)</strong></div>`; setTimeout(() => switchTab('buddy'), 1000); }
+        function openNodeDetails() { document.getElementById('node-detail-panel').classList.add('visible'); }
+        function hideNodeDetailPanel() { document.getElementById('node-detail-panel').classList.remove('visible'); }
+        function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+        function hideModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden')); }
+        function showPreview(title, author, content) { document.getElementById('p-doc-title').innerText = title; document.getElementById('p-doc-author').innerText = author; document.getElementById('p-doc-content').innerText = content; document.getElementById('source-preview-modal').classList.remove('hidden'); }
+        function showSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
+        function showHelp() { showGenericModal('Tips', '• Pan with mouse<br>• Chat to build leads<br>• Notecards auto-sync student ideas'); }
+        function sparkCuriosity() { addMessage("Check the deficiency. Ready to explore digestive enzymes?", 'model'); }
+        function switchTab(name) {
+            document.querySelectorAll('.workspace-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.side-panel-content').forEach(v => v.classList.add('hidden'));
+            const tabEl = document.getElementById(`tab-${name}`);
+            if (tabEl) tabEl.classList.add('active');
+            const viewEl = document.getElementById(`view-${name}`);
+            if (viewEl) viewEl.classList.remove('hidden');
+        }
+        marked.setOptions({ gfm: true, breaks: true });
+    </script>
+</body>
+</html>

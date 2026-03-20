@@ -1,3 +1,4 @@
+import { getGraphState } from './graph.js';
 import { toast } from './ui.js';
 
 const MAPS_STORAGE_KEY = 'visualKnowledgeTool_allMaps';
@@ -8,7 +9,7 @@ const TEMPLATES_STORAGE_KEY = 'visualKnowledgeTool_templates';
  */
 export const dbManager = {
     db: null,
-    DB_VERSION: 1,
+    DB_VERSION: 3,
     /**
      * Opens and initializes the IndexedDB database and its object stores.
      * @returns {Promise<void>}
@@ -16,16 +17,33 @@ export const dbManager = {
     init: function() {
         return new Promise((resolve, reject) => {
             const req = indexedDB.open('VisualKnowledgeDB', this.DB_VERSION);
-            req.onerror = () => reject("DB Error: " + req.error);
+            req.onerror = e => reject("DB Error: " + e.target.errorCode);
             req.onsuccess = e => {
                 this.db = e.target.result;
                 resolve();
             };
             req.onupgradeneeded = e => {
                 const db = e.target.result;
+                let store;
                 if (!db.objectStoreNames.contains('chatMessages')) {
-                    const store = db.createObjectStore('chatMessages', { keyPath: 'id', autoIncrement: true });
+                    store = db.createObjectStore('chatMessages', { keyPath: 'id', autoIncrement: true });
+                } else {
+                    store = e.target.transaction.objectStore('chatMessages');
+                }
+                
+                if (!store.indexNames.contains('mapId')) {
                     store.createIndex('mapId', 'mapId', { unique: false });
+                }
+                if (!store.indexNames.contains('nodeId')) {
+                    store.createIndex('nodeId', 'nodeId', { unique: false });
+                }
+                if (!store.indexNames.contains('map_node')) {
+                    store.createIndex('map_node', ['mapId', 'nodeId'], { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains('projectSources')) {
+                    const sStore = db.createObjectStore('projectSources', { keyPath: 'id', autoIncrement: true });
+                    sStore.createIndex('mapId', 'mapId', { unique: false });
                 }
             };
         });
@@ -34,26 +52,69 @@ export const dbManager = {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
     }),
-    /**
-     * Saves a single chat message associated with a map ID.
-     * @param {string} mapId - The ID of the map.
-     * @param {object} messageObject - The message object to save (e.g., { role, content }).
-     * @returns {Promise<IDBValidKey>}
-     */
-    saveMessage: function(mapId, messageObject) {
+
+    // --- Source CRUD ---
+    saveSource: function(mapId, sourceData) {
         if (!mapId || !this.db) return Promise.resolve();
-        const tx = this.db.transaction('chatMessages', 'readwrite');
-        return this._promisify(tx.objectStore('chatMessages').add({ mapId, ...messageObject, timestamp: new Date() }));
+        const tx = this.db.transaction('projectSources', 'readwrite');
+        return this._promisify(tx.objectStore('projectSources').add({ mapId, ...sourceData, timestamp: new Date() }));
+    },
+    getMapSources: function(mapId) {
+        if (!mapId || !this.db) return Promise.resolve([]);
+        const tx = this.db.transaction('projectSources', 'readonly');
+        return this._promisify(tx.objectStore('projectSources').index('mapId').getAll(mapId));
+    },
+    deleteSource: function(sourceId) {
+        if (!this.db) return Promise.resolve();
+        const tx = this.db.transaction('projectSources', 'readwrite');
+        return this._promisify(tx.objectStore('projectSources').delete(sourceId));
+    },
+    updateSource: function(sourceId, updateData) {
+        if (!this.db) return Promise.resolve();
+        const tx = this.db.transaction('projectSources', 'readwrite');
+        const store = tx.objectStore('projectSources');
+        return this._promisify(store.get(sourceId)).then(source => {
+            if (!source) return;
+            Object.assign(source, updateData);
+            return this._promisify(store.put(source));
+        });
+    },
+    deleteMapSources: async function(mapId) {
+        if (!this.db) return;
+        const tx = this.db.transaction('projectSources', 'readwrite');
+        const store = tx.objectStore('projectSources');
+        const keys = await this._promisify(store.index('mapId').getAllKeys(mapId));
+        await Promise.all(keys.map(key => this._promisify(store.delete(key))));
     },
     /**
-     * Retrieves all chat messages for a given map ID.
+     * Saves a single chat message associated with a map ID and optional node ID.
      * @param {string} mapId - The ID of the map.
+     * @param {object} messageObject - The message object to save (e.g., { role, content }).
+     * @param {string|null} nodeId - The ID of the node this message belongs to.
+     * @returns {Promise<IDBValidKey>}
+     */
+    saveMessage: function(mapId, messageObject, nodeId = null) {
+        if (!mapId || !this.db) return Promise.resolve();
+        const tx = this.db.transaction('chatMessages', 'readwrite');
+        // IndexedDB keys cannot be null, use empty string for global messages
+        const safeNodeId = nodeId === null ? "" : nodeId;
+        return this._promisify(tx.objectStore('chatMessages').add({ mapId, nodeId: safeNodeId, ...messageObject, timestamp: new Date() }));
+    },
+    /**
+     * Retrieves all chat messages for a given map ID and optional node ID.
+     * @param {string} mapId - The ID of the map.
+     * @param {string|null} nodeId - The ID of the node to filter by.
      * @returns {Promise<object[]>}
      */
-    getMapMessages: function(mapId) {
+    getMapMessages: function(mapId, nodeId = null) {
         if (!mapId || !this.db) return Promise.resolve([]);
         const tx = this.db.transaction('chatMessages', 'readonly');
-        return this._promisify(tx.objectStore('chatMessages').index('mapId').getAll(mapId));
+        const store = tx.objectStore('chatMessages');
+        
+        // Use the compound index for efficient filtering
+        const index = store.index('map_node');
+        const safeNodeId = nodeId === null ? "" : nodeId;
+        return this._promisify(index.getAll(IDBKeyRange.only([mapId, safeNodeId])));
     },
     /**
      * Deletes all chat messages associated with a map ID.
@@ -82,7 +143,7 @@ export const mapsManager = {
         try {
             const maps = localStorage.getItem(MAPS_STORAGE_KEY);
             return maps ? JSON.parse(maps) : {};
-        } catch {
+        } catch (e) {
             return {};
         }
     },
@@ -98,24 +159,34 @@ export const mapsManager = {
      * @returns {object}
      */
     getCurrentGraphData: () => {
+        const { nodes, links, nodeCounter, currentLayout, currentLinkStyle } = getGraphState();
         const activeStep = document.querySelector('.step-indicator.active');
         const researchStep = activeStep ? parseInt(activeStep.dataset.step) : 1;
-        
-        let canvasData = null;
-        let notecardCount = 0;
-        if (window.tldrawEditor) {
-            canvasData = window.tldrawEditor.store.getSnapshot();
-            notecardCount = window.tldrawEditor.getCurrentPageShapes().filter(s => s.type === 'research-note').length;
-        }
-
         return {
-            canvasData,
+            nodes: nodes.map(n => ({ 
+                id: n.id, 
+                label: n.label, 
+                x: n.x, 
+                y: n.y, 
+                fx: n.fx, 
+                fy: n.fy, 
+                shape: n.shape, 
+                color: n.color, 
+                details: n.details || '',
+                notecard: n.notecard || {}
+            })),
+            links: links.map(l => ({ 
+                source: l.source.id, 
+                target: l.target.id, 
+                label: l.label,
+                color: l.color,
+                dashed: l.dashed
+            })),
+            counter: nodeCounter,
+            layout: currentLayout,
+            linkStyle: currentLinkStyle,
             researchStep: researchStep,
-            sources: window.projectSources || [],
-            stats: {
-                notecards: notecardCount,
-                sources: (window.projectSources || []).length
-            }
+            sources: window.projectSources || []
         };
     },
 
@@ -158,6 +229,7 @@ export const mapsManager = {
         delete maps[mapId];
         mapsManager.saveAll(maps);
         await dbManager.deleteMapMessages(mapId);
+        await dbManager.deleteMapSources(mapId);
         if (renderCallback) renderCallback();
     },
     /**
@@ -203,7 +275,7 @@ export const templatesManager = {
         try {
             const t = localStorage.getItem(TEMPLATES_STORAGE_KEY);
             return t ? JSON.parse(t) : {};
-        } catch {
+        } catch (e) {
             return {};
         }
     },
@@ -211,6 +283,10 @@ export const templatesManager = {
         localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
     },
     save: (name, graphData) => {
+        if (!graphData || !graphData.nodes) {
+            toast("Error: Cannot save empty template.");
+            return;
+        }
         const templates = templatesManager.getCustom();
         const idMap = new Map();
         let counter = 0;
@@ -224,7 +300,7 @@ export const templatesManager = {
             return n;
         });
 
-        const newLinks = graphData.links.map(l => ({
+        const newLinks = (graphData.links || []).map(l => ({
             source: idMap.get(l.source),
             target: idMap.get(l.target),
             label: l.label

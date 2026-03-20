@@ -86,6 +86,17 @@ export function removeCooldown(apiKey) {
 }
 
 /**
+ * Checks if a specific key is currently on cooldown.
+ * @param {string} apiKey - The API key to check.
+ * @returns {boolean}
+ */
+export function isKeyOnCooldown(apiKey) {
+    const cooldowns = getCooldowns();
+    const lastUsed = cooldowns[apiKey] || 0;
+    return (Date.now() - lastUsed) < AI_HELPER_CONFIG.COOLDOWN_MS;
+}
+
+/**
  * Returns the first available (not on cooldown) API key.
  * Rotates through keys to distribute load.
  * @param {boolean} includeCooldownIfNecessary - If true and all keys are on cooldown, returns the one closest to expiry.

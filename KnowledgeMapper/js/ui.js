@@ -19,6 +19,7 @@ export const ui = {
     addNodeBtn: document.getElementById('addNodeBtn'),
     selectModeBtn: document.getElementById('selectModeBtn'),
     layoutBtn: document.getElementById('layoutBtn'),
+    fitViewBtn: document.getElementById('fitViewBtn'),
     linkStyleBtn: document.getElementById('linkStyleBtn'),
     settingsBtn: document.getElementById('settingsBtn'),
     helpBtn: document.getElementById('helpBtn'),
@@ -26,9 +27,12 @@ export const ui = {
     aiPanelBtn: document.getElementById('aiPanelBtn'),
     aiPanel: document.getElementById('ai-panel'),
     aiPanelClose: document.getElementById('ai-panel-close'),
+    aiMoreOptionsBtn: document.getElementById('ai-more-options-btn'),
     aiChatHistory: document.getElementById('ai-chat-history'),
     aiChatInput: document.getElementById('ai-chat-input'),
     aiChatSendBtn: document.getElementById('ai-chat-send-btn'),
+    aiThinkingIndicator: document.getElementById('ai-thinking-indicator'),
+    aiThinkingText: document.getElementById('ai-thinking-text'),
     
     contextMenu: document.getElementById('context-menu'),
     canvasContextMenu: document.getElementById('canvas-context-menu'),
@@ -46,25 +50,27 @@ export const ui = {
     generateDetailsBtn: document.getElementById('generate-details-btn'),
     rteToolbar: document.getElementById('rte-toolbar'),
 
+    settingsModal: document.getElementById('settings-modal'),
     helpModal: document.getElementById('help-modal'),
     exportModal: document.getElementById('export-modal'),
+    saveSettingsBtn: document.getElementById('save-settings-btn'),
     exportInteractiveBtn: document.getElementById('export-interactive-btn'),
     exportPrintableBtn: document.getElementById('export-printable-btn'),
     exportJsonBtn: document.getElementById('export-json-btn'),
-    selectModeBtn: document.getElementById('selectModeBtn'),
-
-    // Header Elements
-    headerProjectName: document.getElementById('header-project-name'),
-    headerLayoutBtn: document.getElementById('header-layout-btn'),
-    headerHelpBtn: document.getElementById('header-help-btn'),
-    headerExportBtn: document.getElementById('header-export-btn'),
-    headerSaveBtn: document.getElementById('header-save-btn'),
-    headerHomeBtn: document.getElementById('header-home-btn'),
-
-    // Research Progress UI
-    researchProgressStepper: document.getElementById('research-progress-stepper'),
-    researchPhaseName: document.getElementById('research-phase-name'),
-    nextPhaseBtn: document.getElementById('next-phase-btn'),
+    apiKeys: { 
+        newGeminiKey: document.getElementById('new-gemini-key'),
+        geminiKeysList: document.getElementById('gemini-keys-list'),
+        addKeyBtn: document.getElementById('add-key-btn'),
+        hf: document.getElementById('hf-key'),
+        newsapi: document.getElementById('newsapi-key'), 
+        debugModeToggle: document.getElementById('debug-mode-toggle'),
+    },
+    settingsTabs: document.querySelectorAll('.settings-tab'),
+    settingsTabPanels: document.querySelectorAll('.settings-tab-panel'),
+    modelSelectors: {
+        tool: document.getElementById('tool-model-select'),
+        content: document.getElementById('content-model-select'),
+    },
 
     researchProgressOverlay: document.getElementById('research-progress-overlay'),
     researchProgressTitle: document.getElementById('research-progress-title'),
@@ -77,7 +83,9 @@ export const ui = {
 
     sourcesList: document.getElementById('sources-list'),
     outlineTree: document.getElementById('outline-tree'),
-    addSourceBtn: document.getElementById('add-source-btn'),
+    addUrlSourceBtn: document.getElementById('add-url-source-btn'),
+    uploadFileSourceBtn: document.getElementById('upload-file-source-btn'),
+    sourceFileInput: document.getElementById('source-file-input'),
     toggleViewBtn: document.getElementById('toggle-view-btn'),
 
     // Notecard Fields
@@ -86,49 +94,131 @@ export const ui = {
     notecardParaphrase: document.getElementById('notecard-paraphrase'),
     notecardThoughts: document.getElementById('notecard-thoughts'),
 
-    // Phase Goal HUD
-    phaseGoalHud: document.getElementById('phase-goal-hud'),
-    phaseIcon: document.getElementById('phase-icon'),
-    phaseLabel: document.getElementById('phase-label'),
-    phaseName: document.getElementById('phase-name'),
-    phaseGoalText: document.getElementById('phase-goal-text'),
+    // Modal Elements
+    genericModal: document.getElementById('generic-modal'),
+    modalTitle: document.getElementById('modal-title'),
+    modalMessage: document.getElementById('modal-message'),
+    modalInput: document.getElementById('modal-input'),
+    modalPromptContainer: document.getElementById('modal-prompt-container'),
+    modalCancelBtn: document.getElementById('modal-cancel-btn'),
+    modalConfirmBtn: document.getElementById('modal-confirm-btn'),
 
-    // Coach HUD
-    coachHud: document.getElementById('coach-hud'),
-    coachInputContainer: document.getElementById('coach-input-container'),
+    // Step Prompts
+    stepPrompts: {
+        1: document.getElementById('prompt-step-1'),
+        2: document.getElementById('prompt-step-2'),
+        3: document.getElementById('prompt-step-3'),
+        4: document.getElementById('prompt-step-4'),
+        5: document.getElementById('prompt-step-5'),
+        6: document.getElementById('prompt-step-6'),
+        global: document.getElementById('prompt-global'),
+        research: document.getElementById('prompt-research'),
+        brainstorm: document.getElementById('prompt-brainstorm'),
+        mapMindmap: document.getElementById('prompt-map-mindmap'),
+        mapFlowchart: document.getElementById('prompt-map-flowchart'),
+    }
+};
 
-    // Source Viewer
-    sourceViewerPanel: document.getElementById('source-viewer-panel'),
-    sourceViewerTitle: document.getElementById('source-viewer-title'),
-    sourceViewerClose: document.getElementById('source-viewer-close'),
-    sourceViewerLoader: document.getElementById('source-viewer-loader'),
-    sourceIframe: document.getElementById('source-iframe'),
-    sourcePdfObject: document.getElementById('source-pdf-object'),
-    pdfViewerContainer: document.getElementById('pdf-viewer-container'),
-    pdfDownloadLink: document.getElementById('pdf-download-link'),
-    sourceExternalBtn: document.getElementById('source-external-btn'),
-    openSourceViewerBtn: document.getElementById('open-source-viewer-btn'),
+/**
+ * A helper object for managing the custom modal system.
+ */
+export const Modal = {
+    _resolve: null,
+    
+    /**
+     * Shows a confirmation dialog.
+     * @param {string} title - The title of the modal.
+     * @param {string} message - The message body.
+     * @returns {Promise<boolean>} Resolves to true if confirmed, false otherwise.
+     */
+    confirm: function(title, message) {
+        return new Promise((resolve) => {
+            this._setup(title, message, 'confirm');
+            this._resolve = resolve;
+        });
+    },
 
-    // Layout Elements
-    workspaceLayout: document.getElementById('workspace-layout'),
-    leftSidebar: document.getElementById('left-sidebar'),
-    rightSidebar: document.getElementById('right-sidebar'),
-    centerViewBtn: document.getElementById('center-view-btn'),
+    /**
+     * Shows a prompt dialog with an input field.
+     * @param {string} title - The title of the modal.
+     * @param {string} message - The message body.
+     * @param {string} defaultValue - Initial value for the input.
+     * @returns {Promise<string|null>} Resolves to the input string or null if cancelled.
+     */
+    prompt: function(title, message, defaultValue = "") {
+        return new Promise((resolve) => {
+            this._setup(title, message, 'prompt', defaultValue);
+            this._resolve = resolve;
+        });
+    },
 
-    // Mobile Navigation
-    mobileNav: document.getElementById('mobile-nav'),
-    mobileAddNodeBtn: document.getElementById('mobile-add-node-btn'),
-    mobileSettingsBtn: document.getElementById('mobile-settings-btn'),
-    nodeCreationChoice: document.getElementById('node-creation-choice'),
-    createSimpleNote: document.getElementById('create-simple-note'),
-    createCoachedNote: document.getElementById('create-coached-note'),
-    cancelNodeCreation: document.getElementById('cancel-node-creation'),
+    /**
+     * Shows an alert dialog.
+     * @param {string} title - The title of the modal.
+     * @param {string} message - The message body.
+     * @returns {Promise<void>} Resolves when the user clicks OK.
+     */
+    alert: function(title, message) {
+        return new Promise((resolve) => {
+            this._setup(title, message, 'alert');
+            this._resolve = resolve;
+        });
+    },
 
-    // Badges
-    badges: {
-        coach: document.getElementById('badge-coach'),
-        sources: document.getElementById('badge-sources'),
-        outline: document.getElementById('badge-outline'),
+    /**
+     * Shows a custom modal with provided HTML content.
+     * @param {string} title - The title of the modal.
+     * @param {string} htmlContent - The raw HTML content for the body.
+     * @returns {Promise<void>} Resolves when closed.
+     */
+    show: function(title, htmlContent) {
+        return new Promise((resolve) => {
+            this._setup(title, null, 'custom', "", htmlContent);
+            this._resolve = resolve;
+        });
+    },
+
+    _setup: function(title, message, mode, defaultValue = "", customHtml = "") {
+        ui.modalTitle.textContent = title;
+        ui.modalMessage.innerHTML = message || "";
+        ui.genericModal.classList.remove('hidden');
+        
+        ui.modalPromptContainer.classList.toggle('hidden', mode !== 'prompt');
+        ui.modalCancelBtn.classList.toggle('hidden', mode === 'alert' || mode === 'custom');
+        ui.modalConfirmBtn.textContent = (mode === 'alert' || mode === 'custom') ? 'OK' : 'Confirm';
+        
+        const bodyContent = ui.genericModal.querySelector('.modal-body');
+        if (mode === 'custom') {
+            const customDiv = document.createElement('div');
+            customDiv.id = 'modal-custom-content';
+            customDiv.innerHTML = customHtml;
+            bodyContent.appendChild(customDiv);
+            ui.modalMessage.classList.add('hidden');
+        } else {
+            ui.modalMessage.classList.remove('hidden');
+            const customDiv = document.getElementById('modal-custom-content');
+            if (customDiv) customDiv.remove();
+        }
+
+        if (mode === 'prompt') {
+            ui.modalInput.value = defaultValue;
+            setTimeout(() => ui.modalInput.focus(), 100);
+        }
+
+        const cleanup = (result) => {
+            ui.genericModal.classList.add('hidden');
+            ui.modalConfirmBtn.removeEventListener('click', confirmHandler);
+            ui.modalCancelBtn.removeEventListener('click', cancelHandler);
+            const customDiv = document.getElementById('modal-custom-content');
+            if (customDiv) customDiv.remove();
+            if (this._resolve) this._resolve(result);
+        };
+
+        const confirmHandler = () => cleanup(mode === 'prompt' ? ui.modalInput.value : true);
+        const cancelHandler = () => cleanup(null);
+
+        ui.modalConfirmBtn.addEventListener('click', confirmHandler);
+        ui.modalCancelBtn.addEventListener('click', cancelHandler);
     }
 };
 
@@ -163,16 +253,20 @@ export function toast(message, duration = 3000) {
 /**
  * Updates the UI to reflect the AI's busy state, disabling buttons and changing their text content.
  * @param {boolean} isLoading - Whether the AI is currently processing a task.
+ * @param {string} [message='Coach is thinking...'] - The message to display in the thinking indicator.
  */
-export function setAILoading(isLoading) {
-    if (ui.landingAiGenerateBtn) {
-        ui.landingAiGenerateBtn.disabled = isLoading;
-        ui.landingAiGenerateBtn.textContent = isLoading ? 'Thinking...' : 'Generate New Map';
-    }
-    if (ui.aiChatSendBtn) ui.aiChatSendBtn.disabled = isLoading;
-    if (ui.generateDetailsBtn) {
-        ui.generateDetailsBtn.disabled = isLoading;
-        ui.generateDetailsBtn.textContent = isLoading ? 'Generating...' : 'Enrich Details with AI ✨';
+export function setAILoading(isLoading, message = 'Coach is thinking...') {
+    ui.landingAiGenerateBtn.disabled = isLoading;
+    ui.aiChatSendBtn.disabled = isLoading;
+    ui.generateDetailsBtn.disabled = isLoading;
+    ui.landingAiGenerateBtn.textContent = isLoading ? 'Thinking...' : 'Generate New Map';
+    ui.generateDetailsBtn.textContent = isLoading ? 'Generating...' : 'Enrich Details with AI ✨';
+    
+    if (ui.aiThinkingIndicator) {
+        ui.aiThinkingIndicator.classList.toggle('hidden', !isLoading);
+        if (isLoading && ui.aiThinkingText) {
+            ui.aiThinkingText.textContent = message;
+        }
     }
 }
 
@@ -239,7 +333,6 @@ export const researchProgressManager = {
             statusEl.textContent = '...';
         } else if (status === 'Done') {
             statusEl.textContent = '✓';
-            if (window.Effects) window.Effects.sparkleElement(item);
         } else if (status === 'Error') {
             statusEl.textContent = '✕';
         } else { // Queued
@@ -255,18 +348,28 @@ export const researchProgressManager = {
 
 /**
  * Creates a new chat bubble element, adds it to the chat history display, scrolls to the bottom, and optionally saves the message to the database.
- * @param {'user' | 'model' | 'system'} role - The role of the message sender.
+ * @param {'user' | 'model' | 'system' | 'status'} role - The role of the message sender.
  * @param {string} text - The HTML or text content of the message.
  * @param {boolean} [shouldSave=true] - Whether to trigger the callback to save the message.
  * @param {Function} [dbSaveCallback] - The callback function to save the message.
  * @param {string} [extraHtml=''] - Optional HTML content to append to the message.
  */
 export function addMessageToChatHistory(role, text, shouldSave = true, dbSaveCallback, extraHtml = '') {
-    if (!ui.aiChatHistory) return;
+    const isDebugMode = localStorage.getItem('debug_mode') === 'true';
+    if (role === 'system' && !isDebugMode) return;
 
     const el = document.createElement('div');
     el.classList.add('chat-message', role);
     
+    // Status messages are shown cleanly without extra controls
+    if (role === 'status') {
+        el.innerHTML = text;
+        ui.aiChatHistory.appendChild(el);
+        ui.aiChatHistory.scrollTop = ui.aiChatHistory.scrollHeight;
+        return;
+    }
+    
+    // Convert basic markdown-like structures to HTML
     let contentHtml = text.replace(/\n/g, '<br>');
     
     if (role === 'user') {
@@ -279,6 +382,19 @@ export function addMessageToChatHistory(role, text, shouldSave = true, dbSaveCal
     } else {
         el.innerHTML = contentHtml + (extraHtml ? `<div class="chat-extra-content">${extraHtml}</div>` : '');
         
+        // Add "Add All" button if multiple node suggestions exist
+        const nodeSuggestions = el.querySelectorAll('.suggestion-chip[data-action="add_node"]');
+        if (nodeSuggestions.length > 1) {
+            const addAllBtn = document.createElement('button');
+            addAllBtn.className = 'suggestion-chip primary';
+            addAllBtn.innerHTML = '<span class="iconify" data-icon="solar:add-circle-bold-duotone"></span> ✨ Add All to Map';
+            addAllBtn.onclick = () => {
+                nodeSuggestions.forEach(chip => chip.click());
+                addAllBtn.remove();
+            };
+            el.querySelector('.socratic-prompt-container')?.prepend(addAllBtn);
+        }
+
         // NEW: Add "Save Source" buttons to links in model responses
         if (role === 'model') {
             const links = el.querySelectorAll('a[href^="http"]');
@@ -296,7 +412,7 @@ export function addMessageToChatHistory(role, text, shouldSave = true, dbSaveCal
                     if (window.projectSources) {
                         window.projectSources.push({ title, url });
                         window.dispatchEvent(new CustomEvent('sources-updated'));
-                        toast('Added to Bibliography!');
+                        toast('Added to Bibliography! 📚');
                         saveBtn.classList.add('saved');
                         saveBtn.disabled = true;
                     }
@@ -308,15 +424,6 @@ export function addMessageToChatHistory(role, text, shouldSave = true, dbSaveCal
     
     ui.aiChatHistory.appendChild(el);
     ui.aiChatHistory.scrollTop = ui.aiChatHistory.scrollHeight;
-
-    // Show HUD elements when there's dialogue
-    if (ui.aiChatHistory.classList.contains('opacity-0')) {
-        ui.aiChatHistory.classList.remove('opacity-0');
-    }
-    if (ui.coachInputContainer && ui.coachInputContainer.classList.contains('opacity-0')) {
-        ui.coachInputContainer.classList.remove('opacity-0');
-    }
-
     if (shouldSave && role !== 'system' && dbSaveCallback) {
         dbSaveCallback(role, text);
     }

@@ -16,8 +16,8 @@ function SettingsModal({ isOpen, onClose, onSave }) {
         if (isOpen) {
             const savedKeys = JSON.parse(localStorage.getItem('gemini_api_keys') || '[]');
             setGeminiKeys(savedKeys.join(', '));
-            setToolModel(localStorage.getItem('tool_model') || 'gemini-2.0-flash');
-            setContentModel(localStorage.getItem('content_model') || 'gemini-1.5-pro');
+            setToolModel(localStorage.getItem('tool_model') || '');
+            setContentModel(localStorage.getItem('content_model') || '');
             
             // Load custom prompts or defaults
             setSystemPrompt(localStorage.getItem('custom_system_prompt') || '');

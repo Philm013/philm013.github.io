@@ -16,24 +16,16 @@
     </script>
     
     <!-- External Libraries -->
-    <link rel="stylesheet" href="https://esm.sh/tldraw@3.5.0/tldraw.css" />
-    <script type="importmap">
-    {
-        "imports": {
-            "react": "https://esm.sh/react@18.2.0",
-            "react/": "https://esm.sh/react@18.2.0/",
-            "react-dom": "https://esm.sh/react-dom@18.2.0",
-            "react-dom/": "https://esm.sh/react-dom@18.2.0/",
-            "tldraw": "https://esm.sh/tldraw@3.5.0?external=react,react-dom"
-        }
-    }
-    </script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+   
+    <!-- Application Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- NEW: Centralized AI Helper -->
     <script type="module">
-        import React from 'react';
-        import ReactDOM from 'react-dom/client';
-        window.React = React;
-        window.ReactDOM = ReactDOM;
-
         async function loadAiHelper() {
             const paths = ['/js/ai-helper.js', '/js-shared/ai-helper.js', '../js/ai-helper.js'];
             for (const path of paths) {
@@ -41,474 +33,232 @@
                     const module = await import(path);
                     window.aiHelper = module;
                     console.log(`[AI Helper] Successfully loaded from: ${path}`);
-                    return module;
+                    return;
                 } catch (e) {
                     console.warn(`[AI Helper] Failed to load from ${path}, trying next...`);
                 }
             }
             console.error('[AI Helper] Could not load from any path!');
         }
-        window.aiHelperPromise = loadAiHelper();
+        loadAiHelper();
     </script>
-    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+</head>
+<body>
 
-    <!-- Tailwind CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            400: '#38bdf8',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            900: '#0c4a6e',
-                        },
-                        student: {
-                            blue: '#0ea5e9',
-                            purple: '#8b5cf6',
-                            pink: '#f43f5e',
-                            yellow: '#f59e0b',
-                            green: '#10b981'
-                        }
-                    },
-                    borderRadius: {
-                        '3xl': '1.5rem',
-                        '4xl': '2rem',
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- Application Stylesheet -->
-    <link rel="stylesheet" href="style.css">
-    <style>
-        /* Essential Tldraw UI Overrides */
-        .tl-container {
-            --tl-background: var(--canvas-bg) !important;
-        }
-        
-        #canvas-root .tl-ui-layout {
-            display: none !important;
-        }
-
-        .custom-research-toolbar {
-            pointer-events: all;
-        }
-    </style>
-    </head>
-    <body>
-
-    <!-- Landing Page: Initial view for creating/loading maps -->
-    <div id="landing-page" class="fixed inset-0 w-screen h-[100dvh] bg-[#f8fafc] flex flex-col items-center p-6 overflow-y-auto z-[1000] selection:bg-sky-500/30 scroll-container" role="main" aria-label="Knowledge Mapper Welcome Screen">
-
-        <!-- Background Gradients -->
-        <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10" aria-hidden="true">
-            <div class="absolute top-[-10%] right-[-5%] w-[60%] h-[60%] bg-sky-200/40 blur-[120px] rounded-full"></div>
-            <div class="absolute bottom-[-10%] left-[-10%] w-[70%] h-[70%] bg-purple-200/30 blur-[140px] rounded-full"></div>
-            <div class="absolute top-[20%] left-[10%] w-[30%] h-[30%] bg-yellow-100/40 blur-[100px] rounded-full"></div>
+    <!-- Landing Page: Dashboard View -->
+    <div id="landing-page">
+        <!-- Compact Top Bar -->
+        <div style="width: 100%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center; padding: 20px 0; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="width: 48px; height: 48px; background: rgba(108, 92, 231, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--accent-primary);">
+                    <span class="iconify" data-icon="solar:rocket-bold-duotone" data-width="28"></span>
+                </div>
+                <div>
+                    <h1 style="margin:0; font-size: 24px; font-weight: 900; letter-spacing: -0.02em;">Curiosity Coach</h1>
+                    <p style="margin:0; font-size: 13px; color: var(--text-secondary); font-weight: 600;">Research Dashboard</p>
+                </div>
+            </div>
+            <button id="landing-settings-btn" class="secondary-button" style="padding: 10px 16px; border-radius: 12px; font-size: 13px;">
+                <span class="iconify" data-icon="solar:settings-bold-duotone"></span> Settings
+            </button>
         </div>
 
-        <button id="landing-settings-btn" class="absolute top-6 right-6 p-3 text-slate-400 hover:text-sky-600 hover:bg-white rounded-full transition-all active:scale-95 shadow-sm hover:shadow-md" title="Settings" aria-label="Open AI and API Settings">
-            <span class="iconify w-6 h-6" data-icon="solar:settings-bold-duotone" aria-hidden="true"></span>
-        </button>
-
-        <div class="w-full max-w-5xl mt-12 mb-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
-
-            <div class="text-center mb-16">
-                <div class="w-28 h-28 mx-auto bg-white border-4 border-white rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-sky-200 relative group rotate-3 hover:rotate-0 transition-transform duration-500" aria-hidden="true">
-                    <div class="absolute inset-0 bg-gradient-to-br from-sky-400 to-purple-500 rounded-[2.5rem] opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                    <span class="iconify w-14 h-14 text-sky-500 relative z-10 drop-shadow-sm" data-icon="solar:graph-up-bold-duotone"></span>
+        <div class="landing-content" style="grid-template-columns: 1.4fr 1fr; gap: 40px; align-items: start;">
+            <!-- Left Column: Actions & Learning -->
+            <div style="display: flex; flex-direction: column; gap: 32px;">
+                
+                <div class="landing-section">
+                    <h2 style="font-size: 18px; margin-bottom: 20px;"><span class="iconify" data-icon="solar:add-circle-bold-duotone" style="vertical-align: middle; margin-right: 8px;"></span>New Project</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                        <button id="new-blank-map-btn" class="primary-button" style="padding: 16px;">Freeform Map</button>
+                        <button id="import-json-btn" class="secondary-button" style="padding: 16px;">Import File</button>
+                    </div>
+                    <div class="ai-group" style="margin-top: 0; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                        <label style="font-weight: 800; font-size: 14px; margin-bottom: 12px; display: block;">Start a Guided Journey</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="landing-ai-topic-input" class="ai-input" placeholder="Enter a topic to research..." style="flex-grow: 1;">
+                            <button id="landing-ai-generate-btn" class="primary-button" style="width: 52px; height: 52px; padding: 0; border-radius: 16px;"><span class="iconify" data-icon="solar:compass-bold-duotone" data-width="24"></span></button>
+                        </div>
+                    </div>
                 </div>
-                <h1 class="text-6xl md:text-7xl font-[900] text-slate-900 tracking-tight mb-4">
-                    Visual <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-purple-600">Knowledge</span>
-                </h1>
-                <p class="text-xl text-slate-500 font-semibold max-w-lg mx-auto leading-relaxed">
-                    The ultimate AI research coach & mind mapper for students.
-                </p>
+
+                <div class="landing-section">
+                    <h2 style="font-size: 18px; margin-bottom: 20px;"><span class="iconify" data-icon="solar:library-bold-duotone" style="vertical-align: middle; margin-right: 8px;"></span>Research Frameworks</h2>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; margin-top: -10px;">Templates to jumpstart your scientific or literary inquiries.</p>
+                    <div id="template-library" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;"></div>
+                </div>
+
+                <div class="landing-section">
+                    <h2 style="font-size: 18px; margin-bottom: 20px;"><span class="iconify" data-icon="solar:star-bold-duotone" style="vertical-align: middle; margin-right: 8px;"></span>Featured Exemplars</h2>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; margin-top: -10px;">Explore fully developed models to see how the coach can help.</p>
+                    <div id="exemplar-library" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;">
+                        <!-- Exemplars rendered via JS -->
+                    </div>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                <!-- AI Generation Section -->
-                <section class="bg-white border-2 border-sky-100 rounded-[2rem] p-10 shadow-xl shadow-sky-900/5 hover:shadow-2xl hover:border-sky-300 transition-all group relative overflow-hidden" aria-labelledby="heading-guided">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-sky-50 rounded-full -mr-16 -mt-16 group-hover:bg-sky-100 transition-colors"></div>
-                    <div class="relative z-10">
-                        <div class="flex items-center gap-4 mb-8">
-                            <div class="p-3 bg-sky-500 rounded-2xl text-white shadow-lg shadow-sky-200">
-                                <span class="iconify w-6 h-6" data-icon="solar:magic-stick-3-bold-duotone" aria-hidden="true"></span>
-                            </div>
-                            <h2 id="heading-guided" class="text-2xl font-[800] text-slate-900">Guided Journey</h2>
-                        </div>
-                        <p class="text-slate-500 font-medium mb-8 leading-relaxed">Tell us your topic and the AI coach will build a structured research map to get you started.</p>
-                        <div class="space-y-4">
-                            <label for="landing-ai-topic-input" class="sr-only">Topic for AI guided research</label>
-                            <input type="text" id="landing-ai-topic-input" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-5 text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:bg-white outline-none transition-all font-semibold" placeholder="e.g., How does space travel affect the body?" />
-                            <button id="landing-ai-generate-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-[800] py-5 px-8 rounded-2xl transition-all shadow-xl shadow-sky-200 active:scale-95 flex justify-center items-center gap-3 text-lg" aria-label="Start AI guided journey">
-                                <span class="iconify w-6 h-6" data-icon="solar:compass-bold-duotone" aria-hidden="true"></span>
-                                Begin Journey
-                            </button>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Manual Creation Section -->
-                <section class="bg-white border-2 border-purple-100 rounded-[2rem] p-10 shadow-xl shadow-purple-900/5 flex flex-col justify-between hover:border-purple-300 transition-all group relative overflow-hidden" aria-labelledby="heading-freeform">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full -mr-16 -mt-16 group-hover:bg-purple-100 transition-colors"></div>
-                    <div class="relative z-10">
-                        <div class="flex items-center gap-4 mb-8">
-                            <div class="p-3 bg-purple-500 rounded-2xl text-white shadow-lg shadow-purple-200">
-                                <span class="iconify w-6 h-6" data-icon="solar:pen-bold-duotone" aria-hidden="true"></span>
-                            </div>
-                            <h2 id="heading-freeform" class="text-2xl font-[800] text-slate-900">Start Freeform</h2>
-                        </div>
-                        <p class="text-slate-500 font-medium mb-8 leading-relaxed">Design your own map from scratch or continue a previous project by importing a file.</p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 relative z-10">
-                        <button id="new-blank-map-btn" class="bg-slate-50 hover:bg-white hover:border-teal-400 border-2 border-transparent text-slate-900 font-[800] py-5 px-4 rounded-2xl transition-all active:scale-95 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-lg" aria-label="Create a new blank mind map">
-                            <span class="iconify w-8 h-8 text-teal-500" data-icon="solar:add-square-bold-duotone" aria-hidden="true"></span>
-                            Blank Map
-                        </button>
-                        <button id="import-json-btn" class="bg-slate-50 hover:bg-white hover:border-purple-400 border-2 border-transparent text-slate-900 font-[800] py-5 px-4 rounded-2xl transition-all active:scale-95 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-lg" aria-label="Import project from a JSON file">
-                            <span class="iconify w-8 h-8 text-purple-500" data-icon="solar:folder-open-bold-duotone" aria-hidden="true"></span>
-                            Import File
-                        </button>
-                    </div>
-                </section>
+            <!-- Right Column: Persistence -->
+            <div class="landing-section" style="position: sticky; top: 20px;">
+                <h2 style="font-size: 18px; margin-bottom: 20px;"><span class="iconify" data-icon="solar:planet-3-bold-duotone" style="vertical-align: middle; margin-right: 8px;"></span>Your Worlds</h2>
+                <ul id="map-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;"></ul>
+                <div id="no-maps-message" class="hidden" style="text-align: center; padding: 40px 20px;">
+                    <span class="iconify" data-icon="solar:cloud-plus-bold-duotone" data-width="48" style="color: var(--border-color); margin-bottom: 16px;"></span>
+                    <p style="color: var(--text-secondary); font-size: 14px;">No maps saved yet. Start your first journey!</p>
+                </div>
             </div>
-
-            <!-- Recent Maps & Templates -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <section class="md:col-span-2 bg-white border-2 border-slate-100 rounded-[2rem] p-8 shadow-xl shadow-slate-900/5" aria-labelledby="heading-recent">
-                    <div class="flex justify-between items-center mb-8">
-                        <h2 id="heading-recent" class="text-xl font-[800] text-slate-900 flex items-center gap-3">
-                            <div class="w-2 h-8 bg-purple-500 rounded-full" aria-hidden="true"></div>
-                            Recent Projects
-                        </h2>
-                    </div>
-                    <ul id="map-list" class="space-y-4 max-h-[500px] overflow-y-auto scroll-container pr-2" aria-label="List of your saved maps"></ul>
-                    <div id="no-maps-message" class="hidden py-12 text-center text-slate-400 bg-slate-50 rounded-[2rem] border-4 border-slate-100 border-dashed">
-                        <p class="font-bold">No projects yet. Start your first journey above!</p>
-                    </div>
-                </section>
-
-                <section class="bg-white border-2 border-slate-100 rounded-[2rem] p-8 shadow-xl shadow-slate-900/5" aria-labelledby="heading-templates">
-                    <h2 id="heading-templates" class="text-xl font-[800] text-slate-900 flex items-center gap-3 mb-8">
-                        <div class="w-2 h-8 bg-orange-500 rounded-full" aria-hidden="true"></div>
-                        Templates
-                    </h2>
-                    <div id="template-library" class="flex flex-col gap-4 max-h-[500px] overflow-y-auto scroll-container pr-2" aria-label="Quick-start research templates"></div>
-                </section>
-            </div>
-
         </div>
     </div>
-    <div id="app-container" class="hidden flex flex-col h-[100dvh] w-screen overflow-hidden bg-slate-50">
-        <!-- Modern Header Bar -->
-        <header class="app-header h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-6 z-[1000] shrink-0" role="banner" aria-label="Project Header">
-            <div class="header-project-info flex flex-col">
-                <span class="header-step-label text-[10px] font-black uppercase tracking-[0.2em] text-purple-500 leading-none mb-1">Current Journey</span>
-                <span id="header-project-name" class="header-project-name text-lg font-[900] text-slate-900 tracking-tight leading-tight">Untitled Project</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <button id="header-layout-btn" class="icon-button" title="Zoom to Fit" aria-label="Zoom canvas to fit all content">
-                    <span class="iconify" data-icon="solar:widget-2-bold-duotone"></span>
-                </button>
-                <button id="header-help-btn" class="icon-button" title="Help" aria-label="Open help and research tips">
-                    <span class="iconify" data-icon="solar:question-square-bold-duotone"></span>
-                </button>
-                <button id="header-export-btn" class="icon-button" title="Export" aria-label="Export project as file or document">
-                    <span class="iconify" data-icon="solar:export-bold-duotone"></span>
-                </button>
-                <button id="header-save-btn" class="icon-button" title="Save" aria-label="Save current research project">
-                    <span class="iconify" data-icon="solar:diskette-bold-duotone"></span>
-                </button>
-                <div class="w-px h-6 bg-slate-200 mx-2" aria-hidden="true"></div>
-                <button id="header-home-btn" class="icon-button hover:bg-slate-100 rounded-xl transition-all" title="Home" aria-label="Save and return to project dashboard">
-                    <span class="iconify w-6 h-6" data-icon="solar:home-2-bold-duotone"></span>
-                </button>
-            </div>
-        </header>
 
-        <!-- Main Workspace Layout -->
-        <div id="workspace-layout" class="flex-grow flex overflow-x-hidden overflow-y-auto relative scroll-smooth">
+    <div id="app-container" class="hidden">
+        <!-- Graph Container: Where the D3.js graph is rendered -->
+        <div id="graph-container">
+            <svg id="graph-canvas" width="100%" height="100%"></svg>
+        </div>
+        <!-- Toolbar: Main navigation and action buttons -->
+        <div id="toolbar">
+            <button class="tool-button" id="homeBtn" title="Back to My Maps"><span class="iconify" data-icon="solar:planet-3-bold-duotone"></span><span class="label">Worlds</span></button>
+            <button class="tool-button" id="saveBtn" title="Save Map"><span class="iconify" data-icon="solar:star-fall-bold-duotone"></span><span class="label">Keep</span></button>
+            <button class="tool-button" id="exportBtn" title="Export Map"><span class="iconify" data-icon="solar:share-circle-bold-duotone"></span><span class="label">Share</span></button>
+            <button class="tool-button" id="selectModeBtn" title="Select Tool"><span class="iconify" data-icon="solar:hand-stars-bold-duotone"></span><span class="label">Pick</span></button>
+            <button class="tool-button" id="addNodeBtn" title="Add Node"><span class="iconify" data-icon="solar:add-circle-bold-duotone"></span><span class="label">New</span></button>
+            <button class="tool-button" id="layoutBtn" title="Cycle Layout"><span class="iconify" data-icon="solar:magic-stick-2-bold-duotone"></span><span class="label">Magic</span></button>
+            <button class="tool-button" id="fitViewBtn" title="Fit View"><span class="iconify" data-icon="solar:maximize-square-3-bold-duotone"></span><span class="label">Fit</span></button>
+            <button class="tool-button" id="linkStyleBtn" title="Cycle Link Style"><span class="iconify" data-icon="solar:graph-bold-duotone"></span><span class="label">Connect</span></button>
+            <button class="tool-button" id="aiPanelBtn" title="Curiosity Coach"><span class="iconify" data-icon="solar:rocket-bold-duotone"></span><span class="label">Coach</span></button>
+
+            <button class="tool-button" id="settingsBtn" title="Settings"><span class="iconify" data-icon="solar:settings-bold-duotone"></span><span class="label">Setup</span></button>
+            <button class="tool-button" id="helpBtn" title="Help"><span class="iconify" data-icon="solar:chat-round-help-bold-duotone"></span><span class="label">Tips</span></button>
+        </div>
+
+        <!-- Side Panels -->
+        <div id="ai-panel" class="side-panel">
+            <div class="panel-drawer-handle"></div>
+            <div class="side-panel-header"><span>Map Strategy 🚀</span><span id="ai-panel-close" class="side-panel-close"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></span></div>
             
-            <!-- SECTION 1: Bibliography (Sources) -->
-            <aside id="left-sidebar" class="sidebar-container w-[320px] bg-white border-r border-slate-200 flex flex-col shrink-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-[500] snap-start h-[100dvh] md:h-auto" aria-label="Research Tools">
-                <div class="flex items-center justify-between p-4 border-b border-slate-100 md:hidden">
-                    <span class="text-xs font-black uppercase tracking-widest text-slate-900">Research Tools</span>
-                    <button id="close-mobile-sidebar" class="p-2 text-slate-300 hover:text-slate-600 rounded-xl transition-all">
-                        <span class="iconify w-6 h-6" data-icon="solar:close-circle-bold-duotone"></span>
-                    </button>
-                </div>
-                <div id="research-progress-stepper" class="p-4 bg-slate-50/50 border-b border-slate-100" role="list">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Research Phase</span>
-                        <span id="research-phase-name" class="text-[10px] font-bold text-sky-600">Step 1</span>
+            <!-- Workspace Tabs -->
+            <div id="workspace-tabs-container" style="display: flex; background: rgba(255, 255, 255, 0.5); border-bottom: 1px solid var(--border-color);">
+                <button class="workspace-tab active" data-tab="chat">Buddy</button>
+                <button class="workspace-tab" data-tab="sources">Sources</button>
+                <button class="workspace-tab" data-tab="questions">Outline</button>
+            </div>
+
+            <div id="research-progress-stepper">
+                <div class="step-indicator" data-step="1" title="Exploration"><span class="iconify" data-icon="solar:map-point-search-bold-duotone"></span></div>
+                <div class="step-indicator" data-step="2" title="Questioning"><span class="iconify" data-icon="solar:help-list-bold-duotone"></span></div>
+                <div class="step-indicator" data-step="3" title="Planning"><span class="iconify" data-icon="solar:notes-bold-duotone"></span></div>
+                <div class="step-indicator" data-step="4" title="Gathering"><span class="iconify" data-icon="solar:library-bold-duotone"></span></div>
+                <div class="step-indicator" data-step="5" title="Synthesis"><span class="iconify" data-icon="solar:magic-stick-3-bold-duotone"></span></div>
+                <div class="step-indicator" data-step="6" title="Review"><span class="iconify" data-icon="solar:verified-check-bold-duotone"></span></div>
+            </div>
+            <div class="side-panel-content">
+                <!-- Chat View -->
+                <div id="chat-view" class="view-container">
+                    <div id="ai-chat-history"></div>
+                    <div id="ai-thinking-indicator" class="hidden" style="padding: 0 24px 16px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--accent-primary); font-weight: 700;">
+                        <span class="iconify animate-spin" data-icon="solar:refresh-bold"></span>
+                        <span id="ai-thinking-text">Coach is thinking...</span>
                     </div>
-                    <div class="flex gap-1.5 h-1.5">
-                        <div class="step-indicator flex-1 rounded-full transition-all" data-step="1" title="Exploration"></div>
-                        <div class="step-indicator flex-1 rounded-full transition-all" data-step="2" title="Questioning"></div>
-                        <div class="step-indicator flex-1 rounded-full transition-all" data-step="3" title="Planning"></div>
-                        <div class="step-indicator flex-1 rounded-full transition-all" data-step="4" title="Gathering"></div>
-                        <div class="step-indicator flex-1 rounded-full transition-all" data-step="5" title="Synthesis"></div>
-                        <div class="step-indicator flex-1 rounded-full transition-all" data-step="6" title="Review"></div>
+                    <div class="ai-input-area">
+                        <button id="ai-more-options-btn" class="secondary-button" title="Get More Options" style="padding: 12px; width: 48px; height: 48px; border-radius: 14px;">
+                            <span class="iconify" data-icon="solar:magic-stick-3-bold-duotone"></span>
+                        </button>
+                        <input type="text" id="ai-chat-input" class="ai-input" placeholder="Ask or pick a choice...">
+                        <button id="ai-chat-send-btn" class="primary-button"><span class="iconify" data-icon="solar:plain-2-bold-duotone"></span></button>
                     </div>
                 </div>
 
-                <!-- Tabs for Sidebar (Desktop only or merged into mobile view) -->
-                <div class="flex border-b border-slate-100 bg-white md:flex" role="tablist">
-                    <button class="workspace-tab active flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all border-b-2" data-tab="sources" role="tab">Bibliography</button>
-                    <button class="workspace-tab flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 md:hidden" data-tab="questions" role="tab">Outline</button>
-                </div>
-
-                <div class="flex-grow overflow-y-auto scroll-container p-4 bg-white">
-                    <!-- Sources View -->
-                    <div id="sources-view" class="view-container space-y-4">
-                        <div class="flex justify-between items-center">
-                            <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Project Sources</h3>
-                            <button id="add-source-btn" class="p-1.5 text-sky-500 hover:bg-sky-50 rounded-lg transition-all">
-                                <span class="iconify w-5 h-5" data-icon="solar:add-circle-bold-duotone"></span>
+                <!-- Sources View -->
+                <div id="sources-view" class="view-container hidden" style="padding: 24px; overflow-y: auto;">
+                    <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin:0;">Bibliography</h3>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <button id="add-url-source-btn" class="secondary-button" style="padding: 10px; font-size: 13px; border-radius: 12px;">
+                                <span class="iconify" data-icon="solar:link-bold-duotone"></span> Add URL
+                            </button>
+                            <button id="upload-file-source-btn" class="secondary-button" style="padding: 10px; font-size: 13px; border-radius: 12px;">
+                                <span class="iconify" data-icon="solar:upload-bold-duotone"></span> Upload File
                             </button>
                         </div>
-                        <div id="sources-list" class="space-y-3"></div>
+                        <input type="file" id="source-file-input" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.txt">
                     </div>
+                    <div id="sources-list" class="sources-list" style="display: flex; flex-direction: column; gap: 12px;"></div>
+                </div>
 
-                    <!-- Outline View (Mobile only in this section if needed, or mirrored) -->
-                    <div id="outline-view-mobile" class="view-container hidden md:hidden">
-                        <h3 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Hierarchical Outline</h3>
-                        <div id="outline-tree-mobile" class="space-y-1"></div>
+                <!-- Outline View -->
+                <div id="outline-view" class="view-container hidden" style="padding: 24px; overflow-y: auto;">
+                    <h3 style="margin-bottom: 20px;">Project Outline</h3>
+                    <div id="outline-tree" class="outline-tree"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="node-detail-panel" class="side-panel">
+            <div class="panel-drawer-handle"></div>
+            <div id="node-detail-header" class="side-panel-header"><span id="node-detail-title">Notecard Details</span><span id="node-detail-close" class="side-panel-close"><span class="iconify" data-icon="solar:close-circle-bold-duotone"></span></span></div>
+            <div id="node-detail-content" class="side-panel-content" style="overflow-y: auto;">
+                <div style="padding: 20px 24px 0;">
+                    <div class="form-group">
+                        <label for="notecard-source-select">Source</label>
+                        <select id="notecard-source-select" class="ai-input"></select>
                     </div>
                 </div>
-            </aside>
-
-            <!-- SECTION 2: Center Canvas Area -->
-            <main id="graph-container" class="flex-grow relative bg-slate-50 overflow-hidden snap-start h-[100dvh] md:h-auto min-w-full md:min-w-0" role="main">
-                <div id="canvas-root" class="w-full h-full"></div>
                 
-                <!-- Floating Canvas Tools -->
-                <div class="absolute bottom-6 left-6 flex flex-col gap-2 z-[100]">
-                    <button id="center-view-btn" class="p-3 bg-white border border-slate-200 shadow-lg rounded-2xl text-slate-400 hover:text-sky-500 hover:border-sky-200 transition-all active:scale-95" title="Center View">
-                        <span class="iconify w-6 h-6" data-icon="solar:gps-bold-duotone"></span>
-                    </button>
-                </div>
-
-                <!-- NEW: Strategy Bar (Contextual AI) -->
-                <div id="strategy-bar" class="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-xl border border-slate-200 p-2 rounded-2xl shadow-xl z-[100] transition-all opacity-0 pointer-events-none">
-                    <div class="flex items-center gap-1 px-2 border-r border-slate-100">
-                        <span class="iconify w-4 h-4 text-purple-500" data-icon="solar:magic-stick-3-bold-duotone"></span>
-                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Notecard Tools</span>
-                    </div>
-                    <button class="strategy-btn px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-lg transition-all" data-action="synthesize">Synthesize</button>
-                    <button class="strategy-btn px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-lg transition-all" data-action="gaps">Find Gaps</button>
-                    <button class="strategy-btn px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-lg transition-all" data-action="expand">Expand</button>
-                    <button class="strategy-btn px-3 py-1.5 text-xs font-bold text-sky-600 hover:bg-sky-50 rounded-lg transition-all border-l border-slate-100 ml-1" data-action="details">Details</button>
-                </div>
-
-                <!-- NEW: Phase Goal HUD -->
-                <div id="phase-goal-hud" class="absolute top-6 left-6 right-6 md:left-auto md:right-6 md:w-[320px] bg-white/90 backdrop-blur-xl border border-slate-200 p-5 rounded-[2rem] shadow-xl z-[100] transition-all transform translate-y-[-120%] md:translate-y-0">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div id="phase-icon-container" class="p-2 bg-sky-500 rounded-xl text-white shadow-lg shadow-sky-200">
-                            <span id="phase-icon" class="iconify w-5 h-5" data-icon="solar:compass-bold-duotone"></span>
-                        </div>
-                        <div>
-                            <div id="phase-label" class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 leading-none mb-1">Phase 1</div>
-                            <div id="phase-name" class="text-sm font-black text-slate-900 leading-none">Exploration</div>
-                        </div>
-                    </div>
-                    <p id="phase-goal-text" class="text-xs font-semibold text-slate-500 leading-relaxed">Let's start by brainstorming your main topic. Add some initial notes or links to get the conversation started.</p>
-                </div>
-
-                <!-- NEW: Coach HUD (Dialogue & Input) -->
-                <div id="coach-hud" class="absolute bottom-6 right-6 w-[380px] max-w-[calc(100vw-48px)] z-[1000] pointer-events-none flex flex-col items-end gap-4 md:bottom-6 md:right-6">
-                    <div id="ai-chat-history" class="w-full max-h-[350px] overflow-y-auto scroll-container p-5 space-y-4 flex flex-col pointer-events-auto bg-white/90 backdrop-blur-2xl border border-slate-200 rounded-[2rem] shadow-2xl transition-all opacity-0"></div>
-                    
-                    <div id="coach-input-container" class="w-full pointer-events-auto bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl p-2 flex items-center gap-2 transition-all opacity-0">
-                        <div class="w-9 h-9 bg-gradient-to-br from-purple-500 to-sky-500 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-purple-200/50">
-                            <span class="iconify w-5 h-5 text-white" data-icon="solar:magic-stick-3-bold-duotone"></span>
-                        </div>
-                        <input type="text" id="ai-chat-input" class="flex-grow bg-transparent border-none px-2 py-2 text-sm font-bold text-slate-900 placeholder-slate-400 outline-none" placeholder="Ask your coach..." />
-                        <button id="ai-chat-send-btn" class="p-2 bg-slate-900 text-white rounded-xl hover:bg-sky-600 transition-all active:scale-95 shadow-lg">
-                            <span class="iconify w-5 h-5" data-icon="solar:plain-2-bold-duotone"></span>
-                        </button>
-                    </div>
-                </div>
-            </main>
-
-            <!-- SECTION 3: Project Outline (Right Sidebar on Desktop) -->
-            <aside id="right-sidebar" class="sidebar-container w-[320px] bg-white border-l border-slate-200 flex flex-col shrink-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-[500] snap-start h-[100dvh] md:h-auto" aria-label="Project Outline">
-                <div class="p-4 border-b border-slate-100 bg-white">
-                    <h3 class="text-xs font-black uppercase tracking-widest text-slate-900">Project Outline</h3>
-                </div>
-                <div class="flex-grow overflow-y-auto scroll-container p-4 bg-white">
-                    <div id="outline-view" class="view-container">
-                        <div id="outline-tree" class="space-y-1"></div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Desktop Navigation Dots -->
-            <div id="desktop-nav-dots" class="hidden lg:flex" role="navigation" aria-label="Desktop Section Navigation"></div>
-        </div>
-
-        <!-- Floating Node Detail Panel -->
-        <div id="node-detail-panel" class="absolute inset-0 md:top-6 md:left-6 md:bottom-6 md:w-[450px] md:max-w-[calc(100vw-48px)] bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl md:rounded-[2.5rem] flex flex-col overflow-hidden translate-x-[calc(-100%-48px)] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-[3000]" role="region" aria-label="Notecard Details">
-            <div class="p-8 border-b border-slate-100 flex items-center justify-between">
-                <h2 id="node-detail-title" class="text-xl font-black text-slate-900 tracking-tight truncate mr-4">Notecard Details</h2>
-                <button id="node-detail-close" class="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-2xl transition-all shrink-0" aria-label="Close notecard details">
-                    <span class="iconify w-8 h-8" data-icon="solar:close-circle-bold-duotone"></span>
-                </button>
-            </div>
-            
-            <div class="flex-grow overflow-y-auto scroll-container p-8 space-y-8">
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center">
-                        <label for="notecard-source-select" class="text-[10px] font-black uppercase tracking-widest text-slate-400">Linked Source</label>
-                        <button id="open-source-viewer-btn" class="text-[10px] font-black text-sky-500 hover:text-sky-600 flex items-center gap-1 uppercase tracking-widest">
-                            <span class="iconify w-4 h-4" data-icon="solar:maximize-square-bold-duotone"></span> Open Viewer
-                        </button>
-                    </div>
-                    <select id="notecard-source-select" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 transition-all"></select>
-                </div>
-
-                <div class="notecard-sections space-y-8">
+                <div class="notecard-sections" style="padding: 0 24px; flex-grow: 1; display: flex; flex-direction: column; gap: 16px;">
                     <div class="notecard-section">
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Direct Quote</label>
-                        <div id="notecard-quote" class="editable-content min-h-[120px] bg-white border-2 border-slate-100 rounded-3xl p-6 text-slate-700 leading-relaxed font-serif text-lg italic shadow-inner" contenteditable="true" placeholder="Paste important quotes here..."></div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">Quote</label>
+                        <div id="notecard-quote" class="editable-content" contenteditable="true" placeholder="Paste important quotes here..." style="min-height: 80px; border-radius: 12px;"></div>
                     </div>
                     <div class="notecard-section">
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Paraphrase</label>
-                        <div id="notecard-paraphrase" class="editable-content min-h-[120px] bg-slate-50 border-2 border-slate-100 rounded-3xl p-6 text-slate-700 leading-relaxed font-semibold shadow-inner" contenteditable="true" placeholder="Rewrite in your own words..."></div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">Paraphrase</label>
+                        <div id="notecard-paraphrase" class="editable-content" contenteditable="true" placeholder="Rewrite the idea in your own words..." style="min-height: 80px; border-radius: 12px;"></div>
                     </div>
                     <div class="notecard-section">
-                        <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">My Thoughts</label>
-                        <div id="notecard-thoughts" class="editable-content min-h-[120px] bg-white border-2 border-slate-100 rounded-3xl p-6 text-slate-700 leading-relaxed shadow-inner" contenteditable="true" placeholder="How does this connect?"></div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px;">My Thoughts</label>
+                        <div id="notecard-thoughts" class="editable-content" contenteditable="true" placeholder="How does this connect to your research?" style="min-height: 80px; border-radius: 12px;"></div>
                     </div>
                 </div>
-            </div>
 
-            <div class="p-8 bg-slate-50/50 border-t border-slate-100">
-                <button id="generate-details-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-sky-200 transition-all active:scale-95 flex items-center justify-center gap-3 text-lg">
-                    <span class="iconify w-6 h-6" data-icon="solar:magic-stick-3-bold-duotone"></span>
-                    Enrich with AI
-                </button>
-            </div>
-        </div>
-
-        <!-- Source Viewer Panel (Overlay) -->
-        <div id="source-viewer-panel" class="absolute inset-0 md:inset-6 bg-white shadow-2xl md:rounded-[3rem] border border-slate-200 flex flex-col overflow-hidden opacity-0 pointer-events-none scale-95 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-[3000]" role="region" aria-label="Source Document Viewer">
-            <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-xl">
-                <span id="source-viewer-title" class="text-lg font-black text-slate-900 tracking-tight truncate mr-4">Source Viewer</span>
-                <div class="flex items-center gap-2">
-                    <button id="source-external-btn" class="icon-button" title="Open in New Tab">
-                        <span class="iconify" data-icon="solar:share-circle-bold-duotone"></span>
-                    </button>
-                    <button id="source-viewer-close" class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all" aria-label="Close source viewer">
-                        <span class="iconify w-8 h-8" data-icon="solar:close-circle-bold-duotone"></span>
-                    </button>
-                </div>
-            </div>
-            <div class="flex-grow relative bg-slate-100">
-                <div id="source-viewer-loader" class="absolute inset-0 flex items-center justify-center bg-white/80 z-[10] hidden">
-                    <div class="w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-                <iframe id="source-iframe" class="w-full h-full border-none" src="about:blank"></iframe>
-                <div id="pdf-viewer-container" class="w-full h-full hidden overflow-auto">
-                    <object id="source-pdf-object" data="about:blank" type="application/pdf" class="w-full h-full"></object>
+                <div style="padding: 24px; border-top: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.5);">
+                    <button id="generate-details-btn" class="primary-button" style="width: 100%;"><span class="iconify" data-icon="solar:magic-stick-3-bold-duotone"></span> Spark Curiosity ✨</button>
                 </div>
             </div>
         </div>
-
-        <!-- NEW: Node Creation Choice Overlay -->
-...
-        <div id="node-creation-choice" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[3500] flex items-center justify-center p-6 hidden transition-all opacity-0">
-            <div class="bg-white max-w-md w-full rounded-[2.5rem] shadow-2xl overflow-hidden p-8 space-y-6">
-                <h3 class="text-2xl font-black text-slate-900 text-center">Add Research Note</h3>
-                <div class="grid grid-cols-1 gap-4">
-                    <button id="create-simple-note" class="flex items-center gap-4 p-6 bg-slate-50 hover:bg-sky-50 border-2 border-transparent hover:border-sky-500 rounded-3xl transition-all group" aria-label="Create a simple manual note">
-                    <div class="p-4 bg-sky-500 text-white rounded-2xl shadow-lg shadow-sky-200" aria-hidden="true">
-                        <span class="iconify w-6 h-6" data-icon="solar:pen-bold-duotone"></span>
-                    </div>
-                    <div class="text-left">
-                        <div class="font-black text-slate-900">Simple Note</div>
-                        <div class="text-xs text-slate-500">Manual entry from scratch</div>
-                    </div>
-                </button>
-                <button id="create-coached-note" class="flex items-center gap-4 p-6 bg-slate-50 hover:bg-purple-50 border-2 border-transparent hover:border-purple-500 rounded-3xl transition-all group" aria-label="Create a coached research note with AI help">
-                    <div class="p-4 bg-purple-500 text-white rounded-2xl shadow-lg shadow-purple-200" aria-hidden="true">
-                        <span class="iconify w-6 h-6" data-icon="solar:magic-stick-3-bold-duotone"></span>
-                    </div>
-                    <div class="text-left">
-                        <div class="font-black text-slate-900">Coached Note</div>
-                        <div class="text-xs text-slate-500">AI-powered research help</div>
-                    </div>
-                </button>
-                </div>
-                <button id="cancel-node-creation" class="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-all">Cancel</button>
-            </div>
-        </div>
-
-        <!-- Fixed Bottom Navigation (Mobile Only) -->
-        <nav id="mobile-nav" class="fixed bottom-0 left-0 right-0 h-20 bg-white/90 backdrop-blur-xl border-t border-slate-200 flex items-center justify-around px-4 z-[2500] md:hidden" role="navigation" aria-label="Main Navigation">
-            <button class="mobile-nav-btn flex flex-col items-center gap-1 active" data-section="left-sidebar" aria-label="View bibliography and research tools">
-                <span class="iconify w-6 h-6" data-icon="solar:book-bookmark-bold-duotone" aria-hidden="true"></span>
-                <span class="text-[9px] font-black uppercase tracking-widest">Sources</span>
-            </button>
-            <button class="mobile-nav-btn flex flex-col items-center gap-1" data-section="graph-container" aria-label="View research canvas">
-                <span class="iconify w-6 h-6" data-icon="solar:graph-up-bold-duotone" aria-hidden="true"></span>
-                <span class="text-[9px] font-black uppercase tracking-widest">Canvas</span>
-            </button>
-            <button id="mobile-add-node-btn" class="flex flex-col items-center -translate-y-4" aria-label="Add new notecard">
-                <div class="w-14 h-14 bg-sky-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-sky-200" aria-hidden="true">
-                    <span class="iconify w-8 h-8" data-icon="solar:add-circle-bold-duotone"></span>
-                </div>
-            </button>
-            <button class="mobile-nav-btn flex flex-col items-center gap-1" data-section="right-sidebar" aria-label="View project outline">
-                <span class="iconify w-6 h-6" data-icon="solar:list-bold-duotone" aria-hidden="true"></span>
-                <span class="text-[9px] font-black uppercase tracking-widest">Outline</span>
-            </button>
-            <button id="mobile-settings-btn" class="flex flex-col items-center gap-1" aria-label="Open settings">
-                <span class="iconify w-6 h-6" data-icon="solar:settings-bold-duotone" aria-hidden="true"></span>
-                <span class="text-[9px] font-black uppercase tracking-widest">Settings</span>
-            </button>
-        </nav>
-
     </div>
 
 
     <!-- Popups and Context Menus -->
     <div id="context-menu" class="popup-menu hidden">
-        <div class="context-menu-item" data-action="details">View/Edit Details</div>
+        <div class="context-menu-item" data-action="details"><span class="iconify" data-icon="solar:notes-bold-duotone"></span> View/Edit Notecard</div>
+        <div class="context-menu-item" data-action="connect-to"><span class="iconify" data-icon="solar:link-bold-duotone"></span> Connect to...</div>
         <div class="context-menu-divider"></div>
-        <div class="context-menu-item" data-action="expand">Expand with AI...</div>
-        <div class="context-menu-item" data-action="rephrase">Rephrase with AI...</div>
+        <div class="context-menu-item" data-action="expand"><span class="iconify" data-icon="solar:magic-stick-3-bold-duotone"></span> Expand with AI...</div>
+        <div class="context-menu-item" data-action="rephrase"><span class="iconify" data-icon="solar:pen-new-square-bold-duotone"></span> Rephrase with AI...</div>
         <div id="group-actions-menu">
             <div class="context-menu-divider"></div>
-            <div class="context-menu-item" data-action="group">Group Selected Nodes</div>
-            <div class="context-menu-item" data-action="ungroup">Ungroup Node</div>
+            <div class="context-menu-item" data-action="group"><span class="iconify" data-icon="solar:globus-bold-duotone"></span> Group Selected</div>
+            <div class="context-menu-item" data-action="ungroup"><span class="iconify" data-icon="solar:box-bold-duotone"></span> Ungroup Node</div>
         </div>
         <div class="context-menu-divider"></div>
-        <div class="context-menu-item" data-action="settings">Appearance...</div>
+        <div class="context-menu-item" data-action="settings"><span class="iconify" data-icon="solar:palette-bold-duotone"></span> Appearance...</div>
         <div class="context-menu-divider"></div>
-        <div class="context-menu-item danger" data-action="delete">Delete Node</div>
+        <div class="context-menu-item danger" data-action="delete">
+            <span class="iconify" data-icon="solar:trash-bin-trash-bold-duotone"></span> Delete Node
+        </div>
     </div>
     <div id="canvas-context-menu" class="popup-menu hidden">
-        <div class="context-menu-item" data-action="add-node">
-            <span class="iconify" data-icon="solar:add-circle-bold-duotone"></span> Add Node Here
-        </div>
-        <div class="context-menu-item" data-action="paste">
-            <span class="iconify" data-icon="solar:clipboard-bold-duotone"></span> Paste Selection
-        </div>
+        <div class="context-menu-item" data-action="add-node">Add Node Here</div>
+        <div class="context-menu-item" data-action="paste">Paste Selection</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="force-mindmap">Set Layout to Mind Map</div>
+        <div class="context-menu-item" data-action="force-flowchart">Set Layout to Flowchart</div>
     </div>
     <div id="link-context-menu" class="popup-menu hidden">
         <div class="context-menu-item" data-action="edit-label">Edit Label</div>
+        <div class="context-menu-item" data-action="set-color">Set Color</div>
+        <div class="context-menu-item" data-action="toggle-dashed">Toggle Dashed</div>
+        <div class="context-menu-divider"></div>
         <div class="context-menu-item" data-action="insert-node">Insert Node Here</div>
         <div class="context-menu-divider"></div>
         <div class="context-menu-item danger" data-action="delete">Delete Link</div>
@@ -519,18 +269,154 @@
     </div>
 
     <!-- Modals -->
-    <div id="react-settings-root"></div>
-    <div id="react-modals-root"></div>
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 700px; padding: 0; display: flex; flex-direction: column; max-height: 90dvh;">
+            <div class="modal-header" style="padding: 24px 32px; border-bottom: 1px solid var(--border-color);">
+                <h2 style="margin:0;">Settings</h2>
+                <button class="modal-close-btn icon-button">
+                    <span class="iconify" data-icon="solar:close-circle-bold-duotone"></span>
+                </button>
+            </div>
+            
+            <!-- Settings Tabs -->
+            <div class="settings-tabs" style="display: flex; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border-color);">
+                <button class="settings-tab active" data-tab="keys">API Keys</button>
+                <button class="settings-tab" data-tab="models">AI Models</button>
+                <button class="settings-tab" data-tab="prompts">Coach Persona</button>
+            </div>
 
-    <!-- Research Progress Overlay -->
+            <div class="modal-body" style="padding: 32px; overflow-y: auto; flex-grow: 1;">
+                
+                <!-- Tab: Keys -->
+                <div id="tab-keys" class="settings-tab-panel">
+                    <h3>Gemini API Keys</h3>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">Add multiple keys for automatic rotation and better performance.</p>
+                    
+                    <div id="gemini-keys-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+                        <!-- Key cards will be rendered here -->
+                    </div>
 
-    <div id="research-progress-overlay" class="modal-overlay hidden">
+                    <div class="ai-group" style="margin-top: 0; border-top: none; padding-top: 0;">
+                        <label for="new-gemini-key">Add New Gemini Key</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="password" id="new-gemini-key" class="ai-input" placeholder="PASTE_KEY_HERE" style="flex-grow: 1;">
+                            <button id="add-key-btn" class="primary-button" style="padding: 10px 20px; border-radius: 12px;">Add</button>
+                        </div>
+                    </div>
+
+                    <div class="context-menu-divider" style="margin: 24px 0;"></div>
+                    
+                    <div class="form-group"><label for="hf-key">Hugging Face Token</label><input type="password" id="hf-key" class="ai-input"></div>
+                    <div class="form-group"><label for="newsapi-key">NewsAPI Key</label><input type="password" id="newsapi-key" class="ai-input"></div>
+
+                    <div class="context-menu-divider" style="margin: 24px 0;"></div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                        <input type="checkbox" id="debug-mode-toggle" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
+                        <label for="debug-mode-toggle" style="margin: 0; cursor: pointer; font-weight: 800; font-size: 14px;">Show Debug Messages (System Logs)</label>
+                    </div>
+                </div>
+
+                <!-- Tab: Models -->
+                <div id="tab-models" class="settings-tab-panel hidden">
+                    <h3>Model Selection</h3>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">Choose which models power different parts of your Curiosity Coach.</p>
+                    <div class="form-group">
+                        <label for="tool-model-select">Tool Calling & Chat</label>
+                        <select id="tool-model-select" class="ai-input"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="content-model-select">Research & Summaries</label>
+                        <select id="content-model-select" class="ai-input"></select>
+                    </div>
+                </div>
+
+                <!-- Tab: Prompts -->
+                <div id="tab-prompts" class="settings-tab-panel hidden">
+                    <h3 style="margin-top:0;">Global System Template</h3>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">This wraps the specific phase prompts. Use <code>{{PHASE_PROMPT}}</code> as a placeholder.</p>
+                    <div class="form-group"><textarea id="prompt-global" class="ai-input" rows="6"></textarea></div>
+
+                    <div class="context-menu-divider" style="margin: 24px 0;"></div>
+
+                    <h3>Research Phase Prompts</h3>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">Customize the instructions for each of the 6 research phases.</p>
+                    <div id="custom-prompts-container" style="display: flex; flex-direction: column; gap: 16px;">
+                        <div class="form-group"><label>Step 1: Exploration</label><textarea id="prompt-step-1" class="ai-input" rows="3"></textarea></div>
+                        <div class="form-group"><label>Step 2: Questioning</label><textarea id="prompt-step-2" class="ai-input" rows="3"></textarea></div>
+                        <div class="form-group"><label>Step 3: Planning</label><textarea id="prompt-step-3" class="ai-input" rows="3"></textarea></div>
+                        <div class="form-group"><label>Step 4: Gathering</label><textarea id="prompt-step-4" class="ai-input" rows="3"></textarea></div>
+                        <div class="form-group"><label>Step 5: Synthesis</label><textarea id="prompt-step-5" class="ai-input" rows="3"></textarea></div>
+                        <div class="form-group"><label>Step 6: Review</label><textarea id="prompt-step-6" class="ai-input" rows="3"></textarea></div>
+                    </div>
+
+                    <div class="context-menu-divider" style="margin: 24px 0;"></div>
+
+                    <h3>Specialized Task Prompts</h3>
+                    <div class="form-group">
+                        <label>Research Synthesis (Notecard Generation)</label>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Used when generating details for a node. Use <code>{{TOPIC}}</code> and <code>{{CONTEXT}}</code>.</p>
+                        <textarea id="prompt-research" class="ai-input" rows="4"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Brainstorming Expansion</label>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Used to suggest sub-topics. Use <code>{{NODE}}</code> and <code>{{INSTRUCTION}}</code>.</p>
+                        <textarea id="prompt-brainstorm" class="ai-input" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Map Generation (Mind Map)</label>
+                        <textarea id="prompt-map-mindmap" class="ai-input" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Map Generation (Flowchart)</label>
+                        <textarea id="prompt-map-flowchart" class="ai-input" rows="4"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="padding: 20px 32px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                <button id="save-settings-btn" class="primary-button" style="width: 100%;">Save and Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Modal for Prompts, Confirmations, and Alerts -->
+    <div id="generic-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="research-progress-title">Researching...</h2>
+                <h3 id="modal-title">Attention</h3>
+                <button class="icon-button" onclick="document.getElementById('generic-modal').classList.add('hidden')">
+                    <span class="iconify" data-icon="solar:close-circle-bold-duotone"></span>
+                </button>
             </div>
             <div class="modal-body">
-                <ul id="research-checklist"></ul>
+                <p id="modal-message"></p>
+                <div id="modal-prompt-container" class="hidden" style="margin-top: 20px;">
+                    <input type="text" id="modal-input" class="ai-input" placeholder="Enter text here...">
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 24px 32px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px;">
+                <button id="modal-cancel-btn" class="secondary-button" style="padding: 10px 20px; font-size: 14px;">Cancel</button>
+                <button id="modal-confirm-btn" class="primary-button" style="padding: 10px 24px; font-size: 14px;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Source Preview Modal -->
+    <div id="source-preview-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 90vw; width: 1200px; height: 90dvh; padding: 0; display: flex; flex-direction: column;">
+            <div class="modal-header" style="padding: 16px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <h3 id="preview-title" style="margin:0; font-size: 16px; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Source Preview</h3>
+                    <button id="preview-add-source-btn" class="primary-button" style="padding: 8px 16px; font-size: 13px; border-radius: 10px;">
+                        <span class="iconify" data-icon="solar:add-circle-bold-duotone"></span> Add to Bibliography
+                    </button>
+                </div>
+                <button class="icon-button" onclick="document.getElementById('source-preview-modal').classList.add('hidden'); document.getElementById('preview-iframe').src='about:blank';">
+                    <span class="iconify" data-icon="solar:close-circle-bold-duotone"></span>
+                </button>
+            </div>
+            <div class="modal-body" style="flex-grow: 1; padding: 0; background: #fff; position: relative;">
+                <iframe id="preview-iframe" style="width: 100%; height: 100%; border: none;" src="about:blank"></iframe>
             </div>
         </div>
     </div>
@@ -539,35 +425,7 @@
     <div id="toast"></div>
     <div id="text-measurer" style="position:absolute; visibility:hidden; height:auto; width:auto; white-space:pre-wrap; font-size:14px; font-weight:600; line-height:1.3; padding: 8px; text-align:center;"></div>
     
-    <!-- NEW: Guided Launch Overlay -->
-    <div id="guided-launch-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[3000] flex items-center justify-center p-6 hidden transition-all opacity-0">
-        <div class="bg-white max-w-2xl w-full rounded-[3rem] shadow-2xl overflow-hidden">
-            <div class="p-12 text-center space-y-8">
-                <div class="w-20 h-20 bg-purple-100 rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-purple-100">
-                    <span class="iconify w-10 h-10 text-purple-600" data-icon="solar:magic-stick-3-bold-duotone"></span>
-                </div>
-                <div class="space-y-2">
-                    <h2 class="text-3xl font-black text-slate-900 tracking-tight">Your Research Journey</h2>
-                    <p class="text-slate-500 font-medium text-lg">What is the central driving question for this project?</p>
-                </div>
-                <div class="relative">
-                    <input type="text" id="guided-question-input" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-8 py-6 text-xl font-bold text-slate-900 placeholder-slate-300 focus:border-purple-500 transition-all outline-none" placeholder="e.g., How does urban design affect community mental health?" />
-                </div>
-                <div class="flex gap-4">
-                    <button id="guided-skip-btn" class="flex-1 py-5 text-slate-400 font-black hover:text-slate-600 transition-all">Skip to Freeform</button>
-                    <button id="guided-launch-btn" class="flex-grow bg-purple-600 hover:bg-purple-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-purple-200 transition-all active:scale-95 flex items-center justify-center gap-3">
-                        Launch with AI Coach
-                        <span class="iconify w-6 h-6" data-icon="solar:alt-arrow-right-bold-duotone"></span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Application Scripts -->
-    <script type="text/babel" data-type="module" src="js/components/SettingsModal.js"></script>
-    <script type="text/babel" data-type="module" src="js/components/OtherModals.js"></script>
-    <script type="text/babel" data-type="module" src="js/canvas.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

@@ -5,25 +5,14 @@
  */
 export const Effects = {
     /**
-     * Triggers a confetti burst from the center of the screen with phase colors.
+     * Triggers a confetti burst from the center of the screen.
      */
     celebratePhase: () => {
-        const step = document.body.getAttribute('data-phase') || '1';
-        const phaseColors = {
-            '1': ['#0ea5e9', '#38bdf8', '#ffffff'],
-            '2': ['#8b5cf6', '#a78bfa', '#ffffff'],
-            '3': ['#f59e0b', '#fbbf24', '#ffffff'],
-            '4': ['#10b981', '#34d399', '#ffffff'],
-            '5': ['#f43f5e', '#fb7185', '#ffffff'],
-            '6': ['#64748b', '#94a3b8', '#ffffff']
-        };
-
         confetti({
-            particleCount: 150,
-            spread: 80,
+            particleCount: 100,
+            spread: 70,
             origin: { y: 0.6 },
-            colors: phaseColors[step] || ['#0ea5e9', '#8b5cf6', '#f43f5e', '#f59e0b'],
-            zIndex: 5000
+            colors: ['#0ea5e9', '#8b5cf6', '#f43f5e', '#f59e0b']
         });
     },
 
