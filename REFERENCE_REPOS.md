@@ -123,3 +123,124 @@ All design system previews can be viewed interactively using htmlpreview.github.
 | **Lamborghini** | [📖 README](https://github.com/VoltAgent/awesome-design-md/tree/main/design-md/lamborghini) | [Preview](http://htmlpreview.github.io/?https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/lamborghini/preview.html) | [Preview](http://htmlpreview.github.io/?https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/lamborghini/preview-dark.html) |
 | **Renault** | [📖 README](https://github.com/VoltAgent/awesome-design-md/tree/main/design-md/renault) | [Preview](http://htmlpreview.github.io/?https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/renault/preview.html) | [Preview](http://htmlpreview.github.io/?https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/renault/preview-dark.html) |
 | **Tesla** | [📖 README](https://github.com/VoltAgent/awesome-design-md/tree/main/design-md/tesla) | [Preview](http://htmlpreview.github.io/?https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/tesla/preview.html) | [Preview](http://htmlpreview.github.io/?https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/tesla/preview-dark.html) |
+
+# Public APIs Repository
+
+**Repository**: [public-apis/public-apis](https://github.com/public-apis/public-apis)
+
+The **Public APIs** repository is a manually curated, comprehensive collection of free and public APIs organized by category. It serves as a centralized resource for developers to discover, evaluate, and integrate public APIs into their applications.
+
+## Overview
+
+This repository contains an extensive list of APIs covering a wide range of use cases and domains, from entertainment and social media to financial services and healthcare. Each API entry includes:
+
+- **API Name**: The official name of the API
+- **Description**: What the API does and its primary use case
+- **Authentication**: Type of authentication required (none, apiKey, OAuth)
+- **HTTPS Support**: Whether the API uses HTTPS
+- **CORS Support**: Whether the API supports Cross-Origin Resource Sharing
+
+## API Categories
+
+The repository includes APIs across 40+ categories:
+
+- **Animals**: Pet adoption, animal facts, and placeholder services
+- **Anime**: Anime discovery, tracking, and content databases
+- **Anti-Malware**: Security and threat intelligence APIs
+- **Art & Design**: Art collections, icon libraries, and design resources
+- **Authentication & Authorization**: Auth platforms and identity management
+- **Blockchain**: Cryptocurrency and blockchain interaction APIs
+- **Books**: Literary content, Bible texts, and book metadata
+- **Business**: CRM, analytics, and business intelligence tools
+- **Calendar**: Holiday and scheduling information APIs
+- **Cloud Storage & File Sharing**: File hosting and document management
+- **Continuous Integration**: Build and deployment pipeline tools
+- **Cryptocurrency**: Exchange rates, trading, and market data
+- **Currency Exchange**: Real-time exchange rate conversions
+- **Data Validation**: Email, address, and content validation
+- **Development**: Developer utilities and debugging tools
+- **Dictionaries**: Word definitions and language resources
+- **Documents & Productivity**: Collaboration and productivity suite APIs
+- **Email**: Email sending, validation, and management services
+- **Entertainment**: Movies, games, comics, and media content
+- **Environment**: Weather, air quality, and environmental data
+- **Events**: Event discovery and ticketing platforms
+- **Finance**: Banking, trading, and financial data APIs
+- **Food & Drink**: Recipe, restaurant, and beverage APIs
+- **Games & Comics**: Gaming platforms and comic databases
+- **Geocoding**: Location mapping and address geocoding
+- **Government**: Public sector data and government services
+- **Health**: Medical information and healthcare services
+- **Jobs**: Job boards and recruitment platforms
+- **Machine Learning**: AI and ML model deployment services
+- **Music**: Music streaming, artist, and album data
+- **News**: News aggregation and current events
+- **Open Data**: Public datasets and data repositories
+- **Open Source Projects**: GitHub metrics and repository analysis
+- **Patent**: Patent search and intellectual property data
+- **Personality**: Personality testing and analysis APIs
+- **Phone**: Phone number validation and lookup services
+- **Photography**: Image libraries and photo sharing platforms
+- **Programming**: Code utilities and developer resources
+- **Science & Math**: Scientific and mathematical data
+- **Security**: Security tools and vulnerability databases
+- **Shopping**: E-commerce and product information APIs
+- **Social**: Social media integration and user data
+- **Sports & Fitness**: Sports data and fitness tracking
+- **Test Data**: Fake data generators for testing
+- **Text Analysis**: NLP, sentiment analysis, and text processing
+- **Tracking**: Package tracking and logistics
+- **Transportation**: Transit information and ride-sharing APIs
+- **URL Shorteners**: URL shortening and link management
+- **Vehicle**: Car data and automotive information
+- **Video**: Video hosting and streaming services
+- **Weather**: Weather forecasting and climate data
+
+## Key Resources
+
+| Resource | Link | Description |
+|----------|------|-------------|
+| **Main Repository** | [📖 public-apis/public-apis](https://github.com/public-apis/public-apis) | Full collection of free public APIs |
+| **Contributing Guide** | [CONTRIBUTING.md](https://github.com/public-apis/public-apis/blob/master/CONTRIBUTING.md) | Guidelines for adding new APIs |
+| **Public API for This Project** | [public-api](https://github.com/davemachado/public-api) | REST API to query the public-apis database |
+| **Issues & Discussion** | [Issues](https://github.com/public-apis/public-apis/issues) | Community questions and API requests |
+| **Pull Requests** | [Pull Requests](https://github.com/public-apis/public-apis/pulls) | Submitted changes and improvements |
+| **Discord Community** | [Join Discord](https://discord.com/invite/hgjA78638n) | Connect with developers and get updates |
+
+## Popular API Services Highlighted
+
+The repository features sponsored API partners including:
+- **IPstack**: IP address geolocation and identification
+- **Marketstack**: Worldwide stock market data
+- **Weatherstack**: Real-time weather information
+- **Numverify**: Phone number validation and lookup
+- **Fixer**: Foreign exchange rates and currency conversion
+- **Aviationstack**: Real-time flight status and aviation data
+- **Zenserp**: Google search results API
+- **Screenshotlayer**: Website screenshot capture
+- **Mailboxlayer**: Email validation and verification
+
+## How to Use This Resource
+
+1. **Explore**: Browse through the categories to find APIs relevant to your needs
+2. **Review**: Check the authentication type, HTTPS support, and CORS compatibility
+3. **Evaluate**: Follow the links to review API documentation and pricing
+4. **Integrate**: Use the selected API in your application following their documentation
+5. **Contribute**: Submit pull requests to add new APIs or improve existing entries
+
+## Statistics
+
+- **60+ Categories** of APIs
+- **100+ Documented APIs** across all categories
+- **Multiple filters** for authentication, HTTPS, and CORS support
+- **Community-driven** collection updated regularly
+- **Free to use** - No registration required to browse
+
+## Related Scripts
+
+The repository includes validation and testing scripts for quality assurance:
+- **Format validation**: Ensures consistency of README.md entries
+- **Link validation**: Verifies all API links are working
+- **Unit tests**: Comprehensive test suite for the validation package
+
+This resource is invaluable for discovering, evaluating, and integrating public APIs into development projects across virtually any domain.
