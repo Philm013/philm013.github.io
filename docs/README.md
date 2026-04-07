@@ -2,6 +2,10 @@
 
 This directory contains documentation files for various components and technologies used in the projects in this repository.
 
+## Main Reference
+
+*   [JavaScript Library & Implementation Guide](../JS_LIBRARIES_DOCUMENTATION.md): The authoritative reference for libraries used across the monorepo.
+
 ## Files
 
 *   `GeminiJS.md`: Documentation related to a Gemini JavaScript library or SDK.

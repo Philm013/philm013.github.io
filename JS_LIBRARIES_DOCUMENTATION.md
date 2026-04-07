@@ -4,32 +4,43 @@ This document serves as the authoritative reference for the JavaScript libraries
 
 ---
 
-## 🚀 1. Core CDN Reference (The "Cheat Sheet")
+## 🚀 1. Core Library Reference
 
 Use these specific URLs to ensure compatibility across the monorepo.
 
-| Library | Category | CDN URL (Stable Versions) |
-| :--- | :--- | :--- |
-| **PDF.js** | Document | `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js` |
-| **Chart.js** | Visualization | `https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js` |
-| **PeerJS** | P2P / Sync | `https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js` |
-| **Tailwind CSS** | Styling | `https://cdn.tailwindcss.com` |
-| **Iconify** | Icons | `https://code.iconify.design/3/3.1.0/iconify.min.js` |
-| **Google AI** | AI (Gemini) | `https://cdn.jsdelivr.net/npm/@google/generative-ai/dist/index.mjs` |
-| **SortableJS** | UI / D&D | `https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js` |
-| **jsPDF** | Export | `https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js` |
-| **html2canvas** | Export | `https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js` |
-| **html2pdf.js** | Export | `https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js` |
-| **Fuse.js** | Search | `https://cdn.jsdelivr.net/npm/fuse.js@7.0.0` |
-| **JSZip** | Utilities | `https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js` |
+| Library | Category | Description | When to Use |
+| :--- | :--- | :--- | :--- |
+| **PDF.js** | Document | Mozilla's standard for parsing and rendering PDF documents in a canvas. | Use for any PDF viewing, text extraction, or thumbnail generation. |
+| **Chart.js** | Visualization | Simple yet flexible JavaScript charting for designers & developers. | Use for dashboards, financial reports, or tracking student progress. |
+| **PeerJS** | P2P / Sync | Simplifies WebRTC peer-to-peer data, video, and audio calls. | Use for real-time collaborative sessions (e.g., shared boards, P2P chat). |
+| **Tailwind CSS** | Styling | A utility-first CSS framework for rapid UI development. | Use for all modern UI styling to avoid writing custom CSS. |
+| **Iconify** | Icons | Unified SVG icon framework (supports Material, FontAwesome, etc.). | Use for all UI icons; it's more lightweight than loading full icon sets. |
+| **Google AI** | AI (Gemini) | Official SDK for interacting with Google's Gemini generative AI models. | Use for document analysis, chat assistants, and automated data tagging. |
+| **D3.js** | Visualization | A library for manipulating documents based on data using SVG, HTML, and CSS. | Use for complex, custom data visualizations like Knowledge Maps. |
+| **OpenCV.js** | Computer Vision | A JavaScript binding for the world's most popular computer vision library. | Use for image processing, object detection, and document cropping. |
+| **HLS.js** | Video Streaming | A JavaScript library that implements an HTTP Live Streaming client. | Use for playing `.m3u8` video streams in standard HTML5 video tags. |
+| **Pako** | Compression | High-speed zlib port to JavaScript, supporting Gzip. | Use for decompressing large data files (like EPG guides) on the client side. |
+| **XLSX (SheetJS)** | Spreadsheet | The standard for reading, writing, and manipulating Excel/Spreadsheet files. | Use for data imports/exports between the web app and Excel. |
+| **Leaflet** | Maps | The leading open-source JavaScript library for mobile-friendly interactive maps. | Use for location-based games (SnapHunt) or geographic data displays. |
+| **CodeMirror** | Editor | A versatile text editor implemented in JavaScript for the browser. | Use for code editing, Markdown editors, or syntax-highlighted inputs. |
+| **TinyMCE** | Rich Text | A rich-text editor that provides a "Word-like" experience for web content. | Use when users need to create formatted articles or educational resources. |
+| **DOMPurify** | Security | A DOM-only, super-fast, uber-tolerant XSS sanitizer for HTML. | **Mandatory** when rendering user-generated HTML or AI-generated content. |
+| **Canvas Confetti** | UI / FX | A high-performance, canvas-based confetti animation library. | Use for "success" feedback or rewarding student achievements. |
+| **Bootstrap** | UI Framework | The world's most popular framework for building responsive, mobile-first sites. | Use only for legacy project compatibility or specific component layouts. |
+| **SortableJS** | UI / D&D | A JavaScript library for reorderable drag-and-drop lists. | Use for organizing cards, reordering tasks, or managing playlists. |
+| **jsPDF** | Export | A library to generate PDF files directly in the browser. | Use for creating downloadable PDF reports or certificates. |
+| **html2canvas** | Export | Screenshot a part of the DOM and render it into a canvas. | Use as a bridge between HTML/CSS and image/PDF exports. |
+| **Fuse.js** | Search | A lightweight fuzzy-search library with zero dependencies. | Use for fast, client-side searching across lists of objects. |
+| **JSZip** | Utilities | A library for creating, reading and editing .zip files with JavaScript. | Use for bulk-exporting multiple files (images, PDFs) in a single archive. |
 
 ---
 
-## 📄 2. Document & PDF Processing Standards
+## 📄 2. Document & PDF Processing
 
 ### **PDF.js (Mozilla)**
-*   **Initialization:** You **must** set the worker source before any operations.
-*   **Implementation Pattern:**
+*   **What it is:** A web standards-based platform for parsing and rendering PDFs.
+*   **Why use it:** It allows for client-side PDF viewing without plugins. It provides deep access to text layers for AI indexing and search.
+*   **Implementation Pattern:** You **must** set the worker source before any operations.
     ```javascript
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -48,10 +59,10 @@ Use these specific URLs to ensure compatibility across the monorepo.
         return canvas;
     }
     ```
-*   **Pro Tip:** In `FlipbookAI`, a local worker is used to ensure offline support in Termux.
 
 ### **Export Suite (jsPDF + html2canvas)**
-*   **Pattern:** Use `html2canvas` to "freeze" a DOM state, then `jsPDF` to wrap it.
+*   **What it is:** A combination of a DOM "photographer" (`html2canvas`) and a PDF generator (`jsPDF`).
+*   **Why use it:** `jsPDF` alone is poor at rendering complex CSS. By capturing a canvas of the DOM first, we ensure the exported PDF looks exactly like the on-screen UI.
 *   **Standard Export:**
     ```javascript
     const target = document.querySelector('#capture-area');
@@ -67,9 +78,10 @@ Use these specific URLs to ensure compatibility across the monorepo.
 ## 🌐 3. Real-Time Collaboration (P2P)
 
 ### **PeerJS**
+*   **What it is:** A wrapper for WebRTC that handles signaling and peer discovery.
+*   **Why use it:** To enable real-time collaboration without a centralized database or socket server. It's ideal for private, student-to-student sharing.
 *   **ID Strategy:** Avoid collisions by using a structured ID: `{APP_PREFIX}-{SESSION_ID}-{USER_ID}`.
-*   **Implementation (The InquiryOS Sync Engine):**
-    ```javascript
+*   ```javascript
     const peer = new Peer(`IOS-${classCode}-${visitorId}`, { debug: 1 });
     
     peer.on('connection', (conn) => {
@@ -81,112 +93,95 @@ Use these specific URLs to ensure compatibility across the monorepo.
         });
     });
     ```
-*   **Lifecycle:** Always `peer.destroy()` when the session ends or the app view changes.
 
 ---
 
 ## 🤖 4. AI Integration (Google Gemini)
 
 ### **Google Generative AI SDK**
-*   **Dynamic Loading:** Load as an ESM module to avoid global namespace pollution, or use the "PhilM Standard" loader in `index.html`.
+*   **What it is:** The official client for the Gemini API.
+*   **Why use it:** To leverage multimodal AI (text, images, PDFs) directly in the browser.
 *   **Recommended Models (2026 Standard):** 
     *   `gemini-3-flash-preview`: Primary for fast, responsive interactions.
     *   `gemini-3-pro-preview`: For complex reasoning, coding, and multi-file analysis.
-*   **Dynamic Model Listing:** Always fetch available models to ensure compatibility with the user's API key and region.
-*   **Implementation Pattern:**
+*   **Mandate:** UI implementations **MUST** provide a model selector populated via `listModels()` to prevent hardcoding deprecated model names.
     ```javascript
-    // 1. Fetch available models
-    async function listModels(apiKey) {
-        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-        const data = await resp.json();
-        // Filter for models that support content generation
-        return data.models.filter(m => m.supportedGenerationMethods.includes('generateContent'));
-    }
-
-    // 2. Initialize with selected model
     const sdkUrl = "https://cdn.jsdelivr.net/npm/@google/generative-ai/dist/index.mjs";
     const module = await import(sdkUrl);
     const genAI = new module.GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
-        model: "gemini-3-flash-preview",
-        systemInstruction: "You are a helpful assistant..."
-    });
-
-    // 3. For document analysis:
-    const result = await model.generateContent([
-        prompt,
-        { inlineData: { data: base64Pdf, mimeType: "application/pdf" } }
-    ]);
+    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
     ```
-*   **Mandate:** UI implementations **MUST** provide a model selector populated via `listModels()` to prevent hardcoding deprecated model names (like the legacy `gemini-1.5` series).
 
 ---
 
-## 📊 5. UI, Charts & Interactions
+## 📸 5. Computer Vision & Media
 
-### **Chart.js**
-*   **Pattern:** **Mandatory cleanup.** Failure to `.destroy()` will cause overlapping tooltips and memory leaks.
+### **OpenCV.js**
+*   **What it is:** A port of the C++ OpenCV library to JavaScript/WebAssembly.
+*   **Why use it:** For high-performance image analysis tasks that would be too slow in pure JS, such as finding card edges in a camera feed or auto-cropping photos.
+*   **Implementation:**
     ```javascript
-    if (window.activeChart) window.activeChart.destroy();
-    window.activeChart = new Chart(ctx, config);
+    cv['onRuntimeInitialized'] = () => {
+        const src = cv.imread(canvasInput);
+        const gray = new cv.Mat();
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+    };
     ```
 
+### **HLS.js (Video Streaming)**
+*   **What it is:** Implements HLS (HTTP Live Streaming) on top of standard HTML5 video.
+*   **Why use it:** To support professional video streaming formats in the browser without requiring native HLS support (which is missing in many desktop browsers).
+    ```javascript
+    if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(videoUrl);
+        hls.attachMedia(videoElement);
+    }
+    ```
+
+---
+
+## 📊 6. Spreadsheet & Data Management
+
+### **XLSX (xlsx-js-style)**
+*   **What it is:** A parser and writer for various spreadsheet formats.
+*   **Why use it:** It's the only reliable way to generate complex Excel files (`.xlsx`) with cell styling entirely in the browser.
+*   **Standard Export:**
+    ```javascript
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
+    XLSX.writeFile(wb, "Report.xlsx");
+    ```
+
+---
+
+## 🎨 7. Global Styling & UI
+
+### **Tailwind CSS (CDN)**
+*   **What it is:** A utility-first CSS framework.
+*   **Why use it:** It drastically reduces the size of custom CSS and enforces a consistent design system (spacing, colors, typography) across all projects.
+*   **Customization:** Define shared colors in the `index.html` head to maintain brand consistency.
+
 ### **SortableJS**
-*   **Pattern:** Use `handle` for touch-friendly interfaces.
+*   **What it is:** A library for drag-and-drop.
+*   **Why use it:** It works seamlessly with touch devices and provides smooth, native-feeling animations for list reordering.
     ```javascript
     new Sortable(container, {
         handle: '.drag-handle',
         animation: 150,
-        ghostClass: 'bg-blue-100', // Integration with Tailwind
-        onEnd: () => saveOrderToDB()
+        ghostClass: 'bg-blue-100' // Tailwind integration
     });
-    ```
-
-### **Panzoom**
-*   **Pattern:** Often used on the PDF canvas. Toggle with "Selection Mode" to allow text highlighting.
-    ```javascript
-    const pz = Panzoom(container, { 
-        maxScale: 5, 
-        minScale: 1, 
-        contain: 'outside' 
-    });
-    container.addEventListener('wheel', pz.zoomWithWheel);
     ```
 
 ---
 
-## 🎨 6. Global Styling Standards
-
-### **Tailwind CSS (CDN)**
-*   **Customization:** Define shared colors in the `index.html` head to maintain brand consistency.
-    ```javascript
-    tailwind.config = {
-        theme: {
-            extend: {
-                colors: {
-                    primary: '#2563eb',   // PhilM Blue
-                    secondary: '#7c3aed', // PhilM Purple
-                    accent: '#f59e0b'
-                }
-            }
-        }
-    }
-    ```
-
-### **Iconify**
-*   **Usage:** Prefer over Font Awesome for weight reduction.
-    ```html
-    <span class="iconify text-primary" data-icon="mdi:flask-outline"></span>
-    ```
-
----
-
-## 🛡️ 7. PhilM013 Architectural Mandates
+## 🛡️ 8. PhilM013 Architectural Mandates
 
 1.  **SPA Lifecycle Management:** If a library adds event listeners or creates DOM instances (Chart, Sortable, Peer, Panzoom), you **MUST** provide a cleanup function to be called before switching views or "closing" the app.
 2.  **CORS Awareness:** Always set `useCORS: true` in `html2canvas` and handle `crossOrigin="anonymous"` for remote images to prevent security taints.
-3.  **Data Persistence:** Library data should flow into `IndexedDB` (via `db.js`) or `LocalStorage`. Avoid holding large PDF blobs in global JS variables; fetch from DB only when needed.
-4.  **UI Separation:** Keep library-specific logic (e.g., PeerJS connection management) in a separate `service` or `module` file (e.g., `sync-peer.js`, `aiService.js`) rather than polluting the main UI logic.
+3.  **Data Persistence:** Library data should flow into `IndexedDB` (via `db.js`) or `LocalStorage`. Avoid holding large PDF blobs in global JS variables.
+4.  **UI Separation:** Keep library-specific logic (e.g., PeerJS connection management) in a separate `service` or `module` file rather than polluting the main UI logic.
 
 ---
 *Generated: March 11, 2026*

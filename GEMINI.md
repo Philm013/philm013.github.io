@@ -16,7 +16,7 @@ The project uses a centralized linting configuration at the root to handle JavaS
 - **Environment:** Since symlinks are not supported (Android/Termux), linter commands use direct paths to `node_modules`.
 
 ### Library Implementations
-When implementing or modifying features, adhere to these established patterns:
+When implementing or modifying features, adhere to the patterns defined in the [JavaScript Library & Implementation Guide](./JS_LIBRARIES_DOCUMENTATION.md). Key established patterns include:
 - **Tailwind CSS:** Used via CDN for rapid styling. Adhere to utility classes; avoid custom CSS unless for complex animations or canvas-based tools (like the Model Canvas in InquiryOS).
 - **PeerJS:** Used for P2P collaboration (e.g., SnapMeet, WorkPlanner). Ensure robust error handling for peer connections and data channel lifecycle.
 - **Data & Visualization:** 
