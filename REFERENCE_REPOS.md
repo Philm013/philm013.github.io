@@ -1,4 +1,7 @@
-# Comprehensive Description of the awesome-design-md Repository
+See below for information and details related to different useful repositories that provide utilities to enhance your vibe coding experience.
+
+---
+# [Awesome-design-md Repository](https://github.com/VoltAgent/awesome-design-md/)
 
 The `awesome-design-md` repository is a curated collection that focuses on organization and accessibility in design documentation. Aimed at helping designers and developers, it offers a standardized format through the `DESIGN.md` file, ensuring that all essential information is conveyed clearly and efficiently.
 
@@ -124,6 +127,8 @@ All design system previews can be viewed interactively using htmlpreview.github.
 | **Renault** | [📖 README](https://github.com/VoltAgent/awesome-design-md/tree/main/design-md/renault) | [Preview](http://htmlpreview.github.io/?https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/renault/preview.html) | [Preview](http://htmlpreview.github.io/?https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/renault/preview-dark.html) |
 | **Tesla** | [📖 README](https://github.com/VoltAgent/awesome-design-md/tree/main/design-md/tesla) | [Preview](http://htmlpreview.github.io/?https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/tesla/preview.html) | [Preview](http://htmlpreview.github.io/?https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/tesla/preview-dark.html) |
 
+---
+
 # Public APIs Repository
 
 **Repository**: [public-apis/public-apis](https://github.com/public-apis/public-apis)
@@ -144,57 +149,57 @@ This repository contains an extensive list of APIs covering a wide range of use 
 
 The repository includes APIs across 40+ categories:
 
-- **Animals**: Pet adoption, animal facts, and placeholder services
-- **Anime**: Anime discovery, tracking, and content databases
-- **Anti-Malware**: Security and threat intelligence APIs
-- **Art & Design**: Art collections, icon libraries, and design resources
-- **Authentication & Authorization**: Auth platforms and identity management
-- **Blockchain**: Cryptocurrency and blockchain interaction APIs
-- **Books**: Literary content, Bible texts, and book metadata
-- **Business**: CRM, analytics, and business intelligence tools
-- **Calendar**: Holiday and scheduling information APIs
-- **Cloud Storage & File Sharing**: File hosting and document management
-- **Continuous Integration**: Build and deployment pipeline tools
-- **Cryptocurrency**: Exchange rates, trading, and market data
-- **Currency Exchange**: Real-time exchange rate conversions
-- **Data Validation**: Email, address, and content validation
-- **Development**: Developer utilities and debugging tools
-- **Dictionaries**: Word definitions and language resources
-- **Documents & Productivity**: Collaboration and productivity suite APIs
-- **Email**: Email sending, validation, and management services
-- **Entertainment**: Movies, games, comics, and media content
-- **Environment**: Weather, air quality, and environmental data
-- **Events**: Event discovery and ticketing platforms
-- **Finance**: Banking, trading, and financial data APIs
-- **Food & Drink**: Recipe, restaurant, and beverage APIs
-- **Games & Comics**: Gaming platforms and comic databases
-- **Geocoding**: Location mapping and address geocoding
-- **Government**: Public sector data and government services
-- **Health**: Medical information and healthcare services
-- **Jobs**: Job boards and recruitment platforms
-- **Machine Learning**: AI and ML model deployment services
-- **Music**: Music streaming, artist, and album data
-- **News**: News aggregation and current events
-- **Open Data**: Public datasets and data repositories
-- **Open Source Projects**: GitHub metrics and repository analysis
-- **Patent**: Patent search and intellectual property data
-- **Personality**: Personality testing and analysis APIs
-- **Phone**: Phone number validation and lookup services
-- **Photography**: Image libraries and photo sharing platforms
-- **Programming**: Code utilities and developer resources
-- **Science & Math**: Scientific and mathematical data
-- **Security**: Security tools and vulnerability databases
-- **Shopping**: E-commerce and product information APIs
-- **Social**: Social media integration and user data
-- **Sports & Fitness**: Sports data and fitness tracking
-- **Test Data**: Fake data generators for testing
-- **Text Analysis**: NLP, sentiment analysis, and text processing
-- **Tracking**: Package tracking and logistics
-- **Transportation**: Transit information and ride-sharing APIs
-- **URL Shorteners**: URL shortening and link management
-- **Vehicle**: Car data and automotive information
-- **Video**: Video hosting and streaming services
-- **Weather**: Weather forecasting and climate data
+- **[Animals](https://github.com/public-apis/public-apis?tab=readme-ov-file#animals)**: Pet adoption, animal facts, and placeholder services
+- **[Anime](https://github.com/public-apis/public-apis?tab=readme-ov-file#anime)**: Anime discovery, tracking, and content databases
+- **[Anti-Malware](https://github.com/public-apis/public-apis?tab=readme-ov-file#anti-malware)**: Security and threat intelligence APIs
+- **[Art & Design](https://github.com/public-apis/public-apis?tab=readme-ov-file#art--design)**: Art collections, icon libraries, and design resources
+- **[Authentication & Authorization](https://github.com/public-apis/public-apis?tab=readme-ov-file#authentication--authorization)**: Auth platforms and identity management
+- **[Blockchain](https://github.com/public-apis/public-apis?tab=readme-ov-file#blockchain)**: Cryptocurrency and blockchain interaction APIs
+- **[Books](https://github.com/public-apis/public-apis?tab=readme-ov-file#books)**: Literary content, Bible texts, and book metadata
+- **[Business](https://github.com/public-apis/public-apis?tab=readme-ov-file#business)**: CRM, analytics, and business intelligence tools
+- **[Calendar](https://github.com/public-apis/public-apis?tab=readme-ov-file#calendar)**: Holiday and scheduling information APIs
+- **[Cloud Storage & File Sharing](https://github.com/public-apis/public-apis?tab=readme-ov-file#cloud-storage--file-sharing)**: File hosting and document management
+- **[Continuous Integration](https://github.com/public-apis/public-apis?tab=readme-ov-file#continuous-integration)**: Build and deployment pipeline tools
+- **[Cryptocurrency](https://github.com/public-apis/public-apis?tab=readme-ov-file#cryptocurrency)**: Exchange rates, trading, and market data
+- **[Currency Exchange](https://github.com/public-apis/public-apis?tab=readme-ov-file#currency-exchange)**: Real-time exchange rate conversions
+- **[Data Validation](https://github.com/public-apis/public-apis?tab=readme-ov-file#data-validation)**: Email, address, and content validation
+- **[Development](https://github.com/public-apis/public-apis?tab=readme-ov-file#development)**: Developer utilities and debugging tools
+- **[Dictionaries](https://github.com/public-apis/public-apis?tab=readme-ov-file#dictionaries)**: Word definitions and language resources
+- **[Documents & Productivity](https://github.com/public-apis/public-apis?tab=readme-ov-file#documents--productivity)**: Collaboration and productivity suite APIs
+- **[Email](https://github.com/public-apis/public-apis?tab=readme-ov-file#email)**: Email sending, validation, and management services
+- **[Entertainment](https://github.com/public-apis/public-apis?tab=readme-ov-file#entertainment)**: Movies, games, comics, and media content
+- **[Environment](https://github.com/public-apis/public-apis?tab=readme-ov-file#environment)**: Weather, air quality, and environmental data
+- **[Events](https://github.com/public-apis/public-apis?tab=readme-ov-file#events)**: Event discovery and ticketing platforms
+- **[Finance](https://github.com/public-apis/public-apis?tab=readme-ov-file#finance)**: Banking, trading, and financial data APIs
+- **[Food & Drink](https://github.com/public-apis/public-apis?tab=readme-ov-file#food--drink)**: Recipe, restaurant, and beverage APIs
+- **[Games & Comics](https://github.com/public-apis/public-apis?tab=readme-ov-file#games--comics)**: Gaming platforms and comic databases
+- **[Geocoding](https://github.com/public-apis/public-apis?tab=readme-ov-file#geocoding)**: Location mapping and address geocoding
+- **[Government](https://github.com/public-apis/public-apis?tab=readme-ov-file#government)**: Public sector data and government services
+- **[Health](https://github.com/public-apis/public-apis?tab=readme-ov-file#health)**: Medical information and healthcare services
+- **[Jobs](https://github.com/public-apis/public-apis?tab=readme-ov-file#jobs)**: Job boards and recruitment platforms
+- **[Machine Learning](https://github.com/public-apis/public-apis?tab=readme-ov-file#machine-learning)**: AI and ML model deployment services
+- **[Music](https://github.com/public-apis/public-apis?tab=readme-ov-file#music)**: Music streaming, artist, and album data
+- **[News](https://github.com/public-apis/public-apis?tab=readme-ov-file#news)**: News aggregation and current events
+- **[Open Data](https://github.com/public-apis/public-apis?tab=readme-ov-file#open-data)**: Public datasets and data repositories
+- **[Open Source Projects](https://github.com/public-apis/public-apis?tab=readme-ov-file#open-source-projects)**: GitHub metrics and repository analysis
+- **[Patent](https://github.com/public-apis/public-apis?tab=readme-ov-file#patent)**: Patent search and intellectual property data
+- **[Personality](https://github.com/public-apis/public-apis?tab=readme-ov-file#personality)**: Personality testing and analysis APIs
+- **[Phone](https://github.com/public-apis/public-apis?tab=readme-ov-file#phone)**: Phone number validation and lookup services
+- **[Photography](https://github.com/public-apis/public-apis?tab=readme-ov-file#photography)**: Image libraries and photo sharing platforms
+- **[Programming](https://github.com/public-apis/public-apis?tab=readme-ov-file#programming)**: Code utilities and developer resources
+- **[Science & Math](https://github.com/public-apis/public-apis?tab=readme-ov-file#science--math)**: Scientific and mathematical data
+- **[Security](https://github.com/public-apis/public-apis?tab=readme-ov-file#security)**: Security tools and vulnerability databases
+- **[Shopping](https://github.com/public-apis/public-apis?tab=readme-ov-file#shopping)**: E-commerce and product information APIs
+- **[Social](https://github.com/public-apis/public-apis?tab=readme-ov-file#social)**: Social media integration and user data
+- **[Sports & Fitness](https://github.com/public-apis/public-apis?tab=readme-ov-file#sports--fitness)**: Sports data and fitness tracking
+- **[Test Data](https://github.com/public-apis/public-apis?tab=readme-ov-file#test-data)**: Fake data generators for testing
+- **[Text Analysis](https://github.com/public-apis/public-apis?tab=readme-ov-file#text-analysis)**: NLP, sentiment analysis, and text processing
+- **[Tracking](https://github.com/public-apis/public-apis?tab=readme-ov-file#tracking)**: Package tracking and logistics
+- **[Transportation](https://github.com/public-apis/public-apis?tab=readme-ov-file#transportation)**: Transit information and ride-sharing APIs
+- **[URL Shorteners](https://github.com/public-apis/public-apis?tab=readme-ov-file#url-shorteners)**: URL shortening and link management
+- **[Vehicle](https://github.com/public-apis/public-apis?tab=readme-ov-file#vehicle)**: Car data and automotive information
+- **[Video](https://github.com/public-apis/public-apis?tab=readme-ov-file#video)**: Video hosting and streaming services
+- **[Weather](https://github.com/public-apis/public-apis?tab=readme-ov-file#weather)**: Weather forecasting and climate data
 
 ## Key Resources
 
