@@ -1,9 +1,10 @@
 {
-  "name": "inquiryos",
+  "name": "philm013-portfolio",
   "version": "1.0.0",
   "description": "",
   "main": "sw.js",
   "scripts": {
+    "start:super-smartsheet": "node SuperSmartSheet/server.js",
     "lint:js": "node node_modules/eslint/bin/eslint.js \"**/*.{html,js}\"",
     "lint:css": "node node_modules/stylelint/bin/stylelint.mjs \"**/*.{html,css}\"",
     "lint:html": "node node_modules/htmlhint/bin/htmlhint index.html",
