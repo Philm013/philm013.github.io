@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reference Repositories</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 8px;
+            color: #667eea;
+            font-size: 1.2em;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        #content {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        #content h1 {
+            color: #667eea;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            font-size: 2em;
+        }
+
+        #content h1:first-child {
+            margin-top: 0;
+        }
+
+        #content h2 {
+            color: #764ba2;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        #content h3 {
+            color: #667eea;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        #content p {
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+
+        #content ul, #content ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+
+        #content li {
+            margin-bottom: 8px;
+        }
+
+        #content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        #content table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        #content table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #content table tr:hover {
+            background: #f5f5f5;
+        }
+
+        #content a {
+            color: #667eea;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        #content a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        #content code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        #content pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        #content pre code {
+            background: none;
+            padding: 0;
+        }
+
+        #content blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 15px;
+            margin: 15px 0;
+            color: #666;
+            font-style: italic;
+        }
+
+        #content hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        .toc {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+        }
+
+        .toc ul {
+            list-style: none;
+            margin: 0;
+        }
+
+        .toc li {
+            margin: 5px 0;
+        }
+
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #667eea;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            text-align: center;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+        }
+
+        .back-to-top:hover {
+            background: #764ba2;
+        }
+
+        @media (max-width: 768px) {
+            header {
+                padding: 25px;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            #content {
+                padding: 20px;
+            }
+
+            #content h1 {
+                font-size: 1.5em;
+            }
+
+            #content h2 {
+                font-size: 1.2em;
+            }
+
+            #content table {
+                font-size: 0.85em;
+            }
+
+            #content table th, #content table td {
+                padding: 8px;
+            }
+
+            .back-to-top {
+                bottom: 20px;
+                right: 20px;
+                width: 40px;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Reference Repositories</h1>
+            <p>Curated collection of valuable development resources and APIs</p>
+        </header>
+
+        <div id="loading" class="loading">Loading content...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="content" style="display: none;"></div>
+    </div>
+
+    <div class="back-to-top" id="backToTop">↑</div>
+
+    <script>
+        // Marked options for better formatting
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+        });
+
+        // Load and render markdown
+        async function loadMarkdown() {
+            try {
+                const response = await fetch('JS_LIBRARIES_DOCUMENTATION.md');
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load file: ${response.statusText}`);
+                }
+                
+                const markdown = await response.text();
+                const html = marked.parse(markdown);
+                const cleanHtml = DOMPurify.sanitize(html);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').innerHTML = cleanHtml;
+                document.getElementById('content').style.display = 'block';
+
+                // Add anchor links to headings
+                addAnchorLinks();
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                const errorDiv = document.getElementById('error');
+                errorDiv.style.display = 'block';
+                errorDiv.innerHTML = `<strong>Error loading content:</strong> ${error.message}`;
+            }
+        }
+
+        // Add anchor links to all headings
+        function addAnchorLinks() {
+            const headings = document.querySelectorAll('#content h1, #content h2, #content h3');
+            headings.forEach(heading => {
+                const id = heading.textContent
+                    .toLowerCase()
+                    .replace(/[^\w\s-]/g, '')
+                    .replace(/\s+/g, '-')
+                    .replace(/-+/g, '-');
+                
+                heading.id = id;
+                
+                const link = document.createElement('a');
+                link.href = `#${id}`;
+                link.className = 'anchor-link';
+                link.innerHTML = '🔗';
+                link.style.marginLeft = '10px';
+                link.style.opacity = '0.5';
+                link.style.fontSize = '0.8em';
+                heading.appendChild(link);
+            });
+        }
+
+        // Back to top functionality
+        const backToTopButton = document.getElementById('backToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTopButton.classList.add('visible');
+            } else {
+                backToTopButton.classList.remove('visible');
+            }
+        });
+
+        backToTopButton.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Load markdown on page load
+        document.addEventListener('DOMContentLoaded', loadMarkdown);
+    </script>
+</body>
+</html>
