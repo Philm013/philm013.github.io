@@ -196,8 +196,9 @@
     // --- DB Setup ---
     const DB = {
       name: 'GemmaUltimate_DB_v7',
-      async open() { return new Promise(res => { const req = indexedDB.open(this.name, 1); req.onupgradeneeded = e => { const db = e.target.result; db.createObjectStore('files', { keyPath: 'id' }); db.createObjectStore('chats', { keyPath: 'id' }); db.createObjectStore('vectors', { keyPath: 'id' }); }; req.onsuccess = () => res(req.result); }); },
-      async save(s, d) { const db = await this.open(); const tx = db.transaction(s, 'readwrite'); tx.objectStore(s).put(d); return new Promise(r => tx.oncomplete = r); },
+      async open() { return new Promise(res => { const req = indexedDB.open(this.name, 2); req.onupgradeneeded = e => { const db = e.target.result; if(!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'id' }); if(!db.objectStoreNames.contains('chats')) db.createObjectStore('chats', { keyPath: 'id' }); if(!db.objectStoreNames.contains('vectors')) db.createObjectStore('vectors', { keyPath: 'id' }); if(!db.objectStoreNames.contains('model_cache')) db.createObjectStore('model_cache'); }; req.onsuccess = () => res(req.result); }); },
+      async save(s, d, k) { const db = await this.open(); const tx = db.transaction(s, 'readwrite'); if (k) tx.objectStore(s).put(d, k); else tx.objectStore(s).put(d); return new Promise(r => tx.oncomplete = r); },
+      async get(s, k) { const db = await this.open(); const tx = db.transaction(s, 'readonly'); const req = tx.objectStore(s).get(k); return new Promise(r => req.onsuccess = () => r(req.result)); },
       async getAll(s) { const db = await this.open(); const tx = db.transaction(s, 'readonly'); const req = tx.objectStore(s).getAll(); return new Promise(r => req.onsuccess = () => r(req.result)); },
       async delete(s, id) { const db = await this.open(); const tx = db.transaction(s, 'readwrite'); tx.objectStore(s).delete(id); return new Promise(r => tx.oncomplete = r); }
     };
@@ -207,21 +208,32 @@
 
     async function initGemma() {
       try {
-        updateStatus('loading', 'Checking local weights...');
-        let modelPath = REMOTE_MODEL;
-        try {
-          const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
-          if (check.ok) {
-            modelPath = LOCAL_MODEL;
-            console.log('Using local model weights.');
-          } else {
-            console.log('Local model not found, using Hugging Face.');
-          }
-        } catch (e) {
-          console.log('Local check failed, falling back to Hugging Face.');
-        }
-        State.activeModel = modelPath;
+        updateStatus('loading', 'Checking local cache...');
+        let modelBlob = await DB.get('model_cache', 'gemma_task');
+        let modelPath;
 
+        if (modelBlob) {
+          console.log('Using cached model from IndexedDB.');
+          modelPath = URL.createObjectURL(modelBlob);
+        } else {
+          updateStatus('loading', 'Fetching weights...');
+          let fetchPath = REMOTE_MODEL;
+          try {
+            const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
+            if (check.ok) fetchPath = LOCAL_MODEL;
+          } catch (e) {}
+          
+          console.log(`Downloading model from: ${fetchPath}`);
+          const res = await fetch(fetchPath);
+          if (!res.ok) throw new Error('Failed to download model');
+          
+          modelBlob = await res.blob();
+          await DB.save('model_cache', modelBlob, 'gemma_task');
+          console.log('Model saved to IndexedDB cache.');
+          modelPath = URL.createObjectURL(modelBlob);
+        }
+
+        State.activeModel = modelPath;
         updateStatus('loading', 'Linking...');
         const f = await FilesetResolver.forGenAiTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm");
         updateStatus('loading', 'Booting weights...');
