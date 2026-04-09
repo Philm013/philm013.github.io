@@ -92,7 +92,7 @@ tailwind.config = {
 <body class="antialiased overflow-x-hidden">
 
     <!-- Navigation -->
-    <nav class="py-8 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+    <nav class="py-3 md:py-4 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div class="container-custom flex items-center justify-between">
             <div class="flex items-center gap-3 font-medium text-xl">
                 <span class="iconify text-ollama-black text-2xl" data-icon="lucide:box"></span>
@@ -114,28 +114,27 @@ tailwind.config = {
     </nav>
 
     <!-- Hero Section -->
-    <header id="about" class="pt-24 pb-32">
-        <div class="container-custom text-center space-y-10">
+    <header id="about" class="pt-6 md:pt-8 pb-8 md:pb-10">
+        <div class="container-custom text-center space-y-4 md:space-y-5">
             <div class="flex justify-center">
-                <div class="w-24 h-24 rounded-full border border-ollama-gray flex items-center justify-center p-4">
-                    <span class="iconify text-6xl text-ollama-black" data-icon="lucide:layout"></span>
+                <div class="w-10 h-10 rounded-full border border-ollama-gray flex items-center justify-center p-2">
+                    <span class="iconify text-xl text-ollama-black" data-icon="lucide:layout"></span>
                 </div>
             </div>
             
-            <h1 class="text-5xl md:text-6xl max-w-3xl mx-auto leading-[1.1] font-medium">
-                A collection of tools for <span class="text-ollama-stone">science</span> and <span class="text-ollama-stone">engineering</span>.
+            <h1 class="text-2xl md:text-3xl max-w-3xl mx-auto leading-[1.15] font-medium">
+                A local-first collection of tools built to stay <span class="text-ollama-stone">private</span>, <span class="text-ollama-stone">safe</span>, and <span class="text-ollama-stone">secure</span>.
             </h1>
             
-            <p class="text-xl text-ollama-stone max-w-xl mx-auto leading-relaxed font-normal">
-                Radically minimal, high-performance, and local-first. 
-                Everything runs in your browser.
+            <p class="text-sm md:text-base text-ollama-stone max-w-2xl mx-auto leading-relaxed font-normal">
+                Fast, minimal, and privacy-minded. Your data stays on-device whenever possible, with browser-native experiences designed for control and trust.
             </p>
             
-            <div class="flex flex-wrap justify-center gap-4 pt-4">
-                <a href="#projects" class="btn-pill-black px-10">
+            <div class="flex flex-wrap justify-center gap-2 pt-1">
+                <a href="#projects" class="btn-pill-black px-6 py-2 text-sm">
                     Browse Projects
                 </a>
-                <a href="https://github.com/philm013" class="btn-pill-white px-10">
+                <a href="https://github.com/philm013" class="btn-pill-white px-6 py-2 text-sm">
                     GitHub
                 </a>
             </div>
@@ -143,7 +142,7 @@ tailwind.config = {
     </header>
 
     <!-- Projects Section -->
-    <section id="projects" class="py-24 border-t border-ollama-gray">
+    <section id="projects" class="py-12 md:py-16 border-t border-ollama-gray">
         <div class="container-custom">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16">
                 <div>
@@ -178,7 +177,7 @@ tailwind.config = {
                 <a href="#" class="hover:text-ollama-black transition-colors"><span class="iconify text-xl" data-icon="simple-icons:linkedin"></span></a>
             </div>
             <div class="text-ollama-stone text-sm font-medium">
-                <p>© 2026 PhilM013. Minimalism as a Service.</p>
+                <p>Ã‚Â© 2026 PhilM013. Minimalism as a Service.</p>
             </div>
         </div>
     </footer>
@@ -193,7 +192,7 @@ const PROJECTS = [
         readmePath: './AI-Editor/readme.html',
         launchPath: './AI-Editor/index.html',
         category: 'ai',
-        tags: ['AI', 'IDE', 'Tool'],
+        tags: ['AI', 'Developer Tools', 'Productivity'],
         techStack: ['Gemini AI', 'Monaco', 'IndexedDB'],
         icon: 'lucide:code-2'
     },
@@ -204,7 +203,7 @@ const PROJECTS = [
         readmePath: './ArchieIDE/readme.html',
         launchPath: './ArchieIDE/index.html',
         category: 'ai',
-        tags: ['AI', 'IDE', 'Collab'],
+        tags: ['AI', 'Developer Tools', 'Collaboration'],
         techStack: ['Gemini AI', 'VFS', 'PWA'],
         icon: 'lucide:cpu'
     },
@@ -215,7 +214,7 @@ const PROJECTS = [
         readmePath: './InquiryOS/readme.html',
         launchPath: './InquiryOS/index.html',
         category: 'education',
-        tags: ['Education', 'Science', 'Analysis'],
+        tags: ['Education', 'Science', 'Data Analysis'],
         techStack: ['Chart.js', 'Tailwind', 'IndexedDB'],
         icon: 'lucide:microscope'
     },
@@ -226,7 +225,7 @@ const PROJECTS = [
         readmePath: './MarkedUp/readme.html',
         launchPath: './MarkedUp/index.html',
         category: 'productivity',
-        tags: ['Tool', 'Design', 'Annotation'],
+        tags: ['Productivity', 'Research', 'Data Analysis'],
         techStack: ['Canvas API', 'jsPDF', 'JSZip'],
         icon: 'lucide:pen-tool'
     },
@@ -237,7 +236,7 @@ const PROJECTS = [
         readmePath: './FlipbookAI/readme.html',
         launchPath: './FlipbookAI/index.html',
         category: 'ai',
-        tags: ['AI', 'PDF', 'Education'],
+        tags: ['AI', 'Education', 'Productivity'],
         techStack: ['pdf.js', 'Gemini AI', 'Panzoom'],
         icon: 'lucide:book-open'
     },
@@ -248,7 +247,7 @@ const PROJECTS = [
         readmePath: './BankExplorer/readme.html',
         launchPath: './BankExplorer/index.html',
         category: 'productivity',
-        tags: ['Finance', 'Data', 'AI'],
+        tags: ['Finance', 'Data Analysis', 'AI'],
         techStack: ['SheetJS', 'Chart.js', 'Gemini AI'],
         icon: 'lucide:landmark'
     },
@@ -259,7 +258,7 @@ const PROJECTS = [
         readmePath: './CardVault/readme.html',
         launchPath: './CardVault/index.html',
         category: 'productivity',
-        tags: ['Collectibles', 'AI', 'CV'],
+        tags: ['AI', 'Computer Vision', 'Data Analysis'],
         techStack: ['Gemini Vision', 'IndexedDB', 'WebGPU'],
         icon: 'lucide:clover'
     },
@@ -270,7 +269,7 @@ const PROJECTS = [
         readmePath: './CoinVault/readme.html',
         launchPath: './CoinVault/index.html',
         category: 'productivity',
-        tags: ['Collectibles', 'AI', 'CV'],
+        tags: ['AI', 'Computer Vision', 'Data Analysis'],
         techStack: ['Gemini Vision', 'IndexedDB', 'Computer Vision'],
         icon: 'lucide:coins'
     },
@@ -281,7 +280,7 @@ const PROJECTS = [
         readmePath: './KnowledgeMapper/readme.html',
         launchPath: './KnowledgeMapper/index.html',
         category: 'ai',
-        tags: ['AI', 'D3.js', 'Education'],
+        tags: ['AI', 'Education', 'Data Analysis'],
         techStack: ['D3.js', 'Gemini AI', 'SVG'],
         icon: 'lucide:network'
     },
@@ -292,7 +291,7 @@ const PROJECTS = [
         readmePath: './LiveDeck/readme.html',
         launchPath: './LiveDeck/index.html',
         category: 'collab',
-        tags: ['Presentation', 'Markdown', 'Collab'],
+        tags: ['Collaboration', 'Real-Time', 'Productivity'],
         techStack: ['Markdown', 'PeerJS', 'WebRTC'],
         icon: 'lucide:presentation'
     },
@@ -303,7 +302,7 @@ const PROJECTS = [
         readmePath: './WorkPlanner/readme.html',
         launchPath: './WorkPlanner/index.html',
         category: 'productivity',
-        tags: ['Productivity', 'Management', 'Collab'],
+        tags: ['Productivity', 'Collaboration', 'Data Analysis'],
         techStack: ['Kanban', 'Gantt', 'PeerJS'],
         icon: 'lucide:kanban'
     },
@@ -314,7 +313,7 @@ const PROJECTS = [
         readmePath: './SnapMeet/readme.html',
         launchPath: './SnapMeet/index.html',
         category: 'collab',
-        tags: ['P2P', 'Location', 'Maps'],
+        tags: ['Collaboration', 'Geolocation', 'Real-Time'],
         techStack: ['Leaflet', 'PeerJS', 'WebRTC'],
         icon: 'lucide:map-pin'
     },
@@ -325,7 +324,7 @@ const PROJECTS = [
         readmePath: './SnapHunt/readme.html',
         launchPath: './SnapHunt/index.html',
         category: 'entertainment',
-        tags: ['Game', 'AR', 'Location'],
+        tags: ['Gaming', 'Geolocation', 'Real-Time'],
         techStack: ['Geolocation', 'Camera API', 'PWA'],
         icon: 'lucide:camera'
     },
@@ -336,7 +335,7 @@ const PROJECTS = [
         readmePath: './ProximaNova/readme.html',
         launchPath: './ProximaNova/index.html',
         category: 'entertainment',
-        tags: ['Game', 'Canvas', 'Strategy'],
+        tags: ['Gaming', 'Strategy', 'Real-Time'],
         techStack: ['Canvas API', 'GameLoop', 'Math'],
         icon: 'lucide:rocket'
     },
@@ -347,7 +346,7 @@ const PROJECTS = [
         readmePath: './MixTape/readme.html',
         launchPath: './MixTape/index.html',
         category: 'entertainment',
-        tags: ['Audio', 'Retro', 'UI'],
+        tags: ['Media', 'Audio', 'Productivity'],
         techStack: ['YouTube API', 'Web Audio', 'CSS3'],
         icon: 'lucide:music'
     },
@@ -369,7 +368,7 @@ const PROJECTS = [
         readmePath: './IPTV/readme.html',
         launchPath: './IPTV/index.html',
         category: 'productivity',
-        tags: ['Media', 'Tool', 'IPTV'],
+        tags: ['Media', 'Streaming', 'Productivity'],
         techStack: ['HLS.js', 'M3U Parser', 'Video.js'],
         icon: 'lucide:tv'
     },
@@ -380,7 +379,7 @@ const PROJECTS = [
         readmePath: './StudioPro/readme.html',
         launchPath: './StudioPro/StudioPro.html',
         category: 'ai',
-        tags: ['AI', 'Templates', 'Dev'],
+        tags: ['AI', 'Developer Tools', 'Productivity'],
         techStack: ['CodeMirror', 'Gemini AI', 'Reactive UI'],
         icon: 'lucide:wand-2'
     },
@@ -391,7 +390,7 @@ const PROJECTS = [
         readmePath: './LetsDraw/readme.html',
         launchPath: './LetsDraw/index.html',
         category: 'collab',
-        tags: ['Drawing', 'Collab', 'Canvas'],
+        tags: ['Collaboration', 'Real-Time', 'Productivity'],
         techStack: ['Canvas API', 'PeerJS', 'WebRTC'],
         icon: 'lucide:palette'
     },
@@ -402,7 +401,7 @@ const PROJECTS = [
         readmePath: './NGSS-Explorer/readme.html',
         launchPath: './NGSS-Explorer/index.html',
         category: 'education',
-        tags: ['Education', 'Science', 'NGSS'],
+        tags: ['Education', 'NGSS', 'AI'],
         techStack: ['Gemini AI', 'JSON Data', 'D3.js'],
         icon: 'lucide:compass'
     },
@@ -413,7 +412,7 @@ const PROJECTS = [
         readmePath: './NGSS-Tracker/readme.html',
         launchPath: './NGSS-Tracker/index.html',
         category: 'education',
-        tags: ['Education', 'Tracking', 'Teacher'],
+        tags: ['Education', 'NGSS', 'Assessment'],
         techStack: ['IndexedDB', 'LocalStorage', 'Charts'],
         icon: 'lucide:check-circle'
     },
@@ -424,7 +423,7 @@ const PROJECTS = [
         readmePath: './ThinkTank/readme.html',
         launchPath: './ThinkTank/index.html',
         category: 'education',
-        tags: ['AI', 'Education', 'Science'],
+        tags: ['Education', 'AI', 'Research'],
         techStack: ['Gemini AI', 'Speech API', 'IndexedDB'],
         icon: 'lucide:brain'
     },
@@ -435,7 +434,7 @@ const PROJECTS = [
         readmePath: './EdReporter/readme.html',
         launchPath: './EdReporter/index.html',
         category: 'education',
-        tags: ['AI', 'Review', 'Education'],
+        tags: ['Education', 'Assessment', 'AI'],
         techStack: ['Gemini AI', 'PDF.js', 'OCR'],
         icon: 'lucide:clipboard-list'
     },
@@ -446,7 +445,7 @@ const PROJECTS = [
         readmePath: './AssesmentAnalyzer/readme.html',
         launchPath: './AssesmentAnalyzer/index.html',
         category: 'education',
-        tags: ['Education', 'Rubric', 'Science'],
+        tags: ['Education', 'Assessment', 'Research'],
         techStack: ['Rubrics', 'JSON', 'Data Viz'],
         icon: 'lucide:bar-chart-3'
     },
@@ -457,7 +456,7 @@ const PROJECTS = [
         readmePath: './GoOutside/www/readme.html',
         launchPath: './GoOutside/www/index.html',
         category: 'entertainment',
-        tags: ['Nature', 'Mobile', 'Gamified'],
+        tags: ['Science', 'Geolocation', 'Gaming'],
         techStack: ['iNaturalist API', 'Leaflet', 'PWA'],
         icon: 'lucide:leaf'
     },
@@ -468,7 +467,7 @@ const PROJECTS = [
         readmePath: './NexusIDE/readme.html',
         launchPath: './NexusIDE/index.html',
         category: 'productivity',
-        tags: ['Dev', 'Blog', 'CMS'],
+        tags: ['Developer Tools', 'Productivity', 'Collaboration'],
         techStack: ['Markdown', 'CRUD', 'LocalStorage'],
         icon: 'lucide:layers'
     }

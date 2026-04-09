@@ -55,7 +55,7 @@ tailwind.config = {
     </style>
 </head>
 <body class="antialiased overflow-x-hidden min-h-screen flex flex-col">
-    <nav class="py-8 bg-white/80 backdrop-blur-sm sticky top-0 z-50 border-b border-ollama-snow">
+    <nav class="py-4 md:py-5 bg-white/80 backdrop-blur-sm sticky top-0 z-50 border-b border-ollama-snow">
         <div class="container-custom flex items-center justify-between">
             <a href="../index.html" class="flex items-center gap-2 text-ollama-stone hover:text-ollama-black transition-colors font-medium">
                 <span class="iconify" data-icon="lucide:arrow-left"></span>
@@ -70,17 +70,17 @@ tailwind.config = {
             </div>
         </div>
     </nav>
-    <main class="flex-grow pt-20 pb-32">
+    <main class="flex-grow pt-8 md:pt-10 pb-14 md:pb-16">
         <div class="container-custom">
-            <div class="text-center mb-24 space-y-8">
+            <div class="text-center mb-10 md:mb-12 space-y-4 md:space-y-5">
                 <div class="flex justify-center">
-                    <div class="w-20 h-20 rounded-full border border-ollama-gray flex items-center justify-center p-4">
-                        <span class="iconify text-4xl text-ollama-black" data-icon="lucide:brain"></span>
+                    <div class="w-10 h-10 rounded-full border border-ollama-gray flex items-center justify-center p-2">
+                        <span class="iconify text-xl text-ollama-black" data-icon="lucide:brain"></span>
                     </div>
                 </div>
-                <h1 class="text-5xl md:text-6xl">ThinkTank</h1>
-                <p class="text-2xl text-ollama-stone max-w-xl mx-auto leading-relaxed">AI-powered study tool aligned with NGSS for interactive learning sessions.</p>
-                <div class="flex flex-wrap justify-center gap-2 pt-4">
+                <h1 class="text-2xl md:text-3xl">ThinkTank</h1>
+                <p class="text-sm md:text-base text-ollama-stone max-w-2xl mx-auto leading-relaxed">AI-powered study tool aligned with NGSS for interactive learning sessions.</p>
+                <div class="flex flex-wrap justify-center gap-1.5 pt-1">
                     <span class="tech-pill px-3 py-1 text-xs">Gemini AI</span><span class="tech-pill px-3 py-1 text-xs">Speech API</span><span class="tech-pill px-3 py-1 text-xs">IndexedDB</span>
                 </div>
             </div>
@@ -91,17 +91,17 @@ tailwind.config = {
                     </div>
                     <div class="relative z-10">
                         <h4 class="text-ollama-black font-medium mb-2 uppercase tracking-widest text-xs">Core Architecture</h4>
-                        <h3 class="text-2xl mb-4">Functional Framework</h3>
-                        <p class="text-ollama-stone text-lg max-w-lg mb-8">Minimalist representation of state and logic management.</p>
+                        <h3 class="text-2xl mb-4">Guided Study Orchestrator</h3>
+                        <p class="text-ollama-stone text-lg max-w-lg mb-8">Prompting, reflection, and concept synthesis stages are sequenced to support focused, AI-assisted learning sessions.</p>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 h-48">
                             <div class="border border-ollama-gray bg-white rounded-xl flex items-center justify-center p-4 text-center">
-                                <span class="text-ollama-stone text-xs font-mono uppercase tracking-tighter leading-tight">Data Stream<br>& Local DB</span>
+                                <span class="text-ollama-stone text-xs font-mono uppercase tracking-tighter leading-tight">Session Data<br>& Learning Context</span>
                             </div>
                             <div class="border border-ollama-black bg-ollama-gray rounded-xl flex items-center justify-center p-4 text-center">
-                                <span class="text-ollama-black text-xs font-mono font-bold uppercase tracking-tighter leading-tight">Processing<br>& Logic Engine</span>
+                                <span class="text-ollama-black text-xs font-mono font-bold uppercase tracking-tighter leading-tight">Guidance Logic<br>& Reflection Flow</span>
                             </div>
                             <div class="border border-ollama-gray bg-white rounded-xl flex items-center justify-center p-4 text-center">
-                                <span class="text-ollama-stone text-xs font-mono uppercase tracking-tighter leading-tight">Render Layer<br>& Interface</span>
+                                <span class="text-ollama-stone text-xs font-mono uppercase tracking-tighter leading-tight">Study UI<br>& Insight Panels</span>
                             </div>
                         </div>
                     </div>
