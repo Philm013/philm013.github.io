@@ -40,7 +40,7 @@
       overflow: hidden; line-height: 1.5; position: fixed; width: 100%;
     }
 
-    /* Sidebar (Desktop) */
+    /* Sidebar */
     #desktop-sidebar {
       width: var(--sidebar-width); background: var(--ollama-snow); border-right: 1px solid var(--ollama-border);
       display: flex; flex-direction: column; flex-shrink: 0; z-index: 150;
@@ -50,7 +50,6 @@
     .sidebar-item { padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; border: none; background: none; text-align: left; display: flex; align-items: center; gap: 10px; width: 100%; transition: background 0.2s; font-family: inherit; }
     .sidebar-item:hover { background: var(--ollama-light-gray); }
     .sidebar-item.active { background: var(--ollama-white); border: 1px solid var(--ollama-border); font-weight: 500; }
-    .sidebar-section-title { font-size: 0.7rem; font-weight: 600; color: var(--ollama-stone); text-transform: uppercase; margin: 16px 12px 4px; letter-spacing: 0.05em; }
 
     /* Main Area */
     .main-screen { flex: 1; display: flex; flex-direction: column; background: var(--ollama-white); height: 100%; min-width: 0; position: relative; }
@@ -73,6 +72,8 @@
     .pulse { animation: thought-pulse 1.5s infinite; }
     @keyframes thought-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 
+    .tool-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: var(--ollama-snow); border: 1px solid var(--ollama-border); border-radius: var(--radius-pill); font-size: 0.75rem; color: var(--ollama-black); margin: 8px 0; }
+
     /* Bottom Bar */
     .bottom-stack { background: #fff; border-top: 1px solid var(--ollama-border); padding-bottom: env(safe-area-inset-bottom); z-index: 100; flex-shrink: 0; }
     .bottom-inner { max-width: 800px; margin: 0 auto; width: 100%; }
@@ -90,7 +91,7 @@
       flex: 1; background: none; border: none; padding: 8px 0; color: #000; 
       font-family: var(--font-body); font-size: 16px; resize: none; max-height: 120px; outline: none; min-height: 24px;
     }
-    .icon-btn { width: 36px; height: 36px; border-radius: var(--radius-pill); background: none; border: none; color: #737373; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; font-size: 1.1rem; touch-action: manipulation; }
+    .icon-btn { width: 36px; height: 36px; border-radius: var(--radius-pill); background: none; border: none; color: var(--ollama-stone); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; font-size: 1.1rem; touch-action: manipulation; }
     .icon-btn:hover:not(:disabled) { color: #000; background: var(--ollama-snow); }
     .icon-btn.primary { color: #fff; background: #000; }
 
@@ -105,7 +106,7 @@
     /* Mobile Nav */
     nav#mobile-nav { display: none; }
 
-    /* Overlay Panels */
+    /* Panels */
     .overlay-panel { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
     .overlay-panel.open { display: flex; }
     .panel-window { background: #fff; width: 100%; max-width: 600px; max-height: 80vh; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.15); border: 1px solid var(--ollama-border); }
@@ -114,12 +115,16 @@
     .btn-block { width: 100%; padding: 12px 20px; border-radius: 20px; border: 1px solid var(--ollama-border); font-family: var(--font-display); font-weight: 500; cursor: pointer; text-align: center; background: #fff; font-size: 0.9rem; margin-bottom: 8px; }
     .btn-primary { background: #000; color: #fff; border: none; }
 
-    .hidden { display: none; }
+    /* Rescue & Download */
+    #model-rescue { position: fixed; inset: 0; background: #fff; z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; }
+    #model-rescue.open { display: flex; }
+    .progress-bar { width: 100%; max-width: 300px; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin: 20px 0; }
+    #download-fill { width: 0%; height: 100%; background: #000; transition: width 0.3s; }
 
     @media (max-width: 768px) {
       body { flex-direction: column; } #desktop-sidebar { display: none; }
       nav#mobile-nav { display: flex; height: var(--nav-height); background: #fff; border-top: 1px solid var(--ollama-border); justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom); }
-      .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #737373; background: none; border: none; flex: 1; font-size: 0.65rem; font-weight: 500; cursor: pointer; padding: 8px 0; }
+      .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #737373; background: none; border: none; flex: 1; font-size: 0.65rem; font-weight: 500; cursor: pointer; }
       .nav-item.active { color: #000; } .nav-icon { font-size: 1.3rem; }
       .overlay-panel { padding: 0; align-items: flex-end; } .panel-window { max-height: 85vh; border-radius: 16px 16px 0 0; }
       #chat-container { padding: 16px; } .input-row { padding: 12px 16px; }
@@ -128,7 +133,17 @@
 </head>
 <body>
 
-  <!-- Sidebar (Desktop) -->
+  <!-- Rescue Overlay -->
+  <div id="model-rescue">
+    <div style="font-size:3rem; margin-bottom:20px;">📦</div>
+    <div style="font-weight:600; font-size:1.5rem; margin-bottom:10px;">Model Required</div>
+    <div id="rescue-desc" style="color:var(--ollama-stone); max-width:400px; margin-bottom:30px;">private AI requires the 1.2GB Gemma 4 weights. Choose a method to supply them.</div>
+    <button class="btn-block btn-primary" style="max-width:300px" id="download-btn">Download & Install (Automatic)</button>
+    <button class="btn-block" style="max-width:300px" onclick="document.getElementById('model-upload-input').click()">Supply Local File (.task)</button>
+    <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
+    <div id="download-status" style="font-size:0.75rem; color:var(--ollama-stone);"></div>
+  </div>
+
   <aside id="desktop-sidebar">
     <div class="sidebar-header">Gemma 4</div>
     <div class="sidebar-content">
@@ -138,33 +153,22 @@
       <button class="sidebar-item" onclick="showPanel('batch')">📋 Batch</button>
       <button class="sidebar-item" onclick="showPanel('history')">🕒 History</button>
       <button class="sidebar-item" onclick="showPanel('settings')">⚙️ Settings</button>
-      <div class="sidebar-section-title">Context</div>
-      <div id="sidebar-context-list"></div>
     </div>
   </aside>
 
-  <!-- Main View -->
   <div class="main-screen">
-    <header>
-      <div class="header-title">Native Assistant</div>
-      <div id="status-badge" class="status-badge"><span id="status-text">Disconnected</span></div>
-    </header>
-
-    <main id="chat-container">
-      <div class="message ai"><div class="msg-body"><p>Local AI active. Waking up engine...</p></div></div>
-    </main>
-
+    <header><div class="header-title">Native Assistant</div><div id="status-badge" class="status-badge"><span id="status-text">Disconnected</span></div></header>
+    <main id="chat-container"><div class="message ai"><p>Local AI active. Initializing...</p></div></main>
     <footer class="bottom-stack">
       <div id="active-context" class="active-context hidden"></div>
       <div class="input-row">
         <div id="slash-menu" class="slash-menu"></div>
         <div class="input-container">
-          <button class="icon-btn" id="attach-trigger" title="Library">📎</button>
+          <button class="icon-btn" onclick="document.getElementById('global-file-input').click()">📎</button>
           <textarea id="chat-input" rows="1" placeholder="Initializing..." disabled></textarea>
           <button id="send-btn" class="icon-btn primary" onclick="handleSend()" disabled title="Send">➤</button>
         </div>
       </div>
-      
       <nav id="mobile-nav">
         <button class="nav-item active" onclick="showPanel('chat')"><span class="nav-icon">💬</span>Chat</button>
         <button class="nav-item" onclick="showPanel('library')"><span class="nav-icon">📚</span>Lib</button>
@@ -177,108 +181,51 @@
 
   <!-- Panels -->
   <div id="library-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>Library</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content"><div id="library-list"></div><button class="btn-block btn-primary" onclick="document.getElementById('global-file-input').click()">Upload Files</button></div></div></div>
-  <div id="memory-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>Local Memory (RAG)</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content"><div id="memory-list" style="margin-bottom:16px;"></div><button class="btn-block" onclick="auditMemories()">Audit for Duplicates</button></div></div></div>
-  <div id="batch-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>Batch Runner</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content"><textarea id="batch-input" style="width:100%;height:150px;border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;font-size:16px;" placeholder="Task 1...&#10;Task 2 with {{previous}}..."></textarea><button class="btn-block btn-primary" onclick="runBatch()">Run Sequentially Tasks</button></div></div></div>
+  <div id="memory-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>Memory (RAG)</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content"><div id="memory-list"></div><button class="btn-block" onclick="auditMemories()">Audit Outliers</button></div></div></div>
+  <div id="batch-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>Batch Runner</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content"><textarea id="batch-input" style="width:100%;height:150px;border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;font-size:16px;" placeholder="Task 1...&#10;Task 2 with {{previous}}..."></textarea><button class="btn-block btn-primary" onclick="runBatch()">Run Sequence</button></div></div></div>
   <div id="history-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>History</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content" id="history-list"></div></div></div>
-  <div id="settings-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>Settings</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content"><div style="display:flex;flex-direction:column;gap:16px;"><div><label style="font-size:0.7rem;font-weight:600;color:var(--ollama-stone);">SYSTEM PROMPT</label><textarea id="system-prompt" style="width:100%;height:100px;border:1px solid var(--ollama-border);border-radius:8px;padding:12px;margin-top:4px;outline:none;font-size:16px;">You are a helpful assistant. Answer concisely.</textarea></div><button class="btn-block" onclick="purgeCache()">Purge Cache</button><button class="btn-block btn-primary" onclick="exportData()">Full Backup</button></div></div></div></div>
+  <div id="settings-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>Settings</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content"><textarea id="system-prompt" style="width:100%;height:100px;border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:16px;font-size:16px;">You are a helpful assistant.</textarea><button class="btn-block" onclick="purgeCache()">Purge Cache</button></div></div></div>
 
   <input type="file" id="global-file-input" class="hidden" multiple accept="*/*">
+  <input type="file" id="model-upload-input" class="hidden" accept=".task">
 
   <script type="module">
     import { LlmInference, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai';
     import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs';
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
 
-    const REMOTE_MODEL = 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task';
-    const LOCAL_MODEL = './gemma-4-E2B-it-web.task';
-    const State = { inference: null, history: [], conversationId: Date.now().toString(36), isGenerating: false, embeddingReady: false, embeddingWorker: null, library: [], activeContext: new Set(), activeModel: REMOTE_MODEL };
-
+    const State = { inference: null, history: [], isGenerating: false, embeddingReady: false, embeddingWorker: null, activeModel: './gemma-4-E2B-it-web.task' };
+    
     // --- DB Setup ---
     const DB = {
-      name: 'GemmaUltimate_DB_v7',
-      async open() { return new Promise(res => { const req = indexedDB.open(this.name, 2); req.onupgradeneeded = e => { const db = e.target.result; if(!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'id' }); if(!db.objectStoreNames.contains('chats')) db.createObjectStore('chats', { keyPath: 'id' }); if(!db.objectStoreNames.contains('vectors')) db.createObjectStore('vectors', { keyPath: 'id' }); if(!db.objectStoreNames.contains('model_cache')) db.createObjectStore('model_cache'); }; req.onsuccess = () => res(req.result); }); },
-      async save(s, d, k) { const db = await this.open(); const tx = db.transaction(s, 'readwrite'); if (k) tx.objectStore(s).put(d, k); else tx.objectStore(s).put(d); return new Promise(r => tx.oncomplete = r); },
-      async get(s, k) { const db = await this.open(); const tx = db.transaction(s, 'readonly'); const req = tx.objectStore(s).get(k); return new Promise(r => req.onsuccess = () => r(req.result)); },
+      name: 'GemmaUltimate_DB_v9',
+      async open() { return new Promise(res => { const req = indexedDB.open(this.name, 1); req.onupgradeneeded = e => { const db = e.target.result; db.createObjectStore('files', { keyPath: 'id' }); db.createObjectStore('chats', { keyPath: 'id' }); db.createObjectStore('vectors', { keyPath: 'id' }); }; req.onsuccess = () => res(req.result); }); },
+      async save(s, d) { const db = await this.open(); const tx = db.transaction(s, 'readwrite'); tx.objectStore(s).put(d); return new Promise(r => tx.oncomplete = r); },
       async getAll(s) { const db = await this.open(); const tx = db.transaction(s, 'readonly'); const req = tx.objectStore(s).getAll(); return new Promise(r => req.onsuccess = () => r(req.result)); },
       async delete(s, id) { const db = await this.open(); const tx = db.transaction(s, 'readwrite'); tx.objectStore(s).delete(id); return new Promise(r => tx.oncomplete = r); }
     };
 
-    // --- Core Inference ---
     const updateStatus = (t, x) => { const b = document.getElementById('status-badge'), e = document.getElementById('status-text'); b.className = `status-badge ${t}`; e.textContent = x; };
 
-    async function initGemma() {
+    async function initGemma(source = null, isStream = false) {
       try {
-        updateStatus('loading', 'Checking local cache...');
-        let modelBlob = await DB.get('model_cache', 'gemma_task');
-        let modelPath;
-
-        if (modelBlob) {
-          console.log('Using cached model from IndexedDB.');
-          modelPath = URL.createObjectURL(modelBlob);
-        } else {
-          updateStatus('loading', 'Fetching weights...');
-          let fetchPath = REMOTE_MODEL;
-          try {
-            const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
-            if (check.ok) fetchPath = LOCAL_MODEL;
-          } catch (e) {}
-          
-          console.log(`Downloading model from: ${fetchPath}`);
-          const res = await fetch(fetchPath);
-          if (!res.ok) throw new Error('Failed to download model');
-          
-          modelBlob = await res.blob();
-          await DB.save('model_cache', modelBlob, 'gemma_task');
-          console.log('Model saved to IndexedDB cache.');
-          modelPath = URL.createObjectURL(modelBlob);
-        }
-
-        State.activeModel = modelPath;
         updateStatus('loading', 'Linking...');
         const f = await FilesetResolver.forGenAiTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm");
         updateStatus('loading', 'Booting weights...');
-        State.inference = await LlmInference.createFromOptions(f, {
-          baseOptions: { modelAssetPath: State.activeModel, delegate: navigator.gpu ? "GPU" : "CPU" },
-          maxTokens: 2048, temperature: 0.7
-        });        updateStatus('online', 'Ready');
+        const options = { baseOptions: isStream ? { modelAssetBuffer: source } : { modelAssetPath: State.activeModel }, maxTokens: 2048, temperature: 0.7 };
+        State.inference = await LlmInference.createFromOptions(f, options);
+        updateStatus('online', 'Ready');
         document.getElementById('chat-input').disabled = false;
+        document.getElementById('chat-input').placeholder = "Ask anything...";
         document.getElementById('send-btn').disabled = false;
-      } catch (e) { updateStatus('error', 'Brain Failure'); console.error(e); }
+        document.getElementById('model-rescue').classList.remove('open');
+      } catch (e) { updateStatus('error', 'Brain Failure'); document.getElementById('model-rescue').classList.add('open'); }
     }
-
-    // --- Local Vector RAG (Transformers.js) ---
-    async function initEmbedding() {
-      const code = `
-        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0-alpha.19/+esm';
-        let embedder = null;
-        self.onmessage = async (e) => {
-          if (e.data.type === 'load') { embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2'); self.postMessage({ type: 'ready' }); }
-          else if (e.data.type === 'embed') { const out = await embedder(e.data.text, { pooling: 'mean', normalize: true }); self.postMessage({ type: 'result', vec: Array.from(out.data), id: e.data.id }); }
-        };
-      `;
-      const blob = new Blob([code], { type: 'application/javascript' });
-      State.embeddingWorker = new Worker(URL.createObjectURL(blob), { type: 'module' });
-      State.embeddingWorker.onmessage = e => { if (e.data.type === 'ready') State.embeddingReady = true; };
-      State.embeddingWorker.postMessage({ type: 'load' });
-    }
-
-    function embed(text) {
-      return new Promise(res => {
-        const id = Math.random().toString(36);
-        const h = e => { if (e.data.id === id) { State.embeddingWorker.removeEventListener('message', h); res(e.data.vec); } };
-        State.embeddingWorker.addEventListener('message', h);
-        State.embeddingWorker.postMessage({ type: 'embed', text, id });
-      });
-    }
-
-    function cosineSim(a, b) { let d=0, nA=0, nB=0; for(let i=0; i<a.length; i++){ d+=a[i]*b[i]; nA+=a[i]**2; nB+=b[i]**2; } return d / (Math.sqrt(nA) * Math.sqrt(nB)); }
 
     // --- Agent Tools ---
     const TOOL_REGISTRY = {
       calculate: { description: 'Math solver', parameters: { type: 'object', properties: { expression: { type: 'string' } } }, async execute(a) { return { result: eval(a.expression.replace(/[^0-9+\-*/.()% ]/g,'')) }; } },
       get_current_time: { description: 'Current time', parameters: { type: 'object', properties: {} }, async execute() { return { datetime: new Date().toLocaleString() }; } },
-      store_memory: { description: 'Remember fact', parameters: { type: 'object', properties: { content: { type: 'string' } } }, async execute(a) { const id = Date.now().toString(36); const vec = State.embeddingReady ? await embed(a.content) : null; await DB.save('vectors', { id, content: a.content, vec, date: Date.now() }); return { stored: true }; } },
-      search_memory: { description: 'Recall knowledge', parameters: { type: 'object', properties: { query: { type: 'string' } } }, async execute(a) { if (!State.embeddingReady) return { error: "Waiting for engine..." }; const qV = await embed(a.query); const all = await DB.getAll('vectors'); const sc = all.map(m => ({ ...m, score: cosineSim(qV, m.vec) })).filter(m => m.score > 0.5).sort((a,b) => b.score - a.score).slice(0, 3); return { memories: sc.map(r => r.content) }; } },
       fetch_page: { description: 'Read URL', parameters: { type: 'object', properties: { url: { type: 'string' } } }, async execute(a) { try { const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(a.url)}`); const d = await r.json(); return { content: d.contents.slice(0, 2000) }; } catch(e) { return { error: e.message }; } } }
     };
 
@@ -288,7 +235,15 @@
       if (!ov) { i.value = ''; renderMessage(t, 'user'); State.history.push({ role: 'user', text: t }); }
       State.isGenerating = true; const aiEl = renderMessage('', 'ai'); let full = "";
       try {
-        await new Promise(res => { State.inference.generateResponse(buildPrompt(), (chunk, done) => { full += chunk; renderMessage(full, 'ai', aiEl); if (done) res(); }); });
+        await new Promise(res => {
+          State.inference.generateResponse(buildPrompt(), (chunk, done) => {
+            full += chunk;
+            const partial = parsePartialTool(full);
+            if (partial) renderToolBadge(partial, aiEl);
+            renderMessage(full, 'ai', aiEl);
+            if (done) res();
+          });
+        });
         const tc = full.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
         if (tc) {
           try {
@@ -308,20 +263,21 @@
     function buildPrompt() {
       const s = document.getElementById('system-prompt').value;
       const toolDefs = Object.entries(TOOL_REGISTRY).map(([n,t]) => ({ name: n, desc: t.description, params: t.parameters }));
-      let p = `<|turn|>system\n${s}\n\nTools:\n${JSON.stringify(toolDefs)}\nFormat calls: <tool_call>{"name":"...","arguments":{}}</tool_call>\n<turn|>\n`;
+      let p = `<|turn|>system\n${s}\n\nTools:\n${JSON.stringify(toolDefs)}\nFormat: <tool_call>{"name":"...","arguments":{}}</tool_call>\n<turn|>\n`;
       State.history.slice(-10).forEach(m => { p += `<|turn|>${m.role === 'ai' ? 'model' : 'user'}\n${m.text}<turn|>\n`; });
       p += `<|turn|>model\n`; return p;
     }
 
-    // --- UI Logic ---
     function renderMessage(t, r, el = null) {
       const c = document.getElementById('chat-container');
       if (!el) { el = document.createElement('div'); el.className = `message ${r}`; c.appendChild(el); }
       if (r === 'user') { el.innerHTML = `<div class="user-bubble">${DOMPurify.sanitize(t)}</div>`; }
       else {
         const p = parseThought(t);
+        // Hide raw tool calls from display
+        const displayContent = p.content.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_call>[\s\S]*/g, '');
         el.innerHTML = (p.thought ? `<div class="thought-container"><div class="thought-header">Thought</div><div class="thought-content">${p.thought}</div></div>` : '') + 
-                       DOMPurify.sanitize(marked.parse(p.content || (p.thinking ? '...' : '')));
+                       DOMPurify.sanitize(marked.parse(displayContent || (p.thinking ? '...' : '')));
         const tB = el.querySelector('.thought-container'); if (tB) tB.onclick = () => tB.classList.toggle('open');
       }
       c.scrollTop = c.scrollHeight; return el;
@@ -335,55 +291,60 @@
       return { thought: t.substring(ci, ei), content: t.substring(ei + e.length), thinking: false };
     }
 
-    // --- Slash Commands UI ---
+    function parsePartialTool(t) { const m = t.match(/<tool_call>.*?"name"\s*:\s*"(.*?)"/); return m ? m[1] : null; }
+    function renderToolBadge(name, el) { if (el.querySelector('.tool-badge')) return; const b = document.createElement('div'); b.className = 'tool-badge'; b.innerHTML = `<span>🛠️</span>Using ${name}...`; el.appendChild(b); }
+
+    // --- Slash Logic ---
     function handleSlash(val) {
       const menu = document.getElementById('slash-menu');
       if (val.startsWith('/')) {
         const q = val.slice(1).toLowerCase();
-        const items = Object.keys(TOOL_REGISTRY).concat(['clear', 'library', 'memory', 'batch', 'settings']).filter(t => t.startsWith(q));
-        if (items.length) {
-          menu.innerHTML = items.map(t => `<div class="slash-item" onclick="applySlash('${t}')"><span>/${t}</span></div>`).join('');
-          menu.style.display = 'flex';
-        } else menu.style.display = 'none';
+        const items = Object.keys(TOOL_REGISTRY).concat(['clear', 'library', 'memory', 'batch']).filter(t => t.startsWith(q));
+        if (items.length) { menu.innerHTML = items.map(t => `<div class="slash-item" onclick="applySlash('${t}')"><span>/${t}</span></div>`).join(''); menu.style.display = 'flex'; } else menu.style.display = 'none';
       } else menu.style.display = 'none';
     }
     window.applySlash = t => {
       const i = document.getElementById('chat-input');
       if (t === 'clear') { State.history = []; document.getElementById('chat-container').innerHTML = ''; }
-      else if (['library', 'memory', 'batch', 'settings'].includes(t)) showPanel(t);
+      else if (['library', 'memory', 'batch'].includes(t)) showPanel(t);
       else i.value = `/${t} `;
       document.getElementById('slash-menu').style.display = 'none'; i.focus();
     };
 
-    window.showPanel = n => { hidePanels(); if (n === 'chat') return; document.getElementById(`${n}-panel`).classList.add('open'); if (n === 'memory') refreshMemoryUI(); if (n === 'library') refreshLibraryUI(); if (n === 'history') refreshHistoryUI(); };
+    window.showPanel = n => { hidePanels(); if (n === 'chat') return; document.getElementById(`${n}-panel`).classList.add('open'); };
     window.hidePanels = () => document.querySelectorAll('.overlay-panel').forEach(p => p.classList.remove('open'));
 
-    // --- Data Persistence ---
-    async function saveChat() { const title = State.history[0]?.text.slice(0, 30) || "Chat"; await DB.save('chats', { id: State.conversationId, title, history: State.history, date: Date.now() }); }
-    async function refreshHistoryUI() {
-      const all = await DB.getAll('chats'); const list = document.getElementById('history-list'); list.innerHTML = '';
-      all.sort((a,b)=>b.date-a.date).forEach(c => {
-        const it = document.createElement('button'); it.className = 'sidebar-item'; it.innerHTML = `<div>${c.title}</div><div style="font-size:0.7rem; opacity:0.5;">${new Date(c.date).toLocaleDateString()}</div>`;
-        it.onclick = () => { State.conversationId = c.id; State.history = c.history; document.getElementById('chat-container').innerHTML = ''; State.history.forEach(m => renderMessage(m.text, m.role)); hidePanels(); };
-        list.appendChild(it);
-      });
-    }
+    // --- Download Engine ---
+    document.getElementById('download-btn').onclick = async () => {
+      document.getElementById('download-btn').disabled = true;
+      document.getElementById('progress-container').classList.remove('hidden');
+      try {
+        const r = await fetch('https://huggingface.co/google/gemma-4-E2B-it-web/resolve/main/gemma-4-E2B-it-web.task');
+        const reader = r.body.getReader();
+        const total = parseInt(r.headers.get('Content-Length'));
+        let loaded = 0; const chunks = [];
+        while(true) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          chunks.push(value); loaded += value.length;
+          const pct = Math.round((loaded / total) * 100);
+          document.getElementById('download-fill').style.width = pct + '%';
+          document.getElementById('download-status').innerText = `${(loaded/1024/1024).toFixed(1)}MB / ${(total/1024/1024).toFixed(1)}MB (${pct}%)`;
+        }
+        initGemma(new Blob(chunks).stream().getReader(), true);
+      } catch (e) { alert('Download failed: ' + e.message); location.reload(); }
+    };
 
-    async function refreshMemoryUI() {
-      const all = await DB.getAll('vectors'); const list = document.getElementById('memory-list'); list.innerHTML = '';
-      all.forEach(m => {
-        const it = document.createElement('div'); it.style = "padding:10px; border-bottom:1px solid #eee; font-size:0.8rem; display:flex; justify-content:space-between;";
-        it.innerHTML = `<div style="flex:1;">${m.content}</div><span onclick="deleteMemory('${m.id}')" style="cursor:pointer; opacity:0.5;">✕</span>`;
-        list.appendChild(it);
-      });
-    }
-    window.deleteMemory = async id => { if (confirm('Delete?')) { await DB.delete('vectors', id); refreshMemoryUI(); } };
+    window.onload = async () => {
+      try {
+        const res = await fetch(State.activeModel, { method: 'HEAD' });
+        if (res.ok) initGemma(); else document.getElementById('model-rescue').classList.add('open');
+      } catch (e) { document.getElementById('model-rescue').classList.add('open'); }
+    };
 
-    // --- Event Setup ---
+    document.getElementById('model-upload-input').onchange = async e => { if (e.target.files.length) initGemma(await e.target.files[0].stream().getReader(), true); };
     document.getElementById('chat-input').oninput = e => { handleSlash(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; };
     document.getElementById('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
-
-    window.onload = () => { initGemma(); initEmbedding(); };
   </script>
 </body>
 </html>
