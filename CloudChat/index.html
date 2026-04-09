@@ -190,23 +190,99 @@
     import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs';
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
 
-    const State = { inference: null, history: [], isGenerating: false, activeModel: './gemma-4-E2B-it-web.task' };
+    const REMOTE_MODEL = 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task';
+    const LOCAL_MODEL = './gemma-4-E2B-it-web.task';
+    const State = { inference: null, history: [], isGenerating: false, activeModel: REMOTE_MODEL };
     
+    // --- Persistent Storage Request ---
+    async function requestPersistentStorage() {
+      if (navigator.storage && navigator.storage.persist) {
+        const isPersisted = await navigator.storage.persist();
+        console.log(`Storage persisted: ${isPersisted}`);
+      }
+    }
+
+    // --- IndexedDB Cache Helper ---
+    const DB = {
+      name: 'LocalMind_Model_Cache_v1',
+      async open() {
+        return new Promise((res, rej) => {
+          const req = indexedDB.open(this.name, 1);
+          req.onupgradeneeded = e => {
+            const db = e.target.result;
+            if(!db.objectStoreNames.contains('model_cache')) db.createObjectStore('model_cache');
+          };
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+      },
+      async save(key, blob) {
+        const db = await this.open();
+        return new Promise((r, j) => {
+          const tx = db.transaction('model_cache', 'readwrite');
+          tx.objectStore('model_cache').put(blob, key);
+          tx.oncomplete = () => r();
+          tx.onerror = () => j(tx.error);
+        });
+      },
+      async get(key) {
+        const db = await this.open();
+        const tx = db.transaction('model_cache', 'readonly');
+        const req = tx.objectStore('model_cache').get(key);
+        return new Promise(r => req.onsuccess = () => r(req.result));
+      }
+    };
+
+    window.purgeCache = async () => {
+      if (!confirm("Clear model cache? This will require a redownload.")) return;
+      const req = indexedDB.deleteDatabase(DB.name);
+      req.onsuccess = () => { alert("Cache purged. Reloading..."); location.reload(); };
+    };
+
     const updateStatus = (t, x) => { 
       const b = document.getElementById('status-badge'), e = document.getElementById('status-text');
       b.className = `status-badge ${t}`; e.textContent = x;
     };
 
     // --- Core Inference Boot ---
-    async function initGemma(source = null, isStream = false) {
+    async function initGemma() {
       try {
+        await requestPersistentStorage();
+        updateStatus('loading', 'Checking cache...');
+        
+        let modelBlob = await DB.get('gemma_task');
+        let modelPath;
+
+        if (modelBlob instanceof Blob) {
+          console.log('Using cached model from IndexedDB.');
+          modelPath = URL.createObjectURL(modelBlob);
+        } else {
+          updateStatus('loading', 'Locating weights...');
+          let fetchPath = REMOTE_MODEL;
+          try {
+            const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
+            if (check.ok) fetchPath = LOCAL_MODEL;
+          } catch (e) {}
+          
+          console.log(`Downloading model from: ${fetchPath}`);
+          updateStatus('loading', 'Downloading (1.9GB)...');
+          const res = await fetch(fetchPath);
+          if (!res.ok) throw new Error('Failed to download model');
+          
+          modelBlob = await res.blob();
+          updateStatus('loading', 'Caching...');
+          await DB.save('gemma_task', modelBlob);
+          console.log('Model saved to IndexedDB cache.');
+          modelPath = URL.createObjectURL(modelBlob);
+        }
+
+        State.activeModel = modelPath;
         updateStatus('loading', 'Linking...');
         const f = await FilesetResolver.forGenAiTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm");
         updateStatus('loading', 'Booting engine...');
         
-        // Use Uint8Array for both direct upload and cached download
         const options = {
-          baseOptions: isStream ? { modelAssetBuffer: source } : { modelAssetPath: State.activeModel },
+          baseOptions: { modelAssetPath: State.activeModel, delegate: navigator.gpu ? "GPU" : "CPU" },
           maxTokens: 2048, temperature: 0.7
         };
 
@@ -217,19 +293,7 @@
         document.getElementById('send-btn').disabled = false;
         document.getElementById('model-rescue').classList.remove('open');
       } catch (e) {
-        if (!isStream && navigator.gpu) { // GPU failure fallback
-          console.warn("GPU failed, retrying with CPU delegate...");
-          const f = await FilesetResolver.forGenAiTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm");
-          State.inference = await LlmInference.createFromOptions(f, { 
-            baseOptions: { modelAssetPath: State.activeModel, delegate: "CPU" }, 
-            maxTokens: 2048, temperature: 0.7 
-          });
-          updateStatus('online', 'Ready (CPU)');
-          document.getElementById('chat-input').disabled = false;
-          document.getElementById('send-btn').disabled = false;
-          document.getElementById('model-rescue').classList.remove('open');
-          return;
-        }
+        console.error("Initialization error:", e);
         updateStatus('error', 'Brain Failure');
         document.getElementById('model-rescue').classList.add('open');
       }
