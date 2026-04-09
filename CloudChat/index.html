@@ -53,84 +53,57 @@
 
     /* Main Area */
     .main-screen { flex: 1; display: flex; flex-direction: column; background: var(--ollama-white); height: 100%; min-width: 0; position: relative; }
-    header { height: var(--header-height); padding: 0 24px; border-bottom: 1px solid var(--ollama-border); display: flex; justify-content: space-between; align-items: center; z-index: 100; flex-shrink: 0; background: #fff; }
+    /* Header */
+    header { 
+      height: auto; min-height: var(--header-height); 
+      padding: env(safe-area-inset-top, 0px) 24px 0; 
+      border-bottom: 1px solid var(--ollama-border); 
+      display: flex; justify-content: space-between; align-items: center; 
+      z-index: 100; flex-shrink: 0; background: #fff; 
+    }
+    .header-inner { height: var(--header-height); display: flex; width: 100%; align-items: center; justify-content: space-between; }
     .header-title { font-family: var(--font-display); font-weight: 500; font-size: 1.1rem; }
-    .status-badge { padding: 4px 12px; border-radius: var(--radius-pill); font-size: 0.75rem; background: var(--ollama-snow); border: 1px solid var(--ollama-border); color: var(--ollama-stone); display: flex; align-items: center; gap: 6px; }
-    .status-badge.online { color: var(--ollama-black); border-color: var(--ollama-black); }
-
-    /* Chat Content */
-    #chat-container { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 32px; scroll-behavior: smooth; max-width: 800px; margin: 0 auto; width: 100%; }
-    .message { width: 100%; animation: fadeIn 0.2s; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
-    .message.user { display: flex; flex-direction: column; align-items: flex-end; }
-    .user-bubble { background: var(--ollama-snow); padding: 12px 20px; border-radius: 20px; border: 1px solid var(--ollama-border); max-width: 85%; font-weight: 500; font-size: 16px; }
     
-    /* Thinking Box */
-    .thought-container { margin-bottom: 12px; border-radius: 12px; background: var(--ollama-snow); border: 1px solid var(--ollama-border); width: fit-content; max-width: 100%; overflow: hidden; }
-    .thought-header { padding: 8px 16px; font-size: 0.75rem; color: var(--ollama-stone); cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-    .thought-content { display: none; padding: 0 16px 12px; font-size: 0.85rem; color: var(--ollama-mid-gray); white-space: pre-wrap; font-style: italic; border-top: 1px solid var(--ollama-border); padding-top: 8px; }
-    .thought-container.open .thought-content { display: block; }
-    .pulse { animation: thought-pulse 1.5s infinite; }
-    @keyframes thought-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
-
-    .tool-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; background: var(--ollama-snow); border: 1px solid var(--ollama-border); border-radius: var(--radius-pill); font-size: 0.75rem; color: var(--ollama-black); margin: 8px 0; }
-
-    /* Bottom Bar */
-    .bottom-stack { background: #fff; border-top: 1px solid var(--ollama-border); padding-bottom: env(safe-area-inset-bottom); z-index: 100; flex-shrink: 0; }
-    .bottom-inner { max-width: 800px; margin: 0 auto; width: 100%; }
+    /* Touch Targets */
+    .icon-btn { width: 44px; height: 44px; border-radius: var(--radius-pill); background: none; border: none; color: #737373; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; font-size: 1.2rem; touch-action: manipulation; }
     
-    .input-row { display: flex; padding: 12px 24px; position: relative; gap: 8px; }
-    .input-container { 
-      display: flex; flex: 1; align-items: flex-end; background: #fff; border: 1px solid var(--ollama-border); 
-      border-radius: 24px; padding: 4px 8px 4px 16px; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); 
+    /* Panels Refinement */
+    .overlay-panel { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1000; opacity: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; padding: 20px; transition: opacity 0.3s ease; }
+    .overlay-panel.open { opacity: 1; pointer-events: auto; }
+    .panel-window { 
+      background: #fff; width: 100%; max-width: 600px; max-height: 80vh; 
+      border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; 
+      box-shadow: 0 12px 40px rgba(0,0,0,0.15); border: 1px solid var(--ollama-border);
+      transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .input-container:focus-within { border-color: #000; }
+    .overlay-panel.open .panel-window { transform: translateY(0); }
     
-    textarea { 
-      flex: 1; background: none; border: none; padding: 8px 0; color: #000; 
-      font-family: var(--font-body); font-size: 16px; resize: none; max-height: 120px; outline: none; min-height: 24px;
-    }
-    .icon-btn { width: 36px; height: 36px; border-radius: var(--radius-pill); background: none; border: none; color: #737373; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; font-size: 1.1rem; touch-action: manipulation; }
-    .icon-btn:hover:not(:disabled) { color: #000; background: var(--ollama-snow); }
-    .icon-btn.primary { color: #fff; background: #000; }
-
-    /* Slash Menu */
-    .slash-menu { 
-      position: absolute; bottom: 100%; left: 24px; right: 24px; background: #fff; border: 1px solid var(--ollama-border); 
-      border-radius: 8px; display: none; flex-direction: column; z-index: 1000; box-shadow: 0 8px 24px rgba(0,0,0,0.1); margin-bottom: 8px; overflow: hidden;
-    }
-    .slash-item { padding: 12px 20px; cursor: pointer; display: flex; justify-content: space-between; border-bottom: 1px solid var(--ollama-border); font-size: 0.9rem; }
-    .slash-item:hover { background: var(--ollama-snow); }
-
-    /* Navigation */
-    nav#mobile-nav { display: none; }
-    .overlay-panel { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
-    .overlay-panel.open { display: flex; }
-    .panel-window { background: #fff; width: 100%; max-width: 600px; max-height: 80vh; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.15); border: 1px solid var(--ollama-border); }
-    .panel-header { padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--ollama-border); background: var(--ollama-snow); }
-    .panel-content { flex: 1; overflow-y: auto; padding: 24px; }
-    .btn-block { width: 100%; padding: 12px 20px; border-radius: 20px; border: 1px solid var(--ollama-border); font-family: var(--font-display); font-weight: 500; cursor: pointer; text-align: center; background: #fff; font-size: 0.9rem; margin-bottom: 8px; }
-    .btn-primary { background: #000; color: #fff; border: none; }
-
-    /* Model Rescue Overlay */
-    #model-rescue { position: fixed; inset: 0; background: #fff; z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; }
-    #model-rescue.open { display: flex; }
-    .progress-bar { width: 100%; max-width: 300px; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin: 20px 0; }
-    #download-fill { width: 0%; height: 100%; background: #000; transition: width 0.3s; }
-
-    .hidden { display: none; }
+    .panel-handle { display: none; width: 40px; height: 4px; background: var(--ollama-light-gray); border-radius: 2px; margin: 8px auto; flex-shrink: 0; }
 
     @media (max-width: 768px) {
       body { flex-direction: column; } #desktop-sidebar { display: none; }
-      nav#mobile-nav { display: flex; height: var(--nav-height); background: #fff; border-top: 1px solid var(--ollama-border); justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom); }
-      .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #737373; background: none; border: none; flex: 1; font-size: 0.65rem; font-weight: 500; cursor: pointer; }
-      .nav-item.active { color: #000; } .nav-icon { font-size: 1.3rem; }
-      .overlay-panel { padding: 0; align-items: flex-end; } .panel-window { max-height: 85vh; border-radius: 16px 16px 0 0; }
+      nav#mobile-nav { display: flex; height: var(--nav-height); background: #fff; border-top: 1px solid var(--ollama-border); justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom, 12px); }
+      .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #737373; background: none; border: none; flex: 1; font-size: 0.75rem; font-weight: 500; cursor: pointer; padding: 8px 0; }
+      .nav-item.active { color: #000; } .nav-icon { font-size: 1.4rem; }
+      .overlay-panel { padding: 0; align-items: flex-end; } 
+      .panel-window { max-height: 85vh; border-radius: 24px 24px 0 0; transform: translateY(100%); }
+      .panel-handle { display: block; }
       #chat-container { padding: 16px; } .input-row { padding: 12px 16px; }
+      .icon-btn { width: 48px; height: 48px; }
     }
   </style>
 </head>
 <body>
+
+  <!-- Global Loader Overlay -->
+  <div id="global-loader" class="hidden">
+    <div class="neural-core">
+      <div style="font-size: 2rem; color: #fff; position: relative; z-index: 1;">🧠</div>
+    </div>
+    <div class="loader-title">System Initializing</div>
+    <div id="loader-msg" class="loader-sub">Preparing neural environment...</div>
+    <div id="global-boot-log" class="boot-log" style="height: 100px; max-width: 400px; opacity: 1;"></div>
+  </div>
 
   <!-- Rescue Overlay -->
   <div id="model-rescue">
@@ -156,7 +129,12 @@
   </aside>
 
   <div class="main-screen">
-    <header><div class="header-title">Native Assistant</div><div id="status-badge" class="status-badge"><span id="status-text">Disconnected</span></div></header>
+    <header>
+      <div class="header-inner">
+        <div class="header-title">Native Assistant</div>
+        <div id="status-badge" class="status-badge"><span id="status-text">Disconnected</span></div>
+      </div>
+    </header>
     <main id="chat-container"><div class="message ai"><p>Local AI active. Initializing...</p></div></main>
     <footer class="bottom-stack">
       <div class="input-row">
@@ -178,9 +156,27 @@
   </div>
 
   <!-- Panels -->
-  <div id="library-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>Library</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content"><div id="library-list"></div><button class="btn-block btn-primary" onclick="document.getElementById('global-file-input').click()">Upload Files</button></div></div></div>
-  <div id="memory-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>Local Memory (RAG)</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content"><div id="memory-list" style="margin-bottom:16px;"></div><button class="btn-block" onclick="auditMemories()">Audit Outliers</button></div></div></div>
-  <div id="settings-panel" class="overlay-panel"><div class="panel-window"><div class="panel-header"><strong>Settings</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div><div class="panel-content"><textarea id="system-prompt" style="width:100%;height:100px;margin-bottom:16px;font-size:16px;">You are a helpful assistant.</textarea><button class="btn-block" onclick="purgeCache()">Purge Model Cache</button></div></div></div>
+  <div id="library-panel" class="overlay-panel">
+    <div class="panel-window">
+      <div class="panel-handle"></div>
+      <div class="panel-header"><strong>Library</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-content"><div id="library-list"></div><button class="btn-block btn-primary" onclick="document.getElementById('global-file-input').click()">Upload Files</button></div>
+    </div>
+  </div>
+  <div id="memory-panel" class="overlay-panel">
+    <div class="panel-window">
+      <div class="panel-handle"></div>
+      <div class="panel-header"><strong>Local Memory (RAG)</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-content"><div id="memory-list" style="margin-bottom:16px;"></div><button class="btn-block" onclick="auditMemories()">Audit Outliers</button></div>
+    </div>
+  </div>
+  <div id="settings-panel" class="overlay-panel">
+    <div class="panel-window">
+      <div class="panel-handle"></div>
+      <div class="panel-header"><strong>Settings</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-content"><textarea id="system-prompt" style="width:100%;height:100px;margin-bottom:16px;font-size:16px;">You are a helpful assistant.</textarea><button class="btn-block" onclick="purgeCache()">Purge Model Cache</button></div>
+    </div>
+  </div>
 
   <input type="file" id="global-file-input" class="hidden" multiple accept="*/*">
   <input type="file" id="model-upload-input" class="hidden" accept=".task">
@@ -245,41 +241,84 @@
     };
 
     // --- Core Inference Boot ---
-    async function initGemma() {
+    async function initGemma(source = null, isStream = false) {
+      const logBoot = (msg) => {
+        const log = document.getElementById('global-boot-log');
+        const line = document.createElement('div');
+        line.className = 'boot-line';
+        line.innerText = msg;
+        log.prepend(line);
+        if (log.children.length > 5) log.removeChild(log.lastChild);
+        if (document.getElementById('loader-msg')) document.getElementById('loader-msg').innerText = msg;
+      };
+
       try {
+        document.getElementById('global-loader').classList.remove('hidden');
         await requestPersistentStorage();
-        updateStatus('loading', 'Checking cache...');
+        updateStatus('loading', 'Initializing...');
+        logBoot("System wake-up initiated...");
         
-        let modelBlob = await DB.get('gemma_task');
         let modelPath;
 
-        if (modelBlob instanceof Blob) {
-          console.log('Using cached model from IndexedDB.');
-          modelPath = URL.createObjectURL(modelBlob);
-        } else {
-          updateStatus('loading', 'Locating weights...');
-          let fetchPath = REMOTE_MODEL;
-          try {
-            const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
-            if (check.ok) fetchPath = LOCAL_MODEL;
-          } catch (e) {}
-          
-          console.log(`Downloading model from: ${fetchPath}`);
-          updateStatus('loading', 'Downloading (1.9GB)...');
-          const res = await fetch(fetchPath);
-          if (!res.ok) throw new Error('Failed to download model');
-          
-          modelBlob = await res.blob();
+        // 1. Manual Upload (Stream)
+        if (isStream && source) {
           updateStatus('loading', 'Caching...');
-          await DB.save('gemma_task', modelBlob);
-          console.log('Model saved to IndexedDB cache.');
-          modelPath = URL.createObjectURL(modelBlob);
+          logBoot("Ingesting manual data stream...");
+          const blob = new Blob([source]);
+          await DB.save('gemma_task', blob);
+          logBoot("Neural weights committed to disk.");
+          modelPath = URL.createObjectURL(blob);
+        } else {
+          // 2. Check IndexedDB Cache
+          updateStatus('loading', 'Scanning Cache...');
+          logBoot("Scanning local sectors...");
+          let modelBlob = await DB.get('gemma_task');
+
+          if (modelBlob instanceof Blob) {
+            logBoot("Gemma core found in local storage.");
+            modelPath = URL.createObjectURL(modelBlob);
+          } else {
+            // 3. Check Local File Path or Remote
+            updateStatus('loading', 'Locating...');
+            logBoot("Local cache miss. Searching network...");
+            let fetchPath = REMOTE_MODEL;
+            try {
+              const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
+              if (check.ok) {
+                fetchPath = LOCAL_MODEL;
+                logBoot("Nearby weights detected on host.");
+              }
+            } catch (e) {}
+            
+            // If we're going to download a 1.9GB file, we need the Rescue UI
+            if (fetchPath === REMOTE_MODEL) {
+              document.getElementById('model-rescue').classList.add('open');
+              document.getElementById('global-loader').classList.add('hidden');
+              updateStatus('error', 'Model Required');
+              return; // Stop and wait for user click
+            }
+
+            updateStatus('loading', 'Downloading...');
+            logBoot(`Downloading from local host...`);
+            const res = await fetch(fetchPath);
+            if (!res.ok) throw new Error('Failed to download model');
+            
+            modelBlob = await res.blob();
+            updateStatus('loading', 'Caching...');
+            logBoot("Download complete. Persisting weights...");
+            await DB.save('gemma_task', modelBlob);
+            logBoot("Persistence verified.");
+            modelPath = URL.createObjectURL(modelBlob);
+          }
         }
 
         State.activeModel = modelPath;
         updateStatus('loading', 'Linking...');
+        logBoot("Allocating WebGPU buffers...");
         const f = await FilesetResolver.forGenAiTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm");
-        updateStatus('loading', 'Booting engine...');
+        
+        updateStatus('loading', 'Booting...');
+        logBoot("Inflating neural layers...");
         
         const options = {
           baseOptions: { modelAssetPath: State.activeModel, delegate: navigator.gpu ? "GPU" : "CPU" },
@@ -287,15 +326,19 @@
         };
 
         State.inference = await LlmInference.createFromOptions(f, options);
+        logBoot("Inference engine hot.");
         updateStatus('online', 'Ready');
         document.getElementById('chat-input').disabled = false;
         document.getElementById('chat-input').placeholder = "Ask anything...";
         document.getElementById('send-btn').disabled = false;
         document.getElementById('model-rescue').classList.remove('open');
+        document.getElementById('global-loader').classList.add('hidden');
       } catch (e) {
         console.error("Initialization error:", e);
+        logBoot("CRITICAL FAILURE: BRAIN NOT FOUND");
         updateStatus('error', 'Brain Failure');
         document.getElementById('model-rescue').classList.add('open');
+        document.getElementById('global-loader').classList.add('hidden');
       }
     }
 
@@ -307,9 +350,9 @@
     };
 
     window.handleSend = async (ov = null) => {
-      const i = document.getElementById('chat-input'), t = ov || i.value.trim();
-      if (!t || State.isGenerating) return;
-      if (!ov) { i.value = ''; renderMessage(t, 'user'); State.history.push({ role: 'user', text: t }); }
+      const i = document.getElementById('chat-input'), t = ov === true ? null : (ov || i.value.trim());
+      if (!ov && (!t || State.isGenerating)) return;
+      if (t && ov !== true) { i.value = ''; renderMessage(t, 'user'); State.history.push({ role: 'user', text: t }); }
       State.isGenerating = true; const aiEl = renderMessage('', 'ai'); let full = "";
       try {
         await new Promise(res => {
@@ -329,9 +372,9 @@
               const res = await tool.execute(call.arguments);
               State.history.push({ role: 'ai', text: full });
               State.history.push({ role: 'user', text: `<tool_response>${JSON.stringify(res)}</tool_response>` });
-              State.isGenerating = false; return handleSend(true);
+              return handleSend(true);
             }
-          } catch(e) {}
+          } catch(e) { console.error("Tool execution failed:", e); }
         }
         State.history.push({ role: 'ai', text: full });
       } catch (e) { renderMessage('Error: ' + e.message, 'ai', aiEl); } finally { State.isGenerating = false; }
@@ -340,8 +383,11 @@
     function buildPrompt() {
       const s = document.getElementById('system-prompt').value;
       const toolDefs = Object.entries(TOOL_REGISTRY).map(([n,t]) => ({ name: n, desc: t.description, params: t.parameters }));
-      let p = `<|turn|>system\n${s}\n\nTools:\n${JSON.stringify(toolDefs)}\nFormat calls: <tool_call>{"name":"...","arguments":{}}</tool_call>\n<turn|>\n`;
-      State.history.slice(-10).forEach(m => { p += `<|turn|>${m.role === 'ai' ? 'model' : 'user'}\n${m.text}<turn|>\n`; });
+      let p = `<|turn|>system\n${s}\n\nAvailable tools:\n${JSON.stringify(toolDefs)}\nTo use a tool, output: <tool_call>{"name":"...","arguments":{}}</tool_call><turn|>\n`;
+      State.history.slice(-10).forEach(m => {
+        const role = m.role === 'ai' ? 'model' : 'user';
+        p += `<|turn|>${role}\n${m.text}<turn|>\n`;
+      });
       p += `<|turn|>model\n`; return p;
     }
 
@@ -398,10 +444,7 @@
     window.hidePanels = () => document.querySelectorAll('.overlay-panel').forEach(p => p.classList.remove('open'));
 
     window.onload = async () => {
-      try {
-        const res = await fetch(State.activeModel, { method: 'HEAD' });
-        if (res.ok) initGemma(); else document.getElementById('model-rescue').classList.add('open');
-      } catch (e) { document.getElementById('model-rescue').classList.add('open'); }
+      initGemma();
     };
 
     document.getElementById('model-upload-input').onchange = async e => {
@@ -411,7 +454,39 @@
       }
     };
 
-    document.getElementById('chat-input').oninput = e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; };
+    // --- Slash Menu ---
+    function handleSlash(val) {
+      const menu = document.getElementById('slash-menu');
+      if (val.startsWith('/')) {
+        const q = val.slice(1).toLowerCase();
+        const commands = ['clear', 'library', 'batch', 'memory', 'settings'];
+        const tools = Object.keys(TOOL_REGISTRY);
+        const all = commands.concat(tools).filter(t => t.startsWith(q));
+        
+        if (all.length) {
+          menu.innerHTML = all.map(t => `<div class="slash-item" onclick="applySlash('${t}')"><span class="slash-name">/${t}</span></div>`).join('');
+          menu.style.display = 'flex';
+        } else menu.style.display = 'none';
+      } else menu.style.display = 'none';
+    }
+
+    window.applySlash = t => {
+      const input = document.getElementById('chat-input');
+      if (t === 'clear') { State.history = []; document.getElementById('chat-container').innerHTML = ''; input.value = ''; }
+      else if (t === 'library') showPanel('library');
+      else if (t === 'batch') showPanel('batch');
+      else if (t === 'memory') showPanel('memory');
+      else if (t === 'settings') showPanel('settings');
+      else input.value = `/${t} `;
+      document.getElementById('slash-menu').style.display = 'none';
+      input.focus();
+    };
+
+    document.getElementById('chat-input').oninput = e => { 
+      e.target.style.height = 'auto'; 
+      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+      handleSlash(e.target.value);
+    };
     document.getElementById('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
   </script>
 </body>
