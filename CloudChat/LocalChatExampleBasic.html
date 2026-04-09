@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Chirag Patnaik">
+  <meta name="description" content="Private AI chatbot running Gemma entirely in your browser. No server, no API keys, no data leaves your device.">
+  <title>LocalMind — Private AI Chat in Your Browser</title>
+  <style>
+    :root {
+      --gray-900: #1a202c; --gray-800: #2d3748; --gray-700: #4a5568; --gray-600: #718096;
+      --gray-400: #a0aec0; --gray-200: #e2e8f0; --gray-100: #f0f4f8; --gray-50: #f8fafc;
+      --white: #ffffff; --indigo-500: #667eea; --indigo-600: #5a67d8; --indigo-100: #ebf4ff;
+      --indigo-focus-ring: rgba(102, 126, 234, 0.15); --success-bg: #e6fffa;
+      --success-border: #81e6d9; --success-text: #234e52; --loading-bg: #fffbeb;
+      --loading-border: #f6e05e; --loading-text: #744210; --error-bg: #fff5f5;
+      --error-border: #feb2b2; --error-text: #e53e3e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-100); color: var(--gray-800); line-height: 1.6; padding: 24px 16px 60px;
+    }
+
+    .app { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; height: calc(100vh - 108px); position: relative; overflow: hidden; }
+
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-shrink: 0; }
+    .header h1 { font-size: 1.5rem; font-weight: 700; color: var(--gray-900); }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    /* Help button */
+    .help-wrap { position: relative; }
+    .help-btn { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--gray-400); background: var(--white); color: var(--gray-600); font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color 0.15s, color 0.15s; }
+    .help-btn:hover { border-color: var(--indigo-500); color: var(--indigo-500); }
+    .help-popover { display: none; position: absolute; top: calc(100% + 10px); right: 0; width: 340px; background: var(--white); border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.12); font-size: 0.82rem; color: var(--gray-700); line-height: 1.55; z-index: 100; overflow: hidden; }
+    .help-popover.open { display: block; }
+    .help-tabs { display: flex; border-bottom: 1px solid var(--gray-200); background: var(--gray-50); }
+    .help-tab { flex: 1; padding: 10px 6px; font-size: 0.72rem; font-weight: 600; color: var(--gray-500); text-align: center; cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s; }
+    .help-tab.active { color: var(--indigo-600); border-bottom-color: var(--indigo-500); }
+    .help-tab-content { display: none; padding: 14px 16px; max-height: 320px; overflow-y: auto; }
+    .help-tab-content.active { display: block; }
+    .try-prompt { display: block; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; font-size: 0.78rem; color: var(--gray-700); font-style: italic; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+    .try-prompt:hover { background: rgba(102, 126, 234, 0.06); border-color: var(--indigo-300); }
+
+    /* Status badge */
+    .status-badge { display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; transition: background 0.4s, border-color 0.4s, color 0.4s; cursor: pointer; }
+    .status-badge.loading { background: var(--loading-bg); border: 1px solid var(--loading-border); color: var(--loading-text); }
+    .status-badge.ready { background: var(--success-bg); border: 1px solid var(--success-border); color: var(--success-text); }
+    .status-badge.error { background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); }
+    .spinner { width: 10px; height: 10px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Card */
+    .card { background: var(--white); border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+    /* Chat area */
+    .chat-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+    .chat-area::-webkit-scrollbar { width: 6px; }
+    .chat-area::-webkit-scrollbar-track { background: transparent; }
+    .chat-area::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
+
+    /* Welcome message */
+    .welcome { text-align: center; color: var(--gray-400); font-size: 0.88rem; margin: auto 0; padding: 40px 20px; }
+    .welcome-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .welcome h2 { font-size: 1.1rem; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
+
+    /* Messages */
+    .msg { display: flex; flex-direction: column; max-width: 85%; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .msg.user { align-self: flex-end; }
+    .msg.assistant { align-self: flex-start; }
+    .msg-bubble { padding: 10px 14px; border-radius: 14px; font-size: 0.9rem; line-height: 1.55; word-break: break-word; }
+    .msg.user .msg-bubble { background: var(--indigo-500); color: var(--white); border-bottom-right-radius: 4px; }
+    .msg.assistant .msg-bubble { background: var(--gray-100); color: var(--gray-800); border-bottom-left-radius: 4px; }
+
+    /* Thinking block */
+    .thinking-block { background: rgba(102, 126, 234, 0.06); border-left: 3px solid var(--indigo-500); padding: 8px 12px; border-radius: 0 8px 8px 0; margin-bottom: 8px; font-size: 0.82rem; color: var(--gray-600); font-style: italic; }
+
+    /* Typing indicator */
+    .typing-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gray-400); animation: blink 1.4s infinite; margin-right: 3px; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; margin-right: 0; }
+    @keyframes blink { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
+
+    /* Input bar */
+    .input-bar { display: flex; align-items: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--gray-200); background: var(--gray-50); flex-shrink: 0; }
+    .input-bar textarea { flex: 1; border: 1.5px solid var(--gray-200); border-radius: 12px; padding: 10px 14px; font-size: 0.9rem; font-family: inherit; line-height: 1.4; resize: none; outline: none; min-height: 42px; max-height: 140px; transition: border-color 0.15s; background: var(--white); }
+    .input-bar textarea:focus { border-color: var(--indigo-500); box-shadow: 0 0 0 3px var(--indigo-focus-ring); }
+    .input-bar textarea:disabled { background: var(--gray-100); color: var(--gray-400); cursor: not-allowed; }
+    .send-btn { width: 42px; height: 42px; border-radius: 12px; border: none; background: var(--indigo-500); color: var(--white); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s, opacity 0.15s; flex-shrink: 0; }
+    .send-btn:hover:not(:disabled) { background: var(--indigo-600); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .send-btn.stop { background: var(--error-text); }
+
+    /* Action buttons bar */
+    .actions-bar { display: flex; align-items: center; gap: 6px; padding: 6px 16px; border-top: 1px solid var(--gray-200); background: var(--gray-50); flex-shrink: 0; }
+    .btn-icon { background: none; border: none; border-radius: 6px; font-size: 0.75rem; color: var(--gray-600); padding: 4px 8px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .btn-icon:hover:not(:disabled) { background: var(--gray-200); color: var(--gray-800); }
+    .btn-icon:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .model-select { appearance: none; background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 3px 24px 3px 8px; font-size: 0.72rem; color: var(--gray-700); cursor: pointer; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23718096'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
+
+    /* Progress section */
+    .progress-section { padding: 12px 16px; border-top: 1px solid var(--gray-200); background: var(--gray-50); flex-shrink: 0; display: none; }
+    .progress-section.visible { display: block; }
+    .progress-bar { height: 6px; background: var(--gray-200); border-radius: 8px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--indigo-500), #764ba2); width: 0%; transition: width 0.3s ease; }
+    .progress-text { font-size: 0.72rem; color: var(--gray-600); margin-top: 6px; text-align: center; }
+
+    /* Settings panel */
+    .settings-panel { display: none; padding: 12px 16px; border-top: 1px solid var(--gray-200); background: var(--gray-50); flex-shrink: 0; }
+    .settings-panel.open { display: block; }
+    .settings-panel label { display: block; font-size: 0.75rem; font-weight: 500; color: var(--gray-600); margin-bottom: 4px; }
+    .settings-panel textarea { width: 100%; border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 8px 10px; font-size: 0.8rem; outline: none; min-height: 60px; background: var(--white); resize: vertical; }
+    .toggle-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.8rem; color: var(--gray-700); cursor: pointer; }
+
+    /* Memory inspector panel */
+    .memory-panel { display: none; padding: 12px 16px; border-top: 1px solid var(--gray-200); max-height: 400px; overflow-y: auto; }
+    .memory-panel.open { display: block; }
+    .memory-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.82rem; }
+    .memory-list { display: flex; flex-direction: column; gap: 6px; }
+    .memory-item { padding: 8px 10px; background: var(--gray-50); border-radius: 8px; font-size: 0.78rem; color: var(--gray-700); }
+
+    /* Drag-drop overlay */
+    .drag-overlay { display: none; position: absolute; inset: 0; z-index: 50; background: rgba(102, 126, 234, 0.08); border: 2px dashed var(--indigo-500); border-radius: 16px; align-items: center; justify-content: center; font-size: 0.9rem; color: var(--indigo-500); pointer-events: none; }
+    .drag-overlay.visible { display: flex; }
+
+    .footer-nav { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 24px; background: rgba(255,255,255,0.92); padding: 6px 18px; border-radius: 20px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); font-size: 0.72rem; }
+    .footer-nav a { color: #0366d6; text-decoration: none; }
+
+    @media (max-width: 600px) {
+      body { padding: 12px 8px 56px; }
+      .app { height: calc(100vh - 80px); }
+      .chat-area { padding: 14px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <h1>LocalMind</h1>
+      <div class="header-right">
+        <div class="help-wrap">
+          <button class="help-btn" id="helpBtn">?</button>
+          <div class="help-popover" id="helpPopover">
+            <div class="help-tabs">
+              <button class="help-tab active" data-tab="about">About</button>
+              <button class="help-tab" data-tab="try">Try</button>
+            </div>
+            <div class="help-tab-content active" data-tab="about">
+              <p>Private AI running <strong>Gemma 4</strong> via WebGPU.</p>
+              <div class="help-note">Powered by MediaPipe @Latest</div>
+            </div>
+            <div class="help-tab-content" data-tab="try">
+              <span class="try-prompt" data-prompt="What is 15% of 2450?">What is 15% of 2450?</span>
+              <span class="try-prompt" data-prompt="Remember that I'm a software engineer">Remember I'm an engineer</span>
+            </div>
+          </div>
+        </div>
+        <div class="status-badge loading" id="statusBadge">
+          <div class="spinner" id="statusSpinner"></div>
+          <span id="statusText">Detecting...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="drag-overlay" id="dragOverlay">Drop documents here</div>
+      <div class="chat-area" id="chatArea">
+        <div class="welcome" id="welcomeMsg">
+          <div class="welcome-icon">&#129504;</div>
+          <h2>Private AI Agent</h2>
+          <p>Click <strong>Load</strong> to initialize <code>gemma-4-E2B-it-web.task</code> (remotely from Hugging Face).</p>
+        </div>
+      </div>
+
+      <div class="progress-section" id="progressSection">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText">Ready</div>
+      </div>
+
+      <div class="settings-panel" id="settingsPanel">
+        <label>System prompt</label>
+        <textarea id="systemPrompt" placeholder="You are a helpful assistant."></textarea>
+        <label class="toggle-row">
+          <input type="checkbox" id="thinkingToggle" checked>
+          Show reasoning (Thinking Mode)
+        </label>
+      </div>
+
+      <div class="memory-panel" id="memoryPanel">
+        <div class="memory-header"><strong>Local Memory (RAG)</strong></div>
+        <div class="memory-list" id="memoryList"></div>
+      </div>
+
+      <div class="actions-bar">
+        <button class="btn-icon" id="settingsBtn">Settings</button>
+        <button class="btn-icon" id="memoryBtn">Memory</button>
+        <button class="btn-icon" id="docsBtn">Docs</button>
+        <button class="btn-icon" id="clearBtn">Clear</button>
+        <span style="flex:1"></span>
+        <select class="model-select" id="modelSelect">
+          <option value="auto">Gemma 4 E2B</option>
+          <option value="upload">Upload .task...</option>
+        </select>
+        <button class="btn-icon" id="modelLoadBtn" style="font-weight:600;color:var(--indigo-600)">Load</button>
+      </div>
+
+      <div class="input-bar">
+        <textarea id="chatInput" rows="1" placeholder="Load a model to start..." disabled></textarea>
+        <div class="send-group">
+          <button class="send-btn" id="sendBtn" disabled>&#9654;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" style="display:none" accept=".txt,.md,.pdf,.docx">
+  <input type="file" id="modelFileInput" style="display:none" accept=".task">
+
+  <script type="module">
+    import { LlmInference, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai';
+
+    let messages = [], generating = false, llmInference = null, modelReady = false;
+    let currentAssistantEl = null, currentAssistantText = '';
+
+    const chatArea = document.getElementById('chatArea'), chatInput = document.getElementById('chatInput');
+    const statusText = document.getElementById('statusText'), statusBadge = document.getElementById('statusBadge');
+    const progressSection = document.getElementById('progressSection'), progressText = document.getElementById('progressText');
+    const modelSelect = document.getElementById('modelSelect'), modelLoadBtn = document.getElementById('modelLoadBtn');
+    const modelFileInput = document.getElementById('modelFileInput'), systemPrompt = document.getElementById('systemPrompt');
+    const thinkingToggle = document.getElementById('thinkingToggle'), progressFill = document.getElementById('progressFill');
+
+    // ── Model Loading ──
+    async function initModel(source, isStream = false) {
+      modelReady = false;
+      statusBadge.classList.add('loading');
+      statusBadge.classList.remove('ready', 'error');
+      statusText.textContent = 'Loading...';
+      progressSection.classList.add('visible');
+      progressText.textContent = 'Initializing engine...';
+      
+      try {
+        const genaiFileset = await FilesetResolver.forGenAiTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm');
+        progressText.textContent = 'Loading model weights...';
+        
+        const options = {
+          baseOptions: isStream ? { modelAssetBuffer: source } : { modelAssetPath: source }
+        };
+
+        llmInference = await LlmInference.createFromOptions(genaiFileset, options);
+
+        modelReady = true;
+        statusBadge.classList.remove('loading');
+        statusBadge.classList.add('ready');
+        statusText.textContent = 'Gemma Ready';
+        progressSection.classList.remove('visible');
+        chatInput.disabled = false;
+        chatInput.placeholder = 'Type a message...';
+        document.getElementById('sendBtn').disabled = false;
+        chatInput.focus();
+      } catch (err) {
+        console.error(err);
+        statusBadge.classList.remove('loading');
+        statusBadge.classList.add('error');
+        statusText.textContent = 'Load failed';
+        progressText.textContent = err.message;
+      }
+    }
+
+    modelLoadBtn.onclick = async () => {
+      if (modelSelect.value === 'upload') return modelFileInput.click();
+      try {
+        statusBadge.classList.add('loading');
+        statusText.textContent = 'Fetching...';
+        const res = await fetch('https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task');
+        if (!res.ok) throw new Error('Local file not found via HTTP');
+        initModel(res.body.getReader(), true);
+      } catch (e) {
+        statusBadge.classList.remove('loading');
+        alert(e.message + '. Please use "Upload .task..."');
+        modelSelect.value = 'upload';
+      }
+    };
+
+    modelFileInput.onchange = async () => {
+      if (modelFileInput.files.length) {
+        const reader = await modelFileInput.files[0].stream().getReader();
+        initModel(reader, true);
+      }
+    };
+
+    // ── Generation ──
+    async function generate(chatMessages) {
+      let prompt = "";
+      const sys = systemPrompt.value.trim();
+      if (sys) prompt += `<|turn|>system ${sys}<turn|>\n`;
+      for (const m of chatMessages) {
+        const role = m.role === 'assistant' ? 'model' : m.role;
+        prompt += `<|turn|>${role} ${m.content}<turn|>\n`;
+      }
+      prompt += `<|turn|>model `;
+
+      let lastLen = 0;
+      return new Promise((resolve, reject) => {
+        try {
+          llmInference.generateResponse(prompt, (partialText, done) => {
+            if (partialText) {
+              const delta = partialText.slice(lastLen);
+              lastLen = partialText.length;
+              currentAssistantText += delta;
+              currentAssistantEl.bubble.innerHTML = renderMarkdown(currentAssistantText);
+              chatArea.scrollTop = chatArea.scrollHeight;
+            }
+            if (done) resolve(currentAssistantText);
+          });
+        } catch (err) { reject(err); }
+      });
+    }
+
+    async function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text || !modelReady || generating) return;
+      messages.push({ role: 'user', content: text });
+      addUserMessage(text);
+      chatInput.value = '';
+      
+      currentAssistantEl = addAssistantPlaceholder();
+      currentAssistantText = '';
+      generating = true;
+
+      try {
+        const response = await generate(messages);
+        messages.push({ role: 'assistant', content: response });
+      } catch (e) { console.error(e); }
+      generating = false;
+    }
+
+    // ── UI Helpers ──
+    function addUserMessage(t) { 
+      document.getElementById('welcomeMsg').style.display = 'none';
+      const el = document.createElement('div'); el.className = 'msg user';
+      el.innerHTML = `<div class="msg-bubble">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`;
+      chatArea.appendChild(el); chatArea.scrollTop = chatArea.scrollHeight;
+    }
+    function addAssistantPlaceholder() {
+      const el = document.createElement('div'); el.className = 'msg assistant';
+      el.innerHTML = `<div class="msg-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>`;
+      chatArea.appendChild(el); chatArea.scrollTop = chatArea.scrollHeight;
+      return { bubble: el.querySelector('.msg-bubble') };
+    }
+    function renderMarkdown(t) {
+      const showThinking = thinkingToggle.checked;
+      if (!showThinking) t = t.replace(/<\|think\|>[\s\S]*?(<turn\|>|$)/g, '');
+      t = t.replace(/<\|think\|>([\s\S]*?)(<turn\|>|$)/g, '<div class="thinking-block">$1</div>');
+      return t.replace(/<\|.*?\|>/g, '').replace(/<turn\|>/g, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    }
+
+    // ── Handlers ──
+    document.getElementById('sendBtn').onclick = sendMessage;
+    chatInput.onkeydown = e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } };
+    document.getElementById('helpBtn').onclick = e => { e.stopPropagation(); document.getElementById('helpPopover').classList.toggle('open'); };
+    document.getElementById('settingsBtn').onclick = () => document.getElementById('settingsPanel').classList.toggle('open');
+    document.getElementById('clearBtn').onclick = () => { messages=[]; chatArea.innerHTML=''; chatArea.appendChild(document.getElementById('welcomeMsg')); document.getElementById('welcomeMsg').style.display=''; };
+    
+    // Auto-detect silently
+    (async () => {
+      try {
+        statusBadge.classList.remove('loading');
+        const res = await fetch('https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task', { method: 'HEAD' });
+        if (res.ok) statusText.textContent = 'Ready to Load';
+        else statusText.textContent = 'Upload required';
+      } catch {
+        statusBadge.classList.remove('loading');
+        statusText.textContent = 'Upload required';
+      }
+    })();
+  </script>
+</body>
+</html>

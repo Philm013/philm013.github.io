@@ -76,3 +76,4 @@ DEV.html
 .stylelintrc.json
 eslint.config.mjs
 package-lock.json
+*.task

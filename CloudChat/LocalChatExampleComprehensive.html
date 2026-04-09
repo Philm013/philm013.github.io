@@ -331,33 +331,6 @@
       border-bottom-left-radius: 4px;
     }
 
-    /* User message attachment thumbnails */
-    .msg-attachments {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 6px;
-    }
-
-    .msg-attachments img {
-      width: 80px;
-      height: 80px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 2px solid rgba(255,255,255,0.3);
-    }
-
-    .msg-attachments .audio-tag {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(255,255,255,0.15);
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 0.75rem;
-      color: rgba(255,255,255,0.9);
-    }
-
     /* Markdown in assistant messages */
     .msg.assistant .msg-bubble code {
       background: rgba(0,0,0,0.06);
@@ -531,148 +504,6 @@
     @keyframes blink {
       0%, 60%, 100% { opacity: 0.3; }
       30% { opacity: 1; }
-    }
-
-    /* Attachment bar */
-    .attachment-bar {
-      display: none;
-      padding: 8px 16px 4px;
-      border-top: 1px solid var(--gray-200);
-      background: var(--gray-50);
-      flex-shrink: 0;
-      overflow-x: auto;
-      gap: 8px;
-    }
-
-    .attachment-bar.visible {
-      display: flex;
-    }
-
-    .attachment-bar::-webkit-scrollbar { height: 4px; }
-    .attachment-bar::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 2px; }
-
-    .attachment-chip {
-      position: relative;
-      flex-shrink: 0;
-      width: 56px;
-      height: 56px;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1.5px solid var(--gray-200);
-      background: var(--gray-100);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .attachment-chip.video-chip {
-      width: 100px;
-      height: 64px;
-    }
-
-    .attachment-chip.audio-chip {
-      width: 180px;
-      height: 48px;
-      padding: 4px 6px;
-      gap: 4px;
-    }
-
-    .attachment-chip img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .attachment-chip video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      pointer-events: none;
-    }
-
-    .attachment-chip .video-badge {
-      position: absolute;
-      bottom: 3px;
-      left: 3px;
-      background: rgba(0,0,0,0.6);
-      color: #fff;
-      font-size: 0.5rem;
-      font-weight: 600;
-      padding: 1px 4px;
-      border-radius: 3px;
-      line-height: 1.4;
-    }
-
-    .attachment-chip audio {
-      width: 100%;
-      height: 28px;
-    }
-
-    .attachment-chip .audio-label {
-      font-size: 0.55rem;
-      color: var(--gray-600);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      width: 100%;
-      text-align: center;
-      line-height: 1.2;
-    }
-
-    .attachment-chip .audio-icon {
-      font-size: 1.2rem;
-      color: var(--gray-600);
-    }
-
-    .attachment-chip .audio-name {
-      position: absolute;
-      bottom: 2px;
-      left: 2px;
-      right: 2px;
-      font-size: 0.55rem;
-      color: var(--gray-600);
-      text-align: center;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      background: rgba(255,255,255,0.85);
-      border-radius: 3px;
-      padding: 0 2px;
-    }
-
-    .attachment-chip .remove-btn {
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: rgba(0,0,0,0.55);
-      color: #fff;
-      border: none;
-      font-size: 0.65rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-      opacity: 0;
-      transition: opacity 0.15s;
-    }
-
-    .attachment-chip:hover .remove-btn { opacity: 1; }
-
-    .attachment-chip .experimental-badge {
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      background: #f6ad55;
-      color: #fff;
-      font-size: 0.5rem;
-      font-weight: 600;
-      padding: 0 3px;
-      border-radius: 3px;
-      line-height: 1.4;
     }
 
     /* Input bar */
@@ -1664,9 +1495,6 @@
       .chat-area { padding: 14px 12px; }
       .help-popover { width: calc(100vw - 32px); right: -8px; max-width: 340px; }
       .afford-btn { width: 32px; height: 32px; font-size: 0.9rem; }
-      .attachment-chip { width: 48px; height: 48px; }
-      .attachment-chip.video-chip { width: 80px; height: 52px; }
-      .attachment-chip.audio-chip { width: 150px; height: 44px; }
     }
   </style>
 </head>
@@ -1693,11 +1521,9 @@
               <div class="help-note">Powered by Transformers.js + Google Gemma (Apache 2.0).</div>
             </div>
             <div class="help-tab-content" data-tab="models">
-              <h4>Available Models</h4>
+              <h4>Available Model</h4>
               <ul>
-                <li><strong>Gemma 3 1B</strong> (~760 MB) &mdash; fast, text-only chat</li>
-                <li><strong>Gemma 4 E2B</strong> (~1.5 GB) &mdash; multimodal + agent</li>
-                <li><strong>Gemma 4 E4B</strong> (~4.9 GB) &mdash; multimodal + agent, best quality</li>
+                <li><strong>Gemma 4 E2B</strong> (~1.5 GB) &mdash; agent-capable text model</li>
               </ul>
               <h4>Gemma 4 Agent Tools</h4>
               <ul>
@@ -1712,7 +1538,6 @@
                 <li><strong>delete_memory</strong> &mdash; forget specific memories</li>
               </ul>
               <p>Translation works directly &mdash; Gemma 4 speaks 140+ languages natively, no tool needed.</p>
-              <p>Gemma 3 1B works as a simple chatbot &mdash; no agent tools.</p>
             </div>
             <div class="help-tab-content" data-tab="features">
               <h4>Document Upload</h4>
@@ -1722,11 +1547,6 @@
                 <li><strong>DOCX</strong> &mdash; extracted via mammoth.js, auto-summarized</li>
               </ul>
               <p>Documents are chunked, embedded, and stored as searchable knowledge. A summary is generated on upload.</p>
-              <h4>Multimodal (Gemma 4)</h4>
-              <ul>
-                <li><strong>&#128206; Attach</strong> &mdash; images, audio, MP4 video, or documents</li>
-                <li><strong>&#128247; Camera</strong> / <strong>&#127908; Mic</strong> / <strong>Paste</strong> / <strong>Drag &amp; drop</strong></li>
-              </ul>
               <h4>Document Upload</h4>
               <ul>
                 <li><strong>Text</strong> &mdash; .txt, .md, .json, .csv</li>
@@ -1785,15 +1605,12 @@
               <span class="try-prompt" data-prompt="Translate 'Good morning, how are you?' to Japanese, French, and Hindi">Translate "Good morning" to Japanese, French, Hindi</span>
               <span class="try-prompt" data-prompt="How do you say 'Where is the nearest train station?' in Spanish and German?">Train station directions in Spanish &amp; German</span>
               <h4>Writing &amp; Analysis</h4>
-              <span class="try-prompt" data-prompt="Write a professional email declining a meeting invitation politely">Write a polite meeting decline email</span>
+              <span class="try-prompt" data-prompt="Write a professional email declining a meeting invitation politely">Write a professional email declining a meeting invitation politely</span>
               <span class="try-prompt" data-prompt="Summarize the pros and cons of microservices vs monolithic architecture">Microservices vs monolith: pros and cons</span>
               <span class="try-prompt" data-prompt="Explain the concept of WebGPU to a non-technical person in 3 sentences">Explain WebGPU in 3 simple sentences</span>
               <h4>Documents (attach a PDF, DOCX, or text file)</h4>
               <span class="try-prompt" data-prompt="Summarize the key points from the document I just uploaded">Summarize the uploaded document</span>
               <span class="try-prompt" data-prompt="What are the main conclusions or recommendations in my document?">Main conclusions from my document</span>
-              <h4>Multimodal (attach an image first)</h4>
-              <span class="try-prompt" data-prompt="Describe this image in detail">Describe this image in detail</span>
-              <span class="try-prompt" data-prompt="What text can you see in this image? Transcribe it.">Transcribe text from this image</span>
               <h4>Web Research (requires API key)</h4>
               <span class="try-prompt" data-prompt="What are the top tech news stories today?">Top tech news today</span>
               <span class="try-prompt" data-prompt="Search for the latest WebGPU browser support status and summarize">Latest WebGPU browser support status</span>
@@ -1801,7 +1618,7 @@
               <h4>Coding</h4>
               <span class="try-prompt" data-prompt="Write a Python function that finds all prime numbers up to n using the Sieve of Eratosthenes">Sieve of Eratosthenes in Python</span>
               <span class="try-prompt" data-prompt="Explain the difference between async/await and Promises in JavaScript with examples">async/await vs Promises explained</span>
-              <div class="help-note">Click any prompt to paste it. Web search needs a provider in Settings. Multimodal needs a Gemma 4 model + an attached image.</div>
+              <div class="help-note">Click any prompt to paste it. Web search needs a provider in Settings.</div>
             </div>
           </div>
         </div>
@@ -1814,16 +1631,13 @@
 
     <!-- Main card -->
     <div class="card" style="position:relative">
-      <!-- Drag-drop overlay -->
-      <div class="drag-overlay" id="dragOverlay">Drop image, audio, or video here</div>
-
       <!-- Chat messages -->
       <div class="chat-area" id="chatArea">
         <div class="welcome" id="welcomeMsg">
           <div class="welcome-icon">&#129504;</div>
           <h2>Private AI, right in your browser</h2>
-          <p>Gemma runs entirely on your device. Nothing is sent to any server.</p>
-          <p style="font-size:0.78rem;color:var(--gray-400);margin-top:4px">Switch to a Gemma 4 model for tool calling, memory, and multimodal input.<br>Web search requires an API key (Tavily, Brave) or a self-hosted SearXNG instance.</p>
+          <p>Gemma runs entirely on your device via MediaPipe. Nothing is sent to any server.</p>
+          <p style="font-size:0.78rem;color:var(--gray-400);margin-top:4px">MediaPipe GenAI handles high-performance on-device inference.<br>Web search requires an API key (Tavily, Brave) or a self-hosted SearXNG instance.</p>
         </div>
       </div>
 
@@ -1870,9 +1684,6 @@
         </div>
       </div>
 
-      <!-- Attachment bar -->
-      <div class="attachment-bar" id="attachmentBar"></div>
-
       <!-- Memory inspector panel -->
       <div class="memory-panel" id="memoryPanel">
         <div class="memory-header">
@@ -1917,25 +1728,19 @@
         <button class="btn-icon btn-danger-text" id="clearBtn" disabled title="Delete current chat">Clear</button>
         <button class="btn-icon" id="settingsBtn" title="System prompt settings">Settings</button>
         <button class="btn-icon" id="memoryBtn" title="View stored memories">Memory</button>
+        <button class="btn-icon" id="docsBtn" title="Ingest documents (.pdf, .docx, .txt, .md)">Docs</button>
         <button class="btn-icon" id="folderBtn" title="Open folder — ingest all .md/.txt/.pdf files into memory">Folder</button>
         <button class="btn-icon" id="historyBtn" title="Past conversations">History</button>
         <button class="btn-icon" id="shareBtn" title="Share conversation (encrypted link)">Share</button>
         <button class="btn-icon" id="batchBtn" title="Batch prompts — run a list of questions sequentially">Batch</button>
         <span style="flex:1"></span>
         <select class="model-select" id="modelSelect" title="Choose model">
-          <option value="gemma3-1b" selected>Gemma 3 1B &middot; Fast (~760 MB)</option>
-          <option value="gemma4-e2b">Gemma 4 E2B &middot; Multimodal (~1.5 GB)</option>
-          <option value="gemma4-e4b">Gemma 4 E4B &middot; Multimodal (~4.9 GB)</option>
+          <option value="gemma4-e2b" selected>Gemma 4 E2B &middot; MediaPipe (~1.5 GB)</option>
         </select>
       </div>
 
       <!-- Input -->
       <div class="input-bar">
-        <div class="input-affordances" id="inputAffordances">
-          <button class="afford-btn" id="attachBtn" title="Attach file" aria-label="Attach file">&#128206;</button>
-          <button class="afford-btn" id="cameraBtn" title="Camera" aria-label="Take photo">&#128247;</button>
-          <button class="afford-btn" id="micBtn" title="Record audio" aria-label="Record audio">&#127908;</button>
-        </div>
         <textarea id="chatInput" rows="1" placeholder="Type a message..." disabled></textarea>
         <div class="send-group">
           <button class="send-btn" id="sendBtn" disabled aria-label="Send" title="Send (offline)">&#9654;</button>
@@ -1984,17 +1789,8 @@
     </div>
   </div>
 
-  <!-- Camera overlay -->
-  <div class="camera-overlay" id="cameraOverlay">
-    <video id="cameraPreview" autoplay playsinline></video>
-    <div class="cam-controls">
-      <button class="cam-capture-btn" id="camCaptureBtn">Capture</button>
-      <button class="cam-cancel-btn" id="camCancelBtn">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Hidden file input -->
-  <input type="file" id="fileInput" style="display:none" multiple accept="image/*,audio/*,video/mp4,.txt,.md,.json,.csv,.pdf,.docx">
+  <!-- Hidden file input for document ingestion -->
+  <input type="file" id="fileInput" style="display:none" multiple accept=".txt,.md,.json,.csv,.pdf,.docx">
 
   <!-- Footer -->
   <div class="footer-nav">
@@ -2003,6 +1799,8 @@
   </div>
 
   <script type="module">
+    import { LlmInference, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai';
+
     // ── WebGPU check ────────────────────────────────────────────
     const hasWebGPU = !!navigator.gpu;
     if (!hasWebGPU) {
@@ -2021,37 +1819,14 @@
 
     // ── Model registry ──────────────────────────────────────────
     const MODELS = {
-      'gemma3-1b': {
-        id: 'onnx-community/gemma-3-1b-it-ONNX-GQA',
-        label: 'Gemma 3 1B',
-        dtype: 'q4f16',
-        size: '~760 MB',
-        type: 'causal',       // uses AutoModelForCausalLM
-        multimodal: false,
-        agentCapable: false,
-        contextSize: 4096,
-        genConfig: { temperature: 0.7, top_k: 50, top_p: 0.95, max_new_tokens: 2048 },
-      },
       'gemma4-e2b': {
-        id: 'onnx-community/gemma-4-E2B-it-ONNX',
+        id: 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task',
         label: 'Gemma 4 E2B',
-        dtype: 'q4f16',
         size: '~1.5 GB',
-        type: 'multimodal',   // uses Gemma4ForConditionalGeneration
-        multimodal: true,
+        type: 'mediapipe',
+        multimodal: true,    // MediaPipe Web LLM Inference is currently text-to-text
         agentCapable: true,
         contextSize: 8192,
-        genConfig: { temperature: 0.7, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
-      },
-      'gemma4-e4b': {
-        id: 'onnx-community/gemma-4-E4B-it-ONNX',
-        label: 'Gemma 4 E4B',
-        dtype: 'q4f16',
-        size: '~4.9 GB',
-        type: 'multimodal',   // uses Gemma4ForConditionalGeneration
-        multimodal: true,
-        agentCapable: true,
-        contextSize: 12288,
         genConfig: { temperature: 0.7, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
       },
     };
@@ -2063,11 +1838,8 @@
     let currentAssistantEl = null;
     let currentAssistantText = '';
     let activeModelKey = null;
-    let worker = null;
+    let llmInference = null;
     let modelReady = false;
-    let attachments = [];      // [{type:'image'|'audio', blob:Blob, thumb:string, name:string, experimental?:bool}]
-    let mediaRecorder = null;
-    let cameraStream = null;
     let generateResolve = null; // Promise resolve for agentic loop
     let dirHandle = null;       // FileSystemDirectoryHandle for open folder
 
@@ -2934,18 +2706,10 @@ self.addEventListener('message', async (e) => {
     const helpBtn = document.getElementById('helpBtn');
     const helpPopover = document.getElementById('helpPopover');
     const modelSelect = document.getElementById('modelSelect');
-    const attachmentBar = document.getElementById('attachmentBar');
-    const inputAffordances = document.getElementById('inputAffordances');
-    const attachBtn = document.getElementById('attachBtn');
-    const cameraBtn = document.getElementById('cameraBtn');
-    const micBtn = document.getElementById('micBtn');
     const fileInput = document.getElementById('fileInput');
+    const docsBtn = document.getElementById('docsBtn');
     const thinkingToggle = document.getElementById('thinkingToggle');
     const thinkingRow = document.getElementById('thinkingRow');
-    const cameraOverlay = document.getElementById('cameraOverlay');
-    const cameraPreview = document.getElementById('cameraPreview');
-    const camCaptureBtn = document.getElementById('camCaptureBtn');
-    const camCancelBtn = document.getElementById('camCancelBtn');
     const dragOverlay = document.getElementById('dragOverlay');
 
     // ── Help popover ────────────────────────────────────────────
@@ -3524,7 +3288,6 @@ self.addEventListener('message', async (e) => {
       conversationSummary = '';
       activeConversationId = newConversationId();
       saveChat();
-      clearAttachments();
       chatArea.innerHTML = '';
       chatArea.appendChild(welcomeMsg);
       welcomeMsg.style.display = '';
@@ -3589,121 +3352,23 @@ self.addEventListener('message', async (e) => {
     // ── Model UI visibility ───────────────────────────────────
     function updateModelUI() {
       const m = MODELS[activeModelKey];
-      const isMultimodal = m && m.multimodal;
       const isAgent = m && m.agentCapable;
-      inputAffordances.classList.toggle('visible', isMultimodal && modelReady);
-      thinkingRow.classList.toggle('hidden', !isMultimodal);
       searchSettingsSection.style.display = isAgent ? '' : 'none';
       updateSearchUI();
     }
 
-    // ── Attachment management ───────────────────────────────────
-    function addAttachment(att) {
-      attachments.push(att);
-      renderAttachmentBar();
-    }
-
-    function removeAttachment(index) {
-      const att = attachments[index];
-      if (att.thumb) URL.revokeObjectURL(att.thumb);
-      attachments.splice(index, 1);
-      renderAttachmentBar();
-    }
-
-    function clearAttachments() {
-      for (const att of attachments) {
-        if (att.thumb) URL.revokeObjectURL(att.thumb);
-      }
-      attachments = [];
-      renderAttachmentBar();
-    }
-
-    function renderAttachmentBar() {
-      attachmentBar.innerHTML = '';
-      if (attachments.length === 0) {
-        attachmentBar.classList.remove('visible');
-        return;
-      }
-      attachmentBar.classList.add('visible');
-
-      attachments.forEach((att, i) => {
-        const chip = document.createElement('div');
-        chip.className = 'attachment-chip';
-
-        if (att.type === 'image') {
-          const img = document.createElement('img');
-          img.src = att.thumb;
-          img.alt = att.name;
-          chip.appendChild(img);
-        } else if (att.type === 'video') {
-          chip.classList.add('video-chip');
-          const vid = document.createElement('video');
-          vid.src = att.thumb;
-          vid.muted = true;
-          vid.preload = 'metadata';
-          // Show first frame as poster
-          vid.addEventListener('loadeddata', () => { vid.currentTime = 0.1; });
-          chip.appendChild(vid);
-          const badge = document.createElement('span');
-          badge.className = 'video-badge';
-          badge.textContent = '\u25B6 Video';
-          chip.appendChild(badge);
-        } else if (att.type === 'audio') {
-          chip.classList.add('audio-chip');
-          chip.style.flexDirection = 'column';
-          const label = document.createElement('span');
-          label.className = 'audio-label';
-          label.textContent = att.name;
-          chip.appendChild(label);
-          const audio = document.createElement('audio');
-          audio.src = att.thumb || URL.createObjectURL(att.blob);
-          audio.controls = true;
-          audio.preload = 'metadata';
-          chip.appendChild(audio);
-        }
-
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-btn';
-        removeBtn.textContent = '\u00D7';
-        removeBtn.addEventListener('click', () => removeAttachment(i));
-        chip.appendChild(removeBtn);
-
-        attachmentBar.appendChild(chip);
+    // ── File input handler ──────────────────────────────────────
+    if (docsBtn && fileInput) {
+      docsBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => {
+        handleFiles(fileInput.files);
+        fileInput.value = '';
       });
     }
 
-    // ── File input handler ──────────────────────────────────────
-    attachBtn.addEventListener('click', () => fileInput.click());
-
-    fileInput.addEventListener('change', () => {
-      handleFiles(fileInput.files);
-      fileInput.value = '';
-    });
-
     function handleFiles(files) {
       for (const file of files) {
-        if (file.type.startsWith('image/')) {
-          addAttachment({
-            type: 'image',
-            blob: file,
-            thumb: URL.createObjectURL(file),
-            name: file.name,
-          });
-        } else if (file.type.startsWith('audio/')) {
-          addAttachment({
-            type: 'audio',
-            blob: file,
-            thumb: URL.createObjectURL(file),
-            name: file.name,
-          });
-        } else if (file.type === 'video/mp4' || file.name.endsWith('.mp4')) {
-          addAttachment({
-            type: 'video',
-            blob: file,
-            thumb: URL.createObjectURL(file),
-            name: file.name,
-          });
-        } else if (/\.(txt|md|json|csv)$/i.test(file.name) || file.type.startsWith('text/')) {
+        if (/\.(txt|md|json|csv)$/i.test(file.name) || file.type.startsWith('text/')) {
           // Text document → embed into RAG memory
           ingestDocument(file.name, file.text());
         } else if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') {
@@ -3914,38 +3579,12 @@ self.addEventListener('message', async (e) => {
       setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
     }
 
-    // ── Clipboard paste (images) ────────────────────────────────
-    chatInput.addEventListener('paste', (e) => {
-      const m = MODELS[activeModelKey];
-      if (!m || !m.multimodal) return;
-
-      const items = e.clipboardData?.items;
-      if (!items) return;
-
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) {
-            addAttachment({
-              type: 'image',
-              blob: file,
-              thumb: URL.createObjectURL(file),
-              name: 'pasted-image.png',
-            });
-          }
-        }
-      }
-    });
-
     // ── Drag and drop ───────────────────────────────────────────
     let dragCounter = 0;
     const card = document.querySelector('.card');
 
     card.addEventListener('dragenter', (e) => {
       e.preventDefault();
-      const m = MODELS[activeModelKey];
-      if (!m || !m.multimodal) return;
       dragCounter++;
       dragOverlay.classList.add('visible');
     });
@@ -3965,99 +3604,10 @@ self.addEventListener('message', async (e) => {
       e.preventDefault();
       dragCounter = 0;
       dragOverlay.classList.remove('visible');
-      const m = MODELS[activeModelKey];
-      if (!m || !m.multimodal) return;
       if (e.dataTransfer?.files?.length) {
         handleFiles(e.dataTransfer.files);
       }
     });
-
-    // ── Camera capture ──────────────────────────────────────────
-    cameraBtn.addEventListener('click', async () => {
-      try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        cameraPreview.srcObject = cameraStream;
-        cameraOverlay.classList.add('open');
-      } catch (err) {
-        console.error('Camera error:', err);
-        alert('Could not access camera: ' + err.message);
-      }
-    });
-
-    camCaptureBtn.addEventListener('click', () => {
-      const video = cameraPreview;
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          addAttachment({
-            type: 'image',
-            blob,
-            thumb: URL.createObjectURL(blob),
-            name: 'camera-photo.jpg',
-          });
-        }
-        closeCamera();
-      }, 'image/jpeg', 0.9);
-    });
-
-    camCancelBtn.addEventListener('click', closeCamera);
-
-    function closeCamera() {
-      cameraOverlay.classList.remove('open');
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(t => t.stop());
-        cameraStream = null;
-      }
-      cameraPreview.srcObject = null;
-    }
-
-    // ── Microphone recording ────────────────────────────────────
-    micBtn.addEventListener('click', () => {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        return;
-      }
-      startMicRecording();
-    });
-
-    async function startMicRecording() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const chunks = [];
-        mediaRecorder = new MediaRecorder(stream);
-
-        mediaRecorder.addEventListener('dataavailable', (e) => {
-          if (e.data.size > 0) chunks.push(e.data);
-        });
-
-        mediaRecorder.addEventListener('stop', () => {
-          stream.getTracks().forEach(t => t.stop());
-          micBtn.classList.remove('recording');
-          micBtn.textContent = '\u{1F3A4}';
-
-          if (chunks.length > 0) {
-            const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-            addAttachment({
-              type: 'audio',
-              blob,
-              thumb: URL.createObjectURL(blob),
-              name: 'recording.webm',
-            });
-          }
-          mediaRecorder = null;
-        });
-
-        mediaRecorder.start();
-        micBtn.classList.add('recording');
-        micBtn.textContent = '\u{23F9}';
-      } catch (err) {
-        console.error('Mic error:', err);
-        alert('Could not access microphone: ' + err.message);
-      }
-    }
 
     // ── Markdown renderer (lightweight) ─────────────────────────
     function renderMarkdown(text) {
@@ -4170,38 +3720,12 @@ self.addEventListener('message', async (e) => {
       chatArea.scrollTop = chatArea.scrollHeight;
     }
 
-    function addUserMessage(text, hasAttachments) {
+    function addUserMessage(text) {
       welcomeMsg.style.display = 'none';
       const el = document.createElement('div');
       el.className = 'msg user';
       const bubble = document.createElement('div');
       bubble.className = 'msg-bubble';
-
-      // Show attachment thumbnails in the message
-      if (hasAttachments && attachments.length > 0) {
-        const attDiv = document.createElement('div');
-        attDiv.className = 'msg-attachments';
-        for (const att of attachments) {
-          if (att.type === 'image' && att.thumb) {
-            const img = document.createElement('img');
-            img.src = att.thumb;
-            img.alt = att.name;
-            attDiv.appendChild(img);
-          } else if (att.type === 'video' && att.thumb) {
-            const tag = document.createElement('span');
-            tag.className = 'audio-tag';
-            tag.textContent = '\u{1F3AC} ' + att.name;
-            attDiv.appendChild(tag);
-          } else if (att.type === 'audio') {
-            const tag = document.createElement('span');
-            tag.className = 'audio-tag';
-            tag.textContent = '\u{1F3B5} ' + att.name;
-            attDiv.appendChild(tag);
-          }
-        }
-        bubble.appendChild(attDiv);
-      }
-
       const textNode = document.createElement('span');
       textNode.textContent = text;
       bubble.appendChild(textNode);
@@ -4229,383 +3753,77 @@ self.addEventListener('message', async (e) => {
 
     function saveChat() {
       try {
-        // Strip blobs from messages for sessionStorage (only persist text)
-        const serializable = messages.map(m => {
-          if (m.role === 'assistant') return m;
-          if (typeof m.content === 'string') return m;
-          // Multimodal user message: extract text only
-          const textParts = m.content.filter(c => c.type === 'text');
-          const text = textParts.map(c => c.text).join(' ');
-          return { role: m.role, content: text };
-        });
-        sessionStorage.setItem('localmind_chat', JSON.stringify(serializable));
+        // Persist messages to sessionStorage
+        sessionStorage.setItem('localmind_chat', JSON.stringify(messages));
       } catch {}
     }
 
-    // ── Worker factory ──────────────────────────────────────────
-    // Pattern from huggingface/transformers.js-examples (Llama 3.2 WebGPU).
-    // Uses AutoModelForCausalLM + AutoTokenizer (not pipeline) for causal models.
-    // Uses Gemma4ForConditionalGeneration + AutoProcessor for multimodal models.
-    // GQA variant required for Gemma 3 1B (issue #1469: regular variant crashes).
-    function createWorker() {
-      const code = `
-import {
-  env,
-  AutoTokenizer,
-  AutoModelForCausalLM,
-  AutoProcessor,
-  Gemma4ForConditionalGeneration,
-  load_image,
-  TextStreamer,
-  InterruptableStoppingCriteria,
-} from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4/+esm';
-
-env.allowLocalModels  = true;
-env.localModelPath    = '/models/';
-env.allowRemoteModels = true;
-
-let processor = null;
-let tokenizer = null;
-let model = null;
-let stopping_criteria = new InterruptableStoppingCriteria();
-let loadedType = null;
-
-function progressCallback(p) {
-  self.postMessage({ type: 'progress', data: p });
-}
-
-async function loadCausal(modelId, dtype) {
-  processor = null; tokenizer = null; model = null;
-
-  tokenizer = await AutoTokenizer.from_pretrained(modelId, {
-    progress_callback: progressCallback,
-  });
-
-  model = await AutoModelForCausalLM.from_pretrained(modelId, {
-    dtype: dtype,
-    device: 'webgpu',
-    progress_callback: progressCallback,
-  });
-
-  // Warmup: compile WebGPU shaders with a single token
-  self.postMessage({ type: 'warmup' });
-  const warmupInputs = tokenizer('a');
-  await model.generate({ ...warmupInputs, max_new_tokens: 1 });
-
-  loadedType = 'causal';
-  self.postMessage({ type: 'ready' });
-}
-
-async function loadMultimodal(modelId, dtype) {
-  processor = null; tokenizer = null; model = null;
-
-  processor = await AutoProcessor.from_pretrained(modelId, {
-    progress_callback: progressCallback,
-  });
-  tokenizer = processor.tokenizer;
-
-  model = await Gemma4ForConditionalGeneration.from_pretrained(modelId, {
-    dtype: dtype,
-    device: 'webgpu',
-    progress_callback: progressCallback,
-  });
-
-  // Warmup
-  self.postMessage({ type: 'warmup' });
-  const warmupInputs = tokenizer('a');
-  await model.generate({ ...warmupInputs, max_new_tokens: 1 });
-
-  loadedType = 'multimodal';
-  self.postMessage({ type: 'ready' });
-}
-
-async function generateCausal(chatMessages, id, genConfig) {
-  stopping_criteria.reset();
-
-  try {
-    const inputs = tokenizer.apply_chat_template(chatMessages, {
-      add_generation_prompt: true,
-      return_dict: true,
-    });
-
-    const streamer = new TextStreamer(tokenizer, {
-      skip_prompt: true,
-      skip_special_tokens: true,
-      callback_function: (text) => {
-        self.postMessage({ type: 'token', token: text, id });
-      },
-    });
-
-    const gc = genConfig || {};
-    await model.generate({
-      ...inputs,
-      max_new_tokens: gc.max_new_tokens || 2048,
-      do_sample: true,
-      temperature: gc.temperature ?? 0.7,
-      top_k: gc.top_k ?? 50,
-      top_p: gc.top_p ?? 0.95,
-      repetition_penalty: gc.repetition_penalty ?? 1.0,
-      streamer,
-      stopping_criteria,
-    });
-
-    self.postMessage({ type: 'complete', id });
-  } catch (err) {
-    self.postMessage({ type: 'error', message: err.message || String(err) });
-    self.postMessage({ type: 'complete', id });
-  }
-}
-
-async function generateMultimodal(chatMessages, id, attachmentData, enableThinking, genConfig) {
-  stopping_criteria.reset();
-
-  try {
-    // Build multimodal content blocks for the last user message
-    // chatMessages is already in the right format with content arrays
-
-    // Apply chat template via processor (returns a prompt string, not tokens)
-    const prompt = processor.apply_chat_template(chatMessages, {
-      add_generation_prompt: true,
-      enable_thinking: enableThinking || false,
-    });
-
-    // Reconstruct images and audio from transferred data
-    const images = [];
-    const audios = [];
-
-    if (attachmentData) {
-      for (const att of attachmentData) {
-        if (att.type === 'image') {
-          // Create blob URL and use load_image() which properly constructs
-          // a RawImage with .rgb() and other methods the processor needs
-          const blob = new Blob([att.data], { type: att.mimeType || 'image/jpeg' });
-          const blobUrl = URL.createObjectURL(blob);
-          const img = await load_image(blobUrl);
-          URL.revokeObjectURL(blobUrl);
-          images.push(img);
-        } else if (att.type === 'audio') {
-          // Reconstruct Float32Array from transferred data
-          // (postMessage may transfer as ArrayBuffer, losing typed array identity)
-          const pcm = att.pcmData instanceof Float32Array
-            ? att.pcmData
-            : new Float32Array(att.pcmData);
-          audios.push(pcm);
-        }
-      }
-    }
-
-    // Process multimodal inputs: processor(prompt, image|null, audio|null, options)
-    // Must pass null for missing modalities — positional args, not named.
-    // The processor dispatches arg[1] to vision and arg[2] to audio extractor.
-    const imageArg = images.length > 0 ? (images.length === 1 ? images[0] : images) : null;
-    const audioArg = audios.length > 0 ? (audios.length === 1 ? audios[0] : audios) : null;
-    const inputs = await processor(prompt, imageArg, audioArg, { add_special_tokens: false });
-
-    const streamer = new TextStreamer(processor.tokenizer, {
-      skip_prompt: true,
-      skip_special_tokens: true,
-      callback_function: (text) => {
-        self.postMessage({ type: 'token', token: text, id });
-      },
-    });
-
-    const gc = genConfig || {};
-    await model.generate({
-      ...inputs,
-      max_new_tokens: gc.max_new_tokens || 2048,
-      do_sample: true,
-      temperature: gc.temperature ?? 1.0,
-      top_k: gc.top_k ?? 64,
-      top_p: gc.top_p ?? 0.95,
-      repetition_penalty: gc.repetition_penalty ?? 1.0,
-      streamer,
-      stopping_criteria,
-    });
-
-    self.postMessage({ type: 'complete', id });
-  } catch (err) {
-    self.postMessage({ type: 'error', message: err.message || String(err) });
-    self.postMessage({ type: 'complete', id });
-  }
-}
-
-self.addEventListener('message', async (e) => {
-  const { type, messages, id, modelId, dtype, modelType, attachments: attData, enableThinking, generationConfig } = e.data;
-
-  if (type === 'load') {
-    try {
-      if (modelType === 'multimodal') {
-        await loadMultimodal(modelId, dtype);
-      } else {
-        await loadCausal(modelId, dtype);
-      }
-    } catch (err) {
-      self.postMessage({ type: 'error', message: 'Failed to load model: ' + (err.message || String(err)) });
-    }
-  } else if (type === 'generate') {
-    if (loadedType === 'multimodal') {
-      await generateMultimodal(messages, id, attData, enableThinking, generationConfig);
-    } else {
-      await generateCausal(messages, id, generationConfig);
-    }
-  } else if (type === 'stop') {
-    stopping_criteria.interrupt();
-  }
-});
-`;
-      const blob = new Blob([code], { type: 'application/javascript' });
-      const url = URL.createObjectURL(blob);
-      return new Worker(url, { type: 'module' });
-    }
-
-    // ── Worker message handling ─────────────────────────────────
-    function attachWorkerHandlers(w) {
-      // Catch silent worker failures (e.g. bad import, missing export)
-      w.addEventListener('error', (e) => {
-        console.error('Worker error event:', e.message, e);
-        statusBadge.className = 'status-badge error';
-        statusSpinner.style.display = 'none';
-        statusText.textContent = 'Worker error';
-        progressSection.classList.remove('visible');
-        progressText.textContent = e.message || 'Worker failed to start';
-        modelSelect.disabled = false;
-      });
-
-      w.addEventListener('message', (e) => {
-        const data = e.data;
-
-        if (data.type === 'progress') {
-          const p = data.data;
-          progressSection.classList.add('visible');
-          if (p.status === 'downloading' || p.status === 'loading') {
-            const pct = p.total ? Math.round((p.loaded / p.total) * 100) : 0;
-            progressFill.style.width = pct + '%';
-            const fileName = p.file ? p.file.split('/').pop() : 'files';
-            if (p.status === 'downloading' && p.loaded && p.total) {
-              const loadedMB = (p.loaded / 1024 / 1024).toFixed(0);
-              const totalMB = (p.total / 1024 / 1024).toFixed(0);
-              progressText.textContent = `Downloading ${fileName} — ${loadedMB} / ${totalMB} MB (${pct}%)`;
-              statusText.textContent = 'Downloading...';
-            } else {
-              progressText.textContent = `Loading ${fileName}...`;
-              statusText.textContent = 'Loading into memory...';
-            }
-          } else if (p.status === 'initiate') {
-            const fileName = p.file ? p.file.split('/').pop() : '';
-            progressText.textContent = `Fetching ${fileName}...`;
-          }
-        }
-
-        else if (data.type === 'warmup') {
-          progressText.textContent = 'Compiling shaders and warming up...';
-          statusText.textContent = 'Warming up...';
-        }
-
-        else if (data.type === 'ready') {
-          modelReady = true;
-          progressSection.classList.remove('visible');
-          statusBadge.className = 'status-badge ready';
-          statusSpinner.style.display = 'none';
-          const m = MODELS[activeModelKey];
-          statusText.textContent = m.label;
-          chatInput.disabled = false;
-          chatInput.placeholder = m.multimodal ? 'Type a message, or attach images/audio...' : 'Type a message...';
-          sendBtn.disabled = false; searchSendBtn.disabled = false;
-          clearBtn.disabled = false;
-          newChatBtn.disabled = false;
-          modelSelect.disabled = false;
-          updateModelUI();
-          updateBatchCount();
-          chatInput.focus();
-        }
-
-        else if (data.type === 'token') {
-          if (currentAssistantEl) {
-            currentAssistantText += data.token;
-            updateAssistantBubble(currentAssistantEl.bubble, currentAssistantText);
-          }
-        }
-
-        else if (data.type === 'complete') {
-          // If agentic loop is awaiting, resolve promise (loop manages state)
-          if (generateResolve) {
-            const resolve = generateResolve;
-            generateResolve = null;
-            resolve(currentAssistantText);
-          } else {
-            // Fallback: no agentic loop (shouldn't happen, but safe)
-            generating = false;
-            if (currentAssistantText) {
-              messages.push({ role: 'assistant', content: currentAssistantText });
-              saveChat();
-            }
-            currentAssistantEl = null;
-            currentAssistantText = '';
-            sendBtn.innerHTML = '&#9654;';
-            sendBtn.classList.remove('stop');
-            sendBtn.disabled = false; searchSendBtn.disabled = false;
-            chatInput.disabled = false;
-            modelSelect.disabled = false;
-            chatInput.focus();
-          }
-        }
-
-        else if (data.type === 'error') {
-          if (!modelReady) {
-            statusBadge.className = 'status-badge error';
-            statusSpinner.style.display = 'none';
-            statusText.textContent = 'Error';
-            progressSection.classList.remove('visible');
-            modelSelect.disabled = false;
-          }
-          console.error('Worker error:', data.message);
-          if (generating && currentAssistantEl) {
-            currentAssistantText += `\n\n*Error: ${data.message}*`;
-            updateAssistantBubble(currentAssistantEl.bubble, currentAssistantText);
-          }
-        }
-      });
-    }
-
     // ── Load model ──────────────────────────────────────────────
-    function loadModel(key) {
+    async function loadModel(key) {
       const m = MODELS[key];
       if (!m) return;
 
-      // Terminate previous worker if switching models
-      if (worker) {
-        worker.terminate();
-        worker = null;
+      if (llmInference) {
+        llmInference.close();
+        llmInference = null;
       }
 
       activeModelKey = key;
       modelReady = false;
 
-      // Clear attachments when switching away from multimodal
-      if (!m.multimodal) clearAttachments();
-
       // Reset UI
       statusBadge.className = 'status-badge loading';
       statusSpinner.style.display = '';
       statusText.textContent = 'Loading...';
-      progressFill.style.width = '0%';
-      progressText.textContent = `Preparing to download ${m.label} (${m.size})...`;
       progressSection.classList.add('visible');
+      progressFill.style.width = '0%';
+      progressText.textContent = `Preparing to load ${m.label}...`;
+      
       chatInput.disabled = true;
       chatInput.placeholder = `Loading ${m.label}...`;
       sendBtn.disabled = true; searchSendBtn.disabled = true;
       modelSelect.disabled = true;
       updateModelUI();
 
-      // Create fresh worker and load
-      worker = createWorker();
-      attachWorkerHandlers(worker);
-      worker.postMessage({
-        type: 'load',
-        modelId: m.id,
-        dtype: m.dtype,
-        modelType: m.type,
-      });
+      try {
+        progressText.textContent = 'Initializing MediaPipe Engine...';
+        const genAi = await FilesetResolver.forGenAiTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm"
+        );
+
+        progressText.textContent = `Loading model ${m.label}...`;
+        llmInference = await LlmInference.createFromOptions(genAi, {
+          baseOptions: {
+            modelAssetPath: m.id,
+            delegate: "GPU",
+          },
+          maxTokens: m.genConfig.max_new_tokens || 2048,
+          temperature: m.genConfig.temperature || 0.7,
+          topK: m.genConfig.top_k || 40,
+          randomSeed: Math.floor(Math.random() * 1000)
+        });
+
+        modelReady = true;
+        progressSection.classList.remove('visible');
+        statusBadge.className = 'status-badge ready';
+        statusSpinner.style.display = 'none';
+        statusText.textContent = m.label;
+        chatInput.disabled = false;
+        chatInput.placeholder = 'Type a message...';
+        sendBtn.disabled = false; searchSendBtn.disabled = false;
+        clearBtn.disabled = false;
+        newChatBtn.disabled = false;
+        modelSelect.disabled = false;
+        updateBatchCount();
+        chatInput.focus();
+      } catch (err) {
+        console.error('Model load error:', err);
+        statusBadge.className = 'status-badge error';
+        statusSpinner.style.display = 'none';
+        statusText.textContent = 'Load failed';
+        progressText.textContent = 'Error: ' + (err.message || String(err));
+        modelSelect.disabled = false;
+      }
     }
 
     // ── Model selector ──────────────────────────────────────────
@@ -4616,101 +3834,42 @@ self.addEventListener('message', async (e) => {
       loadModel(key);
     });
 
-    // ── Prepare attachment data for worker transfer ─────────────
-    async function decodeAudioTo16kMono(blob) {
-      const arrayBuffer = await blob.arrayBuffer();
-      const audioCtx = new AudioContext({ sampleRate: 16000 });
-      const decoded = await audioCtx.decodeAudioData(arrayBuffer);
-      const mono = decoded.getChannelData(0);
-      const pcm = new Float32Array(mono);
-      audioCtx.close();
-      return pcm;
-    }
-
-    async function decomposeVideoForWorker(blob) {
-      const url = URL.createObjectURL(blob);
-      const video = document.createElement('video');
-      video.muted = true;
-      video.preload = 'auto';
-      video.src = url;
-
-      await new Promise((resolve, reject) => {
-        video.addEventListener('loadedmetadata', resolve);
-        video.addEventListener('error', reject);
-      });
-
-      const results = { images: [], audio: null };
-      const duration = video.duration;
-      const numFrames = Math.min(4, Math.max(1, Math.floor(duration / 2)));
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      for (let i = 0; i < numFrames; i++) {
-        const t = (duration / (numFrames + 1)) * (i + 1);
-        video.currentTime = t;
-        await new Promise(r => video.addEventListener('seeked', r, { once: true }));
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        const frameBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.85));
-        if (frameBlob) {
-          results.images.push(await frameBlob.arrayBuffer());
-        }
-      }
-
-      try {
-        const arrayBuffer = await blob.arrayBuffer();
-        const audioCtx = new AudioContext({ sampleRate: 16000 });
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        results.audio = new Float32Array(audioBuffer.getChannelData(0));
-        audioCtx.close();
-      } catch {}
-
-      URL.revokeObjectURL(url);
-      return results;
-    }
-
-    async function prepareAttachmentsForWorker() {
-      const attData = [];
-      for (const att of attachments) {
-        if (att.type === 'video') {
-          // Decompose video into frames + audio at send time
-          const decomposed = await decomposeVideoForWorker(att.blob);
-          for (const imgBuf of decomposed.images) {
-            attData.push({ type: 'image', data: imgBuf, mimeType: 'image/jpeg' });
-          }
-          if (decomposed.audio) {
-            attData.push({ type: 'audio', pcmData: decomposed.audio });
-          }
-        } else if (att.type === 'audio') {
-          let pcm;
-          if (att.pcmData) {
-            pcm = att.pcmData;
-          } else {
-            pcm = await decodeAudioTo16kMono(att.blob);
-          }
-          attData.push({ type: 'audio', pcmData: pcm });
-        } else {
-          const buffer = await att.blob.arrayBuffer();
-          attData.push({ type: att.type, data: buffer, mimeType: att.blob.type });
-        }
-      }
-      return attData;
-    }
-
     // ── Send message ────────────────────────────────────────────
-    function generateOnce(chatMessages, attData, enableThinking, genConfig) {
-      return new Promise((resolve) => {
-        generateResolve = resolve;
-        const id = ++msgIdCounter;
-        worker.postMessage({
-          type: 'generate',
-          messages: chatMessages,
-          id,
-          attachments: attData || null,
-          enableThinking,
-          generationConfig: genConfig,
-        });
+    async function generateOnce(chatMessages, enableThinking, genConfig) {
+      if (!llmInference) throw new Error('Model not loaded');
+      
+      // Format Gemma chat template manually
+      let prompt = "";
+      for (const msg of chatMessages) {
+        const role = msg.role === 'assistant' ? 'model' : msg.role;
+        const content = typeof msg.content === 'string' ? msg.content : '';
+        prompt += `<start_of_turn>${role}\n${content}<end_of_turn>\n`;
+      }
+      prompt += `<start_of_turn>model\n`;
+
+      let lastLen = 0;
+      let fullText = "";
+
+      return new Promise((resolve, reject) => {
+        try {
+          llmInference.generateResponse(prompt, (partialText, done) => {
+            if (partialText) {
+              const delta = partialText.slice(lastLen);
+              lastLen = partialText.length;
+              fullText = partialText;
+              if (delta) {
+                // UI: Stream token to the bubble
+                currentAssistantText += delta;
+                updateAssistantBubble(currentAssistantEl.bubble, currentAssistantText);
+              }
+            }
+            if (done) {
+              resolve(fullText);
+            }
+          });
+        } catch (err) {
+          reject(err);
+        }
       });
     }
 
@@ -4732,37 +3891,15 @@ self.addEventListener('message', async (e) => {
 
     async function sendMessage() {
       const text = chatInput.value.trim();
-      if ((!text && attachments.length === 0) || !modelReady || generating) return;
+      if (!text || !modelReady || generating) return;
 
       const m = MODELS[activeModelKey];
-      const isMultimodal = m && m.multimodal && attachments.length > 0;
-      const hasAttachments = attachments.length > 0;
       const isAgent = m && m.agentCapable;
 
-      // Prepare attachment data first (video decomposition happens here)
-      let attData = null;
-      if (isMultimodal) {
-        attData = await prepareAttachmentsForWorker();
-      }
-
-      // Build user message content
-      let userContent;
-      if (isMultimodal) {
-        const contentBlocks = [];
-        if (attData) {
-          for (const att of attData) {
-            if (att.type === 'image') contentBlocks.push({ type: 'image' });
-            else if (att.type === 'audio') contentBlocks.push({ type: 'audio' });
-          }
-        }
-        if (text) contentBlocks.push({ type: 'text', text });
-        userContent = contentBlocks;
-      } else {
-        userContent = text || '(attachments only)';
-      }
+      const userContent = text;
 
       messages.push({ role: 'user', content: userContent });
-      addUserMessage(text || '(attachments)', hasAttachments);
+      addUserMessage(text, false);
       saveChat();
 
       chatInput.value = '';
@@ -4775,9 +3912,8 @@ self.addEventListener('message', async (e) => {
       // Auto-inject RAG context if embedding model is ready and agent-capable
       if (isAgent && embeddingReady) {
         try {
-          const userText = typeof userContent === 'string' ? userContent : text;
-          if (userText) {
-            const ragResults = await searchMemory(userText, 3);
+          if (text) {
+            const ragResults = await searchMemory(text, 3);
             if (ragResults.length > 0) {
               const ragBlock = ragResults.map(r => `[${r.category}] ${r.text}`).join('\n\n');
               sysPrompt += `\n\n[Retrieved from memory — use if relevant]\n${ragBlock}`;
@@ -4795,12 +3931,11 @@ self.addEventListener('message', async (e) => {
 
       if (isWebEnriched) {
         try {
-          const userText = typeof userContent === 'string' ? userContent : text;
-          const results = await executeWebSearch(userText);
+          const results = await executeWebSearch(text);
           if (results.length > 0) {
             searchSources = results;
             const searchBlock = results.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}\nURL: ${r.url}`).join('\n\n');
-            sysPrompt += `\n\n[Web search results for "${userText}" — cite sources by number]\n${searchBlock}`;
+            sysPrompt += `\n\n[Web search results for "${text}" — cite sources by number]\n${searchBlock}`;
             // Cache in RAG
             if (embeddingReady) {
               const snippetText = results.map(r => `${r.title}: ${r.snippet}`).join('\n');
@@ -4828,12 +3963,9 @@ self.addEventListener('message', async (e) => {
       const genConfig = m.genConfig;
       const enableThinking = thinkingToggle.checked;
 
-      // Clear attachments after capturing data
-      clearAttachments();
-
       if (!isAgent) {
         // Non-agent path: single generation, no tool calling
-        const response = await generateOnce(chatMessages, attData, enableThinking, genConfig);
+        const response = await generateOnce(chatMessages, enableThinking, genConfig);
         finishGeneration(response, searchSources);
         return;
       }
@@ -4841,7 +3973,6 @@ self.addEventListener('message', async (e) => {
       // ── Agentic loop ──────────────────────────────────────────
       const MAX_TOOL_ITERATIONS = 3;
       let loopMessages = [...chatMessages];
-      let currentAttData = attData; // Only pass attachments on first iteration
       // Collect any sources from tool-initiated web searches too
       const allSources = [...searchSources];
       let toolsUsedInLoop = false;
@@ -4849,8 +3980,7 @@ self.addEventListener('message', async (e) => {
       for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
         // Disable thinking on follow-up iterations to avoid tool calls inside thinking blocks
         const iterThinking = iter === 0 ? enableThinking : false;
-        const response = await generateOnce(loopMessages, currentAttData, iterThinking, genConfig);
-        currentAttData = null; // Attachments only on first pass
+        const response = await generateOnce(loopMessages, iterThinking, genConfig);
 
         // User clicked stop while we were generating
         if (!generating) {
@@ -4904,7 +4034,7 @@ self.addEventListener('message', async (e) => {
         // If this is the last iteration, force a final response
         if (iter === MAX_TOOL_ITERATIONS - 1) {
           loopMessages.push({ role: 'user', content: '[System: Tool call limit reached. Please provide your final answer now.]' });
-          const finalResponse = await generateOnce(loopMessages, null, enableThinking, genConfig);
+          const finalResponse = await generateOnce(loopMessages, enableThinking, genConfig);
           finishGeneration(finalResponse, allSources, toolsUsedInLoop);
           return;
         }
@@ -5147,15 +4277,11 @@ self.addEventListener('message', async (e) => {
     }
 
     function buildConversationPayload() {
-      // Strip blobs; keep text content only
-      const clean = messages.map(m => {
-        if (typeof m.content === 'string') return { role: m.role, content: m.content };
-        if (Array.isArray(m.content)) {
-          const text = m.content.filter(p => p.type === 'text').map(p => p.text).join('\n');
-          return { role: m.role, content: text };
-        }
-        return { role: m.role, content: String(m.content || '') };
-      }).filter(m => m.content);
+      // Keep text content only
+      const clean = messages.map(m => ({
+        role: m.role,
+        content: String(m.content || '')
+      })).filter(m => m.content);
       return { v: 1, model: activeModelKey, created: new Date().toISOString(), messages: clean };
     }
 
