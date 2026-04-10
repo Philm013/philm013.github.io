@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
 
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs" type="module"></script>
@@ -154,7 +154,24 @@
     .boot-line { margin-bottom: 4px; }
 
     /* Slash Menu */
-    .slash-menu { position: absolute; bottom: 100%; left: 0; width: 100%; background: #fff; border: 1px solid var(--ollama-border); border-radius: 12px; display: none; flex-direction: column; overflow: hidden; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); margin-bottom: 8px; z-index: 500; }
+    .slash-menu {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--ollama-border);
+      border-radius: 12px;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      max-height: min(50vh, 360px);
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+      margin-bottom: 8px;
+      z-index: 500;
+      overscroll-behavior: contain;
+    }
     .slash-item { padding: 12px 16px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
     .slash-item:hover { background: var(--ollama-snow); }
     .slash-item-title { font-size: 0.88rem; color: var(--ollama-near-black); }
@@ -439,7 +456,7 @@
   </div>
 
   <script type="module">
-    /* global mammoth, pdfjsLib, marked, DOMPurify */
+    /* global mammoth, pdfjsLib, markdownit, DOMPurify */
     import { LlmInference, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai';
     import * as pdfjsLibModule from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs';
     window.pdfjsLib = pdfjsLibModule;
@@ -977,6 +994,13 @@ self.addEventListener('message', async (e) => {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    const markdownEngine = window.markdownit({
+      html: false,
+      linkify: true,
+      typographer: true,
+      breaks: true
+    });
+
     function mergeStreamingText(current, chunk) {
       const next = String(chunk || '');
       if (!next) return current;
@@ -1279,7 +1303,7 @@ self.addEventListener('message', async (e) => {
       // Strip tool_call blocks — they are rendered separately by renderToolCallBlock()
       main = main.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_call>[\s\S]*/g, '').trim();
       if (!main) return html || '<span style="color:var(--ollama-stone)">...</span>';
-      html += DOMPurify.sanitize(marked.parse(main));
+      html += DOMPurify.sanitize(markdownEngine.render(main));
       return html;
     }
 
