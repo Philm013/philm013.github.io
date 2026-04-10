@@ -134,7 +134,7 @@
 
     /* Panels */
     .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--ollama-border); display: flex; justify-content: space-between; align-items: center; }
-    .panel-content { padding: 20px; flex: 1; overflow-y: auto; }
+    .panel-content { padding: 20px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 
     /* Progress Bar */
     .progress-bar { width: 100%; height: 8px; background: var(--ollama-light-gray); border-radius: 4px; overflow: hidden; margin: 20px 0; }
@@ -206,6 +206,15 @@
     .batch-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
     .batch-progress { font-size: 0.8rem; color: var(--ollama-mid-gray); min-width: 80px; text-align: right; flex: 1; }
 
+    /* Tools panel */
+    .tools-intro-text { font-size: 0.8rem; color: var(--ollama-stone); margin-bottom: 16px; }
+    .tool-card { background: var(--ollama-snow); border: 1px solid var(--ollama-border); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+    .tool-card-name { font-family: var(--font-mono); font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .tool-card-desc { font-size: 0.8rem; color: var(--ollama-mid-gray); margin-bottom: 6px; }
+    .tool-card-params { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+    .param-badge { font-family: var(--font-mono); font-size: 0.72rem; background: rgba(0,0,0,0.05); padding: 1px 5px; border-radius: 3px; }
+    .param-badge-none { font-size: 0.75rem; color: var(--ollama-stone); }
+
     /* Shared conversation detected banner */
     .import-banner { position: fixed; top: 0; left: 0; right: 0; background: var(--ollama-black); color: white; padding: 12px 24px; display: none; align-items: center; gap: 16px; z-index: 2000; font-size: 0.9rem; }
     .import-banner.open { display: flex; }
@@ -244,6 +253,7 @@
       <button class="sidebar-item active" onclick="showPanel('chat')">💬 Chat</button>
       <button class="sidebar-item" onclick="showPanel('library')">📚 Library</button>
       <button class="sidebar-item" onclick="showPanel('memory')">🧠 Memory</button>
+      <button class="sidebar-item" onclick="showPanel('tools')">🛠️ Tools</button>
       <button class="sidebar-item" onclick="showPanel('batch')">📋 Batch</button>
       <button class="sidebar-item" onclick="showPanel('history')">🕒 History</button>
       <button class="sidebar-item" onclick="showPanel('settings')">⚙️ Settings</button>
@@ -281,6 +291,7 @@
         <button class="nav-item active" onclick="showPanel('chat')"><span class="nav-icon">💬</span>Chat</button>
         <button class="nav-item" onclick="showPanel('library')"><span class="nav-icon">📚</span>Lib</button>
         <button class="nav-item" onclick="showPanel('memory')"><span class="nav-icon">🧠</span>Mem</button>
+        <button class="nav-item" onclick="showPanel('tools')"><span class="nav-icon">🛠️</span>Tools</button>
         <button class="nav-item" onclick="showPanel('history')"><span class="nav-icon">🕒</span>Hist</button>
         <button class="nav-item" onclick="showPanel('settings')"><span class="nav-icon">⚙️</span>Set</button>
       </nav>
@@ -377,6 +388,17 @@
           <button class="btn-block" onclick="purgeCache()">Purge Model Cache</button>
           <button class="btn-block" id="share-btn" style="margin-top: 8px;">Share Conversation</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tools-panel" class="overlay-panel">
+    <div class="panel-window">
+      <div class="panel-handle"></div>
+      <div class="panel-header"><strong>🛠️ Available Tools</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-content">
+        <p class="tools-intro-text">The AI can use these tools automatically when answering your questions.</p>
+        <div id="tools-list"></div>
       </div>
     </div>
   </div>
@@ -1215,10 +1237,12 @@ self.addEventListener('message', async (e) => {
           const isFollowUpIteration = iter > 0;
           const prompt = await buildPrompt(ragContext, isFollowUpIteration);
 
-          // Stream response tokens; renderMessage re-renders the bubble on each chunk
+          // Stream response tokens; renderMessage re-renders the bubble on each chunk.
+          // generateResponse() delivers cumulative (not delta) text on each callback,
+          // so we assign full = chunk rather than appending.
           await new Promise(res => {
             State.inference.generateResponse(prompt, (chunk, done) => {
-              full += chunk;
+              if (chunk) full = chunk;
               renderMessage(full, 'ai', aiEl);
               if (done) res();
             });
@@ -1397,8 +1421,30 @@ self.addEventListener('message', async (e) => {
       if (n === 'memory') refreshMemoryPanel();
       if (n === 'history') refreshHistoryPanel();
       if (n === 'library') refreshLibraryPanel();
+      if (n === 'tools') refreshToolsPanel();
     }
     window.showPanel = showPanel;
+
+    function refreshToolsPanel() {
+      const list = document.getElementById('tools-list');
+      if (!list) return;
+      list.innerHTML = '';
+      Object.entries(TOOL_REGISTRY).forEach(([name, tool]) => {
+        const item = document.createElement('div');
+        item.className = 'tool-card';
+        const params = tool.parameters?.properties ? Object.keys(tool.parameters.properties) : [];
+        const paramStr = params.length ? params.map(p => {
+          const req = (tool.parameters.required || []).includes(p);
+          return `<span class="param-badge">${escapeHtml(p)}${req ? '' : '?'}</span>`;
+        }).join('') : '<span class="param-badge-none">no parameters</span>';
+        item.innerHTML = `
+          <div class="tool-card-name">🔧 ${escapeHtml(name)}</div>
+          <div class="tool-card-desc">${escapeHtml(tool.description)}</div>
+          <div class="tool-card-params">${paramStr}</div>
+        `;
+        list.appendChild(item);
+      });
+    }
 
     // Batch
     document.getElementById('batch-run-btn').onclick = async () => {
