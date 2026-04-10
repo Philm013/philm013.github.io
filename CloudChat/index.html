@@ -1966,7 +1966,7 @@ Rules:
 - When citing sources, mention where the information came from.
 - If you don't need tools, just answer directly.
 - Never fabricate tool results.
-- Always use the exact <tool_call> XML format shown above. Do not invent other formats.
+- Always use the <tool_call> XML format provided below. Do not invent other formats.
 - You can translate text between 140+ languages directly — no tool needed for translation.
 - When returning images or media results, always include proper attribution and photographer credits.`;
 
@@ -2453,7 +2453,7 @@ Rules:
 
     // ── Reset All Settings ──
     document.getElementById('reset-all-settings-btn').onclick = () => {
-      if (!confirm('Reset all settings to defaults? This clears API keys, prompt, and preferences.')) return;
+      if (!confirm('Reset all settings to defaults? This will clear your system prompt, API keys (search, Unsplash, Pexels), generation settings (temperature, max tokens, history budget, tool iterations), and preferences.')) return;
       const keysToRemove = [
         'lm_sys_prompt', 'lm_search_provider', 'lm_search_key', 'lm_searxng_url',
         'lm_unsplash_key', 'lm_pexels_key', 'lm_show_thinking', 'lm_temperature',
