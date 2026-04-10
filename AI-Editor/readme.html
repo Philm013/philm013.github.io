@@ -241,11 +241,29 @@ AI-Editor is a versatile, browser-based code editor designed for rapid prototypi
 5.  **Use the Dev PAD:**
     - Click the "Dev PAD Wizard" button in the top bar to open the secondary AI interface for guided development tasks.
 `;
-        if (rawMarkdown.trim()) {
-            document.getElementById('readme-content').innerHTML = marked.parse(rawMarkdown);
-        } else {
-            document.getElementById('readme-content').innerHTML = '<div class="text-center py-24 border border-dashed border-ollama-gray rounded-xl"><span class="iconify text-5xl text-ollama-gray mb-6 mx-auto" data-icon="lucide:file-question"></span><h3 class="text-xl font-medium text-ollama-stone text-center m-0">No documentation found.</h3></div>';
+        async function renderReadme() {
+            let markdownToRender = rawMarkdown;
+            try {
+                const candidates = ['README.md', 'readme.md'];
+                for (const file of candidates) {
+                    const response = await fetch(file, { cache: 'no-store' });
+                    if (response.ok) {
+                        markdownToRender = await response.text();
+                        break;
+                    }
+                }
+            } catch (error) {
+                // Fall back to embedded markdown when external files are unavailable.
+            }
+
+            if ((markdownToRender || '').trim()) {
+                document.getElementById('readme-content').innerHTML = marked.parse(markdownToRender);
+            } else {
+                document.getElementById('readme-content').innerHTML = '<div class="text-center py-24 border border-dashed border-ollama-gray rounded-xl"><span class="iconify text-5xl text-ollama-gray mb-6 mx-auto" data-icon="lucide:file-question"></span><h3 class="text-xl font-medium text-ollama-stone text-center m-0">No documentation found.</h3></div>';
+            }
         }
+
+        renderReadme();
     </script>
 </body>
 </html>

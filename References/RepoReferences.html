@@ -547,9 +547,8 @@
                 document.getElementById('content').style.display = 'block';
                 tools.classList.add('visible');
 
-                // Add anchor links to headings
-                addAnchorLinks();
                 makeSectionsCollapsible();
+                addAnchorLinks();
                 applySearchFilter();
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
@@ -559,10 +558,10 @@
             }
         }
 
-        // Add anchor links to all headings
         function addAnchorLinks() {
-            const headings = document.querySelectorAll('#content h1, #content h2, #content h3');
+            const headings = document.querySelectorAll('#content .collapsible-content h3, #content .collapsible-content h4');
             headings.forEach(heading => {
+                if (heading.querySelector('.anchor-link')) return;
                 const id = heading.textContent
                     .toLowerCase()
                     .replace(/[^\w\s-]/g, '')
@@ -582,50 +581,72 @@
             });
         }
 
+        function slugify(value) {
+            return value
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/(^-|-$)/g, '');
+        }
+
         function makeSectionsCollapsible() {
             const content = document.getElementById('content');
             const nodes = Array.from(content.children);
-            const majorHeadings = nodes.filter(node => node.tagName === 'H1' || node.tagName === 'H2');
+            content.innerHTML = '';
 
-            majorHeadings.forEach((heading, index) => {
-                if (heading.closest('.collapsible-section')) return;
-
+            const usedIds = new Set();
+            const createSection = (title) => {
                 const section = document.createElement('section');
                 section.className = 'collapsible-section';
-                section.dataset.title = heading.textContent.trim().toLowerCase();
-                section.dataset.collapsed = 'false';
+                section.dataset.title = title.trim().toLowerCase();
+                section.dataset.collapsed = 'true';
+
+                let baseId = `section-${slugify(title || 'overview')}`;
+                if (!baseId || baseId === 'section-') {
+                    baseId = 'section-overview';
+                }
+                let uniqueId = baseId;
+                let count = 2;
+                while (usedIds.has(uniqueId)) {
+                    uniqueId = `${baseId}-${count}`;
+                    count += 1;
+                }
+                usedIds.add(uniqueId);
+                section.id = uniqueId;
 
                 const toggle = document.createElement('button');
                 toggle.type = 'button';
                 toggle.className = 'collapsible-toggle';
-                toggle.innerHTML = `<span>${heading.textContent.trim()}</span><span class="caret">v</span>`;
+                toggle.innerHTML = `<span>${title}</span><span class="caret">v</span>`;
 
                 const sectionContent = document.createElement('div');
                 sectionContent.className = 'collapsible-content';
 
-                const currentLevel = heading.tagName;
-                let cursor = heading;
-                while (cursor) {
-                    const next = cursor.nextElementSibling;
-                    sectionContent.appendChild(cursor);
-                    if (!next) break;
-                    if ((next.tagName === currentLevel) || (currentLevel === 'H2' && next.tagName === 'H1')) break;
-                    cursor = next;
-                }
-
                 section.appendChild(toggle);
                 section.appendChild(sectionContent);
-
-                const insertBeforeNode = content.children[index];
-                if (insertBeforeNode) {
-                    content.insertBefore(section, insertBeforeNode);
-                } else {
-                    content.appendChild(section);
-                }
 
                 toggle.addEventListener('click', () => {
                     section.dataset.collapsed = section.dataset.collapsed === 'true' ? 'false' : 'true';
                 });
+
+                return { section, body: sectionContent };
+            };
+
+            let current = null;
+            nodes.forEach(node => {
+                if (node.tagName === 'H1' || node.tagName === 'H2') {
+                    current = createSection(node.textContent.trim());
+                    content.appendChild(current.section);
+                    return;
+                }
+
+                if (!current) {
+                    current = createSection('Overview');
+                    content.appendChild(current.section);
+                }
+
+                current.body.appendChild(node);
             });
 
             updateResultsMeta();

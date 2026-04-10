@@ -5,17 +5,24 @@ const Editor = {
     session: null,
     viewport: { x: 0, y: 0, scale: 1 },
     tool: 'select',
-    style: { stroke: '#ef4444', fill: 'transparent', strokeWidth: 4 },
+    style: {
+        stroke: '#ef4444',
+        fill: 'transparent',
+        strokeWidth: 4,
+        textSize: 24,
+        textWeight: 700,
+        textFontFamily: 'Inter, sans-serif'
+    },
     
     isDown: false,
     isPan: false,
     isResize: false,
     resizeHandle: null,
+    resizeSession: null,
     activeShape: null,
     start: { x: 0, y: 0 },
     last: { x: 0, y: 0 },
     totalDragDist: 0,
-    resizeStart: null,
     
     pendingAsset: null,
     loadedImages: new Map(),
@@ -87,45 +94,247 @@ const Editor = {
         document.getElementById('strokeSlider').addEventListener('change', (e) => {
             this.saveHistory('Change Stroke Width');
         });
+
+        const textSizeSlider = document.getElementById('textSizeSlider');
+        const textSizeValue = document.getElementById('textSizeValue');
+        if (textSizeSlider && textSizeValue) {
+            textSizeSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value, 10);
+                textSizeValue.textContent = val + 'px';
+                this.style.textSize = val;
+                this.applyTextStyleToSelected('fontSize', val);
+            });
+            textSizeSlider.addEventListener('change', () => this.saveHistory('Change Text Size'));
+        }
+
+        const textWeightSelect = document.getElementById('textWeightSelect');
+        if (textWeightSelect) {
+            textWeightSelect.addEventListener('change', (e) => {
+                const weight = parseInt(e.target.value, 10);
+                this.style.textWeight = weight;
+                this.applyTextStyleToSelected('fontWeight', weight);
+                this.saveHistory('Change Text Weight');
+            });
+        }
+
+        const textFontSelect = document.getElementById('textFontSelect');
+        if (textFontSelect) {
+            textFontSelect.addEventListener('change', (e) => {
+                this.style.textFontFamily = e.target.value;
+                this.applyTextStyleToSelected('fontFamily', e.target.value);
+                this.saveHistory('Change Text Font');
+            });
+        }
+
+        const sizeSlider = document.getElementById('sizeSlider');
+        const sizeValue = document.getElementById('sizeValue');
+        if (sizeSlider && sizeValue) {
+            sizeSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value, 10);
+                sizeValue.textContent = val + 'px';
+                this.applySizeToSelected(val);
+            });
+            sizeSlider.addEventListener('change', () => this.saveHistory('Change Object Size'));
+        }
+
+        this.syncInspectorState();
     },
 
     setupTools() {
         const toolGroup = document.getElementById('toolGroup');
         if (!toolGroup) return;
         toolGroup.innerHTML = '';
-        
-        const tools = [
-            { id: 'hand', icon: '✋' },
-            { id: 'select', icon: '↖' },
-            { id: 'eraser', icon: '🧽' },
-            { id: 'point', icon: '📍' },
-            { id: 'rect', icon: '□' },
-            { id: 'circle', icon: '○' },
-            { id: 'path', icon: '✎' },
-            { id: 'arrow', icon: '→' },
-            { id: 'line', icon: '/' },
-            { id: 'text', icon: 'T' },
-            { id: 'image', icon: '🖼️' },
-            { id: 'icon', icon: '⚡' },
-            { id: 'emoji', icon: '😀' }
-        ];
-        
-        tools.forEach(tool => {
+
+        const createQuickBtn = (id, icon, title, toolId, active = false) => {
             const btn = document.createElement('button');
-            btn.className = 'tool-btn' + (tool.id === 'select' ? ' active' : '');
-            btn.id = 'tool-' + tool.id;
-            btn.dataset.tool = tool.id;
-            btn.innerHTML = tool.icon;
-            btn.title = tool.id.charAt(0).toUpperCase() + tool.id.slice(1);
-            btn.addEventListener('click', () => this.setTool(tool.id));
-            toolGroup.appendChild(btn);
-        });
+            btn.className = 'tool-btn' + (active ? ' active' : '');
+            btn.id = id;
+            btn.dataset.tool = toolId;
+            btn.type = 'button';
+            btn.title = title;
+            btn.innerHTML = `<span class="iconify" data-icon="${icon}"></span>`;
+            btn.addEventListener('click', () => this.setTool(toolId));
+            return btn;
+        };
+
+        const createMenu = (menuId, btnId, triggerIcon, title, items, categoryKey) => {
+            const dropdown = document.createElement('div');
+            dropdown.className = `dropdown tools-dropdown ${categoryKey || ''}`.trim();
+
+            const trigger = document.createElement('button');
+            trigger.className = 'tool-btn tools-menu-btn';
+            trigger.id = btnId;
+            trigger.type = 'button';
+            trigger.title = title;
+            trigger.innerHTML = `<span class="iconify" data-icon="${triggerIcon}"></span>`;
+
+            const menu = document.createElement('div');
+            menu.className = 'dropdown-menu tools-menu';
+            menu.id = menuId;
+
+            const heading = document.createElement('div');
+            heading.className = 'tools-menu-heading';
+            heading.textContent = title;
+            menu.appendChild(heading);
+
+            const grid = document.createElement('div');
+            grid.className = 'tools-menu-items';
+
+            items.forEach((tool) => {
+                const item = document.createElement('button');
+                item.className = 'btn btn-ghost tool-menu-item';
+                item.id = 'tool-' + tool.id;
+                item.dataset.tool = tool.id;
+                item.type = 'button';
+                item.title = tool.label;
+                item.innerHTML = `<span class="iconify" data-icon="${tool.icon}"></span><span>${tool.label}</span>`;
+                item.addEventListener('click', () => {
+                    this.setTool(tool.id);
+                    menu.classList.remove('active');
+                });
+                grid.appendChild(item);
+            });
+
+            menu.appendChild(grid);
+            dropdown.appendChild(trigger);
+            dropdown.appendChild(menu);
+            return dropdown;
+        };
+
+        const quickTools = document.createElement('div');
+        quickTools.className = 'tool-group tool-quick-row';
+        // Select/Hand live in the main markup bar to avoid duplicate controls.
+        quickTools.appendChild(createQuickBtn('tool-eraser', 'mdi:eraser-variant', 'Eraser', 'eraser'));
+
+        const drawMenu = createMenu(
+            'drawToolsMenu',
+            'drawToolsBtn',
+            'mdi:shape-outline',
+            'Draw Tools',
+            [
+                { id: 'rect', label: 'Rectangle', icon: 'mdi:rectangle-outline' },
+                { id: 'circle', label: 'Circle', icon: 'mdi:circle-outline' },
+                { id: 'line', label: 'Line', icon: 'mdi:vector-line' },
+                { id: 'arrow', label: 'Arrow', icon: 'mdi:arrow-top-right-thick' },
+                { id: 'path', label: 'Pencil', icon: 'mdi:pencil-outline' }
+            ],
+            'draw'
+        );
+
+        const annotateMenu = createMenu(
+            'annotateToolsMenu',
+            'annotateToolsBtn',
+            'mdi:format-textbox',
+            'Annotate',
+            [
+                { id: 'point', label: 'Point', icon: 'mdi:map-marker-outline' },
+                { id: 'text', label: 'Text', icon: 'mdi:format-text' }
+            ],
+            'annotate'
+        );
+
+        const assetMenu = createMenu(
+            'assetToolsMenu',
+            'assetToolsBtn',
+            'mdi:folder-image',
+            'Assets',
+            [
+                { id: 'image', label: 'Images', icon: 'mdi:image-outline' },
+                { id: 'icon', label: 'Icons', icon: 'mdi:star-four-points-outline' },
+                { id: 'emoji', label: 'Emojis', icon: 'mdi:emoticon-outline' }
+            ],
+            'assets'
+        );
+
+        toolGroup.appendChild(quickTools);
+        toolGroup.appendChild(drawMenu);
+        toolGroup.appendChild(annotateMenu);
+        toolGroup.appendChild(assetMenu);
     },
 
     applyStyleToSelected(prop, value) {
         if (this.session) {
             this.session.shapes.filter(s => s.selected).forEach(s => s[prop] = value);
             this.draw();
+            this.syncInspectorState();
+        }
+    },
+
+    applyTextStyleToSelected(prop, value) {
+        if (!this.session) return;
+        this.session.shapes
+            .filter(s => s.selected && s.type === 'text')
+            .forEach(s => { s[prop] = value; });
+        this.draw();
+        this.syncInspectorState();
+    },
+
+    applySizeToSelected(value) {
+        if (!this.session) return;
+        this.session.shapes
+            .filter(s => s.selected && ['icon', 'emoji', 'point'].includes(s.type))
+            .forEach(s => { s.size = value; });
+        this.draw();
+        this.syncInspectorState();
+    },
+
+    getSelectedShapes() {
+        return this.session ? this.session.shapes.filter(s => s.selected) : [];
+    },
+
+    getPrimarySelectedShape() {
+        const selected = this.getSelectedShapes();
+        return selected.length ? selected[selected.length - 1] : null;
+    },
+
+    getTextFont(shape, size = null) {
+        const fontSize = size || shape.fontSize || this.style.textSize || 24;
+        const fontWeight = shape.fontWeight || this.style.textWeight || 700;
+        const fontFamily = shape.fontFamily || this.style.textFontFamily || 'Inter, sans-serif';
+        const fontStyle = shape.fontStyle || 'normal';
+        return `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    },
+
+    syncInspectorState() {
+        const primary = this.getPrimarySelectedShape();
+
+        const strokeColor = document.getElementById('strokeColor');
+        const fillColor = document.getElementById('fillColor');
+        const strokeSlider = document.getElementById('strokeSlider');
+        if (strokeColor) strokeColor.value = (primary && primary.stroke) || this.style.stroke || '#ef4444';
+        if (fillColor) fillColor.value = (primary && primary.fill && primary.fill !== 'transparent') ? primary.fill : '#ffffff';
+        if (strokeSlider) strokeSlider.value = (primary && primary.strokeWidth) || this.style.strokeWidth || 4;
+
+        const textStyleControls = document.getElementById('textStyleControls');
+        const textFaceControls = document.getElementById('textFaceControls');
+        const textSizeSlider = document.getElementById('textSizeSlider');
+        const textSizeValue = document.getElementById('textSizeValue');
+        const textWeightSelect = document.getElementById('textWeightSelect');
+        const textFontSelect = document.getElementById('textFontSelect');
+        const hasTextSelection = !!(primary && primary.type === 'text');
+
+        if (textStyleControls) textStyleControls.style.display = hasTextSelection ? 'block' : 'none';
+        if (textFaceControls) textFaceControls.style.display = hasTextSelection ? 'block' : 'none';
+
+        if (hasTextSelection) {
+            const size = primary.fontSize || this.style.textSize || 24;
+            const weight = String(primary.fontWeight || this.style.textWeight || 700);
+            const family = primary.fontFamily || this.style.textFontFamily || 'Inter, sans-serif';
+            if (textSizeSlider) textSizeSlider.value = size;
+            if (textSizeValue) textSizeValue.textContent = size + 'px';
+            if (textWeightSelect) textWeightSelect.value = weight;
+            if (textFontSelect) textFontSelect.value = family;
+        }
+
+        const sizeControls = document.getElementById('sizeControls');
+        const sizeSlider = document.getElementById('sizeSlider');
+        const sizeValue = document.getElementById('sizeValue');
+        const hasSizedSelection = !!(primary && ['icon', 'emoji', 'point'].includes(primary.type));
+        if (sizeControls) sizeControls.style.display = hasSizedSelection ? 'block' : 'none';
+        if (hasSizedSelection) {
+            const size = primary.size || (primary.type === 'point' ? 30 : 48);
+            if (sizeSlider) sizeSlider.value = size;
+            if (sizeValue) sizeValue.textContent = size + 'px';
         }
     },
 
@@ -159,6 +368,7 @@ const Editor = {
         this.draw();
         this.updateLayers();
         Notes.render();
+        this.syncInspectorState();
     },
 
     resize() {
@@ -328,8 +538,8 @@ const Editor = {
             const h = Math.abs(shape.y2 - shape.y) || 10;
             return { x, y, w, h };
         } else if (shape.type === 'text') {
-            const fontSize = shape.fontSize || 24;
-            this.ctx.font = `bold ${fontSize}px sans-serif`;
+            const fontSize = shape.fontSize || this.style.textSize || 24;
+            this.ctx.font = this.getTextFont(shape, fontSize);
             const width = shape.w || 200;
             const words = (shape.text || 'Text').split(' ');
             let line = '';
@@ -372,6 +582,127 @@ const Editor = {
             }
         }
         return null;
+    },
+
+    getHandleCorner(bounds, handle) {
+        const x1 = bounds.x;
+        const y1 = bounds.y;
+        const x2 = bounds.x + bounds.w;
+        const y2 = bounds.y + bounds.h;
+
+        if (handle === 'nw') return { x: x1, y: y1 };
+        if (handle === 'ne') return { x: x2, y: y1 };
+        if (handle === 'sw') return { x: x1, y: y2 };
+        return { x: x2, y: y2 };
+    },
+
+    getOppositeHandle(handle) {
+        if (handle === 'nw') return 'se';
+        if (handle === 'ne') return 'sw';
+        if (handle === 'sw') return 'ne';
+        return 'nw';
+    },
+
+    getResizedBoundsFromHandle(bounds, handle, wx, wy, keepSquare = false, minW = 10, minH = 10) {
+        const anchor = this.getHandleCorner(bounds, this.getOppositeHandle(handle));
+        let draggedX = wx;
+        let draggedY = wy;
+
+        if (keepSquare) {
+            const dx = draggedX - anchor.x;
+            const dy = draggedY - anchor.y;
+            const base = Math.max(minW, minH);
+            const side = Math.max(base, Math.max(Math.abs(dx), Math.abs(dy)));
+            const sx = dx === 0 ? 1 : Math.sign(dx);
+            const sy = dy === 0 ? 1 : Math.sign(dy);
+            draggedX = anchor.x + sx * side;
+            draggedY = anchor.y + sy * side;
+        }
+
+        let left = Math.min(anchor.x, draggedX);
+        let top = Math.min(anchor.y, draggedY);
+        let width = Math.abs(draggedX - anchor.x);
+        let height = Math.abs(draggedY - anchor.y);
+
+        if (width < minW) {
+            width = minW;
+            left = draggedX >= anchor.x ? anchor.x : anchor.x - width;
+        }
+        if (height < minH) {
+            height = minH;
+            top = draggedY >= anchor.y ? anchor.y : anchor.y - height;
+        }
+
+        return { x: left, y: top, w: width, h: height };
+    },
+
+    getLineEndpointRole(shape, bounds, handle) {
+        const handleCorner = this.getHandleCorner(bounds, handle);
+        const dStart = Math.hypot(shape.x - handleCorner.x, shape.y - handleCorner.y);
+        const dEnd = Math.hypot(shape.x2 - handleCorner.x, shape.y2 - handleCorner.y);
+        return dStart <= dEnd ? 'start' : 'end';
+    },
+
+    applyResize(wx, wy, keepAspect = false) {
+        if (!this.isResize || !this.activeShape || !this.resizeSession) return;
+
+        const shape = this.activeShape;
+        const originalShape = this.resizeSession.originalShape;
+        const originalBounds = this.resizeSession.originalBounds;
+        const handle = this.resizeSession.handle;
+
+        if (shape.type === 'line' || shape.type === 'arrow') {
+            const draggedRole = this.resizeSession.draggedEndpoint;
+            if (draggedRole === 'start') {
+                shape.x = wx;
+                shape.y = wy;
+                shape.x2 = originalShape.x2;
+                shape.y2 = originalShape.y2;
+            } else {
+                shape.x = originalShape.x;
+                shape.y = originalShape.y;
+                shape.x2 = wx;
+                shape.y2 = wy;
+            }
+            return;
+        }
+
+        const isSquareShape = ['emoji', 'icon', 'point'].includes(shape.type);
+        const keepSquare = isSquareShape || keepAspect;
+        const minW = isSquareShape ? 16 : 10;
+        const minH = isSquareShape ? 16 : 10;
+        const newBounds = this.getResizedBoundsFromHandle(originalBounds, handle, wx, wy, keepSquare, minW, minH);
+
+        if (shape.type === 'path') {
+            const srcW = Math.max(1, originalBounds.w);
+            const srcH = Math.max(1, originalBounds.h);
+            const scaleX = newBounds.w / srcW;
+            const scaleY = newBounds.h / srcH;
+            shape.points = originalShape.points.map(p => ({
+                x: newBounds.x + (p.x - originalBounds.x) * scaleX,
+                y: newBounds.y + (p.y - originalBounds.y) * scaleY
+            }));
+            return;
+        }
+
+        if (shape.type === 'text') {
+            shape.x = newBounds.x;
+            shape.y = newBounds.y;
+            shape.w = Math.max(50, newBounds.w);
+            return;
+        }
+
+        if (isSquareShape) {
+            shape.x = newBounds.x;
+            shape.y = newBounds.y;
+            shape.size = Math.max(16, newBounds.w);
+            return;
+        }
+
+        shape.x = newBounds.x;
+        shape.y = newBounds.y;
+        shape.w = newBounds.w;
+        shape.h = newBounds.h;
     },
 
     onPointerDown(e) {
@@ -435,7 +766,14 @@ const Editor = {
                     this.isResize = true;
                     this.resizeHandle = handle;
                     this.activeShape = shape;
-                    this.resizeStart = { ...this.getShapeBounds(shape), wx: w.x, wy: w.y };
+                    this.resizeSession = {
+                        handle,
+                        originalBounds: this.getShapeBounds(shape),
+                        originalShape: JSON.parse(JSON.stringify(shape)),
+                        draggedEndpoint: (shape.type === 'line' || shape.type === 'arrow')
+                            ? this.getLineEndpointRole(shape, this.getShapeBounds(shape), handle)
+                            : null
+                    };
                     this.isPan = false;
                     return;
                 }
@@ -587,6 +925,8 @@ const Editor = {
         this.textOverlay.style.top = screenPos.y + 'px';
         this.textOverlay.style.fontSize = fontSize + 'px';
         this.textOverlay.style.color = shape.stroke || '#ef4444';
+        this.textOverlay.style.fontFamily = shape.fontFamily || this.style.textFontFamily || 'Inter, sans-serif';
+        this.textOverlay.style.fontWeight = String(shape.fontWeight || this.style.textWeight || 700);
         this.textOverlay.value = shape.text || '';
         
         setTimeout(() => {
@@ -622,6 +962,7 @@ const Editor = {
         this.setTool('select');
         this.draw();
         this.updateLayers();
+        this.syncInspectorState();
     },
 
     onPointerMove(e) {
@@ -701,31 +1042,8 @@ const Editor = {
         if (this.isPan) {
             this.viewport.x += dx;
             this.viewport.y += dy;
-        } else if (this.isResize && this.activeShape && this.resizeStart) {
-            const isSquare = ['emoji', 'icon', 'point'].includes(this.activeShape.type);
-            const newBounds = Utils.resizeShape(this.resizeStart, this.resizeHandle, (mx - this.start.x) / this.viewport.scale, (my - this.start.y) / this.viewport.scale, isSquare);
-            
-            if (this.activeShape.type === 'path') {
-                const oldB = this.resizeStart;
-                const scaleX = newBounds.w / oldB.w;
-                const scaleY = newBounds.h / oldB.h;
-                this.activeShape.points = this.activeShape.points.map(p => ({
-                    x: newBounds.x + (p.x - oldB.x) * scaleX,
-                    y: newBounds.y + (p.y - oldB.y) * scaleY
-                }));
-                // Update resizeStart for continuous smooth scaling
-                this.resizeStart = { ...newBounds };
-                this.start = { x: mx, y: my };
-            } else {
-                this.activeShape.x = newBounds.x;
-                this.activeShape.y = newBounds.y;
-                if (isSquare) {
-                    this.activeShape.size = newBounds.w;
-                } else {
-                    this.activeShape.w = newBounds.w;
-                    this.activeShape.h = newBounds.h;
-                }
-            }
+        } else if (this.isResize && this.activeShape && this.resizeSession) {
+            this.applyResize(w.x, w.y, e.shiftKey);
         } else if (this.activeShape) {
             if (this.tool === 'select') {
                 this.session.shapes.filter(s => s.selected).forEach(s => {
@@ -770,22 +1088,24 @@ const Editor = {
         
         if (!this.isDown) return;
 
+        const resizedShape = this.isResize ? this.activeShape : null;
+        const movedShape = (!this.isResize && this.isDown && this.tool === 'select') ? this.activeShape : null;
         const wasDrawing = !!this.activeShape && this.tool !== 'select';
-        const wasModifying = this.isResize || (this.isDown && this.tool === 'select' && this.activeShape);
+        const wasModifying = this.isResize || (!!movedShape);
 
         this.isDown = false;
         this.isPan = false;
         this.isResize = false;
         this.resizeHandle = null;
-        this.resizeStart = null;
+        this.resizeSession = null;
         this.activeShape = null;
         this.container.classList.remove('pan-mode', 'resize-nw', 'resize-ne', 'resize-sw', 'resize-se');
         
         if (wasDrawing || wasModifying) {
             let desc = 'Action';
             if (wasDrawing) desc = `Draw ${this.tool}`;
-            else if (this.isResize) desc = `Resize ${this.activeShape?.type || 'Shape'}`;
-            else if (this.activeShape) desc = `Move ${this.activeShape.type}`;
+            else if (resizedShape) desc = `Resize ${resizedShape.type || 'Shape'}`;
+            else if (movedShape) desc = `Move ${movedShape.type || 'Shape'}`;
             this.saveHistory(desc);
         }
 
@@ -806,6 +1126,7 @@ const Editor = {
         this.updateLayers();
         Library.render();
         if (wasDrawing && this.tool === 'point') Notes.render();
+        this.syncInspectorState();
         
         // Open note panel if it was a tap on a point
         if (this.tool === 'select' && this.totalDragDist < 5) {
@@ -884,15 +1205,17 @@ const Editor = {
             const size = shape.size || 48;
             return Utils.pointInRect(wx, wy, shape.x - padding, shape.y - padding, size + padding * 2, size + padding * 2);
         } else if (shape.type === 'point') {
-            const size = 30;
-            return Math.hypot(wx - shape.x, wy - shape.y) < size / this.viewport.scale;
+            const size = shape.size || 30;
+            const cx = shape.x + size / 2;
+            const cy = shape.y + size / 2;
+            return Math.hypot(wx - cx, wy - cy) < (size / 2 + padding);
         } else if (shape.type === 'path') {
             if (!shape.points) return false;
             for (let i = 0; i < shape.points.length - 1; i++) {
                 if (Utils.pointToLine(wx, wy, shape.points[i].x, shape.points[i].y, shape.points[i+1].x, shape.points[i+1].y) < 15 / this.viewport.scale) return true;
             }
             return false;
-        } else if (['rect', 'stockImage', 'text'].includes(shape.type)) {
+        } else if (['rect', 'stockImage'].includes(shape.type)) {
             const b = this.getShapeBounds(shape);
             return Utils.pointInRect(wx, wy, b.x - padding, b.y - padding, b.w + padding * 2, b.h + padding * 2);
         } else if (shape.type === 'circle') {
@@ -904,7 +1227,7 @@ const Editor = {
         } else if (['arrow', 'line'].includes(shape.type)) {
             return Utils.pointToLine(wx, wy, shape.x, shape.y, shape.x2, shape.y2) < 15 / this.viewport.scale;
         } else if (shape.type === 'text') {
-            this.ctx.font = `bold ${shape.fontSize || 24}px sans-serif`;
+            this.ctx.font = this.getTextFont(shape, shape.fontSize || 24);
             const lines = (shape.text || 'Text').split('\n');
             let maxWidth = 100;
             lines.forEach(line => {
@@ -987,7 +1310,10 @@ const Editor = {
                 size: size,
                 stroke: this.style.stroke,
                 emoji: this.pendingAsset.data,
-                iconData: this.pendingAsset.data
+                iconData: this.pendingAsset.data,
+                fontSize: this.style.textSize || 24,
+                fontWeight: this.style.textWeight || 700,
+                fontFamily: this.style.textFontFamily || 'Inter, sans-serif'
             };
             this.drawShape(ghost, ctx);
             ctx.restore();
@@ -1020,6 +1346,7 @@ const Editor = {
                 }
             } else {
                 ctx.shadowBlur = 4;
+                this.syncInspectorState();
                 ctx.shadowColor = 'rgba(0,0,0,0.5)';
                 ctx.fillStyle = shape.stroke || '#ef4444';
                 ctx.beginPath();
@@ -1077,7 +1404,7 @@ const Editor = {
             ctx.fill();
         } else if (shape.type === 'text') {
             const fontSize = shape.fontSize || 24;
-            ctx.font = `bold ${fontSize}px sans-serif`;
+            ctx.font = this.getTextFont(shape, fontSize);
             ctx.textBaseline = 'top';
             ctx.fillStyle = shape.stroke || '#ef4444';
             const width = shape.w || 200;
@@ -1240,6 +1567,7 @@ const Editor = {
         this.draw();
         this.updateLayers();
         Notes.render();
+        this.syncInspectorState();
         Toast.show('Deleted');
     },
 
@@ -1313,6 +1641,7 @@ const Editor = {
                 this.draw();
                 this.updateLayers();
                 Notes.render();
+                this.syncInspectorState();
             });
             
             el.appendChild(thumb);
@@ -1324,6 +1653,7 @@ const Editor = {
                 shape.selected = true;
                 this.draw();
                 this.updateLayers();
+                this.syncInspectorState();
                 if (shape.type === 'point') {
                     Notes.toggle(true);
                     Notes.render();

@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DevMarkup Studio Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>MarkedUp</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
 
     <script>
         // Ensure trailing slash for correct relative path resolution
@@ -17,10 +25,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
 
-    <link rel="stylesheet" href="css/styles.css?v=1.1">
+    <link rel="stylesheet" href="css/styles.css?v=1.2">
 </head>
 <body>
+
+<a class="skip-link" href="#mainViewport">Skip to main content</a>
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -36,17 +47,18 @@
                         <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
                     </svg>
                 </div>
-                <span class="logo-text">DevMarkup Pro</span>
+                <span class="logo-text">MarkedUp</span>
                 <div class="header-actions">
-                    <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
+                    <button class="settings-btn" id="settingsBtn" title="Settings" aria-label="Open settings">⚙️</button>
                 </div>
             </div>
-            
-            <div class="tabs" id="tabsContainer"></div>
-            
+
             <div class="search-box" style="padding: 12px; border-bottom: 1px solid var(--border); background: var(--bg-panel);">
+                <label class="sr-only" for="searchInput">Search library and assets</label>
                 <input type="text" class="search-input" id="searchInput" placeholder="Search...">
             </div>
+
+            <div class="tabs" id="tabsContainer"></div>
 
             <div class="library-breadcrumbs" id="libraryBreadcrumbs" style="display:none;"></div>
             
@@ -97,77 +109,86 @@
 
     <div class="main">
         <div class="header">
-            <!-- Unified Mobile Header -->
             <div class="header-mobile-top hidden-desktop">
-                <button class="settings-btn" id="mobileMenuBtn" style="background:transparent; border:none; padding:0;">
-                    <div class="logo">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-                            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-                            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-                        </svg>
-                    </div>
+                <button class="sidebar-toggle-btn" id="mobileMenuBtn" title="Toggle Library" aria-label="Open library sidebar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
                 </button>
-                
-                <!-- Dynamic Header Controls (populated by JS) -->
-                <div id="mobileHeaderControls" style="display:flex; flex:1; justify-content:center; gap:4px; margin:0 8px;">
-                    <!-- Browse mode: URL + Capture -->
-                    <div id="mobHeaderBrowse" style="display:flex; width:100%; gap:4px; align-items:center;">
-                        <input type="text" class="url-input" id="urlInputMob" placeholder="URL..." style="flex:1; height:36px; font-size:13px; padding:0 10px;">
-                        <button class="btn btn-default btn-sm" id="goBtnMob" style="height:36px; padding:0 10px;">Go</button>
-                        <button class="btn btn-success btn-sm" id="captureBtnMobHeader" style="height:36px; padding:0 10px;">📷</button>
+                <div class="logo" style="width:26px; height:26px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                        <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                    </svg>
+                </div>
+
+                <div id="mobileHeaderControls">
+                    <div id="mobHeaderBrowse" style="display:flex; width:100%; gap:8px; align-items:center;">
+                        <label class="sr-only" for="urlInputMob">Website URL</label>
+                        <input type="text" class="url-input" id="urlInputMob" placeholder="Enter URL..." value="https://wikipedia.org">
+                        <button class="btn btn-default" id="goBtnMob">Go</button>
+                        <button class="btn btn-success" id="captureBtnMobHeader" aria-label="Capture page">📷</button>
                     </div>
-                    <!-- Markup mode: Zoom + Undo + Tools -->
-                    <div id="mobHeaderMarkup" style="display:none; gap:1px; align-items:center;">
-                        <button class="tool-btn" id="undoBtnMobHeader">↺</button>
-                        <button class="tool-btn" id="redoBtnMobHeader">↻</button>
-                        <button class="tool-btn" id="zoomOutMobHeader">−</button>
-                        <button class="tool-btn" id="zoomFitMobHeader">⊡</button>
-                        <button class="tool-btn" id="zoomInMobHeader">+</button>
-                        <button class="tool-btn" id="tool-select-mob-h" data-tool="select">↖</button>
-                        <button class="tool-btn" id="tool-hand-mob-h" data-tool="hand">✋</button>
+                    <div id="mobHeaderMarkup" style="display:none; width:100%; gap:6px; justify-content:center;">
+                        <button class="tool-btn" id="undoBtnMobHeader" aria-label="Undo"><span class="iconify" data-icon="mdi:undo-variant"></span></button>
+                        <button class="tool-btn" id="redoBtnMobHeader" aria-label="Redo"><span class="iconify" data-icon="mdi:redo-variant"></span></button>
+                        <button class="tool-btn" id="zoomOutMobHeader" aria-label="Zoom out"><span class="iconify" data-icon="mdi:magnify-minus-outline"></span></button>
+                        <button class="tool-btn" id="zoomFitMobHeader" aria-label="Fit to view"><span class="iconify" data-icon="mdi:fit-to-page-outline"></span></button>
+                        <button class="tool-btn" id="zoomInMobHeader" aria-label="Zoom in"><span class="iconify" data-icon="mdi:magnify-plus-outline"></span></button>
+                        <button class="tool-btn" id="tool-select-mob-h" data-tool="select" aria-label="Select tool"><span class="iconify" data-icon="mdi:cursor-default-outline"></span></button>
+                        <button class="tool-btn" id="tool-hand-mob-h" data-tool="hand" aria-label="Hand tool"><span class="iconify" data-icon="mdi:hand-back-right-outline"></span></button>
                     </div>
                 </div>
 
-                <button class="settings-btn" onclick="document.getElementById('settingsBtn').click()">⚙️</button>
+                <button class="settings-btn" aria-label="Open settings" onclick="document.getElementById('settingsBtn').click()">⚙️</button>
             </div>
 
-            <!-- Desktop Header (unchanged logic, but simplified structure) -->
             <div class="view-switch hidden-mobile">
-                <button class="view-btn" id="btnLibrary">Library</button>
-                <button class="view-btn active" id="btnBrowse">Browse</button>
-                <button class="view-btn" id="btnMarkup">Markup</button>
+                <button class="view-btn" id="btnLibrary"><span class="iconify" data-icon="mdi:bookshelf"></span><span>Library</span></button>
+                <button class="view-btn active" id="btnBrowse"><span class="iconify" data-icon="mdi:web"></span><span>Browse</span></button>
+                <button class="view-btn" id="btnMarkup"><span class="iconify" data-icon="mdi:draw-pen"></span><span>Markup</span></button>
             </div>
             
             <div class="header-center hidden-mobile">
                 <div class="url-bar" id="browserBar">
-                    <input type="text" class="url-input" id="urlInput" value="https://wikipedia.org" placeholder="Enter URL...">
-                    <button class="btn btn-default" id="goBtn">Go</button>
-                    <div class="viewport-selector">
-                        <select id="viewportSelect">
-                            <option value="desktop">🖥️ Desktop</option>
-                            <option value="tablet">平板 Tablet</option>
-                            <option value="mobile">📱 Mobile</option>
-                        </select>
+                    <div class="browse-input-cluster">
+                        <span class="iconify browse-inline-icon" data-icon="mdi:web"></span>
+                        <label class="sr-only" for="urlInput">Website URL</label>
+                        <input type="text" class="url-input" id="urlInput" value="https://wikipedia.org" placeholder="Enter URL...">
+                        <button class="btn btn-default browse-action-btn" id="goBtn"><span class="iconify" data-icon="mdi:arrow-right"></span><span class="browse-btn-label">Go</span></button>
                     </div>
-                    <button class="btn btn-default" id="pdfOpenBtn" title="Open PDF">📄 PDF</button>
-                    <button class="btn btn-default" id="pasteCaptureBtn" title="Paste Image">📋 Paste</button>
-                    <button class="btn btn-success" id="captureBtn">📷 Capture</button>
+
+                    <div class="browse-meta-cluster">
+                        <div class="viewport-selector">
+                            <span class="iconify" data-icon="mdi:monitor-dashboard"></span>
+                            <select id="viewportSelect">
+                                <option value="desktop">Desktop</option>
+                                <option value="tablet">Tablet</option>
+                                <option value="mobile">Mobile</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-default browse-action-btn" id="pdfOpenBtn" title="Open PDF"><span class="iconify" data-icon="mdi:file-pdf-box"></span><span class="browse-btn-label">PDF</span></button>
+                        <button class="btn btn-default browse-action-btn" id="pasteCaptureBtn" title="Paste Image"><span class="iconify" data-icon="mdi:clipboard-outline"></span><span class="browse-btn-label">Paste</span></button>
+                        <button class="btn btn-success browse-action-btn" id="captureBtn"><span class="iconify" data-icon="mdi:camera-outline"></span><span class="browse-btn-label">Capture</span></button>
+                    </div>
                 </div>
 
                 <div class="markup-bar" id="markupBar" style="display:none;">
                     <div class="tool-group">
-                        <button class="tool-btn" id="tool-hand-desk" data-tool="hand" title="Hand Tool (H)">✋</button>
-                        <button class="tool-btn" id="tool-select-desk" data-tool="select" title="Select Tool (V)">↖</button>
+                        <button class="tool-btn" id="tool-hand-desk" data-tool="hand" title="Hand Tool (H)"><span class="iconify" data-icon="mdi:hand-back-right-outline"></span></button>
+                        <button class="tool-btn" id="tool-select-desk" data-tool="select" title="Select Tool (V)"><span class="iconify" data-icon="mdi:cursor-default-outline"></span></button>
                     </div>
                     <div class="tool-group">
-                        <button class="tool-btn" id="zoomOutDesk" title="Zoom Out (−)">−</button>
+                        <button class="tool-btn" id="zoomOutDesk" title="Zoom Out (−)"><span class="iconify" data-icon="mdi:magnify-minus-outline"></span></button>
                         <span class="zoom-level" id="zoomLevelDesk">100%</span>
-                        <button class="tool-btn" id="zoomInDesk" title="Zoom In (+)">+</button>
-                        <button class="tool-btn" id="zoomFitDesk" title="Fit to View (⊡)">⊡</button>
+                        <button class="tool-btn" id="zoomInDesk" title="Zoom In (+)"><span class="iconify" data-icon="mdi:magnify-plus-outline"></span></button>
+                        <button class="tool-btn" id="zoomFitDesk" title="Fit to View (⊡)"><span class="iconify" data-icon="mdi:fit-to-page-outline"></span></button>
                     </div>
                     <div class="tool-group">
-                        <button class="tool-btn" id="undoBtnDesk" title="Undo (Ctrl+Z)">↺</button>
-                        <button class="tool-btn" id="redoBtnDesk" title="Redo (Ctrl+Y)">↻</button>
+                        <button class="tool-btn" id="undoBtnDesk" title="Undo (Ctrl+Z)"><span class="iconify" data-icon="mdi:undo-variant"></span></button>
+                        <button class="tool-btn" id="redoBtnDesk" title="Redo (Ctrl+Y)"><span class="iconify" data-icon="mdi:redo-variant"></span></button>
                     </div>
                 </div>
             </div>
@@ -178,7 +199,7 @@
                     <div class="tool-group">
                         <div class="color-well" title="Stroke Color"><input type="color" id="strokeColor" value="#ef4444"></div>
                         <div class="dropdown">
-                            <button class="tool-btn" id="editorMoreBtn">⋯</button>
+                            <button class="tool-btn" id="editorMoreBtn"><span class="iconify" data-icon="mdi:dots-horizontal"></span></button>
                             <div class="dropdown-menu" id="editorMoreMenu">
                                 <div class="dropdown-item">
                                     <span>Stroke Width</span>
@@ -188,11 +209,36 @@
                                     <span>Fill Color</span>
                                     <div class="color-well"><input type="color" id="fillColor" value="#ffffff"></div>
                                 </div>
-                                <button class="btn btn-ghost" id="layersBtn">📑 Layers</button>
-                                <button class="btn btn-success" id="saveBtn">💾 Save</button>
-                                <button class="btn btn-danger" id="deleteBtn">🗑️ Delete</button>
+                                <div class="dropdown-item" id="textStyleControls">
+                                    <span>Text Size <strong id="textSizeValue" style="float:right; color:var(--text);">24px</strong></span>
+                                    <input type="range" class="stroke-slider" id="textSizeSlider" min="10" max="96" value="24">
+                                </div>
+                                <div class="dropdown-item" id="textFaceControls">
+                                    <span>Text Style</span>
+                                    <div style="display:flex; gap:8px;">
+                                        <select id="textWeightSelect" style="flex:1;">
+                                            <option value="400">Regular</option>
+                                            <option value="500">Medium</option>
+                                            <option value="700">Bold</option>
+                                        </select>
+                                        <select id="textFontSelect" style="flex:1;">
+                                            <option value="Inter, sans-serif">Inter</option>
+                                            <option value="Georgia, serif">Serif</option>
+                                            <option value="'JetBrains Mono', monospace">Mono</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="dropdown-item" id="sizeControls">
+                                    <span>Icon/Point Size <strong id="sizeValue" style="float:right; color:var(--text);">48px</strong></span>
+                                    <input type="range" class="stroke-slider" id="sizeSlider" min="12" max="200" value="48">
+                                </div>
                             </div>
                         </div>
+                    </div>
+                    <div class="tool-group toolbar-actions-inline">
+                        <button class="btn btn-ghost btn-sm toolbar-action" id="layersBtn"><span class="action-emoji">📑</span><span class="action-label">Layers</span></button>
+                        <button class="btn btn-success btn-sm toolbar-action" id="saveBtn"><span class="action-emoji">💾</span><span class="action-label">Save</span></button>
+                        <button class="btn btn-danger btn-sm toolbar-action" id="deleteBtn"><span class="action-emoji">🗑️</span><span class="action-label">Delete</span></button>
                     </div>
                 </div>
                 
@@ -203,9 +249,9 @@
             </div>
         </div>
         
-        <div class="viewport">
+        <div class="viewport" id="mainViewport" role="main">
             <div class="view-layer active" id="browseView">
-                <iframe id="webFrame" sandbox="allow-forms allow-scripts allow-same-origin"></iframe>
+                <iframe id="webFrame"></iframe>
             </div>
             
             <div class="view-layer" id="markupView">
@@ -219,7 +265,7 @@
                 </div>
                 
                 <div class="layers-panel" id="layersPanel">
-                    <button class="panel-close-btn" onclick="document.getElementById('layersPanel').classList.remove('open')">×</button>
+                    <button class="panel-close-btn" aria-label="Close layers panel" onclick="document.getElementById('layersPanel').classList.remove('open')">×</button>
                     <div class="layers-header">
                         <span>Layers</span>
                         <span id="layerCount">0</span>
@@ -228,7 +274,7 @@
                 </div>
 
                 <div class="history-panel" id="historyPanel">
-                    <button class="panel-close-btn" onclick="document.getElementById('historyPanel').classList.remove('open')">×</button>
+                    <button class="panel-close-btn" aria-label="Close history panel" onclick="document.getElementById('historyPanel').classList.remove('open')">×</button>
                     <div class="history-header">
                         <span>History</span>
                         <span id="historyStepCount">0</span>
@@ -237,7 +283,7 @@
                 </div>
 
                 <div class="notes-panel" id="notesPanel">
-                    <button class="panel-close-btn" id="closeNotesBtn">×</button>
+                    <button class="panel-close-btn" id="closeNotesBtn" aria-label="Close notes panel">×</button>
                     <div class="notes-header">
                         <span>Notes</span>
                     </div>
@@ -245,8 +291,6 @@
                 </div>
             </div>
         </div>
-
-
 
         <!-- Consolidated Bottom Tray for Mobile -->
         <div class="tray-overlay hidden-desktop" id="trayOverlay"></div>
@@ -256,14 +300,14 @@
                 <div class="tray-section">
                     <span class="tray-label">Drawing Tools</span>
                     <div class="tool-grid">
-                        <button class="tray-tool-btn" data-tool="rect">▢<span>Rect</span></button>
-                        <button class="tray-tool-btn" data-tool="circle">◯<span>Circle</span></button>
-                        <button class="tray-tool-btn" data-tool="arrow">↗<span>Arrow</span></button>
-                        <button class="tray-tool-btn" data-tool="path">✎<span>Pencil</span></button>
-                        <button class="tray-tool-btn" data-tool="text">T<span>Text</span></button>
-                        <button class="tray-tool-btn" data-tool="point">📍<span>Point</span></button>
-                        <button class="tray-tool-btn" data-tool="eraser">⌫<span>Eraser</span></button>
-                        <button class="tray-tool-btn" id="assetsBtnTray">🖼️<span>Assets</span></button>
+                        <button class="tray-tool-btn" data-tool="rect"><span class="iconify" data-icon="mdi:rectangle-outline"></span><span>Rect</span></button>
+                        <button class="tray-tool-btn" data-tool="circle"><span class="iconify" data-icon="mdi:circle-outline"></span><span>Circle</span></button>
+                        <button class="tray-tool-btn" data-tool="arrow"><span class="iconify" data-icon="mdi:arrow-top-right-thick"></span><span>Arrow</span></button>
+                        <button class="tray-tool-btn" data-tool="path"><span class="iconify" data-icon="mdi:pencil-outline"></span><span>Pencil</span></button>
+                        <button class="tray-tool-btn" data-tool="text"><span class="iconify" data-icon="mdi:format-text"></span><span>Text</span></button>
+                        <button class="tray-tool-btn" data-tool="point"><span class="iconify" data-icon="mdi:map-marker-outline"></span><span>Point</span></button>
+                        <button class="tray-tool-btn" data-tool="eraser"><span class="iconify" data-icon="mdi:eraser-variant"></span><span>Eraser</span></button>
+                        <button class="tray-tool-btn" id="assetsBtnTray"><span class="iconify" data-icon="mdi:folder-image"></span><span>Assets</span></button>
                     </div>
                 </div>
 
@@ -311,19 +355,19 @@
     </div>
 
     <div class="mobile-nav" id="mobileNav" style="display:none;">
-        <div class="nav-item" id="navLibrary">
+        <div class="nav-item" id="navLibrary" role="button" tabindex="0" aria-label="Switch to Library view">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             <span>Library</span>
         </div>
-        <div class="nav-item" id="navBrowse">
+        <div class="nav-item" id="navBrowse" role="button" tabindex="0" aria-label="Switch to Browse view">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
             <span>Browse</span>
         </div>
-        <div class="nav-item active" id="navMarkup">
+        <div class="nav-item active" id="navMarkup" role="button" tabindex="0" aria-label="Switch to Markup view">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg>
             <span>Markup</span>
         </div>
-        <div class="nav-item" id="navAssets">
+        <div class="nav-item" id="navAssets" role="button" tabindex="0" aria-label="Open Assets">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             <span>Assets</span>
         </div>
@@ -341,15 +385,16 @@
                 </svg>
             </div>
             <div>
-                <h1>DevMarkup Studio Pro</h1>
-                <p>Web Annotation & Documentation Workspace</p>
+                <h1>MarkedUp</h1>
+                <p>Web Annotation &amp; Documentation Workspace</p>
             </div>
         </div>
         <div style="display:flex; gap:var(--space-md);">
             <button class="btn btn-default" id="landingExportBtn">Bulk Export</button>
-            <button class="btn btn-primary" id="landingNewBtn">＋ New Collection</button>
+            <button class="btn btn-primary" id="landingNewBtn">︋ New Collection</button>
         </div>
     </div>
+    <div class="landing-hero-bar"></div>
     
     <div class="landing-content">
         <h2 class="landing-section-header">
@@ -362,11 +407,11 @@
 </div>
 
 <!-- Settings Modal -->
-<div class="modal-overlay" id="settingsModal">
-    <div class="modal settings-modal">
-        <button class="panel-close-btn static" style="position:absolute; top:12px; right:12px; z-index:100;" onclick="Modal.close('settingsModal')">×</button>
+<div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal settings-modal" tabindex="-1">
+        <button class="panel-close-btn static" style="position:absolute; top:12px; right:12px; z-index:100;" aria-label="Close settings" onclick="Modal.close('settingsModal')">×</button>
         <div class="settings-sidebar">
-            <div class="settings-header-title">⚙️ Settings</div>
+            <div class="settings-header-title" id="settingsTitle">⚙️ Settings</div>
             <div class="settings-nav" id="settingsNav">
                 <div class="settings-nav-item active" data-target="settings-general">General & Editor</div>
                 <div class="settings-nav-item" data-target="settings-assets">Assets & Integrations</div>
@@ -425,11 +470,14 @@
                     </div>
 
                     <div class="form-group" style="margin-top: 24px;">
-                        <label>Custom Proxy URL (Optional)</label>
-                        <input type="text" id="settingCustomProxyUrl" placeholder="https://yourdomain.com/proxy.php?url=">
-                        <p style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
-                            Enter the URL to your <code>proxy.php</code> script to enable automated captures of restricted sites.
-                        </p>
+                        <label>Editor Toolbar Position (Desktop)</label>
+                        <select id="settingEditorToolbarPosition">
+                            <option value="floating">🎈 Floating (Default)</option>
+                            <option value="top-docked">📌 Top Docked</option>
+                            <option value="bottom-docked">📌 Bottom Docked</option>
+                            <option value="left-docked">📌 Left Docked</option>
+                            <option value="right-docked">📌 Right Docked</option>
+                        </select>
                     </div>
 
                     <div class="form-group" style="margin-top: 24px;">
@@ -441,27 +489,19 @@
                         </select>
                     </div>
 
-                    <h3 class="settings-section-title" style="margin-top:32px;">Pro Screenshot API (Beautiful)</h3>
-                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 12px;">
-                        Use an external service for pixel-perfect, automated screenshots.
-                    </p>
-
-                    <div class="form-group">
-                        <label>API Provider</label>
-                        <select id="settingScreenshotApiProvider">
-                            <option value="apiflash">ApiFlash (Recommended)</option>
-                            <option value="screenshotlayer">Screenshotlayer</option>
-                            <option value="mshots">WordPress mShots (Free & Keyless)</option>
+                    <h3 class="settings-section-title" style="margin-top:32px;">Local Capture Engine</h3>
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label>Capture Mode</label>
+                        <select id="settingCaptureMode">
+                            <option value="auto">Auto (Live first, fallback to Node)</option>
+                            <option value="live">Live iframe state only (html2canvas)</option>
+                            <option value="node">Node replay only (Playwright)</option>
+                            <option value="trueview">True View (tab capture, exact visible pixels)</option>
                         </select>
                     </div>
-
-                    <div class="form-group">
-                        <label>API Key</label>
-                        <input type="password" id="settingScreenshotApiKey" placeholder="Enter your API key">
-                        <div style="font-size:11px; color:var(--text-dim); margin-top:8px;">
-                            Get a free key: <a href="https://apiflash.com" target="_blank" style="color:var(--accent);">apiflash.com</a> or <a href="https://screenshotlayer.com" target="_blank" style="color:var(--accent);">screenshotlayer.com</a>
-                        </div>
-                    </div>
+                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 12px;">
+                        Live mode captures iframe DOM state, Node mode replays in Playwright, and True View captures exact visible tab pixels (one picker approval per sharing session).
+                    </p>
                 </div>
 
                 <!-- Assets & Integrations Section -->
@@ -562,7 +602,7 @@
 
                     <p style="color:var(--text-dim); font-size:13px; line-height:1.5; margin-bottom: 24px;">
                         All data is stored locally in your browser using IndexedDB. Settings are stored in LocalStorage.
-                        We do not transmit your captures to any server unless you explicitly use a proxy or third-party service.
+                        Captures are generated by your local Node service and are not sent to external screenshot providers.
                     </p>
 
                     <h4 style="font-size:14px; margin-bottom:12px; color:var(--text);">Configuration Backups</h4>
@@ -590,9 +630,9 @@
 </div>
 
 <!-- PDF Loading Modal -->
-<div class="modal-overlay" id="pdfModal">
-    <div class="modal">
-        <h3>📄 Load PDF</h3>
+<div class="modal-overlay" id="pdfModal" role="dialog" aria-modal="true" aria-labelledby="pdfModalTitle">
+    <div class="modal" tabindex="-1">
+        <h3 id="pdfModalTitle">📄 Load PDF</h3>
         <p>Load a PDF from a URL or upload a file from your device.</p>
         
         <div class="form-group">
@@ -615,9 +655,9 @@
 </div>
 
 <!-- Export Modal -->
-<div class="modal-overlay" id="exportModal">
-    <div class="modal">
-        <h3>Export Captures</h3>
+<div class="modal-overlay" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+    <div class="modal" tabindex="-1">
+        <h3 id="exportModalTitle">Export Captures</h3>
         <p id="exportInfo">Export your marked-up captures.</p>
         <div class="modal-actions">
             <button class="btn btn-default" id="exportCancelBtn">Cancel</button>
@@ -629,8 +669,8 @@
 </div>
 
 <!-- Confirm Modal -->
-<div class="modal-overlay" id="confirmModal">
-    <div class="modal">
+<div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal" tabindex="-1">
         <h3 id="confirmTitle">Confirm</h3>
         <p id="confirmMsg">Are you sure?</p>
         <div class="modal-actions">
@@ -640,7 +680,23 @@
     </div>
 </div>
 
-<div class="toast" id="toast">
+<!-- Prompt Modal -->
+<div class="modal-overlay" id="promptModal" role="dialog" aria-modal="true" aria-labelledby="promptTitle">
+    <div class="modal" tabindex="-1">
+        <h3 id="promptTitle">Input Required</h3>
+        <p id="promptMsg">Please enter a value.</p>
+        <div class="form-group" style="margin-top: 12px;">
+            <label for="promptInput" id="promptInputLabel">Value</label>
+            <input type="text" id="promptInput" placeholder="Enter value..." spellcheck="false">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-default" id="promptCancelBtn">Cancel</button>
+            <button class="btn btn-primary" id="promptOkBtn">Save</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true">
     <span id="toastIcon">✓</span>
     <span id="toastMsg">Success</span>
 </div>
@@ -653,13 +709,13 @@
 <script src="js/assets/emojis.js"></script>
 <script src="js/assets/stock.js"></script>
 <script src="js/features/library.js"></script>
-<script src="js/features/browser.js"></script>
+<script src="js/features/browser.js?v=1.2"></script>
 <script src="js/features/pdf-viewer.js"></script>
 <script src="js/features/notes.js"></script>
-<script src="js/editor/editor.js"></script>
+<script src="js/editor/editor.js?v=1.2"></script>
 <script src="js/editor/exporter.js"></script>
-<script src="js/ui/settings-ui.js"></script>
-<script src="js/app.js"></script>
+<script src="js/ui/settings-ui.js?v=1.2"></script>
+<script src="js/app.js?v=1.2"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

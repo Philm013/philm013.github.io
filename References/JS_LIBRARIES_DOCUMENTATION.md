@@ -32,6 +32,7 @@ Use these specific URLs to ensure compatibility across the monorepo.
 | **html2canvas** | Export | Screenshot a part of the DOM and render it into a canvas. | Use as a bridge between HTML/CSS and image/PDF exports. |
 | **Fuse.js** | Search | A lightweight fuzzy-search library with zero dependencies. | Use for fast, client-side searching across lists of objects. |
 | **JSZip** | Utilities | A library for creating, reading and editing .zip files with JavaScript. | Use for bulk-exporting multiple files (images, PDFs) in a single archive. |
+| **NW.js** | Desktop Runtime | Native desktop runtime that combines Chromium + Node.js. | Use when packaging browser apps as installable desktop applications. |
 
 ---
 

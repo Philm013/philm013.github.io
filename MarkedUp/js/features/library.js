@@ -124,21 +124,29 @@ const Library = {
     },
 
     async createNewCollection() {
-        const name = prompt('Enter collection name:', 'New Collection');
-        if (!name) return;
+        Modal.prompt(
+            'New Collection',
+            'Create a new collection in your library.',
+            'New Collection',
+            { label: 'Collection name', placeholder: 'Enter collection name...', selectAll: true },
+            async (value) => {
+                const name = String(value || '').trim();
+                if (!name) return;
 
-        const collection = {
-            id: Utils.uid(),
-            name: name,
-            createdAt: Date.now(),
-            type: 'collection'
-        };
-        
-        await DB.save(DB.STORES.SESSIONS, collection);
-        this.collections.unshift(collection);
-        this.updateCollectionSwitcher();
-        this.render();
-        Toast.show('Collection created');
+                const collection = {
+                    id: Utils.uid(),
+                    name,
+                    createdAt: Date.now(),
+                    type: 'collection'
+                };
+
+                await DB.save(DB.STORES.SESSIONS, collection);
+                this.collections.unshift(collection);
+                this.updateCollectionSwitcher();
+                this.render();
+                Toast.show('Collection created');
+            }
+        );
     },
 
     async addCapture(img, title = 'Capture', pdfData = null) {
@@ -212,16 +220,25 @@ const Library = {
 
     async renameItem(item) {
         const oldName = item.name || item.title;
-        const newName = prompt('Rename:', oldName);
-        if (!newName || newName === oldName) return;
-        if (item.type === 'collection') {
-            item.name = newName;
-            await DB.save(DB.STORES.SESSIONS, item);
-        } else {
-            item.title = newName;
-            await DB.save(DB.STORES.CAPTURES, item);
-        }
-        this.render();
+        Modal.prompt(
+            'Rename',
+            `Update the ${item.type === 'collection' ? 'collection' : 'capture'} name.`,
+            oldName,
+            { label: 'Name', placeholder: 'Enter new name...', selectAll: true },
+            async (value) => {
+                const newName = String(value || '').trim();
+                if (!newName || newName === oldName) return;
+
+                if (item.type === 'collection') {
+                    item.name = newName;
+                    await DB.save(DB.STORES.SESSIONS, item);
+                } else {
+                    item.title = newName;
+                    await DB.save(DB.STORES.CAPTURES, item);
+                }
+                this.render();
+            }
+        );
     },
 
     render(containerId = 'capturesGrid') {
@@ -236,7 +253,9 @@ const Library = {
             if (this.activeCollectionId) {
                 breadcrumbs.style.display = 'flex';
                 const col = this.collections.find(c => c.id === this.activeCollectionId);
-                breadcrumbs.innerHTML = `<span class="breadcrumb-item" onclick="Library.navigateTo(null)">Library</span><span class="breadcrumb-sep">/</span><span class="breadcrumb-item active">${col ? col.name : '...'}</span>`;
+                breadcrumbs.innerHTML = `<button type="button" class="breadcrumb-item" id="libraryRootCrumb">Library</button><span class="breadcrumb-sep">/</span><span class="breadcrumb-item active">${col ? col.name : '...'}</span>`;
+                const rootCrumb = document.getElementById('libraryRootCrumb');
+                if (rootCrumb) rootCrumb.onclick = () => this.navigateTo(null);
             } else {
                 breadcrumbs.style.display = 'none';
             }
@@ -269,11 +288,25 @@ const Library = {
         card.draggable = !isMobile;
         card.dataset.id = item.id;
 
-        if (isLanding || item.selected) {
+        if (isLanding || item.type === 'capture') {
             const check = document.createElement('div');
-            check.className = 'session-check';
-            check.innerHTML = item.selected ? '✓' : '';
-            check.onclick = (e) => { e.stopPropagation(); item.selected = !item.selected; this.render(); };
+            check.className = 'session-select';
+            check.setAttribute('role', 'button');
+            check.setAttribute('tabindex', '0');
+            check.setAttribute('aria-label', `Select ${item.name || item.title}`);
+            check.setAttribute('aria-pressed', item.selected ? 'true' : 'false');
+            const toggleSelection = (e) => {
+                e.stopPropagation();
+                item.selected = !item.selected;
+                this.render();
+            };
+            check.onclick = toggleSelection;
+            check.onkeydown = (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleSelection(e);
+                }
+            };
             card.appendChild(check);
         }
 
@@ -454,6 +487,27 @@ const Library = {
         
         const sInput = document.getElementById('searchInput');
         if (sInput) sInput.placeholder = `Search ${tab}...`;
+    },
+
+    getVisibleCaptures() {
+        return this.captures.filter(c => {
+            const inCollection = c.sessionId === this.activeCollectionId;
+            const matchesSearch = (c.title || '').toLowerCase().includes(this.searchQuery);
+            return inCollection && matchesSearch;
+        });
+    },
+
+    selectAllCaptures() {
+        this.getVisibleCaptures().forEach(c => c.selected = true);
+        this.render();
+        Toast.show('All visible captures selected');
+    },
+
+    clearSelection() {
+        this.captures.forEach(c => c.selected = false);
+        this.collections.forEach(c => c.selected = false);
+        this.render();
+        Toast.show('Selection cleared');
     },
 
     getSelected() { return this.captures.filter(c => c.selected); },

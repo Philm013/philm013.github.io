@@ -523,6 +523,32 @@
         const clearSearchBtn = document.getElementById('clearSearch');
         const resultsMeta = document.getElementById('resultsMeta');
 
+        const LIBRARY_REPO_MAP = {
+            'PDF.js': 'https://github.com/mozilla/pdf.js',
+            'Chart.js': 'https://github.com/chartjs/Chart.js',
+            'PeerJS': 'https://github.com/peers/peerjs',
+            'Tailwind CSS': 'https://github.com/tailwindlabs/tailwindcss',
+            'Iconify': 'https://github.com/iconify/iconify',
+            'Google AI': 'https://github.com/google-gemini/deprecated-generative-ai-js',
+            'D3.js': 'https://github.com/d3/d3',
+            'OpenCV.js': 'https://github.com/opencv/opencv',
+            'HLS.js': 'https://github.com/video-dev/hls.js',
+            'Pako': 'https://github.com/nodeca/pako',
+            'XLSX (SheetJS)': 'https://github.com/SheetJS/sheetjs',
+            'Leaflet': 'https://github.com/Leaflet/Leaflet',
+            'CodeMirror': 'https://github.com/codemirror/dev',
+            'TinyMCE': 'https://github.com/tinymce/tinymce',
+            'DOMPurify': 'https://github.com/cure53/DOMPurify',
+            'Canvas Confetti': 'https://github.com/catdad/canvas-confetti',
+            'Bootstrap': 'https://github.com/twbs/bootstrap',
+            'SortableJS': 'https://github.com/SortableJS/Sortable',
+            'jsPDF': 'https://github.com/parallax/jsPDF',
+            'html2canvas': 'https://github.com/niklasvh/html2canvas',
+            'Fuse.js': 'https://github.com/krisk/Fuse',
+            'JSZip': 'https://github.com/Stuk/jszip',
+            'NW.js': 'https://github.com/nwjs/nw.js/'
+        };
+
         // Marked options for better formatting
         marked.setOptions({
             breaks: true,
@@ -547,10 +573,12 @@
                 document.getElementById('content').style.display = 'block';
                 tools.classList.add('visible');
 
-                // Add anchor links to headings
-                addAnchorLinks();
+                injectLibraryEntryCatalog();
                 makeSectionsCollapsible();
+                addAnchorLinks();
+                enhanceMainReferenceTable();
                 applySearchFilter();
+                openSectionFromHash();
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
                 const errorDiv = document.getElementById('error');
@@ -559,17 +587,17 @@
             }
         }
 
-        // Add anchor links to all headings
         function addAnchorLinks() {
-            const headings = document.querySelectorAll('#content h1, #content h2, #content h3');
+            const headings = document.querySelectorAll('#content .collapsible-content h2, #content .collapsible-content h3, #content .collapsible-content h4');
             headings.forEach(heading => {
-                const id = heading.textContent
-                    .toLowerCase()
-                    .replace(/[^\w\s-]/g, '')
-                    .replace(/\s+/g, '-')
-                    .replace(/-+/g, '-');
-                
-                heading.id = id;
+                if (heading.querySelector('.anchor-link')) return;
+                if (!heading.id) {
+                    heading.id = heading.textContent
+                        .toLowerCase()
+                        .replace(/[^\w\s-]/g, '')
+                        .replace(/\s+/g, '-')
+                        .replace(/-+/g, '-');
+                }
                 
                 const link = document.createElement('a');
                 link.href = `#${id}`;
@@ -582,53 +610,183 @@
             });
         }
 
+        function slugify(value) {
+            return value
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/(^-|-$)/g, '');
+        }
+
+        function normalize(value) {
+            return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+        }
+
+        function repoForLibrary(libraryName) {
+            return Object.entries(LIBRARY_REPO_MAP).find(([key]) => normalize(key) === normalize(libraryName))?.[1] || '';
+        }
+
+        function injectLibraryEntryCatalog() {
+            const content = document.getElementById('content');
+            const table = content.querySelector('table');
+            if (!table) return;
+
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            if (rows.length === 0) return;
+
+            const heading = document.createElement('h1');
+            heading.textContent = 'Library Entry Catalog';
+            content.appendChild(heading);
+
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 4) return;
+
+                const libraryName = cells[0].textContent.replace(/\*/g, '').trim();
+                const category = cells[1].textContent.trim();
+                const description = cells[2].textContent.trim();
+                const whenToUse = cells[3].textContent.trim();
+                const entryId = `library-${slugify(libraryName)}`;
+
+                const h2 = document.createElement('h2');
+                h2.id = entryId;
+                h2.textContent = libraryName;
+                content.appendChild(h2);
+
+                const p1 = document.createElement('p');
+                p1.innerHTML = `<strong>Category:</strong> ${category}`;
+                content.appendChild(p1);
+
+                const p2 = document.createElement('p');
+                p2.textContent = description;
+                content.appendChild(p2);
+
+                const p3 = document.createElement('p');
+                p3.innerHTML = `<strong>When to use:</strong> ${whenToUse}`;
+                content.appendChild(p3);
+
+                const repo = repoForLibrary(libraryName);
+                if (repo) {
+                    const p4 = document.createElement('p');
+                    p4.innerHTML = `<strong>GitHub:</strong> <a href="${repo}" target="_blank" rel="noopener noreferrer">${repo}</a>`;
+                    content.appendChild(p4);
+                }
+            });
+        }
+
         function makeSectionsCollapsible() {
             const content = document.getElementById('content');
             const nodes = Array.from(content.children);
-            const majorHeadings = nodes.filter(node => node.tagName === 'H1' || node.tagName === 'H2');
+            content.innerHTML = '';
 
-            majorHeadings.forEach((heading, index) => {
-                if (heading.closest('.collapsible-section')) return;
-
+            const usedIds = new Set();
+            const createSection = (title) => {
                 const section = document.createElement('section');
                 section.className = 'collapsible-section';
-                section.dataset.title = heading.textContent.trim().toLowerCase();
-                section.dataset.collapsed = 'false';
+                section.dataset.title = title.trim().toLowerCase();
+                section.dataset.collapsed = 'true';
+
+                let baseId = `section-${slugify(title || 'overview')}`;
+                if (!baseId || baseId === 'section-') {
+                    baseId = 'section-overview';
+                }
+                let uniqueId = baseId;
+                let count = 2;
+                while (usedIds.has(uniqueId)) {
+                    uniqueId = `${baseId}-${count}`;
+                    count += 1;
+                }
+                usedIds.add(uniqueId);
+                section.id = uniqueId;
 
                 const toggle = document.createElement('button');
                 toggle.type = 'button';
                 toggle.className = 'collapsible-toggle';
-                toggle.innerHTML = `<span>${heading.textContent.trim()}</span><span class="caret">v</span>`;
+                toggle.innerHTML = `<span>${title}</span><span class="caret">v</span>`;
 
                 const sectionContent = document.createElement('div');
                 sectionContent.className = 'collapsible-content';
 
-                const currentLevel = heading.tagName;
-                let cursor = heading;
-                while (cursor) {
-                    const next = cursor.nextElementSibling;
-                    sectionContent.appendChild(cursor);
-                    if (!next) break;
-                    if ((next.tagName === currentLevel) || (currentLevel === 'H2' && next.tagName === 'H1')) break;
-                    cursor = next;
-                }
-
                 section.appendChild(toggle);
                 section.appendChild(sectionContent);
-
-                const insertBeforeNode = content.children[index];
-                if (insertBeforeNode) {
-                    content.insertBefore(section, insertBeforeNode);
-                } else {
-                    content.appendChild(section);
-                }
 
                 toggle.addEventListener('click', () => {
                     section.dataset.collapsed = section.dataset.collapsed === 'true' ? 'false' : 'true';
                 });
+
+                return { section, body: sectionContent };
+            };
+
+            let current = null;
+            nodes.forEach(node => {
+                if (node.tagName === 'H1' || node.tagName === 'H2') {
+                    current = createSection(node.textContent.trim());
+                    content.appendChild(current.section);
+                    return;
+                }
+
+                if (!current) {
+                    current = createSection('Overview');
+                    content.appendChild(current.section);
+                }
+
+                current.body.appendChild(node);
             });
 
             updateResultsMeta();
+        }
+
+        function enhanceMainReferenceTable() {
+            const table = document.querySelector('#content table');
+            if (!table) return;
+
+            const headerRow = table.querySelector('thead tr');
+            if (headerRow && !Array.from(headerRow.querySelectorAll('th')).some(th => /github/i.test(th.textContent))) {
+                const githubHead = document.createElement('th');
+                githubHead.textContent = 'GitHub Repo';
+                headerRow.appendChild(githubHead);
+            }
+
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const firstCell = row.querySelector('td');
+                if (!firstCell) return;
+
+                const libraryName = firstCell.textContent.replace(/\*/g, '').trim();
+                const targetEntryId = `library-${slugify(libraryName)}`;
+                firstCell.innerHTML = `<a href="#${targetEntryId}">${libraryName}</a>`;
+
+                const githubCell = document.createElement('td');
+                githubCell.dataset.githubCell = 'true';
+
+                const repoUrl = repoForLibrary(libraryName);
+                if (repoUrl) {
+                    githubCell.innerHTML = `<a href="${repoUrl}" target="_blank" rel="noopener noreferrer">Repository</a>`;
+                } else {
+                    githubCell.textContent = '-';
+                    githubCell.style.color = '#737373';
+                }
+
+                row.appendChild(githubCell);
+            });
+        }
+
+        function openSectionFromHash() {
+            const hash = decodeURIComponent(window.location.hash || '').replace(/^#/, '');
+            if (!hash) return;
+
+            const target = document.getElementById(hash);
+            if (!target) return;
+
+            const section = target.closest('.collapsible-section');
+            if (section) {
+                section.dataset.collapsed = 'false';
+            }
+
+            requestAnimationFrame(() => {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
         }
 
         function getSections() {
@@ -672,6 +830,23 @@
             searchInput.value = '';
             applySearchFilter();
         });
+
+        document.addEventListener('click', event => {
+            const link = event.target.closest('a[href^="#"]');
+            if (!link) return;
+            const id = decodeURIComponent(link.getAttribute('href').slice(1));
+            if (!id) return;
+            const target = document.getElementById(id);
+            if (!target) return;
+
+            event.preventDefault();
+            if (window.location.hash !== `#${id}`) {
+                history.replaceState(null, '', `#${id}`);
+            }
+            openSectionFromHash();
+        });
+
+        window.addEventListener('hashchange', openSectionFromHash);
 
         // Back to top functionality
         const backToTopButton = document.getElementById('backToTop');

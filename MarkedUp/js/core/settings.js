@@ -14,9 +14,8 @@ const Settings = {
         defaultStrokeWidth: 4,
         pinchSensitivity: 1.0,
         mobileToolbarPosition: 'bottom', // 'top', 'bottom', 'floating'
-        customProxyUrl: 'https://TechieTeaching.com/res/capture.php?url=',
-        screenshotApiKey: '', // e.g. for Screenshotlayer or ApiFlash
-        screenshotApiProvider: 'apiflash', // 'apiflash', 'screenshotlayer', or 'mshots'
+        captureMode: 'auto', // 'auto' | 'live' | 'node' | 'trueview'
+        nodeCaptureEndpoint: '/api/capture',
         defaultView: 'browse', // 'browse' or 'markup'
         favorites: [] // List of favorite asset objects
     },
@@ -29,15 +28,23 @@ const Settings = {
     },
     
     get(key) {
-        return this.data[key];
+        const val = this.data[key];
+        if (key === 'captureMode') {
+            console.log(`[Settings.get] captureMode = "${val}"`);
+        }
+        return val;
     },
     
     set(key, value) {
+        if (key === 'captureMode') {
+            console.log(`[Settings.set] Setting captureMode = "${value}" (was: "${this.data[key]}")`);
+        }
         this.data[key] = value;
         this.save();
     },
     
     save() {
+        console.log(`[Settings.save] Persisting to localStorage, captureMode = "${this.data.captureMode}"`);
         localStorage.setItem('devmarkup_settings', JSON.stringify(this.data));
     },
     

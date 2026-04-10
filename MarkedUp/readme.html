@@ -79,7 +79,7 @@ tailwind.config = {
                     </div>
                 </div>
                 <h1 class="text-2xl md:text-3xl">MarkedUp</h1>
-                <p class="text-sm md:text-base text-ollama-stone max-w-2xl mx-auto leading-relaxed">Powerful web annotation tool for capturing websites and adding rich annotations.</p>
+                <p class="text-sm md:text-base text-ollama-stone max-w-2xl mx-auto leading-relaxed">Local-first browser capture and annotation for webpages, screenshots, and PDFs.</p>
                 <div class="flex flex-wrap justify-center gap-1.5 pt-1">
                     <span class="tech-pill px-3 py-1 text-xs">Canvas API</span><span class="tech-pill px-3 py-1 text-xs">jsPDF</span><span class="tech-pill px-3 py-1 text-xs">JSZip</span>
                 </div>
@@ -136,40 +136,9 @@ tailwind.config = {
                     </div>
                 </div>
             </div>
-            <div class="mt-32 pt-16 border-t border-ollama-gray">
-                <h3 class="text-3xl mb-10 text-center font-medium">Explore More Projects</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    
-                        <a href="../SnapMeet/readme.html" class="group block p-6 border border-ollama-gray rounded-xl bg-white hover:border-ollama-black transition-all duration-200">
-                            <div class="w-10 h-10 rounded-lg bg-ollama-snow border border-ollama-gray flex items-center justify-center mb-4 group-hover:bg-ollama-gray transition-colors">
-                                <span class="iconify text-xl text-ollama-black" data-icon="lucide:map-pin"></span>
-                            </div>
-                            <h4 class="text-lg font-medium mb-2">SnapMeet</h4>
-                            <p class="text-ollama-stone text-sm leading-relaxed line-clamp-2">Real-time, peer-to-peer location sharing and communication for small groups.</p>
-                        </a>
-                    
-                        <a href="../CardVault/readme.html" class="group block p-6 border border-ollama-gray rounded-xl bg-white hover:border-ollama-black transition-all duration-200">
-                            <div class="w-10 h-10 rounded-lg bg-ollama-snow border border-ollama-gray flex items-center justify-center mb-4 group-hover:bg-ollama-gray transition-colors">
-                                <span class="iconify text-xl text-ollama-black" data-icon="lucide:clover"></span>
-                            </div>
-                            <h4 class="text-lg font-medium mb-2">CardVault</h4>
-                            <p class="text-ollama-stone text-sm leading-relaxed line-clamp-2">Sports card cataloging with AI-powered scanning and computer vision capabilities.</p>
-                        </a>
-                    
-                        <a href="../EdReporter/readme.html" class="group block p-6 border border-ollama-gray rounded-xl bg-white hover:border-ollama-black transition-all duration-200">
-                            <div class="w-10 h-10 rounded-lg bg-ollama-snow border border-ollama-gray flex items-center justify-center mb-4 group-hover:bg-ollama-gray transition-colors">
-                                <span class="iconify text-xl text-ollama-black" data-icon="lucide:clipboard-list"></span>
-                            </div>
-                            <h4 class="text-lg font-medium mb-2">EdReporter</h4>
-                            <p class="text-ollama-stone text-sm leading-relaxed line-clamp-2">Analyze educational materials against defined criteria with AI assistance.</p>
-                        </a>
-                    
-                </div>
-            </div>
             <div class="mt-32 pt-12 flex flex-col items-center gap-8">
                 <div class="flex flex-wrap justify-center gap-4">
                     <a href="index.html" class="btn-pill-black px-12">Launch Application</a>
-                    <a href="https://github.com/philm013/philm013.github.io/tree/main/MarkedUp" target="_blank" class="btn-pill-white px-12">View Source</a>
                 </div>
             </div>
         </div>
@@ -180,53 +149,86 @@ tailwind.config = {
         </div>
     </footer>
     <script>
-        const rawMarkdown = `# DevMarkup Studio Pro
+        const rawMarkdown = `# MarkedUp
 
-A comprehensive, single-file web application for capturing, marking up, and managing webpage screenshots.
+    MarkedUp is a local-first browser capture and annotation tool for collecting webpages, screenshots, and PDFs, then marking them up with shapes, text, icons, emojis, notes, and exports.
 
-## Project Overview
+    ## Current State
 
-**DevMarkup Studio Pro** is a powerful annotation tool that allows users to capture websites directly in their browser and add rich annotations. It features a dual-view interface: a **Browse** mode for navigating and capturing, and a **Markup** mode for editing.
+    MarkedUp is a modular vanilla JavaScript app with a local Node server for hosting, proxying, and Playwright-powered captures.
 
-### Key Features
-- **Capture:** Real-time webpage capture using \`getDisplayMedia\`.
-- **Annotation:** Support for basic shapes (rect, circle, arrow, line), text, icons, and emojis.
-- **Assets:** Integrated search for icons (Iconify) and stock photos (Unsplash, Pexels).
-- **Persistence:** Local storage of captures and annotation data using IndexedDB.
-- **Export:** High-quality exports in ZIP (multiple PNGs) or PDF formats.
-- **Modern UI:** Responsive, dark-themed interface with CSS-variable based styling.
+    - Proxied iframe browsing
+    - Live or Playwright-backed page capture
+    - Canvas-based markup tools
+    - Collections and captures stored locally in IndexedDB
+    - PDF import, clipboard paste, notes, and exports
+    - Settings for capture behavior, asset providers, and defaults
 
-### Technology Stack
-- **Core:** HTML5, Vanilla CSS, Vanilla JavaScript (ES6+).
-- **Storage:** IndexedDB (Data), LocalStorage (Settings).
-- **Libraries:**
-  - \`jspdf\`: PDF generation.
-  - \`jszip\`: ZIP archive creation.
-  - \`FileSaver.js\`: File download management.
-- **APIs:** Iconify, Unsplash, Pexels, Lorem Picsum.
+    ## Feature Set
 
-## Architecture
+    ### Capture and Input
 
-The application is structured into several modular object literals:
-- \`App\`: Main controller and event handling.
-- \`Editor\`: Canvas-based drawing engine and tool management.
-- \`Library\`: Manages the collection of captures and their metadata.
-- \`Browser\`: Handles the iframe-based browsing and screenshot capture.
-- \`DB\`: IndexedDB wrapper for session persistence.
-- \`Exporter\`: Logic for rendering final images and generating ZIP/PDF files.
-- \`Settings\`: Global configuration manager.
-- \`Icons\` / \`Emojis\` / \`Stock\`: Asset management and API integration.
+    - Capture the current viewport or a full page
+    - Use auto, live, or node capture modes
+    - Paste images from the clipboard
+    - Import PDFs from a URL or local file
 
-## Building and Running
+    ### Markup and Review
 
-### Development
-As a single-file application, no build step is required. You can run the project by:
-1. Opening \`index.html\` in any modern web browser.
-2. Hosting it via a simple static server (e.g., \`npx serve .\` or \`python -m http.server\`).
+    - Draw rectangles, circles, arrows, lines, paths, text, point markers, icons, emojis, and stock images
+    - Add notes to numbered point markers
+    - Use undo, redo, zoom, fit-to-view, layers, and selection tools
 
-### Deployment
-The project is designed to be hosted as a static site (e.g., GitHub Pages).
-`;
+    ### Export and Organization
+
+    - Organize work into collections
+    - Search, sort, rename, and delete captures
+    - Export selected captures to ZIP or PDF
+    - Copy multiple marked-up captures as a single combined image grid
+
+    ## Runtime Model
+
+    MarkedUp is designed to run through the local Node server.
+
+    - The iframe browser depends on \`/proxy\`
+    - Node capture depends on \`/api/capture\`
+    - Opening \`index.html\` directly is not the primary workflow
+
+    ## Setup
+
+    ### Requirements
+
+    - Node.js 18+
+    - npm
+    - Playwright browser binaries or a local Chrome installation
+
+    ### Install
+
+    \`\`\`bash
+    npm install
+    npx playwright install chromium
+    \`\`\`
+
+    ### Run
+
+    \`\`\`bash
+    npm start
+    \`\`\`
+
+    Open \`http://127.0.0.1:4777\`.
+
+    ## Storage Model
+
+    - IndexedDB database: \`DevMarkupPro\`
+    - Stores: \`sessions_v2\` and \`captures_v2\`
+    - LocalStorage key: \`devmarkup_settings\`
+
+    ## Current Caveats
+
+    - Some sites may still behave poorly inside the proxied iframe
+    - PDF import currently turns the first rendered page into a capture
+    - The project does not currently define lint, test, or build commands beyond starting the server
+    `;
         if (rawMarkdown.trim()) {
             document.getElementById('readme-content').innerHTML = marked.parse(rawMarkdown);
         } else {

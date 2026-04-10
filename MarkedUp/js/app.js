@@ -186,25 +186,32 @@ const App = {
     },
 
     setupEventListeners() {
-        // Mode Switches
-        document.getElementById('btnLibrary').onclick = () => {
-            Library.setTab('captures');
-            document.getElementById('sidebar').classList.add('open');
-            document.getElementById('sidebarOverlay').classList.add('active');
+        const bindKeyboardActivate = (el, handler) => {
+            if (!el || !handler) return;
+            el.onclick = handler;
+            el.onkeydown = (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handler(e);
+                }
+            };
         };
+
+        // Mode Switches
+        document.getElementById('btnLibrary').onclick = () => this.setView('library');
         document.getElementById('btnBrowse').onclick = () => this.setView('browse');
         document.getElementById('btnMarkup').onclick = () => this.setView('markup');
         
         // Mobile Navigation
-        document.getElementById('navLibrary').onclick = () => this.setView('library');
-        document.getElementById('navBrowse').onclick = () => this.setView('browse');
-        document.getElementById('navMarkup').onclick = () => this.setView('markup');
-        document.getElementById('navAssets').onclick = () => {
+        bindKeyboardActivate(document.getElementById('navLibrary'), () => this.setView('library'));
+        bindKeyboardActivate(document.getElementById('navBrowse'), () => this.setView('browse'));
+        bindKeyboardActivate(document.getElementById('navMarkup'), () => this.setView('markup'));
+        bindKeyboardActivate(document.getElementById('navAssets'), () => {
             document.getElementById('sidebar').classList.add('open');
             document.getElementById('sidebarOverlay').classList.add('active');
             if (Icons.tabBtn) Icons.tabBtn.click();
             else Library.setTab('icons');
-        };
+        });
 
         // Mobile Header Controls
         const zInMobH = document.getElementById('zoomInMobHeader');
@@ -359,6 +366,10 @@ const App = {
         document.getElementById('settingsSaveBtn').onclick = () => SettingsUI.save();
         
         document.getElementById('exportBtn').onclick = () => Exporter.showDialog();
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        if (selectAllBtn) selectAllBtn.onclick = () => Library.selectAllCaptures();
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        if (clearAllBtn) clearAllBtn.onclick = () => Library.clearSelection();
         document.getElementById('exportCancelBtn').onclick = () => Modal.close('exportModal');
         document.getElementById('exportZipBtn').onclick = () => Exporter.run('zip');
         document.getElementById('exportPdfBtn').onclick = () => Exporter.run('pdf');
@@ -372,6 +383,30 @@ const App = {
             Modal.close('confirmModal');
             if (Modal.confirmCallback) Modal.confirmCallback();
         };
+
+        document.getElementById('promptCancelBtn').onclick = () => {
+            Modal.close('promptModal');
+            Modal.promptCallback = null;
+        };
+
+        document.getElementById('promptOkBtn').onclick = () => {
+            const input = document.getElementById('promptInput');
+            const value = input ? input.value : '';
+            const cb = Modal.promptCallback;
+            Modal.close('promptModal');
+            Modal.promptCallback = null;
+            if (cb) cb(value);
+        };
+
+        const promptInput = document.getElementById('promptInput');
+        if (promptInput) {
+            promptInput.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('promptOkBtn').click();
+                }
+            };
+        }
         
         document.getElementById('closeNotesBtn').onclick = () => Notes.toggle(false);
 
@@ -401,6 +436,9 @@ const App = {
         };
 
         setupDropdown('editorMoreBtn', 'editorMoreMenu');
+        setupDropdown('drawToolsBtn', 'drawToolsMenu');
+        setupDropdown('annotateToolsBtn', 'annotateToolsMenu');
+        setupDropdown('assetToolsBtn', 'assetToolsMenu');
 
         // PDF Modal Actions
         document.getElementById('pdfCancelBtn').onclick = () => Modal.close('pdfModal');

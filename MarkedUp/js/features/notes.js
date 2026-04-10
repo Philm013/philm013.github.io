@@ -112,6 +112,11 @@ const Notes = {
         if (isMob) {
             document.getElementById('sidebar').classList.add('open');
             document.getElementById('sidebarOverlay').classList.add('active');
+        } else {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) sidebar.style.display = 'flex';
+            const app = document.querySelector('.app');
+            if (app) app.style.gridTemplateColumns = 'auto 1fr';
         }
         
         // Switch to Icons tab

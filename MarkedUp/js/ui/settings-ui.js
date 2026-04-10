@@ -1,11 +1,23 @@
 const SettingsUI = {
     init() {
+        const onActivate = (handler) => (e) => {
+            if (e.type === 'click' || e.key === 'Enter' || e.key === ' ') {
+                if (e.type === 'keydown') e.preventDefault();
+                handler();
+            }
+        };
+
         // Toggle Buttons
         document.querySelectorAll('.toggle').forEach(toggle => {
-            toggle.addEventListener('click', () => {
+            toggle.setAttribute('role', 'switch');
+            toggle.setAttribute('tabindex', '0');
+            const toggleHandler = () => {
                 toggle.classList.toggle('active');
+                toggle.setAttribute('aria-checked', toggle.classList.contains('active') ? 'true' : 'false');
                 this.updateSettingsVisibility();
-            });
+            };
+            toggle.addEventListener('click', onActivate(toggleHandler));
+            toggle.addEventListener('keydown', onActivate(toggleHandler));
         });
 
         // Tab Navigation
@@ -13,14 +25,18 @@ const SettingsUI = {
         const sections = document.querySelectorAll('.settings-section');
         
         navItems.forEach(item => {
-            item.addEventListener('click', () => {
+            item.setAttribute('role', 'button');
+            item.setAttribute('tabindex', '0');
+            const switchSection = () => {
                 navItems.forEach(nav => nav.classList.remove('active'));
                 sections.forEach(sec => sec.classList.remove('active'));
                 
                 item.classList.add('active');
                 const target = document.getElementById(item.dataset.target);
                 if (target) target.classList.add('active');
-            });
+            };
+            item.addEventListener('click', onActivate(switchSection));
+            item.addEventListener('keydown', onActivate(switchSection));
         });
 
         // Color Picker Sync
@@ -56,6 +72,19 @@ const SettingsUI = {
         // Data Management Buttons
         document.getElementById('dangerClearDataBtn').addEventListener('click', () => this.clearAllData());
         document.getElementById('exportSettingsBtn').addEventListener('click', () => this.exportSettings());
+
+        const captureModeSelect = document.getElementById('settingCaptureMode');
+        if (captureModeSelect) {
+            captureModeSelect.addEventListener('change', (e) => {
+                const mode = String(e.target.value || 'auto').toLowerCase();
+                console.log(`[SettingsUI] Capture mode select changed to: "${mode}"`);
+                Settings.set('captureMode', mode);
+                Toast.show(`Capture mode: ${mode}`);
+                console.log(`[SettingsUI] Mode saved and toast shown`);
+            });
+        } else {
+            console.warn('[SettingsUI] settingCaptureMode element not found at init');
+        }
         
         const fileInput = document.getElementById('settingsFileInput');
         document.getElementById('importSettingsBtn').addEventListener('click', () => fileInput.click());
@@ -75,6 +104,9 @@ const SettingsUI = {
         document.getElementById('togglePexels').classList.toggle('active', settings.pexelsEnabled);
         document.getElementById('toggleDefaultToSelect').classList.toggle('active', settings.defaultToSelect);
         document.getElementById('toggleRightClickPan').classList.toggle('active', settings.rightClickPan);
+        document.querySelectorAll('.toggle').forEach(toggle => {
+            toggle.setAttribute('aria-checked', toggle.classList.contains('active') ? 'true' : 'false');
+        });
         
         // Inputs
         document.getElementById('iconifySet').value = settings.iconifySet || '';
@@ -94,10 +126,8 @@ const SettingsUI = {
         document.getElementById('settingPinchSensitivityDisplay').textContent = parseFloat(pinch).toFixed(1) + 'x';
         
         document.getElementById('settingMobileToolbarPosition').value = settings.mobileToolbarPosition || 'bottom';
+        document.getElementById('settingCaptureMode').value = settings.captureMode || 'auto';
         document.getElementById('settingDefaultView').value = settings.defaultView || 'library';
-        document.getElementById('settingCustomProxyUrl').value = settings.customProxyUrl || '';
-        document.getElementById('settingScreenshotApiKey').value = settings.screenshotApiKey || '';
-        document.getElementById('settingScreenshotApiProvider').value = settings.screenshotApiProvider || 'apiflash';
         
         this.updateSettingsVisibility();
 
@@ -137,10 +167,8 @@ const SettingsUI = {
             defaultStrokeWidth: parseInt(document.getElementById('settingDefaultStrokeWidth').value),
             pinchSensitivity: parseFloat(document.getElementById('settingPinchSensitivity').value),
             mobileToolbarPosition: document.getElementById('settingMobileToolbarPosition').value,
-            defaultView: document.getElementById('settingDefaultView').value,
-            customProxyUrl: document.getElementById('settingCustomProxyUrl').value.trim(),
-            screenshotApiKey: document.getElementById('settingScreenshotApiKey').value.trim(),
-            screenshotApiProvider: document.getElementById('settingScreenshotApiProvider').value
+            captureMode: document.getElementById('settingCaptureMode').value,
+            defaultView: document.getElementById('settingDefaultView').value
         });
         
         // Update Editor's current style if no active shape is selected
