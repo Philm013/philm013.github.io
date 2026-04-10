@@ -40,7 +40,9 @@
           setTimeout(() => {
             new Notification('⏰ CloudChat Reminder', {
               body: message,
-              icon: '/CloudChat/manifest.json'
+              // Use a standard browser notification without a custom icon;
+              // the app does not bundle a dedicated PNG icon at a fixed path.
+              icon: undefined
             });
           }, delayMs);
 

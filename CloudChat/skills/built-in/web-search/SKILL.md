@@ -6,7 +6,7 @@ metadata:
   requires-embedding: false
   requires-web: true
   requires-secret: true
-  require-secret-description: "Enter your search API key. Supported providers: Brave Search (https://brave.com/search/api/), Tavily (https://tavily.com), or a SearXNG instance URL."
+  requires-secret-description: "Enter your search API key. Supported providers: Brave Search (https://brave.com/search/api/), Tavily (https://tavily.com), or a SearXNG instance URL."
   homepage: https://philm013.github.io/CloudChat/skills/built-in/web-search
 ---
 

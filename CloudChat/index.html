@@ -707,8 +707,10 @@ self.addEventListener('message', async (e) => {
     }
 
     // ── Skills Registry ───────────────────────────────────────
-    // Maps tool names to their AI Edge Gallery skill script paths.
-    // Used by runSkill() to load and execute skills in a hidden iframe.
+    // Maps TOOL_REGISTRY keys to their AI Edge Gallery skill script paths.
+    // When a key is present the tool's execute() will delegate to runSkill(),
+    // loading the standalone script/index.html in a sandboxed hidden iframe.
+    // Tools absent from this map fall back to their inline execute() implementations.
     const SKILL_REGISTRY = {
       calculate:     'skills/built-in/calculate-math/scripts/index.html',
       store_memory:  'skills/built-in/store-memory/scripts/index.html',
@@ -720,23 +722,35 @@ self.addEventListener('message', async (e) => {
     };
 
     /**
-     * Load a skill script in a hidden iframe and call ai_edge_gallery_get_result.
-     * Falls back to the inline TOOL_REGISTRY execute() if the iframe approach fails.
-     * @param {string} scriptPath - Relative path to the skill's scripts/index.html
-     * @param {object} data - Arguments to pass (will be JSON-stringified)
-     * @param {string} [secret] - Optional API key / secret for the skill
-     * @returns {Promise<object>} Parsed JSON result from the skill
+     * Load an AI Edge Gallery skill script inside a hidden, sandboxed <iframe>
+     * and invoke its `window.ai_edge_gallery_get_result(data, secret)` function.
+     *
+     * Execution model:
+     *   1. A 1×1 invisible iframe is appended to <body>.
+     *   2. The iframe src is set to `scriptPath` (same origin, so localStorage is shared).
+     *   3. On load, we call the skill's exported function with JSON-stringified data.
+     *   4. The skill returns a JSON string; we parse and resolve the promise.
+     *   5. The iframe is removed immediately after execution (or on a 15 s timeout).
+     *
+     * @param {string} scriptPath - Relative path to the skill's scripts/index.html.
+     * @param {object} data       - Argument object (will be JSON-stringified for the skill).
+     * @param {string} [secret]   - Optional API key / secret forwarded to the skill.
+     * @returns {Promise<{result?: *, error?: string}>} Parsed result or error object.
      */
     function runSkill(scriptPath, data, secret) {
       return new Promise((resolve) => {
         const iframe = document.createElement('iframe');
+        // Hide the iframe visually — it only needs to execute JS, not render UI
         iframe.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;border:0';
+        // allow-same-origin lets the skill read/write shared localStorage
+        // allow-scripts enables the skill's JS to execute
         iframe.sandbox = 'allow-scripts allow-same-origin';
         document.body.appendChild(iframe);
 
+        // Safety net: resolve with an error if the skill takes too long
         const timeout = setTimeout(() => {
           document.body.removeChild(iframe);
-          resolve({ error: 'Skill timed out after 15s: ' + scriptPath });
+          resolve({ error: 'Skill timed out after 15 s: ' + scriptPath });
         }, 15000);
 
         iframe.onload = async () => {
@@ -745,9 +759,11 @@ self.addEventListener('message', async (e) => {
             if (typeof fn !== 'function') {
               throw new Error('ai_edge_gallery_get_result not found in skill: ' + scriptPath);
             }
+            // Call the skill and await its async result
             const raw = await fn(JSON.stringify(data), secret || '');
             clearTimeout(timeout);
             document.body.removeChild(iframe);
+            // Skills may return a raw string or an already-parsed object
             resolve(typeof raw === 'string' ? JSON.parse(raw) : raw);
           } catch (e) {
             clearTimeout(timeout);
@@ -756,20 +772,33 @@ self.addEventListener('message', async (e) => {
           }
         };
 
+        // Setting src triggers the load; do this last so onload is already attached
         iframe.src = scriptPath;
       });
     }
 
     // ── Agent Tools ──────────────────────────────────────────
-    // Inline implementations remain as fallback / direct execution for tools
-    // that integrate tightly with app internals (embedAndStore, searchMemory, etc.).
-    // Tools with standalone skill scripts also dispatch through runSkill when available.
+    // Each tool exposes:
+    //   description  {string}  — one-line description shown to the LLM in the system prompt
+    //   parameters   {object}  — JSON Schema object describing accepted arguments
+    //   execute(a)   {async}   — called with the parsed arguments; returns a plain object
+    //
+    // Tools that have a corresponding skill script in SKILL_REGISTRY delegate
+    // execution to runSkill() so the standalone script handles the actual work.
+    // Tools that depend on app-internal APIs (embedAndStore, searchMemory, etc.)
+    // retain their inline execute() implementations and do NOT use runSkill().
     const TOOL_REGISTRY = {
       calculate: {
-        description: 'Math solver', parameters: { type: 'object', properties: { expression: { type: 'string' } } },
+        description: 'Evaluate a mathematical expression and return the numeric result.',
+        parameters: { type: 'object', properties: { expression: { type: 'string', description: 'A numeric expression using +, -, *, /, (, ), %, e.g. "15 / 100 * 240"' } }, required: ['expression'] },
         async execute(a) {
+          // Prefer the standalone skill script which provides isolated execution context
           const path = SKILL_REGISTRY.calculate;
           if (path) return runSkill(path, a);
+          // Inline fallback: strip non-numeric chars, then use Function() constructor.
+          // Function() is used instead of eval() because it executes in the global scope
+          // rather than the local scope, reducing the risk of accessing closure variables.
+          // The character whitelist below ensures only safe math operators are evaluated.
           try {
             const sanitized = String(a.expression).replace(/[^0-9+\-*/.()% ]/g, '');
             // eslint-disable-next-line no-new-func
@@ -778,20 +807,27 @@ self.addEventListener('message', async (e) => {
         }
       },
       get_current_time: {
-        description: 'Current time', parameters: { type: 'object', properties: {} },
+        description: 'Return the current local date and time.',
+        parameters: { type: 'object', properties: {} },
+        // Inline: no external dependency, returns device clock directly
         async execute() { return { datetime: new Date().toLocaleString() }; }
       },
       store_memory: {
-        description: 'Store fact/preference', parameters: { type: 'object', properties: { content: { type: 'string' }, category: { type: 'string' } } },
+        description: 'Save a fact, preference, or note to persistent on-device memory.',
+        parameters: { type: 'object', properties: { content: { type: 'string', description: 'Text to remember' }, category: { type: 'string', description: 'One of: fact, preference, person, event, note, document' } }, required: ['content'] },
+        // Inline: uses app-internal embedAndStore() which requires the embedding model worker
         async execute(a) { const c = await embedAndStore(a.content, a.category || 'fact', 'assistant'); return { stored: true, count: c }; }
       },
       search_memory: {
-        description: 'Search memory', parameters: { type: 'object', properties: { query: { type: 'string' } } },
+        description: 'Search stored memories using a semantic query and return the top matches.',
+        parameters: { type: 'object', properties: { query: { type: 'string', description: 'Keywords or question to search for' } }, required: ['query'] },
+        // Inline: uses app-internal searchMemory() which performs vector similarity search
         async execute(a) { const r = await searchMemory(a.query, 5); return { found: r.length > 0, memories: r.map(m => ({ text: m.text, source: m.source })) }; }
       },
       list_memories: {
-        description: 'List all stored memories and documents.',
+        description: 'List all stored memories, returning counts and unique source names.',
         parameters: { type: 'object', properties: {}, required: [] },
+        // Inline: reads from IndexedDB via getAllChunks(); no embedding required
         async execute() {
           const chunks = await getAllChunks();
           if (!chunks.length) return { message: 'No memories stored.' };
@@ -800,8 +836,9 @@ self.addEventListener('message', async (e) => {
         }
       },
       delete_memory: {
-        description: 'Forget specific memories.',
-        parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
+        description: 'Delete stored memories that match the given query.',
+        parameters: { type: 'object', properties: { query: { type: 'string', description: 'Keywords identifying which memories to remove' } }, required: ['query'] },
+        // Inline: uses searchMemory() for matching, then deleteChunk() per result
         async execute(a) {
           const results = await searchMemory(a.query, 10);
           for (const r of results) await deleteChunk(r.id);
@@ -809,16 +846,24 @@ self.addEventListener('message', async (e) => {
         }
       },
       web_search: {
-        description: 'Web search', parameters: { type: 'object', properties: { query: { type: 'string' } } },
+        description: 'Search the web for up-to-date information using the configured search provider.',
+        parameters: { type: 'object', properties: { query: { type: 'string', description: 'Concise keyword search query (3–8 words)' } }, required: ['query'] },
+        // Inline: reads search provider config from app settings (Brave / Tavily / SearXNG)
         async execute(a) {
           const config = getSearchConfig();
-          if (config.provider === 'none') return { error: 'Search disabled' };
-          const results = await (config.provider === 'brave' ? SearchProviders.brave(a.query, config.apiKey) : config.provider === 'tavily' ? SearchProviders.tavily(a.query, config.apiKey) : SearchProviders.searxng(a.query, config.searxngUrl));
+          if (config.provider === 'none') return { error: 'Search disabled. Configure a search provider in settings.' };
+          const results = await (
+            config.provider === 'brave'   ? SearchProviders.brave(a.query, config.apiKey) :
+            config.provider === 'tavily'  ? SearchProviders.tavily(a.query, config.apiKey) :
+            SearchProviders.searxng(a.query, config.searxngUrl)
+          );
           return { results };
         }
       },
       fetch_page: {
-        description: 'Read URL', parameters: { type: 'object', properties: { url: { type: 'string' } } },
+        description: 'Fetch the readable text content from a URL.',
+        parameters: { type: 'object', properties: { url: { type: 'string', description: 'Full URL to fetch (must start with https:// or http://)' } }, required: ['url'] },
+        // Inline: uses app-internal fetchAndExtract() which handles CORS proxying
         async execute(a) { return fetchAndExtract(a.url); }
       }
     };
@@ -902,17 +947,66 @@ self.addEventListener('message', async (e) => {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    /**
+     * Toggle a collapsible block (thinking or tool-call) open/closed.
+     * Uses a data attribute on the block element to store its content ID so that
+     * no user-controlled data is ever embedded inside JS code strings (which would
+     * risk code injection via the inline onclick pattern).
+     *
+     * Called from onclick attributes as: toggleBlock(this)
+     *
+     * @param {HTMLElement} toggleEl - The clicked toggle header element.
+     *   Expected structure:
+     *     .toggle-element[data-target="<contentId>"]
+     *       <span>  ← arrow indicator (▶ / ▼)
+     *       #text   ← label text node (updated for thinking blocks only)
+     */
+    function toggleBlock(toggleEl) {
+      const contentId = toggleEl.dataset.target;
+      if (!contentId) return;
+      const content = document.getElementById(contentId);
+      if (!content) return;
+
+      const isOpen = content.classList.toggle('open');
+      const arrow = toggleEl.querySelector('span');
+      if (arrow) arrow.innerHTML = isOpen ? '&#9660;' : '&#9654;';
+
+      // For thinking blocks only: update the label text
+      toggleEl.childNodes.forEach(n => {
+        if (n.nodeType === 3 && (n.textContent.includes('Thinking') || n.textContent.includes('Thought'))) {
+          n.textContent = ' Thought process';
+        }
+      });
+    }
+    // Expose globally so the onclick="toggleBlock(this)" attribute can reach it
+    window.toggleBlock = toggleBlock;
+
+    /**
+     * Render AI response text as HTML. Handles:
+     *  - DeepSeek / Qwen reasoning: <|think|>...</|/think|>
+     *  - Gemma 4 reasoning: <|channel>thought\n...<channel|>
+     *  - Tool call blocks are stripped from the visible output (shown separately)
+     *  - Remaining text is parsed as Markdown via marked.js + sanitized by DOMPurify
+     *
+     * Smart thinking-block state:
+     *  - During streaming (no main content yet): block is OPEN, label = "Thinking..."
+     *  - After generation completes: block is COLLAPSED, label = "Thought process"
+     *  (collapseThinkingBlocks() handles the transition after the stream ends.)
+     *
+     * @param {string} text - Raw model output, possibly containing thinking tags.
+     * @returns {string} Sanitized HTML string ready for innerHTML assignment.
+     */
     function renderMarkdown(text) {
       let think = ''; let main = text;
 
-      // Handle <|think|>...<|/think|> format (DeepSeek, Qwen, etc.)
+      // Priority 1: <|think|>...</|/think|> (DeepSeek-R1, Qwen3, etc.)
       const thinkMatch = text.match(/<\|think\|>([\s\S]*?)(<\|\/think\|>|$)/);
       if (thinkMatch) {
         think = thinkMatch[1].trim();
         main = text.replace(/<\|think\|>[\s\S]*?(<\|\/think\|>|$)/, '').trim();
       }
 
-      // Handle Gemma 4 <|channel>thought ... <channel|> format
+      // Priority 2: <|channel>thought...<channel|> (Gemma 4)
       if (!think) {
         const channelMatch = text.match(/<\|channel>thought\n?([\s\S]*?)(<channel\|>|$)/);
         if (channelMatch) {
@@ -924,16 +1018,21 @@ self.addEventListener('message', async (e) => {
       let html = '';
       if (think) {
         const id = 'th-' + Math.random().toString(36).slice(2, 8);
-        // During streaming: main is empty → thinking in progress → show open with spinner label
-        // After streaming: main has text → thinking done → show collapsed
+        // Show open + "Thinking..." while streaming, collapsed + "Thought process" when done
         const isStreaming = !main;
         const openClass = isStreaming ? ' open' : '';
         const arrow = isStreaming ? '&#9660;' : '&#9654;';
         const label = isStreaming ? 'Thinking...' : 'Thought process';
-        html += `<div class="thinking-block"><div class="thinking-toggle" onclick="(function(el){var c=document.getElementById('${id}');c.classList.toggle('open');el.querySelector('span').innerHTML=c.classList.contains('open')?'&#9660;':'&#9654;';el.childNodes.forEach(function(n){if(n.nodeType===3&&(n.textContent.includes('Thinking')||n.textContent.includes('Thought')))n.textContent=' Thought process';});})(this)"><span>${arrow}</span> ${label}</div><div class="thinking-content${openClass}" id="${id}">${escapeHtml(think)}</div></div>`;
+        // Use data-target instead of an inline closure to avoid embedding IDs in JS code
+        html += `<div class="thinking-block">` +
+          `<div class="thinking-toggle" data-target="${escapeHtml(id)}" onclick="toggleBlock(this)">` +
+          `<span>${arrow}</span> ${label}` +
+          `</div>` +
+          `<div class="thinking-content${openClass}" id="${escapeHtml(id)}">${escapeHtml(think)}</div>` +
+          `</div>`;
       }
 
-      // Strip any tool_call blocks from visible output
+      // Strip tool_call blocks — they are rendered separately by renderToolCallBlock()
       main = main.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_call>[\s\S]*/g, '');
       html += DOMPurify.sanitize(marked.parse(main || '...'));
       return html;
@@ -1021,25 +1120,57 @@ self.addEventListener('message', async (e) => {
     }
 
     // ── Sending & Agent Loop ───────────────────────────────
+
+    /** Maximum number of tool-call/response cycles per user message. */
     const MAX_TOOL_ITERATIONS = 3;
 
-    /** Collapse any still-open thinking blocks and update their labels/arrows. */
+    /**
+     * Force-collapse all still-open thinking blocks inside a message bubble.
+     * Called immediately after each generation pass completes so that the
+     * "Thinking..." state (which is shown open during streaming) is transitioned
+     * to the collapsed "Thought process" state visible to the user.
+     *
+     * @param {HTMLElement} el - The AI message bubble element.
+     */
     function collapseThinkingBlocks(el) {
       el.querySelectorAll('.thinking-content.open').forEach(content => {
         content.classList.remove('open');
         const toggle = content.previousElementSibling;
-        if (toggle) {
-          const arrow = toggle.querySelector('span');
-          if (arrow) arrow.innerHTML = '&#9654;';
-          toggle.childNodes.forEach(n => {
-            if (n.nodeType === 3 && (n.textContent.includes('Thinking') || n.textContent.includes('Thought'))) {
-              n.textContent = ' Thought process';
-            }
-          });
-        }
+        if (!toggle) return;
+        const arrow = toggle.querySelector('span');
+        if (arrow) arrow.innerHTML = '&#9654;'; // ▶ closed arrow
+        // Update label text node from "Thinking..." to "Thought process"
+        toggle.childNodes.forEach(n => {
+          if (n.nodeType === 3 && (n.textContent.includes('Thinking') || n.textContent.includes('Thought'))) {
+            n.textContent = ' Thought process';
+          }
+        });
       });
     }
 
+    /**
+     * Main send handler — drives the agentic inference loop.
+     *
+     * Flow:
+     *  1. Render the user message and add it to history.
+     *  2. Optionally retrieve relevant RAG context from the vector store.
+     *  3. Repeat up to MAX_TOOL_ITERATIONS times:
+     *     a. Build the full Gemma-format prompt (system + history + tools).
+     *     b. Stream the model response token by token into the AI bubble.
+     *     c. Post-stream: collapse any open thinking blocks.
+     *     d. If the response contains a <tool_call> block:
+     *        - Parse the tool name and arguments.
+     *        - Execute the tool via TOOL_REGISTRY.
+     *        - Render the result as a collapsible tool-call block.
+     *        - Append both the assistant response and the tool result to history.
+     *        - Loop for the next iteration so the model can use the result.
+     *     e. If no tool call: save response to history and stop.
+     *
+     * @param {string|true|null} [ov=null]
+     *   - null / falsy: read text from the chat input field (normal user message).
+     *   - true: continuation pass after a tool call (no new user message rendered).
+     *   - string: override text (used by batch processor / programmatic sends).
+     */
     async function handleSend(ov = null) {
       const input = document.getElementById('chat-input');
       const text = ov === true ? null : (ov || input.value.trim());
@@ -1058,6 +1189,9 @@ self.addEventListener('message', async (e) => {
       const aiEl = renderMessage('', 'ai');
 
       try {
+        // ── RAG pre-fetch ──────────────────────────────────────
+        // If the vector store has documents, search for relevant context before
+        // the first generation pass so the model has grounding material.
         let ragContext = "";
         const chunks = await getAllChunks();
         if (text && chunks.length > 0) {
@@ -1065,17 +1199,23 @@ self.addEventListener('message', async (e) => {
           try {
             const rag = await searchMemory(text, 3);
             if (rag.length) {
-              ragContext = "\n\n[Relevant context from your library]\n" + rag.map(r => `Source: ${r.source}\nContent: ${r.text}`).join('\n\n');
+              ragContext = "\n\n[Relevant context from your library]\n" +
+                rag.map(r => `Source: ${r.source}\nContent: ${r.text}`).join('\n\n');
             }
           } catch (e) { console.warn('RAG search failed', e); }
           updateStatus('online', 'Ready');
         }
 
-        // ── Agentic loop (up to MAX_TOOL_ITERATIONS) ────────────
+        // ── Agentic loop ───────────────────────────────────────
         for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
           let full = "";
-          const prompt = await buildPrompt(ragContext, iter > 0);
+          // Pass isFollowUpIteration=true on iter > 0 so buildPrompt omits the
+          // "CRITICAL: tool_call not in thinking block" note (the note only matters
+          // on the first pass when the model has a chain-of-thought prefix).
+          const isFollowUpIteration = iter > 0;
+          const prompt = await buildPrompt(ragContext, isFollowUpIteration);
 
+          // Stream response tokens; renderMessage re-renders the bubble on each chunk
           await new Promise(res => {
             State.inference.generateResponse(prompt, (chunk, done) => {
               full += chunk;
@@ -1084,13 +1224,13 @@ self.addEventListener('message', async (e) => {
             });
           });
 
-          // Post-stream: collapse any still-open thinking blocks
+          // Transition "Thinking..." → "Thought process" now that streaming finished
           collapseThinkingBlocks(aiEl);
 
-          // Check for tool call in the response
+          // ── Tool call detection ────────────────────────────
           const tc = full.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
           if (!tc) {
-            // No tool call — generation is done
+            // No tool call in this response — the agent is done
             State.history.push({ role: 'ai', text: full });
             break;
           }
@@ -1099,11 +1239,12 @@ self.addEventListener('message', async (e) => {
             const call = JSON.parse(tc[1]);
             const tool = TOOL_REGISTRY[call.name];
             if (!tool) {
+              // Unknown tool name — save and stop rather than looping infinitely
               State.history.push({ role: 'ai', text: full });
               break;
             }
 
-            // Show step indicator for multi-iteration tool calls
+            // Show "Step N/MAX" label on second and subsequent iterations
             if (iter > 0) {
               const stepLabel = document.createElement('div');
               stepLabel.style.cssText = 'font-size:0.68rem;color:var(--ollama-stone);margin:6px 0 2px;font-weight:500';
@@ -1114,13 +1255,14 @@ self.addEventListener('message', async (e) => {
             const res = await tool.execute(call.arguments);
             renderToolCallBlock(aiEl, call.name, call.arguments, res);
 
+            // Feed tool result back into history as a synthetic user turn
             State.history.push({ role: 'ai', text: full });
             State.history.push({ role: 'user', text: `<tool_response>${JSON.stringify(res)}</tool_response>` });
 
-            // If this is the last iteration, stop regardless
+            // After the last iteration, stop unconditionally (no fourth LLM pass)
             if (iter === MAX_TOOL_ITERATIONS - 1) break;
 
-            // Reset ragContext for follow-up iterations
+            // Clear RAG context for follow-up iterations; it's already in history
             ragContext = "";
           } catch(e) {
             console.error("Tool failed", e);
@@ -1133,25 +1275,59 @@ self.addEventListener('message', async (e) => {
     }
     window.handleSend = handleSend;
 
-    async function buildPrompt(additionalContext = "", suppressThinkingNote = false) {
+    /**
+     * Build the full Gemma-format prompt string for the next inference pass.
+     *
+     * Structure (Gemma instruct format):
+     *   <start_of_turn>user
+     *   System instructions: {systemPrompt}
+     *   {docContext}   ← document summaries from the library
+     *   {ragContext}   ← vector-retrieved chunks for this query
+     *   Available tools: [{...}]
+     *   {thinkingNote} ← CRITICAL tool_call placement note (first pass only)
+     *   <end_of_turn>
+     *   {conversationHistory}  ← last N turns, budget-capped at 12 000 chars
+     *   <start_of_turn>model
+     *
+     * @param {string}  [additionalContext=""] - RAG or other context to inject.
+     * @param {boolean} [isFollowUpIteration=false]
+     *   When true (tool-call continuation passes), the CRITICAL thinking note is
+     *   omitted. The model has already committed its reasoning on the first pass
+     *   so repeating the instruction would just waste tokens.
+     * @returns {Promise<string>} The complete prompt string ready for inference.
+     */
+    async function buildPrompt(additionalContext = "", isFollowUpIteration = false) {
       const s = document.getElementById('system-prompt').value;
-      const toolDefs = Object.entries(TOOL_REGISTRY).map(([n,t]) => ({ name: n, desc: t.description, params: t.parameters }));
-      
+      const toolDefs = Object.entries(TOOL_REGISTRY).map(([n, t]) => ({
+        name: n,
+        desc: t.description,
+        params: t.parameters
+      }));
+
+      // Inject document library summaries so the model knows what's available for RAG
       let docContext = '';
       try {
         const chunks = await getAllChunks();
         const summaries = chunks.filter(c => c.category === 'document_summary');
-        
         if (summaries.length) {
+          // Use the 15 most-recently-ingested summaries to stay within token budget
           const budget = summaries.sort((a, b) => b.timestamp - a.timestamp).slice(0, 15);
-          docContext = "\n\nDocuments in your library:\n" + 
+          docContext = "\n\nDocuments in your library:\n" +
             budget.map(sm => `- ${sm.source}: ${sm.text}`).join('\n');
         }
       } catch (e) { console.warn('Failed to load summaries for prompt', e); }
 
-      const thinkingNote = suppressThinkingNote ? '' : '\nCRITICAL: The <tool_call> block MUST appear in your main response, NEVER inside your thinking/reasoning block. Think first, then output the tool call as your response.';
+      // On the first pass, remind the model that tool_call tags must live in the
+      // main response text, NOT inside a <|think|> reasoning block. Some smaller
+      // models tend to bury the tool call inside their chain-of-thought output,
+      // which makes it invisible to the tool-call parser.
+      const thinkingNote = isFollowUpIteration
+        ? ''
+        : '\nCRITICAL: The <tool_call> block MUST appear in your main response, NEVER inside your thinking/reasoning block. Think first, then output the tool call as your response.';
+
       let p = `<start_of_turn>user\nSystem instructions: ${s}${docContext}${additionalContext}\n\nAvailable tools:\n${JSON.stringify(toolDefs)}\nTo use a tool, output: <tool_call>{"name":"...","arguments":{}}</tool_call>${thinkingNote}<end_of_turn>\n`;
-      
+
+      // Append conversation history newest-to-oldest until the 12 000 char budget is full
       let historyText = "";
       const reversedHistory = [...State.history].reverse();
       for (const m of reversedHistory) {
@@ -1161,7 +1337,8 @@ self.addEventListener('message', async (e) => {
         historyText = entry + historyText;
       }
 
-      p += historyText + `<start_of_turn>model\n`; return p;
+      p += historyText + `<start_of_turn>model\n`;
+      return p;
     }
 
     function renderMessage(t, r, el = null) {
@@ -1172,12 +1349,40 @@ self.addEventListener('message', async (e) => {
       c.scrollTop = c.scrollHeight; return el;
     }
 
+    /**
+     * Append a collapsible tool-call result block to the message bubble element.
+     * Uses data-target + the shared toggleBlock() helper (no inline JS with user data).
+     *
+     * @param {HTMLElement} el   - The AI message bubble to append to.
+     * @param {string}      name - Tool name (e.g. "web_search").
+     * @param {object}      args - Arguments that were passed to the tool.
+     * @param {object|string} res - Result returned by the tool's execute().
+     */
     function renderToolCallBlock(el, name, args, res) {
-      const block = document.createElement('div'); block.className = 'tool-call-block';
       const id = 'tc-' + Math.random().toString(36).slice(2, 8);
       const argsStr = Object.entries(args || {}).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ');
       const resultStr = typeof res === 'string' ? res : JSON.stringify(res, null, 2);
-      block.innerHTML = `<div class="tool-call-toggle" onclick="(function(el){var c=document.getElementById('${id}');c.classList.toggle('open');el.querySelector('span').innerHTML=c.classList.contains('open')?'&#9660;':'&#9654;';})(this)"><span>&#9654;</span> 🛠️ <strong>${escapeHtml(name)}</strong>(${escapeHtml(argsStr)})</div><div class="tool-call-result" id="${id}"><pre>${escapeHtml(resultStr)}</pre></div>`;
+
+      // Build the block using DOM APIs to avoid mixing user-supplied strings into HTML/JS code
+      const block = document.createElement('div');
+      block.className = 'tool-call-block';
+
+      const toggle = document.createElement('div');
+      toggle.className = 'tool-call-toggle';
+      // data-target links to the collapsible result; toggleBlock() reads this attribute
+      toggle.dataset.target = id;
+      toggle.setAttribute('onclick', 'toggleBlock(this)');
+      toggle.innerHTML = `<span>&#9654;</span> 🛠️ <strong>${escapeHtml(name)}</strong>(${escapeHtml(argsStr)})`;
+
+      const result = document.createElement('div');
+      result.className = 'tool-call-result';
+      result.id = id;
+      const pre = document.createElement('pre');
+      pre.textContent = resultStr; // textContent: no XSS risk, no HTML parsing
+      result.appendChild(pre);
+
+      block.appendChild(toggle);
+      block.appendChild(result);
       el.appendChild(block);
     }
 
