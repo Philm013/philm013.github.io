@@ -137,6 +137,28 @@
     .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--ollama-border); display: flex; justify-content: space-between; align-items: center; }
     .panel-content { padding: 20px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 
+    /* Settings */
+    .settings-section { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--ollama-border); }
+    .settings-section:last-child { border-bottom: none; margin-bottom: 0; }
+    .settings-label { display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; color: var(--ollama-near-black); }
+    .settings-sublabel { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; margin-top: 10px; color: var(--ollama-near-black); }
+    .settings-hint { font-size: 0.75rem; color: var(--ollama-stone); margin: 4px 0 8px; line-height: 1.4; }
+    .settings-hint a { color: var(--ollama-stone); text-decoration: underline; }
+    .settings-textarea { width: 100%; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px; font-family: inherit; font-size: 0.85rem; resize: vertical; box-sizing: border-box; }
+    .settings-input { width: 100%; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px; font-family: inherit; font-size: 0.85rem; box-sizing: border-box; }
+    .settings-select { width: 100%; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px; font-family: inherit; font-size: 0.85rem; }
+    .settings-range { width: 100%; margin: 4px 0; }
+    .settings-value-badge { background: var(--ollama-light-gray); padding: 1px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: normal; }
+    .settings-link-btn { background: none; border: none; color: var(--ollama-stone); font-size: 0.78rem; cursor: pointer; text-decoration: underline; padding: 0; margin-top: 4px; }
+    .settings-link-btn:hover { color: var(--ollama-near-black); }
+
+    /* Media results in chat */
+    .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+    .media-card { border-radius: 8px; overflow: hidden; border: 1px solid var(--ollama-border); background: var(--ollama-white); }
+    .media-card img, .media-card video { width: 100%; display: block; max-height: 200px; object-fit: cover; }
+    .media-card-info { padding: 6px 8px; font-size: 0.72rem; color: var(--ollama-stone); }
+    .media-card-info a { color: var(--ollama-stone); text-decoration: underline; }
+
     /* Progress Bar */
     .progress-bar { width: 100%; height: 8px; background: var(--ollama-light-gray); border-radius: 4px; overflow: hidden; margin: 20px 0; }
     #download-fill { height: 100%; background: var(--ollama-black); width: 0%; transition: width 0.3s; }
@@ -384,31 +406,89 @@
       <div class="panel-handle"></div>
       <div class="panel-header"><strong>Settings</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
       <div class="panel-content" style="max-height: 80vh; overflow-y: auto;">
-        <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">System Prompt</label>
-        <textarea id="system-prompt" style="width:100%; height:80px; margin-bottom:16px; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px; font-family: inherit;">You are a helpful assistant.</textarea>
-        
-        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; margin-bottom: 16px;">
-          <input type="checkbox" id="thinking-toggle" checked> Show reasoning (Thinking Mode)
-        </label>
 
-        <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Web Search</label>
-        <select id="search-provider" style="width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid var(--ollama-border); border-radius: 6px;">
-          <option value="none">None (Offline)</option>
-          <option value="tavily">Tavily</option>
-          <option value="brave">Brave</option>
-          <option value="searxng">SearXNG</option>
-        </select>
-        <div id="api-key-row" style="display: none; margin-bottom: 8px;">
-          <input type="password" id="search-api-key" placeholder="API Key" style="width: 100%; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px;">
-        </div>
-        <div id="searxng-url-row" style="display: none; margin-bottom: 8px;">
-          <input type="text" id="searxng-url" placeholder="https://searxng.instance" style="width: 100%; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px;">
+        <!-- ── System Prompt ──────────────────────────────── -->
+        <div class="settings-section">
+          <label class="settings-label">System Prompt</label>
+          <p class="settings-hint">Customise the AI's persona and behaviour. This is prepended to every conversation.</p>
+          <textarea id="system-prompt" class="settings-textarea" rows="6" placeholder="e.g. You are a helpful coding assistant."></textarea>
+          <button class="settings-link-btn" id="reset-prompt-btn" type="button">Reset to default</button>
         </div>
 
-        <div style="margin-top: 16px; border-top: 1px solid var(--ollama-border); padding-top: 16px;">
+        <!-- ── Generation ─────────────────────────────────── -->
+        <div class="settings-section">
+          <label class="settings-label">Generation</label>
+
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; margin-bottom: 12px;">
+            <input type="checkbox" id="thinking-toggle" checked> Show reasoning (Thinking Mode)
+          </label>
+
+          <label class="settings-sublabel">Temperature <span id="temp-value" class="settings-value-badge">0.7</span></label>
+          <input type="range" id="temperature-slider" min="0" max="1.5" step="0.05" value="0.7" class="settings-range">
+          <p class="settings-hint">Lower = more focused. Higher = more creative.</p>
+
+          <label class="settings-sublabel">Max Tokens</label>
+          <select id="max-tokens-select" class="settings-select">
+            <option value="2048">2 048</option>
+            <option value="4096">4 096</option>
+            <option value="8192" selected>8 192</option>
+          </select>
+
+          <label class="settings-sublabel">History Budget (characters)</label>
+          <input type="number" id="history-budget" class="settings-input" value="12000" min="2000" max="30000" step="1000">
+          <p class="settings-hint">Max characters of conversation history sent to the model. Larger values use more memory.</p>
+
+          <label class="settings-sublabel">Max Tool Iterations</label>
+          <select id="max-tool-iters" class="settings-select">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="5">5</option>
+          </select>
+          <p class="settings-hint">How many tool-call/response cycles the AI can perform per message.</p>
+        </div>
+
+        <!-- ── Web Search ─────────────────────────────────── -->
+        <div class="settings-section">
+          <label class="settings-label">Web Search</label>
+          <select id="search-provider" class="settings-select">
+            <option value="none">None (Offline)</option>
+            <option value="tavily">Tavily (free tier, no card)</option>
+            <option value="brave">Brave Search (privacy-first)</option>
+            <option value="searxng">SearXNG (self-hosted)</option>
+          </select>
+          <div id="api-key-row" style="display: none; margin-top: 8px;">
+            <label class="settings-sublabel">Search API Key</label>
+            <input type="password" id="search-api-key" placeholder="Paste your API key" class="settings-input">
+          </div>
+          <div id="searxng-url-row" style="display: none; margin-top: 8px;">
+            <label class="settings-sublabel">SearXNG Instance URL</label>
+            <input type="text" id="searxng-url" placeholder="https://searxng.instance" class="settings-input">
+          </div>
+        </div>
+
+        <!-- ── Media Search (Unsplash & Pexels) ───────────── -->
+        <div class="settings-section">
+          <label class="settings-label">Image &amp; Video Search</label>
+          <p class="settings-hint">Add API keys to let the AI find and display images and videos in chat.</p>
+
+          <label class="settings-sublabel">Unsplash Access Key</label>
+          <input type="password" id="unsplash-api-key" placeholder="Unsplash Access Key" class="settings-input">
+          <p class="settings-hint"><a href="https://unsplash.com/developers" target="_blank" rel="noopener noreferrer">Get a free key →</a></p>
+
+          <label class="settings-sublabel">Pexels API Key</label>
+          <input type="password" id="pexels-api-key" placeholder="Pexels API Key" class="settings-input">
+          <p class="settings-hint"><a href="https://www.pexels.com/api/" target="_blank" rel="noopener noreferrer">Get a free key →</a></p>
+        </div>
+
+        <!-- ── Data & Storage ─────────────────────────────── -->
+        <div class="settings-section">
+          <label class="settings-label">Data &amp; Storage</label>
           <button class="btn-block" onclick="purgeCache()">Purge Model Cache</button>
           <button class="btn-block" id="share-btn" style="margin-top: 8px;">Share Conversation</button>
+          <button class="btn-block" id="reset-all-settings-btn" style="margin-top: 8px; color: #e53e3e;">Reset All Settings</button>
         </div>
+
       </div>
     </div>
   </div>
@@ -743,6 +823,18 @@ self.addEventListener('message', async (e) => {
       return provider === 'searxng' ? !!searxngUrl : !!apiKey;
     }
 
+    function getMediaConfig() {
+      return {
+        unsplashKey: document.getElementById('unsplash-api-key').value || localStorage.getItem('lm_unsplash_key') || '',
+        pexelsKey: document.getElementById('pexels-api-key').value || localStorage.getItem('lm_pexels_key') || '',
+      };
+    }
+
+    function isMediaConfigured() {
+      const { unsplashKey, pexelsKey } = getMediaConfig();
+      return !!(unsplashKey || pexelsKey);
+    }
+
     // ── Web: Page Fetcher ────────────────────────────────────
     async function fetchAndExtract(url) {
       let html;
@@ -768,6 +860,7 @@ self.addEventListener('message', async (e) => {
       fetch_page:    'skills/built-in/fetch-page/scripts/index.html',
       interactive_map: 'skills/built-in/interactive-map/scripts/index.html',
       query_wikipedia: 'skills/built-in/query-wikipedia/scripts/index.html',
+      search_media:  'skills/built-in/search-media/scripts/index.html',
     };
 
     const SKILL_DOC_REGISTRY = {
@@ -782,6 +875,7 @@ self.addEventListener('message', async (e) => {
       fetch_page: 'skills/built-in/fetch-page/SKILL.md',
       interactive_map: 'skills/built-in/interactive-map/SKILL.md',
       query_wikipedia: 'skills/built-in/query-wikipedia/SKILL.md',
+      search_media: 'skills/built-in/search-media/SKILL.md',
     };
 
     let toolSkillDocsLoaded = false;
@@ -1034,6 +1128,35 @@ self.addEventListener('message', async (e) => {
           if (!res.ok) return { error: `Wikipedia request failed (${res.status})` };
           const data = await res.json();
           return { title: data.title || topic, result: data.extract || 'No summary available.' };
+        }
+      },
+      search_media: {
+        description: 'Search for images or videos on any topic using Unsplash or Pexels. Use when the user asks for photos, pictures, images, videos, wallpapers, or visual content.',
+        requiresWeb: true,
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Descriptive search query for the desired images or videos' },
+            type: { type: 'string', enum: ['image', 'video'], description: 'Type of media: "image" or "video". Defaults to "image".' },
+            provider: { type: 'string', enum: ['unsplash', 'pexels'], description: 'Media provider. Defaults to whichever has a key configured.' },
+            count: { type: 'number', description: 'Number of results (1-10). Defaults to 4.' },
+            orientation: { type: 'string', enum: ['landscape', 'portrait', 'squarish'], description: 'Image orientation filter (optional).' }
+          },
+          required: ['query']
+        },
+        async execute(a) {
+          const mediaConfig = getMediaConfig();
+          if (!mediaConfig.unsplashKey && !mediaConfig.pexelsKey) {
+            return { error: 'No media API keys configured. Add an Unsplash or Pexels API key in Settings → Image & Video Search.' };
+          }
+          const secret = JSON.stringify({ unsplashKey: mediaConfig.unsplashKey, pexelsKey: mediaConfig.pexelsKey });
+          const viaSkill = await executeSkillIfAvailable(
+            'search_media',
+            { query: a.query, type: a.type || 'image', provider: a.provider || '', count: a.count || 4, orientation: a.orientation || '' },
+            secret
+          );
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: 'Media search skill not available.' };
         }
       }
     };
@@ -1507,7 +1630,7 @@ self.addEventListener('message', async (e) => {
         
         State.inference = await LlmInference.createFromOptions(f, {
           baseOptions: { modelAssetPath: modelPath, delegate: navigator.gpu ? "GPU" : "CPU" },
-          maxTokens: 8192, temperature: 0.7
+          maxTokens: getSettingsValues().maxTokens, temperature: getSettingsValues().temperature
         });
         
         logBoot("Inference engine hot.");
@@ -1527,9 +1650,6 @@ self.addEventListener('message', async (e) => {
     }
 
     // ── Sending & Agent Loop ───────────────────────────────
-
-    /** Maximum number of tool-call/response cycles per user message. */
-    const MAX_TOOL_ITERATIONS = 3;
 
     function normalizeString(value) {
       return String(value == null ? '' : value).trim();
@@ -1595,6 +1715,18 @@ self.addEventListener('message', async (e) => {
         const lang = normalizeString(args.lang || args.language || args.locale || getDefaultLangCode()).toLowerCase();
         args.topic = topic;
         args.lang = /^[a-z]{2}$/.test(lang) ? lang : 'en';
+      }
+
+      if (toolName === 'search_media') {
+        args.query = normalizeString(args.query || args.q || args.term || args.topic || args.search);
+        const mediaType = normalizeString(args.type || args.media_type || 'image').toLowerCase();
+        args.type = (mediaType === 'video') ? 'video' : 'image';
+        const provider = normalizeString(args.provider || args.source || '').toLowerCase();
+        args.provider = (provider === 'unsplash' || provider === 'pexels') ? provider : '';
+        const count = Number(args.count || args.num || args.limit || 4);
+        args.count = Number.isFinite(count) ? Math.max(1, Math.min(10, Math.floor(count))) : 4;
+        const orientation = normalizeString(args.orientation || '').toLowerCase();
+        args.orientation = ['landscape', 'portrait', 'squarish'].includes(orientation) ? orientation : '';
       }
 
       return args;
@@ -1709,7 +1841,8 @@ self.addEventListener('message', async (e) => {
         }
 
         // ── Agentic loop ───────────────────────────────────────
-        for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
+        const maxIters = getSettingsValues().maxToolIters;
+        for (let iter = 0; iter < maxIters; iter++) {
           let full = "";
           const iterShowThinking = State.showThinking && iter === 0;
           // Pass isFollowUpIteration=true on iter > 0 so buildPrompt omits the
@@ -1770,7 +1903,7 @@ self.addEventListener('message', async (e) => {
             if (iter > 0) {
               const stepLabel = document.createElement('div');
               stepLabel.style.cssText = 'font-size:0.68rem;color:var(--ollama-stone);margin:6px 0 2px;font-weight:500';
-              stepLabel.textContent = `Step ${iter + 1}/${MAX_TOOL_ITERATIONS}`;
+              stepLabel.textContent = `Step ${iter + 1}/${maxIters}`;
               aiEl.appendChild(stepLabel);
             }
 
@@ -1784,7 +1917,7 @@ self.addEventListener('message', async (e) => {
             State.history.push({ role: 'user', text: `<tool_response>${JSON.stringify(res)}</tool_response>` });
 
             // After the last iteration, stop unconditionally (no fourth LLM pass)
-            if (iter === MAX_TOOL_ITERATIONS - 1) break;
+            if (iter === maxIters - 1) break;
 
             // Clear RAG context for follow-up iterations; it's already in history
             ragContext = "";
@@ -1826,15 +1959,58 @@ self.addEventListener('message', async (e) => {
      *   so repeating the instruction would just waste tokens.
      * @returns {Promise<string>} The complete prompt string ready for inference.
      */
+    const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant with access to tools. Use them when they would help answer the user's question. If tools aren't needed, respond directly.
+
+Rules:
+- Call one tool at a time. Wait for the result before calling another.
+- When citing sources, mention where the information came from.
+- If you don't need tools, just answer directly.
+- Never fabricate tool results.
+- Always use the exact <tool_call> XML format shown above. Do not invent other formats.
+- You can translate text between 140+ languages directly — no tool needed for translation.
+- When returning images or media results, always include proper attribution and photographer credits.`;
+
+    function getSettingsValues() {
+      return {
+        temperature: parseFloat(document.getElementById('temperature-slider').value) || 0.7,
+        maxTokens: parseInt(document.getElementById('max-tokens-select').value, 10) || 8192,
+        historyBudget: parseInt(document.getElementById('history-budget').value, 10) || 12000,
+        maxToolIters: parseInt(document.getElementById('max-tool-iters').value, 10) || 3,
+      };
+    }
+
     async function buildPrompt(additionalContext = "", isFollowUpIteration = false) {
       await ensureToolSkillDocsLoaded();
-      const s = document.getElementById('system-prompt').value;
-      const toolDefs = Object.entries(TOOL_REGISTRY).map(([n, t]) => ({
-        name: n,
-        desc: t.skillDescription || t.description,
-        params: t.parameters,
-        guidance: t.skillInstructions || ''
-      }));
+      const userPrompt = document.getElementById('system-prompt').value.trim();
+
+      // Build structured tool definitions (LocalMind style)
+      const webConfigured = isSearchConfigured();
+      const mediaConfigured = isMediaConfigured();
+      const toolDefs = Object.entries(TOOL_REGISTRY)
+        .filter(([name, t]) => {
+          if (t.requiresWeb && name === 'web_search' && !webConfigured) return false;
+          if (t.requiresWeb && name === 'search_media' && !mediaConfigured) return false;
+          return true;
+        })
+        .map(([name, t]) => ({
+          type: 'function',
+          function: {
+            name,
+            description: t.skillDescription || t.description,
+            parameters: t.parameters,
+          },
+        }));
+
+      // Build the system prompt following LocalMind's structured approach
+      let systemPrompt = userPrompt || DEFAULT_SYSTEM_PROMPT;
+
+      systemPrompt += `\n\n<tools>\n${JSON.stringify(toolDefs, null, 2)}\n</tools>\n\nTo call a function, output EXACTLY this format (not inside thinking):\n<tool_call>\n{"name": "function_name", "arguments": {"arg1": "value1"}}\n</tool_call>`;
+
+      // On the first pass, remind the model that tool_call tags must live in the
+      // main response text, NOT inside a <|think|> reasoning block.
+      if (!isFollowUpIteration) {
+        systemPrompt += '\n\nCRITICAL: The <tool_call> block MUST appear in your main response, NEVER inside your thinking/reasoning block. Think first, then output the tool call as your response.';
+      }
 
       // Inject document library summaries so the model knows what's available for RAG
       let docContext = '';
@@ -1842,30 +2018,22 @@ self.addEventListener('message', async (e) => {
         const chunks = await getAllChunks();
         const summaries = chunks.filter(c => c.category === 'document_summary');
         if (summaries.length) {
-          // Use the 15 most-recently-ingested summaries to stay within token budget
           const budget = summaries.sort((a, b) => b.timestamp - a.timestamp).slice(0, 15);
           docContext = "\n\nDocuments in your library:\n" +
             budget.map(sm => `- ${sm.source}: ${sm.text}`).join('\n');
         }
       } catch (e) { console.warn('Failed to load summaries for prompt', e); }
 
-      // On the first pass, remind the model that tool_call tags must live in the
-      // main response text, NOT inside a <|think|> reasoning block. Some smaller
-      // models tend to bury the tool call inside their chain-of-thought output,
-      // which makes it invisible to the tool-call parser.
-      const thinkingNote = isFollowUpIteration
-        ? ''
-        : '\nCRITICAL: The <tool_call> block MUST appear in your main response, NEVER inside your thinking/reasoning block. Think first, then output the tool call as your response.';
+      let p = `<start_of_turn>user\n${systemPrompt}${docContext}${additionalContext}<end_of_turn>\n`;
 
-      let p = `<start_of_turn>user\nSystem instructions: ${s}${docContext}${additionalContext}\n\nAvailable tools:\n${JSON.stringify(toolDefs)}\nTo use a tool, output: <tool_call>{"name":"...","arguments":{}}</tool_call>${thinkingNote}<end_of_turn>\n`;
-
-      // Append conversation history newest-to-oldest until the 12 000 char budget is full
+      // Append conversation history newest-to-oldest until the history budget is full
+      const historyBudget = getSettingsValues().historyBudget;
       let historyText = "";
       const reversedHistory = [...State.history].reverse();
       for (const m of reversedHistory) {
         const role = m.role === 'ai' || m.role === 'model' ? 'model' : 'user';
         const entry = `<start_of_turn>${role}\n${m.text}<end_of_turn>\n`;
-        if ((historyText.length + entry.length) > 12000) break;
+        if ((historyText.length + entry.length) > historyBudget) break;
         historyText = entry + historyText;
       }
 
@@ -1927,6 +2095,55 @@ self.addEventListener('message', async (e) => {
       block.appendChild(toggle);
       block.appendChild(result);
       el.appendChild(block);
+
+      // ── Render media results (images/videos) inline ──────────
+      if (name === 'search_media' && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
+        const grid = document.createElement('div');
+        grid.className = 'media-grid';
+        for (const item of res.results) {
+          const card = document.createElement('div');
+          card.className = 'media-card';
+
+          if (item.type === 'video' && item.thumbnail) {
+            const video = document.createElement('video');
+            video.controls = true;
+            video.preload = 'metadata';
+            video.poster = item.thumbnail;
+            if (item.url) {
+              const source = document.createElement('source');
+              source.src = item.url;
+              source.type = 'video/mp4';
+              video.appendChild(source);
+            }
+            card.appendChild(video);
+          } else if (item.url || item.thumbnail) {
+            const img = document.createElement('img');
+            img.src = item.thumbnail || item.url;
+            img.alt = item.description || 'Image result';
+            img.loading = 'lazy';
+            img.style.cursor = 'pointer';
+            img.addEventListener('click', () => {
+              window.open(item.link || item.url, '_blank', 'noopener,noreferrer');
+            });
+            card.appendChild(img);
+          }
+
+          const info = document.createElement('div');
+          info.className = 'media-card-info';
+          const photoLink = document.createElement('a');
+          photoLink.href = item.photographerUrl || item.link || '#';
+          photoLink.target = '_blank';
+          photoLink.rel = 'noopener noreferrer';
+          photoLink.textContent = item.photographer || 'Unknown';
+          const providerText = document.createTextNode(` via ${item.provider || 'unknown'}`);
+          info.appendChild(photoLink);
+          info.appendChild(providerText);
+          card.appendChild(info);
+
+          grid.appendChild(card);
+        }
+        el.appendChild(grid);
+      }
     }
 
     // ── Panels & Controls ────────────────────────────────────
@@ -2148,10 +2365,46 @@ self.addEventListener('message', async (e) => {
     };
 
     // Settings toggles & persistence
+    // ── System Prompt ──
     const savedSysPrompt = localStorage.getItem('lm_sys_prompt');
     if (savedSysPrompt) document.getElementById('system-prompt').value = savedSysPrompt;
+    else document.getElementById('system-prompt').value = DEFAULT_SYSTEM_PROMPT;
     document.getElementById('system-prompt').oninput = e => localStorage.setItem('lm_sys_prompt', e.target.value);
+    document.getElementById('reset-prompt-btn').onclick = () => {
+      document.getElementById('system-prompt').value = DEFAULT_SYSTEM_PROMPT;
+      localStorage.setItem('lm_sys_prompt', DEFAULT_SYSTEM_PROMPT);
+      showToast('System prompt reset to default.');
+    };
 
+    // ── Temperature ──
+    const tempSlider = document.getElementById('temperature-slider');
+    const tempValue = document.getElementById('temp-value');
+    const savedTemp = localStorage.getItem('lm_temperature');
+    if (savedTemp) { tempSlider.value = savedTemp; tempValue.textContent = savedTemp; }
+    tempSlider.oninput = () => {
+      tempValue.textContent = tempSlider.value;
+      localStorage.setItem('lm_temperature', tempSlider.value);
+    };
+
+    // ── Max Tokens ──
+    const maxTokensSelect = document.getElementById('max-tokens-select');
+    const savedMaxTokens = localStorage.getItem('lm_max_tokens');
+    if (savedMaxTokens) maxTokensSelect.value = savedMaxTokens;
+    maxTokensSelect.onchange = () => localStorage.setItem('lm_max_tokens', maxTokensSelect.value);
+
+    // ── History Budget ──
+    const historyBudgetInput = document.getElementById('history-budget');
+    const savedHistoryBudget = localStorage.getItem('lm_history_budget');
+    if (savedHistoryBudget) historyBudgetInput.value = savedHistoryBudget;
+    historyBudgetInput.oninput = () => localStorage.setItem('lm_history_budget', historyBudgetInput.value);
+
+    // ── Max Tool Iterations ──
+    const maxToolItersSelect = document.getElementById('max-tool-iters');
+    const savedMaxToolIters = localStorage.getItem('lm_max_tool_iters');
+    if (savedMaxToolIters) maxToolItersSelect.value = savedMaxToolIters;
+    maxToolItersSelect.onchange = () => localStorage.setItem('lm_max_tool_iters', maxToolItersSelect.value);
+
+    // ── Search Provider ──
     const savedProvider = localStorage.getItem('lm_search_provider');
     if (savedProvider) {
       document.getElementById('search-provider').value = savedProvider;
@@ -2179,6 +2432,16 @@ self.addEventListener('message', async (e) => {
       updateSendButtons();
     };
 
+    // ── Media Keys (Unsplash & Pexels) ──
+    const savedUnsplashKey = localStorage.getItem('lm_unsplash_key');
+    if (savedUnsplashKey) document.getElementById('unsplash-api-key').value = savedUnsplashKey;
+    document.getElementById('unsplash-api-key').oninput = e => localStorage.setItem('lm_unsplash_key', e.target.value);
+
+    const savedPexelsKey = localStorage.getItem('lm_pexels_key');
+    if (savedPexelsKey) document.getElementById('pexels-api-key').value = savedPexelsKey;
+    document.getElementById('pexels-api-key').oninput = e => localStorage.setItem('lm_pexels_key', e.target.value);
+
+    // ── Thinking Toggle ──
     const thinkingToggleEl = document.getElementById('thinking-toggle');
     const savedThinking = localStorage.getItem('lm_show_thinking');
     State.showThinking = savedThinking !== 'false';
@@ -2186,6 +2449,34 @@ self.addEventListener('message', async (e) => {
     thinkingToggleEl.onchange = e => {
       State.showThinking = !!e.target.checked;
       localStorage.setItem('lm_show_thinking', String(State.showThinking));
+    };
+
+    // ── Reset All Settings ──
+    document.getElementById('reset-all-settings-btn').onclick = () => {
+      if (!confirm('Reset all settings to defaults? This clears API keys, prompt, and preferences.')) return;
+      const keysToRemove = [
+        'lm_sys_prompt', 'lm_search_provider', 'lm_search_key', 'lm_searxng_url',
+        'lm_unsplash_key', 'lm_pexels_key', 'lm_show_thinking', 'lm_temperature',
+        'lm_max_tokens', 'lm_history_budget', 'lm_max_tool_iters'
+      ];
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      document.getElementById('system-prompt').value = DEFAULT_SYSTEM_PROMPT;
+      document.getElementById('temperature-slider').value = '0.7';
+      tempValue.textContent = '0.7';
+      document.getElementById('max-tokens-select').value = '8192';
+      document.getElementById('history-budget').value = '12000';
+      document.getElementById('max-tool-iters').value = '3';
+      document.getElementById('search-provider').value = 'none';
+      document.getElementById('search-api-key').value = '';
+      document.getElementById('searxng-url').value = '';
+      document.getElementById('unsplash-api-key').value = '';
+      document.getElementById('pexels-api-key').value = '';
+      document.getElementById('api-key-row').style.display = 'none';
+      document.getElementById('searxng-url-row').style.display = 'none';
+      thinkingToggleEl.checked = true;
+      State.showThinking = true;
+      updateSendButtons();
+      showToast('All settings reset to defaults.');
     };
 
     // Import/Export
