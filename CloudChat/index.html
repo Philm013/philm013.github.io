@@ -1071,7 +1071,7 @@ self.addEventListener('message', async (e) => {
             updateStatus('loading', 'Locating...');
             logBoot("Local cache miss. Searching network...");
             let fetchPath = REMOTE_MODEL;
-            try { const check = await fetch(LOCAL_MODEL, { method: 'HEAD' }); if (check.ok) { fetchPath = LOCAL_MODEL; logBoot("Nearby weights detected on host."); } } catch (_e) { /* ignore */ }
+            try { const check = await fetch(LOCAL_MODEL, { method: 'HEAD' }); if (check.ok) { fetchPath = LOCAL_MODEL; logBoot("Nearby weights detected on host."); } } catch (_e) { /* local model not available — proceed with remote */ }
             if (fetchPath === REMOTE_MODEL) {
               document.getElementById('model-rescue').classList.add('open');
               document.getElementById('global-loader').classList.add('hidden');
@@ -1481,7 +1481,8 @@ self.addEventListener('message', async (e) => {
     document.getElementById('global-file-input').onchange = e => {
       for (const file of e.target.files) {
         (async () => {
-          let text;
+          // eslint-disable-next-line no-useless-assignment
+          let text = '';
           try {
             if (file.name.endsWith('.pdf')) text = await extractPDFText(file);
             else if (file.name.endsWith('.docx')) text = await extractDOCXText(file);
@@ -1562,7 +1563,8 @@ self.addEventListener('message', async (e) => {
             else if (SUPPORTED.test(entry.name)) {
               const file = await entry.getFile();
               const fullPath = prefix ? `${prefix}/${entry.name}` : entry.name;
-              let text;
+              // eslint-disable-next-line no-useless-assignment
+              let text = '';
               if (/\.pdf$/i.test(entry.name)) text = await extractPDFText(file);
               else if (/\.docx$/i.test(entry.name)) text = await extractDOCXText(file);
               else text = await file.text();
