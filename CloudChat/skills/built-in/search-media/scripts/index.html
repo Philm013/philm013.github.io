@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Media</title>
+</head>
+<body>
+  <script>
+    /**
+     * Search Unsplash for images.
+     * API docs: https://unsplash.com/documentation#search-photos
+     * @param {string} query - Search query
+     * @param {string} accessKey - Unsplash Access Key
+     * @param {object} opts - Optional parameters (count, orientation)
+     * @returns {Promise<Array>} Array of image result objects
+     */
+    async function searchUnsplash(query, accessKey, opts = {}) {
+      const params = new URLSearchParams({
+        query,
+        per_page: String(Math.min(opts.count || 4, 10)),
+      });
+      if (opts.orientation) params.set('orientation', opts.orientation);
+
+      const res = await fetch(
+        'https://api.unsplash.com/search/photos?' + params.toString(),
+        { headers: { Authorization: 'Client-ID ' + accessKey } }
+      );
+      if (!res.ok) throw new Error('Unsplash API error ' + res.status);
+      const data = await res.json();
+      return (data.results || []).map(photo => ({
+        type: 'image',
+        provider: 'unsplash',
+        id: photo.id,
+        description: photo.description || photo.alt_description || '',
+        url: photo.urls.regular,
+        thumbnail: photo.urls.small,
+        link: photo.links.html,
+        photographer: photo.user.name,
+        photographerUrl: photo.user.links.html,
+        width: photo.width,
+        height: photo.height,
+        color: photo.color,
+      }));
+    }
+
+    /**
+     * Search Pexels for images.
+     * API docs: https://www.pexels.com/api/documentation/#photos-search
+     * @param {string} query - Search query
+     * @param {string} apiKey - Pexels API key
+     * @param {object} opts - Optional parameters (count, orientation)
+     * @returns {Promise<Array>} Array of image result objects
+     */
+    async function searchPexelsImages(query, apiKey, opts = {}) {
+      const params = new URLSearchParams({
+        query,
+        per_page: String(Math.min(opts.count || 4, 10)),
+      });
+      if (opts.orientation) params.set('orientation', opts.orientation);
+
+      const res = await fetch(
+        'https://api.pexels.com/v1/search?' + params.toString(),
+        { headers: { Authorization: apiKey } }
+      );
+      if (!res.ok) throw new Error('Pexels API error ' + res.status);
+      const data = await res.json();
+      return (data.photos || []).map(photo => ({
+        type: 'image',
+        provider: 'pexels',
+        id: photo.id,
+        description: photo.alt || '',
+        url: photo.src.large,
+        thumbnail: photo.src.medium,
+        link: photo.url,
+        photographer: photo.photographer,
+        photographerUrl: photo.photographer_url,
+        width: photo.width,
+        height: photo.height,
+        color: photo.avg_color,
+      }));
+    }
+
+    /**
+     * Search Pexels for videos.
+     * API docs: https://www.pexels.com/api/documentation/#videos-search
+     * @param {string} query - Search query
+     * @param {string} apiKey - Pexels API key
+     * @param {object} opts - Optional parameters (count)
+     * @returns {Promise<Array>} Array of video result objects
+     */
+    async function searchPexelsVideos(query, apiKey, opts = {}) {
+      const params = new URLSearchParams({
+        query,
+        per_page: String(Math.min(opts.count || 4, 10)),
+      });
+
+      const res = await fetch(
+        'https://api.pexels.com/videos/search?' + params.toString(),
+        { headers: { Authorization: apiKey } }
+      );
+      if (!res.ok) throw new Error('Pexels Video API error ' + res.status);
+      const data = await res.json();
+      return (data.videos || []).map(video => {
+        // Pick the best quality file under 1080p
+        const files = video.video_files || [];
+        const best = files
+          .filter(f => f.height <= 1080)
+          .sort((a, b) => (b.height || 0) - (a.height || 0))[0] || files[0];
+        return {
+          type: 'video',
+          provider: 'pexels',
+          id: video.id,
+          description: '',
+          url: best ? best.link : '',
+          thumbnail: video.image,
+          link: video.url,
+          photographer: video.user.name,
+          photographerUrl: video.user.url,
+          width: video.width,
+          height: video.height,
+          duration: video.duration,
+        };
+      });
+    }
+
+    /**
+     * Main skill entry point.
+     * Called by the CloudChat skill runner with JSON data and a secret string.
+     */
+    window['ai_edge_gallery_get_result'] = async (data, secret) => {
+      try {
+        const jsonData = JSON.parse(data);
+        const query = String(jsonData.query || '').trim();
+        const mediaType = String(jsonData.type || 'image').toLowerCase();
+        const count = Math.max(1, Math.min(10, Number(jsonData.count) || 4));
+        const orientation = jsonData.orientation || '';
+
+        if (!query) {
+          return JSON.stringify({ error: 'No search query provided.' });
+        }
+
+        // Parse secret — expects JSON with unsplashKey and/or pexelsKey
+        let unsplashKey = '';
+        let pexelsKey = '';
+        try {
+          const keys = JSON.parse(secret);
+          unsplashKey = keys.unsplashKey || '';
+          pexelsKey = keys.pexelsKey || '';
+        } catch (_e) {
+          // If secret isn't JSON, treat it as a single API key
+          // (backward compatibility — try as Pexels key)
+          pexelsKey = secret || '';
+        }
+
+        let requestedProvider = String(jsonData.provider || '').toLowerCase();
+        const opts = { count, orientation };
+
+        // For video, always use Pexels (Unsplash doesn't support video)
+        if (mediaType === 'video') {
+          if (!pexelsKey) {
+            return JSON.stringify({ error: 'Pexels API key required for video search. Configure it in Settings.' });
+          }
+          const results = await searchPexelsVideos(query, pexelsKey, opts);
+          return JSON.stringify({ results, query, provider: 'pexels', type: 'video' });
+        }
+
+        // For images, pick provider based on preference and key availability
+        if (!requestedProvider) {
+          requestedProvider = unsplashKey ? 'unsplash' : (pexelsKey ? 'pexels' : '');
+        }
+
+        if (requestedProvider === 'unsplash') {
+          if (!unsplashKey) {
+            return JSON.stringify({ error: 'Unsplash API key required. Configure it in Settings.' });
+          }
+          const results = await searchUnsplash(query, unsplashKey, opts);
+          return JSON.stringify({ results, query, provider: 'unsplash', type: 'image' });
+        }
+
+        if (requestedProvider === 'pexels') {
+          if (!pexelsKey) {
+            return JSON.stringify({ error: 'Pexels API key required. Configure it in Settings.' });
+          }
+          const results = await searchPexelsImages(query, pexelsKey, opts);
+          return JSON.stringify({ results, query, provider: 'pexels', type: 'image' });
+        }
+
+        // No provider selected or no keys configured
+        return JSON.stringify({ error: 'No media API keys configured. Add an Unsplash or Pexels API key in Settings.' });
+      } catch (e) {
+        return JSON.stringify({ error: 'Media search failed: ' + e.message });
+      }
+    };
+  </script>
+
+  <!-- Local test UI -->
+  <div style="margin:20px;padding:20px;border:1px solid #ccc;font-family:sans-serif">
+    <h3>Search Media — Test</h3>
+    <input id="query" type="text" placeholder="Search query"
+      style="width:260px;padding:8px;font-size:14px">
+    <select id="provider" style="padding:8px;margin-left:8px;font-size:14px">
+      <option value="">Auto</option>
+      <option value="unsplash">Unsplash</option>
+      <option value="pexels">Pexels</option>
+    </select>
+    <select id="type" style="padding:8px;margin-left:8px;font-size:14px">
+      <option value="image">Image</option>
+      <option value="video">Video</option>
+    </select>
+    <input id="unsplash-key" type="password" placeholder="Unsplash key"
+      style="width:160px;padding:8px;font-size:14px;margin-left:8px">
+    <input id="pexels-key" type="password" placeholder="Pexels key"
+      style="width:160px;padding:8px;font-size:14px;margin-left:8px">
+    <button id="run" style="padding:8px 16px;margin-left:8px;cursor:pointer">Search</button>
+    <pre id="out" style="margin-top:12px;padding:10px;background:#f4f4f4;font-size:13px;white-space:pre-wrap"></pre>
+  </div>
+  <script>
+    document.getElementById('run').addEventListener('click', async () => {
+      const query = document.getElementById('query').value;
+      const provider = document.getElementById('provider').value;
+      const type = document.getElementById('type').value;
+      const unsplashKey = document.getElementById('unsplash-key').value;
+      const pexelsKey = document.getElementById('pexels-key').value;
+      const out = document.getElementById('out');
+      out.textContent = 'Searching…';
+      const result = await window['ai_edge_gallery_get_result'](
+        JSON.stringify({ query, provider, type }),
+        JSON.stringify({ unsplashKey, pexelsKey })
+      );
+      out.textContent = result;
+    });
+  </script>
+</body>
+</html>
