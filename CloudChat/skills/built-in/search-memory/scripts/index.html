@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Memory</title>
+</head>
+<body>
+  <script>
+    const MEMORY_DB_KEY = 'cloudchat_memories';
+
+    function loadMemories() {
+      try {
+        const raw = localStorage.getItem(MEMORY_DB_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    /**
+     * Simple keyword relevance score: counts how many query tokens appear in the text.
+     * Returns a score between 0 and 1.
+     */
+    function scoreMatch(text, tokens) {
+      const lower = text.toLowerCase();
+      let hits = 0;
+      for (const token of tokens) {
+        if (lower.includes(token)) hits++;
+      }
+      return tokens.length > 0 ? hits / tokens.length : 0;
+    }
+
+    window['ai_edge_gallery_get_result'] = async (data) => {
+      try {
+        const jsonData = JSON.parse(data);
+        const query = String(jsonData.query || '').trim();
+        const limit = Math.min(Number(jsonData.limit) || 5, 20);
+        const categoryFilter = jsonData.category ? String(jsonData.category).trim() : null;
+
+        const memories = loadMemories();
+
+        if (!memories.length) {
+          return JSON.stringify({ found: false, memories: [], message: 'No memories stored yet.' });
+        }
+
+        // Filter by category if specified
+        let pool = categoryFilter
+          ? memories.filter(m => m.category === categoryFilter)
+          : memories;
+
+        // If query is empty, return most recent entries
+        if (!query) {
+          const recent = pool.slice(-limit).reverse();
+          return JSON.stringify({
+            found: recent.length > 0,
+            memories: recent,
+            total: pool.length
+          });
+        }
+
+        // Score each memory by keyword relevance
+        const tokens = query.toLowerCase().split(/\s+/).filter(t => t.length > 1);
+        const scored = pool
+          .map(m => ({ ...m, score: scoreMatch(m.content, tokens) }))
+          .filter(m => m.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, limit);
+
+        return JSON.stringify({
+          found: scored.length > 0,
+          memories: scored.map(({ id, content, category, timestamp }) => ({
+            id, content, category, timestamp
+          })),
+          total_searched: pool.length
+        });
+      } catch (e) {
+        return JSON.stringify({ error: 'Search failed: ' + e.message });
+      }
+    };
+  </script>
+
+  <!-- Local test UI -->
+  <div style="margin:20px;padding:20px;border:1px solid #ccc;font-family:sans-serif">
+    <h3>Search Memory — Test</h3>
+    <input id="query" type="text" placeholder="Search query"
+      style="width:300px;padding:8px;font-size:14px">
+    <button id="run" style="padding:8px 16px;margin-left:8px;cursor:pointer">Search</button>
+    <pre id="out" style="margin-top:12px;padding:10px;background:#f4f4f4;font-size:13px"></pre>
+  </div>
+  <script>
+    document.getElementById('run').addEventListener('click', async () => {
+      const query = document.getElementById('query').value;
+      const out = document.getElementById('out');
+      out.textContent = 'Searching…';
+      const result = await window['ai_edge_gallery_get_result'](
+        JSON.stringify({ query, limit: 10 })
+      );
+      out.textContent = result;
+    });
+  </script>
+</body>
+</html>

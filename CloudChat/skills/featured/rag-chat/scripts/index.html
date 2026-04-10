@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG Chat</title>
+</head>
+<body>
+  <script>
+    const MEMORY_DB_KEY = 'cloudchat_memories';
+
+    function loadMemories() {
+      try {
+        const raw = localStorage.getItem(MEMORY_DB_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    /**
+     * Tokenise text into lowercase non-trivial words.
+     * @param {string} text
+     * @returns {string[]}
+     */
+    function tokenise(text) {
+      return text.toLowerCase().split(/\W+/).filter(t => t.length > 2);
+    }
+
+    /**
+     * Compute TF-IDF-inspired relevance score between a query and a document chunk.
+     * @param {string[]} queryTokens
+     * @param {string} chunkText
+     * @returns {number}
+     */
+    function relevanceScore(queryTokens, chunkText) {
+      const chunkTokens = tokenise(chunkText);
+      const chunkSet = new Set(chunkTokens);
+      let hits = 0;
+      for (const token of queryTokens) {
+        if (chunkSet.has(token)) hits++;
+      }
+      return queryTokens.length > 0 ? hits / queryTokens.length : 0;
+    }
+
+    window['ai_edge_gallery_get_result'] = async (data) => {
+      try {
+        const jsonData = JSON.parse(data);
+        const query = String(jsonData.query || '').trim();
+        const limit = Math.min(Number(jsonData.limit) || 5, 15);
+        const sourceFilter = jsonData.source ? String(jsonData.source).trim() : null;
+
+        if (!query) {
+          return JSON.stringify({ error: 'No search query provided.' });
+        }
+
+        const memories = loadMemories();
+        const docChunks = memories.filter(m =>
+          (m.category === 'document' || m.category === 'document_summary') &&
+          (!sourceFilter || m.source === sourceFilter)
+        );
+
+        if (!docChunks.length) {
+          return JSON.stringify({
+            found: false,
+            chunks: [],
+            message: 'No documents have been ingested yet. Use the document-ingester skill first.'
+          });
+        }
+
+        const queryTokens = tokenise(query);
+        const scored = docChunks
+          .map(chunk => ({ ...chunk, score: relevanceScore(queryTokens, chunk.content) }))
+          .filter(chunk => chunk.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, limit);
+
+        if (!scored.length) {
+          return JSON.stringify({
+            found: false,
+            chunks: [],
+            message: 'No relevant content found for: "' + query + '"',
+            totalDocChunks: docChunks.length
+          });
+        }
+
+        const sources = [...new Set(scored.map(c => c.source))];
+        return JSON.stringify({
+          found: true,
+          chunks: scored.map(({ id, content, source, category }) => ({ id, content, source, category })),
+          sources,
+          query,
+          totalDocChunks: docChunks.length
+        });
+      } catch (e) {
+        return JSON.stringify({ error: 'RAG search failed: ' + e.message });
+      }
+    };
+  </script>
+
+  <!-- Local test UI -->
+  <div style="margin:20px;padding:20px;border:1px solid #ccc;font-family:sans-serif">
+    <h3>RAG Chat — Test</h3>
+    <input id="query" type="text" placeholder="Ask a question about your documents"
+      style="width:360px;padding:8px;font-size:14px">
+    <button id="run" style="padding:8px 16px;margin-left:8px;cursor:pointer">Search</button>
+    <pre id="out" style="margin-top:12px;padding:10px;background:#f4f4f4;font-size:13px;white-space:pre-wrap;max-height:400px;overflow:auto"></pre>
+  </div>
+  <script>
+    document.getElementById('run').addEventListener('click', async () => {
+      const query = document.getElementById('query').value;
+      const out = document.getElementById('out');
+      out.textContent = 'Searching…';
+      const result = await window['ai_edge_gallery_get_result'](
+        JSON.stringify({ query, limit: 5 })
+      );
+      out.textContent = result;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Ingester</title>
+</head>
+<body>
+  <script>
+    const MEMORY_DB_KEY = 'cloudchat_memories';
+
+    function loadMemories() {
+      try {
+        const raw = localStorage.getItem(MEMORY_DB_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveMemories(memories) {
+      localStorage.setItem(MEMORY_DB_KEY, JSON.stringify(memories));
+    }
+
+    /**
+     * Split text into overlapping chunks.
+     * @param {string} text
+     * @param {number} chunkSize - target chars per chunk
+     * @param {number} overlap - overlap chars between chunks
+     * @returns {string[]}
+     */
+    function chunkText(text, chunkSize, overlap) {
+      const chunks = [];
+      let start = 0;
+      while (start < text.length) {
+        const end = Math.min(start + chunkSize, text.length);
+        chunks.push(text.slice(start, end).trim());
+        if (end >= text.length) break;
+        start += chunkSize - overlap;
+      }
+      return chunks.filter(c => c.length > 20); // Skip trivially short chunks
+    }
+
+    /**
+     * Generate a simple extractive summary (first 3 meaningful sentences).
+     * @param {string} text
+     * @returns {string}
+     */
+    function extractiveSummary(text) {
+      const sentences = text.match(/[^.!?\n]+[.!?]+/g) || [];
+      return sentences.slice(0, 3).join(' ').slice(0, 300);
+    }
+
+    window['ai_edge_gallery_get_result'] = async (data) => {
+      try {
+        const jsonData = JSON.parse(data);
+        const fileName = String(jsonData.fileName || 'untitled').trim();
+        const content = String(jsonData.content || '').trim();
+        const chunkSize = Math.max(100, Number(jsonData.chunkSize) || 500);
+        const overlap = Math.max(0, Number(jsonData.overlap) || 50);
+
+        if (!content) {
+          return JSON.stringify({ error: 'No document content provided.' });
+        }
+
+        const memories = loadMemories();
+        const chunks = chunkText(content, chunkSize, overlap);
+
+        const newEntries = chunks.map((chunk, i) => ({
+          id: Date.now().toString(36) + '_' + i + '_' + Math.random().toString(36).slice(2, 5),
+          content: chunk,
+          category: 'document',
+          source: fileName,
+          timestamp: new Date().toISOString()
+        }));
+
+        // Store summary separately
+        const summary = extractiveSummary(content);
+        if (summary) {
+          newEntries.push({
+            id: Date.now().toString(36) + '_summary_' + Math.random().toString(36).slice(2, 5),
+            content: summary,
+            category: 'document_summary',
+            source: fileName,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const merged = [...memories, ...newEntries];
+        saveMemories(merged);
+
+        return JSON.stringify({
+          result: 'Document ingested successfully.',
+          fileName,
+          chunks: chunks.length,
+          totalMemories: merged.length,
+          summaryStored: !!summary
+        });
+      } catch (e) {
+        return JSON.stringify({ error: 'Ingestion failed: ' + e.message });
+      }
+    };
+  </script>
+
+  <!-- Local test UI -->
+  <div style="margin:20px;padding:20px;border:1px solid #ccc;font-family:sans-serif">
+    <h3>Document Ingester — Test</h3>
+    <input id="name" type="text" placeholder="File name" value="test-doc.txt"
+      style="width:200px;padding:8px;font-size:14px">
+    <br><br>
+    <textarea id="content" placeholder="Paste document text here..." rows="6"
+      style="width:500px;padding:8px;font-size:13px"></textarea>
+    <br>
+    <button id="run" style="padding:8px 16px;margin-top:8px;cursor:pointer">Ingest</button>
+    <pre id="out" style="margin-top:12px;padding:10px;background:#f4f4f4;font-size:13px"></pre>
+  </div>
+  <script>
+    document.getElementById('run').addEventListener('click', async () => {
+      const fileName = document.getElementById('name').value;
+      const content = document.getElementById('content').value;
+      const out = document.getElementById('out');
+      out.textContent = 'Ingesting…';
+      const result = await window['ai_edge_gallery_get_result'](
+        JSON.stringify({ fileName, content })
+      );
+      out.textContent = result;
+    });
+  </script>
+</body>
+</html>

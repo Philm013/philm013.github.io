@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fetch Page</title>
+</head>
+<body>
+  <script>
+    /** CORS proxy used as fallback when a direct fetch is blocked by the browser. */
+    var PROXY_URL = 'https://api.allorigins.win/raw?url=';
+
+    /** Maximum characters of readable text to return (keeps LLM context budget sane). */
+    var MAX_CHARS = 3500;
+
+    /** Fetch timeout in milliseconds for both direct and proxy requests. */
+    var TIMEOUT_MS = 10000;
+
+    /**
+     * Safely extract readable text from an HTML string using the browser's
+     * built-in DOMParser. This approach is significantly more robust than regex
+     * stripping because:
+     *   - The parser handles malformed, nested, and edge-case HTML correctly.
+     *   - innerText returns only visible text -- no markup, no script/style content.
+     *   - Avoids incomplete-sanitization vulnerabilities that regex-based approaches
+     *     are prone to (e.g. CDATA sections, nested tags, unusual whitespace in tags).
+     *
+     * @param {string} html - Raw HTML string from the fetched page.
+     * @returns {string} Plain text, collapsed whitespace, truncated to MAX_CHARS.
+     */
+    function extractText(html) {
+      // Parse into an inert DOM tree -- scripts do NOT execute inside DOMParser docs
+      var parser = new DOMParser();
+      var doc = parser.parseFromString(html, 'text/html');
+
+      // Remove non-content elements before reading text
+      doc.querySelectorAll('script, style, noscript, iframe, object, embed, head').forEach(function(el) {
+        el.remove();
+      });
+
+      // innerText resolves CSS visibility and collapses whitespace naturally
+      var raw = (doc.body ? doc.body.innerText : doc.documentElement.textContent) || '';
+      return raw.replace(/\s+/g, ' ').trim().slice(0, MAX_CHARS);
+    }
+
+    /**
+     * Fetch raw HTML from a URL, trying a direct request first, then falling
+     * back to a CORS proxy if the browser blocks the direct request.
+     *
+     * @param {string} url - Validated https?:// URL to fetch.
+     * @returns {Promise<string>} Raw HTML text of the page.
+     * @throws {Error} If both the direct fetch and proxy fetch fail.
+     */
+    async function fetchHtml(url) {
+      try {
+        var res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.text();
+      } catch (directErr) {
+        // Direct fetch failed (likely a CORS block). Try the allorigins proxy.
+        var proxyRes = await fetch(PROXY_URL + encodeURIComponent(url), {
+          signal: AbortSignal.timeout(TIMEOUT_MS)
+        });
+        if (!proxyRes.ok) {
+          // Preserve the original CORS error as the `cause` so the full error chain
+          // is available in DevTools and error reporters.
+          throw new Error('Proxy HTTP ' + proxyRes.status, { cause: directErr });
+        }
+        return await proxyRes.text();
+      }
+    }
+
+    /**
+     * AI Edge Gallery entry point.
+     * The host app calls this with a JSON-stringified data object and awaits
+     * a JSON-stringified result.
+     *
+     * @param {string} data - JSON string: { url: string }
+     * @returns {Promise<string>} JSON: { content, url, truncated } | { error }
+     */
+    window['ai_edge_gallery_get_result'] = async function(data) {
+      try {
+        var jsonData = JSON.parse(data);
+        var url = String(jsonData.url || '').trim();
+
+        if (!url) {
+          return JSON.stringify({ error: 'No URL provided.' });
+        }
+        if (!/^https?:\/\//i.test(url)) {
+          return JSON.stringify({ error: 'URL must start with http:// or https://' });
+        }
+
+        var html = await fetchHtml(url);
+        var content = extractText(html);
+
+        return JSON.stringify({
+          content: content,
+          url: url,
+          // true when the original page text exceeded MAX_CHARS and was cut off
+          truncated: content.length >= MAX_CHARS
+        });
+      } catch (e) {
+        return JSON.stringify({ error: 'Failed to fetch page: ' + e.message });
+      }
+    };
+  </script>
+
+  <!-- Local test UI (not part of the skill's production surface) -->
+  <div style="margin:20px;padding:20px;border:1px solid #ccc;font-family:sans-serif">
+    <h3>Fetch Page -- Test</h3>
+    <input id="url" type="url" placeholder="https://example.com"
+      style="width:360px;padding:8px;font-size:14px">
+    <button id="run" style="padding:8px 16px;margin-left:8px;cursor:pointer">Fetch</button>
+    <pre id="out" style="margin-top:12px;padding:10px;background:#f4f4f4;font-size:13px;white-space:pre-wrap;max-height:300px;overflow:auto"></pre>
+  </div>
+  <script>
+    document.getElementById('run').addEventListener('click', async function() {
+      var url = document.getElementById('url').value;
+      var out = document.getElementById('out');
+      out.textContent = 'Fetching...';
+      var result = await window['ai_edge_gallery_get_result'](JSON.stringify({ url: url }));
+      out.textContent = result;
+    });
+  </script>
+</body>
+</html>

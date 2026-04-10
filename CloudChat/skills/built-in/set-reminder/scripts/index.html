@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set Reminder</title>
+</head>
+<body>
+  <script>
+    window['ai_edge_gallery_get_result'] = async (data) => {
+      try {
+        const jsonData = JSON.parse(data);
+        const message = String(jsonData.message || '').trim();
+        const delayMinutes = Number(jsonData.delayMinutes);
+
+        if (!message) {
+          return JSON.stringify({ error: 'No reminder message provided.' });
+        }
+        if (!isFinite(delayMinutes) || delayMinutes <= 0) {
+          return JSON.stringify({ error: 'delayMinutes must be a positive number.' });
+        }
+
+        const delayMs = delayMinutes * 60 * 1000;
+        const fireAt = new Date(Date.now() + delayMs).toLocaleTimeString();
+
+        // Request notification permission and schedule
+        let permissionStatus = 'default';
+        if ('Notification' in window) {
+          if (Notification.permission === 'granted') {
+            permissionStatus = 'granted';
+          } else if (Notification.permission !== 'denied') {
+            const perm = await Notification.requestPermission();
+            permissionStatus = perm;
+          } else {
+            permissionStatus = 'denied';
+          }
+        }
+
+        if (permissionStatus === 'granted') {
+          setTimeout(() => {
+            new Notification('⏰ CloudChat Reminder', {
+              body: message,
+              // Use a standard browser notification without a custom icon;
+              // the app does not bundle a dedicated PNG icon at a fixed path.
+              icon: undefined
+            });
+          }, delayMs);
+
+          return JSON.stringify({
+            result: 'Reminder set.',
+            message: message,
+            firesAt: fireAt,
+            delayMinutes: delayMinutes
+          });
+        } else {
+          // Fallback: use alert via setTimeout (visible only if page is open)
+          setTimeout(() => {
+            alert('⏰ Reminder: ' + message);
+          }, delayMs);
+
+          return JSON.stringify({
+            result: 'Reminder set (notifications unavailable, will use alert).',
+            message: message,
+            firesAt: fireAt,
+            delayMinutes: delayMinutes,
+            warning: 'Browser notifications are ' + permissionStatus + '. Alert fallback will be used.'
+          });
+        }
+      } catch (e) {
+        return JSON.stringify({ error: 'Failed to set reminder: ' + e.message });
+      }
+    };
+  </script>
+
+  <!-- Local test UI -->
+  <div style="margin:20px;padding:20px;border:1px solid #ccc;font-family:sans-serif">
+    <h3>Set Reminder — Test</h3>
+    <input id="msg" type="text" placeholder="Reminder message"
+      style="width:300px;padding:8px;font-size:14px">
+    <input id="delay" type="number" placeholder="Minutes" value="1"
+      style="width:80px;padding:8px;font-size:14px;margin-left:8px">
+    <button id="run" style="padding:8px 16px;margin-left:8px;cursor:pointer">Set</button>
+    <pre id="out" style="margin-top:12px;padding:10px;background:#f4f4f4;font-size:13px"></pre>
+  </div>
+  <script>
+    document.getElementById('run').addEventListener('click', async () => {
+      const message = document.getElementById('msg').value;
+      const delayMinutes = parseFloat(document.getElementById('delay').value);
+      const out = document.getElementById('out');
+      out.textContent = 'Setting reminder…';
+      const result = await window['ai_edge_gallery_get_result'](
+        JSON.stringify({ message, delayMinutes })
+      );
+      out.textContent = result;
+    });
+  </script>
+</body>
+</html>
