@@ -51,6 +51,8 @@
     .sidebar-item:hover { background: var(--ollama-light-gray); }
     .sidebar-item.active { background: var(--ollama-white); border: 1px solid var(--ollama-border); font-weight: 500; }
 
+    nav#mobile-nav { display: none; }
+
     /* Main Area */
     .main-screen { flex: 1; display: flex; flex-direction: column; background: var(--ollama-white); height: 100%; min-width: 0; position: relative; }
     /* Header */
@@ -64,6 +66,12 @@
     .header-inner { height: var(--header-height); display: flex; width: 100%; align-items: center; justify-content: space-between; }
     .header-title { font-family: var(--font-display); font-weight: 500; font-size: 1.1rem; }
     
+    /* Welcome Message */
+    .welcome { text-align: center; color: var(--ollama-stone); padding: 60px 20px; max-width: 500px; margin: auto; }
+    .welcome-icon { font-size: 3rem; margin-bottom: 20px; }
+    .welcome h2 { font-size: 1.5rem; font-weight: 600; color: var(--ollama-near-black); margin-bottom: 12px; }
+    .welcome p { font-size: 0.9rem; line-height: 1.6; }
+
     /* Touch Targets */
     .icon-btn { width: 44px; height: 44px; border-radius: var(--radius-pill); background: none; border: none; color: #737373; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; font-size: 1.2rem; touch-action: manipulation; }
     
@@ -91,6 +99,120 @@
       #chat-container { padding: 16px; } .input-row { padding: 12px 16px; }
       .icon-btn { width: 48px; height: 48px; }
     }
+
+    /* Chat Elements */
+    #chat-container { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 24px; background: var(--ollama-white); }
+    .message { display: flex; flex-direction: column; max-width: 85%; line-height: 1.6; }
+    .message.user { align-self: flex-end; }
+    .message.ai { align-self: flex-start; }
+    .user-bubble { background: var(--ollama-snow); border: 1px solid var(--ollama-border); padding: 12px 16px; border-radius: 12px; font-size: 0.95rem; }
+    .message.ai p { margin-bottom: 12px; }
+    .message.ai p:last-child { margin-bottom: 0; }
+    .message.ai pre { background: var(--ollama-snow); border: 1px solid var(--ollama-border); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 12px 0; font-family: var(--font-mono); font-size: 0.85rem; position: relative; }
+    .message.ai code { font-family: var(--font-mono); background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; font-size: 0.9em; }
+    .message.ai pre code { background: none; padding: 0; }
+
+    /* Input Stack */
+    .bottom-stack { flex-shrink: 0; background: #fff; border-top: 1px solid var(--ollama-border); padding-bottom: env(safe-area-inset-bottom, 0); }
+    .input-row { max-width: 800px; margin: 0 auto; padding: 16px 24px; width: 100%; position: relative; }
+    .input-container { background: var(--ollama-snow); border: 1px solid var(--ollama-border); border-radius: 16px; display: flex; align-items: flex-end; padding: 8px 12px; gap: 8px; }
+    #chat-input { flex: 1; background: none; border: none; outline: none; padding: 8px 4px; resize: none; font-family: inherit; font-size: 1rem; line-height: 1.5; max-height: 200px; color: var(--ollama-near-black); }
+    #chat-input::placeholder { color: var(--ollama-stone); }
+
+    /* Status Badge */
+    .status-badge { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--radius-pill); font-size: 0.75rem; font-weight: 500; border: 1px solid transparent; }
+    .status-badge.online { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+    .status-badge.loading { background: #fffbeb; color: #744210; border-color: #fef3c7; }
+    .status-badge.error { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+
+    /* Buttons */
+    .btn-block { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--ollama-border); background: var(--ollama-white); color: var(--ollama-near-black); font-weight: 500; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .btn-block:hover { background: var(--ollama-snow); }
+    .btn-primary { background: var(--ollama-black); color: var(--ollama-white); border-color: var(--ollama-black); }
+    .btn-primary:hover { opacity: 0.8; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Panels */
+    .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--ollama-border); display: flex; justify-content: space-between; align-items: center; }
+    .panel-content { padding: 20px; flex: 1; overflow-y: auto; }
+
+    /* Progress Bar */
+    .progress-bar { width: 100%; height: 8px; background: var(--ollama-light-gray); border-radius: 4px; overflow: hidden; margin: 20px 0; }
+    #download-fill { height: 100%; background: var(--ollama-black); width: 0%; transition: width 0.3s; }
+
+    /* Rescue Overlay */
+    #model-rescue { position: fixed; inset: 0; background: #fff; z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; }
+    #model-rescue.open { display: flex; }
+
+    /* Loader */
+    #global-loader { position: fixed; inset: 0; background: var(--ollama-black); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; }
+    #global-loader.hidden { display: none; }
+    .neural-core { width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.5; } }
+    .boot-log { margin-top: 24px; font-family: var(--font-mono); font-size: 0.7rem; color: rgba(255,255,255,0.5); text-align: left; width: 100%; max-width: 300px; }
+    .boot-line { margin-bottom: 4px; }
+
+    /* Slash Menu */
+    .slash-menu { position: absolute; bottom: 100%; left: 0; width: 100%; background: #fff; border: 1px solid var(--ollama-border); border-radius: 12px; display: none; flex-direction: column; overflow: hidden; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); margin-bottom: 8px; z-index: 500; }
+    .slash-item { padding: 12px 16px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
+    .slash-item:hover { background: var(--ollama-snow); }
+
+    .hidden { display: none !important; }
+
+    /* Thinking block */
+    .thinking-block { background: rgba(0,0,0,0.03); border-left: 3px solid var(--ollama-stone); padding: 8px 12px; border-radius: 0 8px 8px 0; margin-bottom: 8px; font-size: 0.82rem; color: var(--ollama-mid-gray); }
+    .thinking-toggle { cursor: pointer; font-size: 0.75rem; color: var(--ollama-stone); font-weight: 500; display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+    .thinking-content { display: none; white-space: pre-wrap; }
+    .thinking-content.open { display: block; }
+
+    /* Tool call block */
+    .tool-call-block { background: rgba(0,0,0,0.02); border-left: 3px solid var(--ollama-mid-gray); padding: 8px 12px; border-radius: 0 8px 8px 0; margin: 8px 0; font-size: 0.82rem; color: var(--ollama-stone); }
+    .tool-call-toggle { cursor: pointer; font-size: 0.75rem; color: var(--ollama-black); font-weight: 500; display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+    .tool-call-result { display: none; white-space: pre-wrap; font-size: 0.78rem; margin-top: 4px; }
+    .tool-call-result.open { display: block; }
+    .tool-call-result pre { margin: 0; padding: 6px 8px; background: rgba(0,0,0,0.02); border-radius: 4px; font-size: 0.78rem; overflow-x: auto; font-family: var(--font-mono); }
+
+    /* Source badges */
+    .msg-source-badge { display: inline-block; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; font-weight: 500; background: var(--ollama-light-gray); color: var(--ollama-stone); }
+    .msg-source-badge.web-enriched { background: rgba(16, 185, 129, 0.1); color: #059669; }
+    .source-links { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--ollama-border); font-size: 0.72rem; }
+    .source-links a { color: #0366d6; text-decoration: none; display: block; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .source-links a:hover { text-decoration: underline; }
+
+    /* Memory / History items */
+    .memory-item, .history-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; background: var(--ollama-snow); border-radius: 8px; font-size: 0.78rem; color: var(--ollama-near-black); line-height: 1.45; margin-bottom: 6px; border: 1px solid transparent; transition: border-color 0.2s; }
+    .memory-item:hover, .history-item:hover { border-color: var(--ollama-border); }
+    .memory-item-text, .history-item-text { flex: 1; min-width: 0; }
+    .memory-item-meta, .history-item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 0.68rem; color: var(--ollama-stone); margin-top: 2px; }
+    .memory-item-del, .history-item-del { cursor: pointer; color: var(--ollama-stone); font-size: 0.8rem; padding: 0 4px; border: none; background: none; line-height: 1; flex-shrink: 0; }
+    .memory-item-del:hover, .history-item-del:hover { color: #ef4444; }
+
+    .mem-cat { display: inline-block; padding: 0 5px; border-radius: 4px; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+    .mem-cat-fact { background: #dbeafe; color: #1d4ed8; }
+    .mem-cat-preference { background: #ede9fe; color: #6d28d9; }
+    .mem-cat-finding { background: #d1fae5; color: #065f46; }
+    .mem-cat-document { background: #ffedd5; color: #c2410c; }
+    .mem-cat-document_summary { background: #fef3c7; color: #92400e; }
+    .mem-cat-conversation { background: var(--ollama-light-gray); color: var(--ollama-stone); }
+
+    /* Audit */
+    .audit-section { margin-bottom: 16px; }
+    .audit-section-header { display: flex; align-items: center; gap: 6px; padding: 8px 0; font-size: 0.8rem; font-weight: 600; color: var(--ollama-near-black); border-bottom: 1px solid var(--ollama-border); margin-bottom: 8px; }
+    .audit-section-header span { flex: 1; }
+
+    /* Batch */
+    .batch-textarea { width: 100%; min-height: 120px; max-height: 300px; border: 1px solid var(--ollama-border); border-radius: 8px; padding: 10px; font-size: 0.85rem; font-family: var(--font-mono); color: var(--ollama-near-black); background: var(--ollama-white); resize: vertical; outline: none; line-height: 1.5; margin: 8px 0; }
+    .batch-textarea:focus { border-color: var(--ollama-stone); }
+    .batch-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+    .batch-progress { font-size: 0.8rem; color: var(--ollama-mid-gray); min-width: 80px; text-align: right; flex: 1; }
+
+    /* Shared conversation detected banner */
+    .import-banner { position: fixed; top: 0; left: 0; right: 0; background: var(--ollama-black); color: white; padding: 12px 24px; display: none; align-items: center; gap: 16px; z-index: 2000; font-size: 0.9rem; }
+    .import-banner.open { display: flex; }
+    .import-banner strong { flex: 1; }
+    .import-banner input[type="password"] { border: none; border-radius: 4px; padding: 6px 12px; font-size: 0.85rem; width: 180px; }
+    .import-banner button { background: white; color: black; border: none; border-radius: 4px; padding: 6px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    .import-banner .dismiss-btn { background: transparent; color: var(--ollama-stone); }
   </style>
 </head>
 <body>
@@ -135,14 +257,24 @@
         <div id="status-badge" class="status-badge"><span id="status-text">Disconnected</span></div>
       </div>
     </header>
-    <main id="chat-container"><div class="message ai"><p>Local AI active. Initializing...</p></div></main>
+    <main id="chat-container">
+      <div class="welcome" id="welcome-msg">
+        <div class="welcome-icon">🧠</div>
+        <h2>Native AI Assistant</h2>
+        <p>Gemma 4 runs entirely on your device. No data leaves this browser. Secure, private, and offline-capable.</p>
+        <p style="margin-top: 12px; font-size: 0.8rem; opacity: 0.7;">Upload documents to the Library to enable semantic memory (RAG).</p>
+      </div>
+    </main>
     <footer class="bottom-stack">
       <div class="input-row">
         <div id="slash-menu" class="slash-menu"></div>
         <div class="input-container">
           <button class="icon-btn" onclick="document.getElementById('global-file-input').click()">📎</button>
           <textarea id="chat-input" rows="1" placeholder="Initializing..." disabled></textarea>
-          <button id="send-btn" class="icon-btn primary" onclick="handleSend()" disabled title="Send">➤</button>
+          <div style="display: flex; gap: 4px;">
+            <button id="send-btn" class="icon-btn primary" onclick="handleSend()" disabled title="Send">➤</button>
+            <button id="search-send-btn" class="icon-btn" onclick="State.webEnrichedMode=true;handleSend()" disabled title="Search web + Send" style="display:none">🌐</button>
+          </div>
         </div>
       </div>
       <nav id="mobile-nav">
@@ -160,46 +292,175 @@
     <div class="panel-window">
       <div class="panel-handle"></div>
       <div class="panel-header"><strong>Library</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
-      <div class="panel-content"><div id="library-list"></div><button class="btn-block btn-primary" onclick="document.getElementById('global-file-input').click()">Upload Files</button></div>
+      <div class="panel-content">
+        <div id="library-list" style="max-height: 400px; overflow-y: auto; margin-bottom: 12px;"></div>
+        <button class="btn-block btn-primary" onclick="document.getElementById('global-file-input').click()">Upload Files</button>
+        <button class="btn-block" id="folder-btn" style="margin-top: 8px;">Open Folder (Sync)</button>
+      </div>
     </div>
   </div>
+
   <div id="memory-panel" class="overlay-panel">
     <div class="panel-window">
       <div class="panel-handle"></div>
-      <div class="panel-header"><strong>Local Memory (RAG)</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
-      <div class="panel-content"><div id="memory-list" style="margin-bottom:16px;"></div><button class="btn-block" onclick="auditMemories()">Audit Outliers</button></div>
+      <div class="panel-header"><strong>Knowledge Base (Chunks)</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-content">
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <input type="text" id="memory-search" placeholder="Search facts & chunks..." style="flex: 1; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px;">
+          <button class="icon-btn" id="memory-audit-btn" title="Audit Memory">⚖️</button>
+        </div>
+        <div id="memory-cat-pills" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px;"></div>
+        <div id="memory-list" style="max-height: 400px; overflow-y: auto; margin-bottom: 16px;"></div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-block" onclick="exportData()" style="flex: 1;">Export</button>
+          <button class="btn-block" onclick="document.getElementById('import-file-input').click()" style="flex: 1;">Import</button>
+          <button class="btn-block" onclick="clearMemories()" style="flex: 1; color: #ef4444;">Clear All</button>
+        </div>
+      </div>
     </div>
   </div>
+
+  <div id="history-panel" class="overlay-panel">
+    <div class="panel-window">
+      <div class="panel-handle"></div>
+      <div class="panel-header"><strong>History</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-content">
+        <div id="history-list" style="max-height: 500px; overflow-y: auto; margin-bottom: 12px;"></div>
+        <button class="btn-block btn-primary" onclick="newChat()">New Chat</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="batch-panel" class="overlay-panel">
+    <div class="panel-window">
+      <div class="panel-handle"></div>
+      <div class="panel-header"><strong>Batch Prompts</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-content">
+        <textarea id="batch-textarea" class="batch-textarea" placeholder="One prompt per line. Use {{previous}} to chain."></textarea>
+        <div class="batch-controls">
+          <label class="batch-chain-label"><input type="checkbox" id="batch-chain-toggle" checked> Auto-inject</label>
+          <div id="batch-progress" class="batch-progress"></div>
+          <button id="batch-stop-btn" class="btn-block" style="width: auto; padding: 6px 12px;" disabled>Stop</button>
+          <button id="batch-run-btn" class="btn-block btn-primary" style="width: auto; padding: 6px 12px;">Run</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="settings-panel" class="overlay-panel">
     <div class="panel-window">
       <div class="panel-handle"></div>
       <div class="panel-header"><strong>Settings</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
-      <div class="panel-content"><textarea id="system-prompt" style="width:100%;height:100px;margin-bottom:16px;font-size:16px;">You are a helpful assistant.</textarea><button class="btn-block" onclick="purgeCache()">Purge Model Cache</button></div>
+      <div class="panel-content" style="max-height: 80vh; overflow-y: auto;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">System Prompt</label>
+        <textarea id="system-prompt" style="width:100%; height:80px; margin-bottom:16px; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px; font-family: inherit;">You are a helpful assistant.</textarea>
+        
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; margin-bottom: 16px;">
+          <input type="checkbox" id="thinking-toggle" checked> Show reasoning (Thinking Mode)
+        </label>
+
+        <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Web Search</label>
+        <select id="search-provider" style="width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid var(--ollama-border); border-radius: 6px;">
+          <option value="none">None (Offline)</option>
+          <option value="tavily">Tavily</option>
+          <option value="brave">Brave</option>
+          <option value="searxng">SearXNG</option>
+        </select>
+        <div id="api-key-row" style="display: none; margin-bottom: 8px;">
+          <input type="password" id="search-api-key" placeholder="API Key" style="width: 100%; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px;">
+        </div>
+        <div id="searxng-url-row" style="display: none; margin-bottom: 8px;">
+          <input type="text" id="searxng-url" placeholder="https://searxng.instance" style="width: 100%; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px;">
+        </div>
+
+        <div style="margin-top: 16px; border-top: 1px solid var(--ollama-border); padding-top: 16px;">
+          <button class="btn-block" onclick="purgeCache()">Purge Model Cache</button>
+          <button class="btn-block" id="share-btn" style="margin-top: 8px;">Share Conversation</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <input type="file" id="global-file-input" class="hidden" multiple accept="*/*">
-  <input type="file" id="model-upload-input" class="hidden" accept=".task">
+  <div id="share-backdrop" class="overlay-panel">
+    <div class="panel-window" style="max-width: 400px;">
+      <div class="panel-header"><strong>Share Conversation</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-content">
+        <p id="share-meta" style="font-size: 0.8rem; color: var(--ollama-stone); margin-bottom: 12px;"></p>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; margin-bottom: 12px;">
+          <input type="checkbox" id="share-use-passphrase"> Encrypt with passphrase
+        </label>
+        <input type="password" id="share-passphrase" placeholder="Passphrase" style="display: none; width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid var(--ollama-border); border-radius: 6px;">
+        <input type="text" id="share-url-input" readonly placeholder="Click Generate..." style="width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid var(--ollama-border); border-radius: 6px; font-family: var(--font-mono); font-size: 0.75rem;">
+        <div style="display: flex; gap: 8px;">
+          <button id="share-generate-btn" class="btn-block btn-primary" style="flex: 1;">Generate Link</button>
+          <button id="share-copy-btn" class="btn-block" style="flex: 1;" disabled>Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="import-banner" class="import-banner">
+    <strong id="import-banner-msg">Shared conversation detected</strong>
+    <input type="password" id="import-passphrase" placeholder="Passphrase" style="display: none;">
+    <button id="import-confirm-btn">Load</button>
+    <button class="dismiss-btn" onclick="dismissImport()">Dismiss</button>
+  </div>
+
+  <div style="display: none;">
+    <input type="file" id="global-file-input" multiple accept=".txt,.md,.json,.csv,.pdf,.docx,text/plain,application/pdf,application/json,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    <input type="file" id="model-upload-input" accept=".task,application/octet-stream">
+    <input type="file" id="import-file-input" accept=".json,application/json">
+  </div>
 
   <script type="module">
+    /* global mammoth, pdfjsLib, marked, DOMPurify */
     import { LlmInference, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai';
-    import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs';
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+    import * as pdfjsLibModule from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs';
+    window.pdfjsLib = pdfjsLibModule;
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
 
+    // ── Configuration & Models ──────────────────────────────
     const REMOTE_MODEL = 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task';
     const LOCAL_MODEL = './gemma-4-E2B-it-web.task';
-    const State = { inference: null, history: [], isGenerating: false, activeModel: REMOTE_MODEL };
     
-    // --- Persistent Storage Request ---
+    const MODELS = {
+      'gemma4-e2b': {
+        id: REMOTE_MODEL,
+        label: 'Gemma 4 E2B',
+        size: '~1.5 GB',
+        type: 'mediapipe',
+        agentCapable: true,
+        contextSize: 8192,
+        genConfig: { temperature: 0.7, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
+      },
+    };
+    window.MODELS = MODELS;
+
+    // ── State ───────────────────────────────────────────────────
+    const State = {
+      inference: null,
+      history: [],
+      isGenerating: false,
+      activeModel: REMOTE_MODEL,
+      modelReady: false,
+      embeddingWorker: null,
+      embeddingReady: false,
+      embeddingQueue: Promise.resolve(),
+      activeConversationId: null,
+      dirHandle: null,
+      webEnrichedMode: false
+    };
+    window.State = State;
+
+    // ── Persistent Storage Request ────────────────────────────
     async function requestPersistentStorage() {
       if (navigator.storage && navigator.storage.persist) {
-        const isPersisted = await navigator.storage.persist();
-        console.log(`Storage persisted: ${isPersisted}`);
+        await navigator.storage.persist();
       }
     }
 
-    // --- IndexedDB Cache Helper ---
-    const DB = {
+    // ── Model Cache (IndexedDB) ──────────────────────────────
+    const ModelCacheDB = {
       name: 'LocalMind_Model_Cache_v1',
       async open() {
         return new Promise((res, rej) => {
@@ -229,27 +490,375 @@
       }
     };
 
-    window.purgeCache = async () => {
+    async function purgeCache() {
       if (!confirm("Clear model cache? This will require a redownload.")) return;
-      const req = indexedDB.deleteDatabase(DB.name);
-      req.onsuccess = () => { alert("Cache purged. Reloading..."); location.reload(); };
+      indexedDB.deleteDatabase(ModelCacheDB.name);
+      location.reload();
+    }
+    window.purgeCache = purgeCache;
+
+    // ── RAG: Embedding Worker (MiniLM, WASM/CPU) ───────────
+    function createEmbeddingWorker() {
+      const code = `
+import { env, pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4/+esm';
+env.allowLocalModels = true; env.localModelPath = '/models/'; env.allowRemoteModels = true;
+let embedder = null;
+self.addEventListener('message', async (e) => {
+  const { type, texts, id } = e.data;
+  if (type === 'load') {
+    try {
+      embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { device: 'wasm' });
+      self.postMessage({ type: 'ready' });
+    } catch (err) { self.postMessage({ type: 'error', message: err.message || String(err) }); }
+  } else if (type === 'embed') {
+    try {
+      const results = [];
+      for (const text of texts) {
+        const output = await embedder(text, { pooling: 'mean', normalize: true });
+        results.push(Array.from(output.data));
+      }
+      self.postMessage({ type: 'embeddings', vectors: results, id });
+    } catch (err) { self.postMessage({ type: 'error', message: err.message || String(err), id }); }
+  }
+});`;
+      const blob = new Blob([code], { type: 'application/javascript' });
+      const url = URL.createObjectURL(blob);
+      return new Worker(url, { type: 'module' });
+    }
+
+    function ensureEmbeddingWorker() {
+      if (State.embeddingReady) return Promise.resolve();
+      if (State.embeddingWorker) {
+        return new Promise((resolve, reject) => {
+          const handler = (e) => {
+            if (e.data.type === 'ready') { State.embeddingReady = true; State.embeddingWorker.removeEventListener('message', handler); resolve(); }
+            else if (e.data.type === 'error') { State.embeddingWorker.removeEventListener('message', handler); reject(new Error(e.data.message)); }
+          };
+          State.embeddingWorker.addEventListener('message', handler);
+        });
+      }
+      State.embeddingWorker = createEmbeddingWorker();
+      return new Promise((resolve, reject) => {
+        const handler = (e) => {
+          if (e.data.type === 'ready') { State.embeddingReady = true; State.embeddingWorker.removeEventListener('message', handler); resolve(); }
+          else if (e.data.type === 'error') { State.embeddingWorker.removeEventListener('message', handler); reject(new Error(e.data.message)); }
+        };
+        State.embeddingWorker.addEventListener('message', handler);
+        State.embeddingWorker.postMessage({ type: 'load' });
+      });
+    }
+
+    async function embedTexts(texts) {
+      State.embeddingQueue = State.embeddingQueue.then(() => ensureEmbeddingWorker().then(() => {
+        return new Promise((resolve, reject) => {
+          const id = Math.random().toString(36).slice(2);
+          const handler = (e) => {
+            if (e.data.id === id) {
+              State.embeddingWorker.removeEventListener('message', handler);
+              if (e.data.type === 'embeddings') resolve(e.data.vectors);
+              else reject(new Error(e.data.message || 'Embedding failed'));
+            }
+          };
+          State.embeddingWorker.addEventListener('message', handler);
+          State.embeddingWorker.postMessage({ type: 'embed', texts, id });
+        });
+      }));
+      return State.embeddingQueue;
+    }
+
+    // ── RAG: IndexedDB Vector Store ──────────────────────────
+    const RAG_DB_NAME = 'localmind_rag';
+    const RAG_DB_VERSION = 2;
+
+    function openRAGDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(RAG_DB_NAME, RAG_DB_VERSION);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('chunks')) {
+            const store = db.createObjectStore('chunks', { keyPath: 'id' });
+            store.createIndex('category', 'category', { unique: false });
+            store.createIndex('source', 'source', { unique: false });
+          }
+          if (!db.objectStoreNames.contains('conversations')) {
+            const convStore = db.createObjectStore('conversations', { keyPath: 'id' });
+            convStore.createIndex('updated', 'updated', { unique: false });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function storeChunks(chunks) {
+      const db = await openRAGDB();
+      const tx = db.transaction('chunks', 'readwrite');
+      const store = tx.objectStore('chunks');
+      for (const chunk of chunks) store.put(chunk);
+      return new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    }
+
+    async function getAllChunks() {
+      const db = await openRAGDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('chunks', 'readonly');
+        const req = tx.objectStore('chunks').getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function deleteChunk(id) {
+      const db = await openRAGDB();
+      const tx = db.transaction('chunks', 'readwrite');
+      tx.objectStore('chunks').delete(id);
+      return new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    }
+    window.deleteChunk = deleteChunk;
+
+    function cosineSimilarity(a, b) {
+      let dot = 0, normA = 0, normB = 0;
+      for (let i = 0; i < a.length; i++) {
+        dot += a[i] * b[i]; normA += a[i] * a[i]; normB += b[i] * b[i];
+      }
+      return dot / (Math.sqrt(normA) * Math.sqrt(normB) + 1e-8);
+    }
+
+    async function searchByVector(queryVec, topK = 5, threshold = 0.3) {
+      const chunks = await getAllChunks();
+      const scored = chunks.map(c => ({ ...c, score: cosineSimilarity(queryVec, c.embedding) })).filter(c => c.score >= threshold);
+      scored.sort((a, b) => b.score - a.score);
+      return scored.slice(0, topK);
+    }
+
+    function chunkText(text, maxChars = 900, overlapChars = 200) {
+      const sentences = text.match(/[^.!?\n]+[.!?\n]+|[^.!?\n]+$/g) || [text];
+      const chunks = []; let current = '';
+      for (const sentence of sentences) {
+        if (current.length + sentence.length > maxChars && current.length > 0) {
+          chunks.push(current.trim());
+          const words = current.split(/\s+/); const overlapWords = []; let len = 0;
+          for (let i = words.length - 1; i >= 0 && len < overlapChars; i--) { overlapWords.unshift(words[i]); len += words[i].length + 1; }
+          current = overlapWords.join(' ') + ' ' + sentence;
+        } else { current += (current ? ' ' : '') + sentence; }
+      }
+      if (current.trim()) chunks.push(current.trim());
+      return chunks;
+    }
+
+    async function embedAndStore(text, category, source) {
+      const textChunks = chunkText(text);
+      const vectors = await embedTexts(textChunks);
+      const now = Date.now();
+      const chunks = textChunks.map((t, i) => ({
+        id: `${now}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+        text: t, embedding: vectors[i], category: category || 'fact', source: source || 'user', timestamp: now,
+      }));
+      await storeChunks(chunks);
+      return chunks.length;
+    }
+
+    async function searchMemory(query, topK = 5) {
+      const vectors = await embedTexts([query]);
+      return searchByVector(vectors[0], topK);
+    }
+
+    // ── Web: Search Providers ───────────────────────────────
+    const SearchProviders = {
+      async brave(query, apiKey) {
+        const res = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`, { headers: { 'Accept': 'application/json', 'X-Subscription-Token': apiKey } });
+        if (!res.ok) throw new Error('Brave error ' + res.status);
+        const data = await res.json();
+        return (data.web?.results || []).slice(0, 5).map(r => ({ title: r.title, url: r.url, snippet: r.description || '' }));
+      },
+      async tavily(query, apiKey) {
+        const res = await fetch('https://api.tavily.com/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_key: apiKey, query, search_depth: 'basic', max_results: 5 }) });
+        if (!res.ok) throw new Error('Tavily error ' + res.status);
+        const data = await res.json();
+        return (data.results || []).map(r => ({ title: r.title, url: r.url, snippet: r.content || '' }));
+      },
+      async searxng(query, instanceUrl) {
+        const base = instanceUrl.replace(/\/+$/, '');
+        const res = await fetch(`${base}/search?q=${encodeURIComponent(query)}&format=json&categories=general`);
+        if (!res.ok) throw new Error('SearXNG error ' + res.status);
+        const data = await res.json();
+        return (data.results || []).slice(0, 5).map(r => ({ title: r.title, url: r.url, snippet: r.content || '' }));
+      },
     };
 
+    function getSearchConfig() {
+      return { provider: document.getElementById('search-provider').value, apiKey: document.getElementById('search-api-key').value, searxngUrl: document.getElementById('searxng-url').value };
+    }
+
+    function isSearchConfigured() {
+      const { provider, apiKey, searxngUrl } = getSearchConfig();
+      if (provider === 'none') return false;
+      return provider === 'searxng' ? !!searxngUrl : !!apiKey;
+    }
+
+    // ── Web: Page Fetcher ────────────────────────────────────
+    async function fetchAndExtract(url) {
+      let html;
+      try { const res = await fetch(url, { signal: AbortSignal.timeout(8000) }); html = await res.text(); }
+      catch { try { const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) }); html = await res.text(); }
+      catch (e) { return { error: `Fetch failed: ${e.message}`, url }; } }
+      const text = html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3500);
+      return { content: text, url };
+    }
+
+    // ── Agent Tools ──────────────────────────────────────────
+    const TOOL_REGISTRY = {
+      calculate: {
+        description: 'Math solver', parameters: { type: 'object', properties: { expression: { type: 'string' } } },
+        async execute(a) { try { return { result: eval(a.expression.replace(/[^0-9+\-*/.()% ]/g,'')) }; } catch(e) { return { error: e.message }; } }
+      },
+      get_current_time: {
+        description: 'Current time', parameters: { type: 'object', properties: {} },
+        async execute() { return { datetime: new Date().toLocaleString() }; }
+      },
+      store_memory: {
+        description: 'Store fact/preference', parameters: { type: 'object', properties: { content: { type: 'string' }, category: { type: 'string' } } },
+        async execute(a) { const c = await embedAndStore(a.content, a.category || 'fact', 'assistant'); return { stored: true, count: c }; }
+      },
+      search_memory: {
+        description: 'Search memory', parameters: { type: 'object', properties: { query: { type: 'string' } } },
+        async execute(a) { const r = await searchMemory(a.query, 5); return { found: r.length > 0, memories: r.map(m => ({ text: m.text, source: m.source })) }; }
+      },
+      list_memories: {
+        description: 'List all stored memories and documents.',
+        parameters: { type: 'object', properties: {}, required: [] },
+        async execute() {
+          const chunks = await getAllChunks();
+          if (!chunks.length) return { message: 'No memories stored.' };
+          const sources = [...new Set(chunks.map(c => c.source))];
+          return { total_chunks: chunks.length, unique_sources: sources };
+        }
+      },
+      delete_memory: {
+        description: 'Forget specific memories.',
+        parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
+        async execute(a) {
+          const results = await searchMemory(a.query, 10);
+          for (const r of results) await deleteChunk(r.id);
+          return { deleted: results.length };
+        }
+      },
+      web_search: {
+        description: 'Web search', parameters: { type: 'object', properties: { query: { type: 'string' } } },
+        async execute(a) {
+          const config = getSearchConfig();
+          if (config.provider === 'none') return { error: 'Search disabled' };
+          const results = await (config.provider === 'brave' ? SearchProviders.brave(a.query, config.apiKey) : config.provider === 'tavily' ? SearchProviders.tavily(a.query, config.apiKey) : SearchProviders.searxng(a.query, config.searxngUrl));
+          return { results };
+        }
+      },
+      fetch_page: {
+        description: 'Read URL', parameters: { type: 'object', properties: { url: { type: 'string' } } },
+        async execute(a) { return fetchAndExtract(a.url); }
+      }
+    };
+
+    // ── Document Utils ──────────────────────────────────────
+    function extractiveSummary(text, maxSentences = 3) {
+      const sentences = text.match(/[^.!?\n]+[.!?]+/g) || [];
+      if (sentences.length <= maxSentences) return text.slice(0, 300);
+      const scored = sentences.map((s, i) => ({
+        text: s.trim(),
+        score: s.split(/\s+/).length * (1 - i / sentences.length * 0.3),
+      }));
+      scored.sort((a, b) => b.score - a.score);
+      return scored.slice(0, maxSentences).map(s => s.text).join(' ');
+    }
+
+    async function extractPDFText(blob) {
+      const arrayBuffer = await blob.arrayBuffer();
+      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pages = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        pages.push(content.items.map(item => item.str).join(' '));
+      }
+      return pages.join('\n\n');
+    }
+
+    async function extractDOCXText(blob) {
+      const arrayBuffer = await blob.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      return result.value;
+    }
+
+    async function ingestDocument(fileName, text) {
+      if (!text || !text.trim()) return;
+      const count = await embedAndStore(text, 'document', fileName);
+      const summary = extractiveSummary(text);
+      if (summary) await embedAndStore(summary, 'document_summary', fileName);
+      showToast(`Stored "${fileName}" (${count} chunks)`);
+      refreshLibraryPanel();
+    }
+
+    async function refreshLibraryPanel() {
+      const chunks = await getAllChunks();
+      const sources = [...new Set(chunks.filter(c => c.category === 'document' || c.category === 'document_summary').map(c => c.source))];
+      const list = document.getElementById('library-list');
+      if (!list) return;
+      list.innerHTML = sources.length ? '' : '<div style="color:var(--ollama-stone);font-size:0.9rem;text-align:center;padding:20px;">Library is empty.</div>';
+      sources.forEach(src => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `<div class="history-item-text"><strong>${escapeHtml(src)}</strong></div><button onclick="window.deleteSource('${src}')" class="memory-item-del">×</button>`;
+        list.appendChild(item);
+      });
+    }
+    window.deleteSource = async (src) => {
+      if (!confirm(`Remove "${src}" from library?`)) return;
+      const chunks = await getAllChunks();
+      const toDelete = chunks.filter(c => c.source === src);
+      for (const c of toDelete) await deleteChunk(c.id);
+      refreshLibraryPanel();
+    };
+
+    // ── UI Utilities ──────────────────────────────────────────
     const updateStatus = (t, x) => { 
       const b = document.getElementById('status-badge'), e = document.getElementById('status-text');
       b.className = `status-badge ${t}`; e.textContent = x;
     };
 
-    // --- Core Inference Boot ---
+    function showToast(msg) {
+      const toast = document.createElement('div');
+      toast.textContent = msg;
+      toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--ollama-black);color:white;padding:10px 20px;border-radius:8px;font-size:0.82rem;z-index:3000;opacity:0;transition:opacity 0.3s';
+      document.body.appendChild(toast);
+      requestAnimationFrame(() => toast.style.opacity = '1');
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function renderMarkdown(text) {
+      let think = ''; let main = text;
+      const tm = text.match(/<\|channel>thought\n?([\s\S]*?)(<channel\|>|$)/);
+      if (tm) { think = tm[1]; main = text.replace(/<\|channel>thought\n?[\s\S]*?(<channel\|>|$)/, ''); }
+      
+      let html = '';
+      if (think) {
+        const id = 'th-' + Math.random().toString(36).slice(2, 8);
+        html += `<div class="thinking-block"><div class="thinking-toggle" onclick="document.getElementById('${id}').classList.toggle('open')">Thought</div><div class="thinking-content" id="${id}">${escapeHtml(think)}</div></div>`;
+      }
+      main = main.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_call>[\s\S]*/g, '');
+      html += DOMPurify.sanitize(marked.parse(main || '...'));
+      return html;
+    }
+
+    // ── Core Inference Boot ──────────────────────────────────
     async function initGemma(source = null, isStream = false) {
       const logBoot = (msg) => {
         const log = document.getElementById('global-boot-log');
-        const line = document.createElement('div');
-        line.className = 'boot-line';
-        line.innerText = msg;
-        log.prepend(line);
+        const line = document.createElement('div'); line.className = 'boot-line'; line.innerText = msg; log.prepend(line);
         if (log.children.length > 5) log.removeChild(log.lastChild);
-        if (document.getElementById('loader-msg')) document.getElementById('loader-msg').innerText = msg;
+        document.getElementById('loader-msg').innerText = msg;
       };
 
       try {
@@ -259,60 +868,41 @@
         logBoot("System wake-up initiated...");
         
         let modelPath;
-
-        // 1. Manual Upload (Stream)
         if (isStream && source) {
           updateStatus('loading', 'Caching...');
           logBoot("Ingesting manual data stream...");
-          const blob = new Blob([source]);
-          await DB.save('gemma_task', blob);
+          const blob = new Blob([source]); await ModelCacheDB.save('gemma_task', blob);
           logBoot("Neural weights committed to disk.");
           modelPath = URL.createObjectURL(blob);
         } else {
-          // 2. Check IndexedDB Cache
           updateStatus('loading', 'Scanning Cache...');
           logBoot("Scanning local sectors...");
-          let modelBlob = await DB.get('gemma_task');
-
+          let modelBlob = await ModelCacheDB.get('gemma_task');
           if (modelBlob instanceof Blob) {
             logBoot("Gemma core found in local storage.");
             modelPath = URL.createObjectURL(modelBlob);
           } else {
-            // 3. Check Local File Path or Remote
             updateStatus('loading', 'Locating...');
             logBoot("Local cache miss. Searching network...");
             let fetchPath = REMOTE_MODEL;
-            try {
-              const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
-              if (check.ok) {
-                fetchPath = LOCAL_MODEL;
-                logBoot("Nearby weights detected on host.");
-              }
-            } catch (e) {}
-            
-            // If we're going to download a 1.9GB file, we need the Rescue UI
+            try { const check = await fetch(LOCAL_MODEL, { method: 'HEAD' }); if (check.ok) { fetchPath = LOCAL_MODEL; logBoot("Nearby weights detected on host."); } } catch {}
             if (fetchPath === REMOTE_MODEL) {
               document.getElementById('model-rescue').classList.add('open');
               document.getElementById('global-loader').classList.add('hidden');
               updateStatus('error', 'Model Required');
-              return; // Stop and wait for user click
+              return;
             }
-
             updateStatus('loading', 'Downloading...');
-            logBoot(`Downloading from local host...`);
-            const res = await fetch(fetchPath);
-            if (!res.ok) throw new Error('Failed to download model');
-            
-            modelBlob = await res.blob();
+            logBoot("Downloading from remote repository...");
+            const res = await fetch(fetchPath); modelBlob = await res.blob();
             updateStatus('loading', 'Caching...');
             logBoot("Download complete. Persisting weights...");
-            await DB.save('gemma_task', modelBlob);
+            await ModelCacheDB.save('gemma_task', modelBlob);
             logBoot("Persistence verified.");
             modelPath = URL.createObjectURL(modelBlob);
           }
         }
 
-        State.activeModel = modelPath;
         updateStatus('loading', 'Linking...');
         logBoot("Allocating WebGPU buffers...");
         const f = await FilesetResolver.forGenAiTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm");
@@ -320,131 +910,379 @@
         updateStatus('loading', 'Booting...');
         logBoot("Inflating neural layers...");
         
-        const options = {
-          baseOptions: { modelAssetPath: State.activeModel, delegate: navigator.gpu ? "GPU" : "CPU" },
-          maxTokens: 2048, temperature: 0.7
-        };
-
-        State.inference = await LlmInference.createFromOptions(f, options);
+        State.inference = await LlmInference.createFromOptions(f, {
+          baseOptions: { modelAssetPath: modelPath, delegate: navigator.gpu ? "GPU" : "CPU" },
+          maxTokens: 8192, temperature: 0.7
+        });
+        
         logBoot("Inference engine hot.");
-        updateStatus('online', 'Ready');
+        State.modelReady = true; updateStatus('online', 'Ready');
         document.getElementById('chat-input').disabled = false;
         document.getElementById('chat-input').placeholder = "Ask anything...";
         document.getElementById('send-btn').disabled = false;
+        document.getElementById('search-send-btn').disabled = !isSearchConfigured();
+        document.getElementById('search-send-btn').style.display = isSearchConfigured() ? '' : 'none';
         document.getElementById('model-rescue').classList.remove('open');
         document.getElementById('global-loader').classList.add('hidden');
       } catch (e) {
-        console.error("Initialization error:", e);
+        console.error(e);
         logBoot("CRITICAL FAILURE: BRAIN NOT FOUND");
         updateStatus('error', 'Brain Failure');
-        document.getElementById('model-rescue').classList.add('open');
         document.getElementById('global-loader').classList.add('hidden');
+        document.getElementById('model-rescue').classList.add('open');
       }
     }
 
-    // --- Agent Tools ---
-    const TOOL_REGISTRY = {
-      calculate: { description: 'Math solver', parameters: { type: 'object', properties: { expression: { type: 'string' } } }, async execute(a) { return { result: eval(a.expression.replace(/[^0-9+\-*/.()% ]/g,'')) }; } },
-      get_current_time: { description: 'Current time', parameters: { type: 'object', properties: {} }, async execute() { return { datetime: new Date().toLocaleString() }; } },
-      fetch_page: { description: 'Read URL', parameters: { type: 'object', properties: { url: { type: 'string' } } }, async execute(a) { try { const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(a.url)}`); const d = await r.json(); return { content: d.contents.slice(0, 2000) }; } catch(e) { return { error: e.message }; } } }
-    };
+    // ── Sending & Agent Loop ───────────────────────────────
+    async function handleSend(ov = null) {
+      const input = document.getElementById('chat-input');
+      const text = ov === true ? null : (ov || input.value.trim());
+      if (!ov && (!text || State.isGenerating || !State.modelReady)) return;
 
-    window.handleSend = async (ov = null) => {
-      const i = document.getElementById('chat-input'), t = ov === true ? null : (ov || i.value.trim());
-      if (!ov && (!t || State.isGenerating)) return;
-      if (t && ov !== true) { i.value = ''; renderMessage(t, 'user'); State.history.push({ role: 'user', text: t }); }
-      State.isGenerating = true; const aiEl = renderMessage('', 'ai'); let full = "";
+      const welcomeMsg = document.getElementById('welcome-msg');
+      if (welcomeMsg) welcomeMsg.remove();
+
+      if (text && ov !== true) {
+        input.value = ''; input.style.height = 'auto';
+        renderMessage(text, 'user');
+        State.history.push({ role: 'user', text });
+      }
+
+      State.isGenerating = true;
+      const aiEl = renderMessage('', 'ai');
+      let full = "";
+
       try {
+        let ragContext = "";
+        // Check if we have any documents indexed before starting embedding worker
+        const chunks = await getAllChunks();
+        if (text && chunks.length > 0) {
+          updateStatus('loading', 'Searching memory...');
+          try {
+            const rag = await searchMemory(text, 3);
+            if (rag.length) {
+              ragContext = "\n\n[Relevant context from your library]\n" + rag.map(r => `Source: ${r.source}\nContent: ${r.text}`).join('\n\n');
+            }
+          } catch (e) { console.warn('RAG search failed', e); }
+          updateStatus('online', 'Ready');
+        }
+
+        const prompt = await buildPrompt(ragContext);
         await new Promise(res => {
-          State.inference.generateResponse(buildPrompt(), (chunk, done) => {
+          State.inference.generateResponse(prompt, (chunk, done) => {
             full += chunk;
-            const partial = parsePartialTool(full);
-            if (partial) renderToolBadge(partial, aiEl);
             renderMessage(full, 'ai', aiEl);
             if (done) res();
           });
         });
+
         const tc = full.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
         if (tc) {
           try {
             const call = JSON.parse(tc[1]); const tool = TOOL_REGISTRY[call.name];
             if (tool) {
               const res = await tool.execute(call.arguments);
+              renderToolCallBlock(aiEl, call.name, call.arguments, res);
               State.history.push({ role: 'ai', text: full });
               State.history.push({ role: 'user', text: `<tool_response>${JSON.stringify(res)}</tool_response>` });
+              State.isGenerating = false;
               return handleSend(true);
             }
-          } catch(e) { console.error("Tool execution failed:", e); }
+          } catch(e) { console.error("Tool failed", e); }
         }
         State.history.push({ role: 'ai', text: full });
-      } catch (e) { renderMessage('Error: ' + e.message, 'ai', aiEl); } finally { State.isGenerating = false; }
-    };
+      } catch (e) { renderMessage('Error: ' + e.message, 'ai', aiEl); }
+      finally { State.isGenerating = false; State.webEnrichedMode = false; }
+    }
+    window.handleSend = handleSend;
 
-    function buildPrompt() {
+    async function buildPrompt(additionalContext = "") {
       const s = document.getElementById('system-prompt').value;
       const toolDefs = Object.entries(TOOL_REGISTRY).map(([n,t]) => ({ name: n, desc: t.description, params: t.parameters }));
-      let p = `<|turn|>system\n${s}\n\nAvailable tools:\n${JSON.stringify(toolDefs)}\nTo use a tool, output: <tool_call>{"name":"...","arguments":{}}</tool_call><turn|>\n`;
-      State.history.slice(-10).forEach(m => {
-        const role = m.role === 'ai' ? 'model' : 'user';
-        p += `<|turn|>${role}\n${m.text}<turn|>\n`;
-      });
-      p += `<|turn|>model\n`; return p;
+      
+      let docContext = '';
+      try {
+        const chunks = await getAllChunks();
+        const summaries = chunks.filter(c => c.category === 'document_summary');
+        
+        if (summaries.length) {
+          const budget = summaries.sort((a, b) => b.timestamp - a.timestamp).slice(0, 15);
+          docContext = "\n\nDocuments in your library:\n" + 
+            budget.map(sm => `- ${sm.source}: ${sm.text}`).join('\n');
+        }
+      } catch (e) { console.warn('Failed to load summaries for prompt', e); }
+
+      let p = `<start_of_turn>user\nSystem instructions: ${s}${docContext}${additionalContext}\n\nAvailable tools:\n${JSON.stringify(toolDefs)}\nTo use a tool, output: <tool_call>{"name":"...","arguments":{}}</tool_call><end_of_turn>\n`;
+      
+      let historyText = "";
+      const reversedHistory = [...State.history].reverse();
+      for (const m of reversedHistory) {
+        const role = m.role === 'ai' || m.role === 'model' ? 'model' : 'user';
+        const entry = `<start_of_turn>${role}\n${m.text}<end_of_turn>\n`;
+        if ((historyText.length + entry.length) > 12000) break;
+        historyText = entry + historyText;
+      }
+
+      p += historyText + `<start_of_turn>model\n`; return p;
     }
 
     function renderMessage(t, r, el = null) {
       const c = document.getElementById('chat-container');
       if (!el) { el = document.createElement('div'); el.className = `message ${r}`; c.appendChild(el); }
-      if (r === 'user') { el.innerHTML = `<div class="user-bubble">${DOMPurify.sanitize(t)}</div>`; }
-      else {
-        const p = parseThought(t);
-        const displayContent = p.content.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_call>[\s\S]*/g, '');
-        el.innerHTML = (p.thought ? `<div class="thought-container"><div class="thought-header">Thought</div><div class="thought-content">${p.thought}</div></div>` : '') + DOMPurify.sanitize(marked.parse(displayContent || (p.thinking ? '...' : '')));
-        const tB = el.querySelector('.thought-container'); if (tB) tB.onclick = () => tB.classList.toggle('open');
-      }
+      if (r === 'user') { el.innerHTML = `<div class="user-bubble">${escapeHtml(t)}</div>`; }
+      else { el.innerHTML = renderMarkdown(t); }
       c.scrollTop = c.scrollHeight; return el;
     }
 
-    function parseThought(t) {
-      const s = '<|channel|>thought', e = '<channel|>', si = t.indexOf(s);
-      if (si === -1) return { thought: null, content: t };
-      const ci = si + s.length, ei = t.indexOf(e, ci);
-      if (ei === -1) return { thought: t.substring(ci), content: "", thinking: true };
-      return { thought: t.substring(ci, ei), content: t.substring(ei + e.length), thinking: false };
+    function renderToolCallBlock(el, name, args, res) {
+      const block = document.createElement('div'); block.className = 'tool-call-block';
+      const id = 'tc-' + Math.random().toString(36).slice(2, 8);
+      block.innerHTML = `<div class="tool-call-toggle" onclick="document.getElementById('${id}').classList.toggle('open')">🛠️ ${name}</div><div class="tool-call-result" id="${id}"><pre>${escapeHtml(JSON.stringify(res, null, 2))}</pre></div>`;
+      el.appendChild(block);
     }
 
-    function parsePartialTool(t) { const m = t.match(/<tool_call>.*?"name"\s*:\s*"(.*?)"/); return m ? m[1] : null; }
-    function renderToolBadge(name, el) { if (el.querySelector('.tool-badge')) return; const b = document.createElement('div'); b.className = 'tool-badge'; b.innerHTML = `🛠️ Using ${name}...`; el.appendChild(b); }
+    // ── Panels & Controls ────────────────────────────────────
+    function hidePanels() { document.querySelectorAll('.overlay-panel').forEach(p => p.classList.remove('open')); }
+    window.hidePanels = hidePanels;
 
-    // --- Downloader ---
-    document.getElementById('download-btn').onclick = async () => {
-      const btn = document.getElementById('download-btn'); btn.disabled = true;
-      document.getElementById('progress-container').classList.remove('hidden');
-      const stats = document.getElementById('download-status');
-      try {
-        const r = await fetch('https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task');
-        if (!r.ok) throw new Error("CORS or Connection issue");
-        const reader = r.body.getReader();
-        const total = parseInt(r.headers.get('Content-Length')) || 1200000000;
-        let loaded = 0; const chunks = [];
-        while(true) {
-          const {done, value} = await reader.read();
-          if (done) break;
-          chunks.push(value); loaded += value.length;
-          const pct = Math.round((loaded / total) * 100);
-          document.getElementById('download-fill').style.width = pct + '%';
-          stats.innerText = `${(loaded/1024/1024).toFixed(1)}MB / ${(total/1024/1024).toFixed(1)}MB (${pct}%)`;
-        }
-        const fullBuffer = new Uint8Array(loaded);
-        let offset = 0; for (const chunk of chunks) { fullBuffer.set(chunk, offset); offset += chunk.length; }
-        initGemma(fullBuffer, true);
-      } catch (e) { alert("Download failed. This is usually due to CORS. Please use the 'Supply Local File' method."); btn.disabled = false; }
+    function showPanel(n) { 
+      hidePanels(); if (n === 'chat') return; 
+      const panel = document.getElementById(`${n}-panel`);
+      if (panel) panel.classList.add('open'); 
+      if (n === 'memory') refreshMemoryPanel();
+      if (n === 'history') refreshHistoryPanel();
+      if (n === 'library') refreshLibraryPanel();
+    }
+    window.showPanel = showPanel;
+
+    // Batch
+    document.getElementById('batch-run-btn').onclick = async () => {
+      const lines = document.getElementById('batch-textarea').value.split('\n').filter(l => l.trim());
+      let last = "";
+      for (let i = 0; i < lines.length; i++) {
+        let p = lines[i]; if (last) p = p.replace('{{previous}}', last);
+        document.getElementById('chat-input').value = p;
+        await handleSend();
+        const lastMsg = State.history[State.history.length - 1];
+        last = lastMsg ? lastMsg.text : "";
+      }
     };
 
-    window.showPanel = n => { hidePanels(); if (n === 'chat') return; document.getElementById(`${n}-panel`).classList.add('open'); };
-    window.hidePanels = () => document.querySelectorAll('.overlay-panel').forEach(p => p.classList.remove('open'));
+    // History
+    async function saveConversation(msgs) {
+      if (!msgs.length) return;
+      const db = await openRAGDB(); const tx = db.transaction('conversations', 'readwrite');
+      const title = msgs.find(m => m.role === 'user')?.text.slice(0, 50) || 'Untitled';
+      tx.objectStore('conversations').put({ id: State.activeConversationId || Date.now().toString(), title, messages: msgs, updated: Date.now() });
+    }
 
-    window.onload = async () => {
+    async function refreshHistoryPanel() {
+      const db = await openRAGDB();
+      const tx = db.transaction('conversations', 'readonly');
+      const req = tx.objectStore('conversations').getAll();
+      req.onsuccess = () => {
+        const list = document.getElementById('history-list'); if (!list) return;
+        list.innerHTML = '';
+        req.result.sort((a, b) => b.updated - a.updated).forEach(c => {
+          const item = document.createElement('div'); item.className = 'history-item';
+          item.innerHTML = `<div class="history-item-text"><div class="history-item-title">${escapeHtml(c.title)}</div></div>`;
+          item.onclick = () => { State.history = c.messages; State.activeConversationId = c.id; renderRestoredMessages(); hidePanels(); };
+          list.appendChild(item);
+        });
+      };
+    }
+
+    function renderRestoredMessages() {
+      const c = document.getElementById('chat-container'); c.innerHTML = '';
+      State.history.forEach(m => renderMessage(m.text, m.role === 'model' || m.role === 'ai' ? 'ai' : 'user'));
+    }
+
+    function newChat() { if (State.history.length) saveConversation(State.history); State.history = []; State.activeConversationId = null; document.getElementById('chat-container').innerHTML = ''; hidePanels(); }
+    window.newChat = newChat;
+
+    // Memory
+    async function refreshMemoryPanel() {
+      const all = await getAllChunks();
+      const list = document.getElementById('memory-list'); if (!list) return;
+      list.innerHTML = '';
+      // Filter out summaries from the detailed 'Knowledge Base' view to avoid redundancy
+      const detailed = all.filter(c => c.category !== 'document_summary');
+      detailed.slice(0, 100).forEach(c => {
+        const item = document.createElement('div'); item.className = 'memory-item';
+        item.innerHTML = `<div class="memory-item-text">${escapeHtml(c.text.slice(0, 100))}...<div class="memory-item-meta"><span class="mem-cat mem-cat-${c.category}">${c.category}</span> ${c.source}</div></div><button onclick="window.deleteChunk('${c.id}').then(refreshMemoryPanel)" class="memory-item-del">×</button>`;
+        list.appendChild(item);
+      });
+    }
+
+    function clearMemories() { if(confirm('Clear all?')) openRAGDB().then(db => db.transaction('chunks', 'readwrite').objectStore('chunks').clear().then(() => { refreshMemoryPanel(); refreshLibraryPanel(); })); }
+    window.clearMemories = clearMemories;
+
+    // Share
+    document.getElementById('share-btn').onclick = async () => {
+      const payload = { v: 1, history: State.history };
+      const json = JSON.stringify(payload);
+      const hash = '#lm:' + btoa(unescape(encodeURIComponent(json)));
+      document.getElementById('share-url-input').value = window.location.origin + window.location.pathname + hash;
+      document.getElementById('share-backdrop').classList.add('open');
+      document.getElementById('share-copy-btn').disabled = false;
+    };
+
+    document.getElementById('share-copy-btn').onclick = () => {
+      navigator.clipboard.writeText(document.getElementById('share-url-input').value);
+      showToast('Link copied!');
+    };
+
+    // Files
+    document.getElementById('global-file-input').onchange = e => {
+      for (const file of e.target.files) {
+        (async () => {
+          let text = '';
+          try {
+            if (file.name.endsWith('.pdf')) text = await extractPDFText(file);
+            else if (file.name.endsWith('.docx')) text = await extractDOCXText(file);
+            else text = await file.text();
+            await ingestDocument(file.name, text);
+          } catch (err) { console.error('File ingest error', err); showToast(`Failed to ingest ${file.name}`); }
+        })();
+      }
+    };
+
+    // Settings toggles & persistence
+    const savedSysPrompt = localStorage.getItem('lm_sys_prompt');
+    if (savedSysPrompt) document.getElementById('system-prompt').value = savedSysPrompt;
+    document.getElementById('system-prompt').oninput = e => localStorage.setItem('lm_sys_prompt', e.target.value);
+
+    const savedProvider = localStorage.getItem('lm_search_provider');
+    if (savedProvider) {
+      document.getElementById('search-provider').value = savedProvider;
+      const v = savedProvider;
+      document.getElementById('api-key-row').style.display = (v === 'brave' || v === 'tavily') ? '' : 'none';
+      document.getElementById('searxng-url-row').style.display = (v === 'searxng') ? '' : 'none';
+    }
+
+    document.getElementById('search-provider').onchange = e => {
+      const v = e.target.value;
+      localStorage.setItem('lm_search_provider', v);
+      document.getElementById('api-key-row').style.display = (v === 'brave' || v === 'tavily') ? '' : 'none';
+      document.getElementById('searxng-url-row').style.display = (v === 'searxng') ? '' : 'none';
+      document.getElementById('search-send-btn').style.display = (v !== 'none') ? '' : 'none';
+    };
+
+    const savedApiKey = localStorage.getItem('lm_search_key');
+    if (savedApiKey) document.getElementById('search-api-key').value = savedApiKey;
+    document.getElementById('search-api-key').oninput = e => localStorage.setItem('lm_search_key', e.target.value);
+
+    const savedSearxngUrl = localStorage.getItem('lm_searxng_url');
+    if (savedSearxngUrl) document.getElementById('searxng-url').value = savedSearxngUrl;
+    document.getElementById('searxng-url').oninput = e => localStorage.setItem('lm_searxng_url', e.target.value);
+
+    // Import/Export
+    function exportData() {
+      getAllChunks().then(async chunks => {
+        const db = await openRAGDB();
+        const conversations = await new Promise(r => db.transaction('conversations').objectStore('conversations').getAll().onsuccess = e => r(e.target.result));
+        const blob = new Blob([JSON.stringify({ chunks, conversations })], { type: 'application/json' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'localmind_backup.json'; a.click();
+      });
+    }
+    window.exportData = exportData;
+
+    document.getElementById('import-file-input').onchange = e => {
+      const file = e.target.files[0]; if(!file) return;
+      file.text().then(async t => {
+        try {
+          const data = JSON.parse(t);
+          if(data.chunks) await storeChunks(data.chunks);
+          if(data.conversations) {
+            const db = await openRAGDB(); const tx = db.transaction('conversations', 'readwrite');
+            data.conversations.forEach(c => tx.objectStore('conversations').put(c));
+          }
+          showToast('Import complete'); refreshMemoryPanel(); refreshHistoryPanel(); refreshLibraryPanel();
+        } catch (err) { showToast('Import failed'); }
+      });
+    };
+
+    // Folder Sync
+    document.getElementById('folder-btn').onclick = async () => {
+      if (!window.showDirectoryPicker) return showToast('Folder picker not supported');
+      try {
+        State.dirHandle = await window.showDirectoryPicker();
+        showToast(`Scanning "${State.dirHandle.name}"...`);
+        const SUPPORTED = /\.(md|txt|pdf|docx)$/i;
+        
+        async function walk(dir, prefix = '') {
+          for await (const entry of dir.values()) {
+            if (entry.name.startsWith('.')) continue;
+            if (entry.kind === 'directory') await walk(entry, prefix ? `${prefix}/${entry.name}` : entry.name);
+            else if (SUPPORTED.test(entry.name)) {
+              const file = await entry.getFile();
+              const fullPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+              let text = '';
+              if (/\.pdf$/i.test(entry.name)) text = await extractPDFText(file);
+              else if (/\.docx$/i.test(entry.name)) text = await extractDOCXText(file);
+              else text = await file.text();
+              await ingestDocument(fullPath, text);
+            }
+          }
+        }
+        await walk(State.dirHandle);
+        showToast('Folder sync complete');
+      } catch (e) { console.error(e); showToast('Folder sync failed'); }
+    };
+
+    // Memory Audit
+    document.getElementById('memory-audit-btn').onclick = async () => {
+      const chunks = await getAllChunks();
+      if(chunks.length < 2) { showToast('Not enough memories to audit'); return; }
+      showToast('Auditing memories for duplicates...');
+      const duplicates = [];
+      for(let i=0; i<chunks.length; i++) {
+        for(let j=i+1; j<chunks.length; j++) {
+          const sim = cosineSimilarity(chunks[i].embedding, chunks[j].embedding);
+          if(sim > 0.95) duplicates.push(chunks[j].id);
+        }
+      }
+      if(duplicates.length) {
+        if(confirm(`Found ${duplicates.length} near-duplicates. Delete them?`)) {
+          for(const id of duplicates) await deleteChunk(id);
+          refreshMemoryPanel(); showToast('Audit cleanup complete');
+        }
+      } else { showToast('No issues found'); }
+    };
+
+    function dismissImport() { document.getElementById('import-banner').classList.remove('open'); }
+    window.dismissImport = dismissImport;
+
+    // Init
+    window.onload = () => {
       initGemma();
+      refreshLibraryPanel();
+      refreshHistoryPanel();
+      refreshMemoryPanel();
+      const hash = window.location.hash;
+      if (hash.startsWith('#lm:')) {
+        try {
+          const payload = JSON.parse(decodeURIComponent(escape(atob(hash.slice(4)))));
+          State.history = payload.history; renderRestoredMessages();
+          showToast('Loaded shared conversation');
+          window.location.hash = '';
+        } catch (e) { console.error('Share link failed', e); }
+      }
+    };
+
+    document.getElementById('download-btn').onclick = () => {
+      const fill = document.getElementById('download-fill');
+      document.getElementById('progress-container').classList.remove('hidden');
+      fetch(REMOTE_MODEL).then(async res => {
+        const reader = res.body.getReader(); const total = +res.headers.get('Content-Length');
+        let loaded = 0; const chunks = [];
+        while(true) {
+          const {done, value} = await reader.read(); if (done) break;
+          chunks.push(value); loaded += value.length; fill.style.width = (loaded/total*100) + '%';
+        }
+        const full = new Uint8Array(loaded); let offset = 0; for(const c of chunks) { full.set(c, offset); offset += c.length; }
+        initGemma(full, true);
+      });
     };
 
     document.getElementById('model-upload-input').onchange = async e => {
@@ -454,39 +1292,24 @@
       }
     };
 
-    // --- Slash Menu ---
-    function handleSlash(val) {
-      const menu = document.getElementById('slash-menu');
-      if (val.startsWith('/')) {
-        const q = val.slice(1).toLowerCase();
-        const commands = ['clear', 'library', 'batch', 'memory', 'settings'];
-        const tools = Object.keys(TOOL_REGISTRY);
-        const all = commands.concat(tools).filter(t => t.startsWith(q));
-        
-        if (all.length) {
-          menu.innerHTML = all.map(t => `<div class="slash-item" onclick="applySlash('${t}')"><span class="slash-name">/${t}</span></div>`).join('');
-          menu.style.display = 'flex';
-        } else menu.style.display = 'none';
-      } else menu.style.display = 'none';
-    }
-
+    // Slash menu
     window.applySlash = t => {
       const input = document.getElementById('chat-input');
       if (t === 'clear') { State.history = []; document.getElementById('chat-container').innerHTML = ''; input.value = ''; }
-      else if (t === 'library') showPanel('library');
-      else if (t === 'batch') showPanel('batch');
-      else if (t === 'memory') showPanel('memory');
-      else if (t === 'settings') showPanel('settings');
-      else input.value = `/${t} `;
+      else showPanel(t);
       document.getElementById('slash-menu').style.display = 'none';
       input.focus();
     };
 
-    document.getElementById('chat-input').oninput = e => { 
-      e.target.style.height = 'auto'; 
-      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-      handleSlash(e.target.value);
+    document.getElementById('chat-input').oninput = e => {
+      const val = e.target.value; const menu = document.getElementById('slash-menu');
+      if (val.startsWith('/')) {
+        const cmds = ['clear', 'library', 'memory', 'batch', 'settings'].filter(c => c.startsWith(val.slice(1)));
+        menu.innerHTML = cmds.map(c => `<div class="slash-item" onclick="window.applySlash('${c}')">/${c}</div>`).join('');
+        menu.style.display = cmds.length ? 'flex' : 'none';
+      } else menu.style.display = 'none';
     };
+
     document.getElementById('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
   </script>
 </body>
