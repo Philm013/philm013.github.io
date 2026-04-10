@@ -766,7 +766,60 @@ self.addEventListener('message', async (e) => {
       set_reminder:  'skills/built-in/set-reminder/scripts/index.html',
       web_search:    'skills/built-in/web-search/scripts/index.html',
       fetch_page:    'skills/built-in/fetch-page/scripts/index.html',
+      interactive_map: 'skills/built-in/interactive-map/scripts/index.html',
+      query_wikipedia: 'skills/built-in/query-wikipedia/scripts/index.html',
     };
+
+    const SKILL_DOC_REGISTRY = {
+      calculate: 'skills/built-in/calculate-math/SKILL.md',
+      get_current_time: 'skills/built-in/get-current-time/SKILL.md',
+      store_memory: 'skills/built-in/store-memory/SKILL.md',
+      search_memory: 'skills/built-in/search-memory/SKILL.md',
+      list_memories: 'skills/built-in/list-memories/SKILL.md',
+      delete_memory: 'skills/built-in/delete-memory/SKILL.md',
+      set_reminder: 'skills/built-in/set-reminder/SKILL.md',
+      web_search: 'skills/built-in/web-search/SKILL.md',
+      fetch_page: 'skills/built-in/fetch-page/SKILL.md',
+      interactive_map: 'skills/built-in/interactive-map/SKILL.md',
+      query_wikipedia: 'skills/built-in/query-wikipedia/SKILL.md',
+    };
+
+    let toolSkillDocsLoaded = false;
+
+    function parseSkillDoc(markdownText) {
+      const out = { description: '', instructions: '' };
+      const fm = markdownText.match(/^---\n([\s\S]*?)\n---/);
+      if (fm) {
+        const descriptionLine = fm[1].match(/^description:\s*(.+)$/m);
+        if (descriptionLine) out.description = descriptionLine[1].trim().replace(/^['"]|['"]$/g, '');
+      }
+
+      const instructionsMatch = markdownText.match(/## Instructions\s*([\s\S]*?)(?:\n##\s+|\n###\s+|$)/i);
+      if (instructionsMatch) {
+        out.instructions = instructionsMatch[1].replace(/\r/g, '').trim().replace(/\n{3,}/g, '\n\n');
+      }
+      return out;
+    }
+
+    async function ensureToolSkillDocsLoaded() {
+      if (toolSkillDocsLoaded) return;
+      const entries = Object.entries(SKILL_DOC_REGISTRY);
+      await Promise.all(entries.map(async ([toolName, docPath]) => {
+        try {
+          const res = await fetch(docPath, { cache: 'no-store' });
+          if (!res.ok) return;
+          const text = await res.text();
+          const parsed = parseSkillDoc(text);
+          if (TOOL_REGISTRY[toolName]) {
+            if (parsed.description) TOOL_REGISTRY[toolName].skillDescription = parsed.description;
+            if (parsed.instructions) TOOL_REGISTRY[toolName].skillInstructions = parsed.instructions.slice(0, 500);
+          }
+        } catch (_e) {
+          // Non-fatal: tools still work with inline metadata.
+        }
+      }));
+      toolSkillDocsLoaded = true;
+    }
 
     /**
      * Load an AI Edge Gallery skill script inside a hidden, sandboxed <iframe>
@@ -824,6 +877,12 @@ self.addEventListener('message', async (e) => {
       });
     }
 
+    async function executeSkillIfAvailable(toolName, args, secret = '') {
+      const path = SKILL_REGISTRY[toolName];
+      if (!path) return null;
+      return runSkill(path, args || {}, secret);
+    }
+
     // ── Agent Tools ──────────────────────────────────────────
     // Each tool exposes:
     //   description  {string}  — one-line description shown to the LLM in the system prompt
@@ -839,9 +898,8 @@ self.addEventListener('message', async (e) => {
         description: 'Evaluate a mathematical expression and return the numeric result.',
         parameters: { type: 'object', properties: { expression: { type: 'string', description: 'A numeric expression using +, -, *, /, (, ), %, e.g. "15 / 100 * 240"' } }, required: ['expression'] },
         async execute(a) {
-          // Prefer the standalone skill script which provides isolated execution context
-          const path = SKILL_REGISTRY.calculate;
-          if (path) return runSkill(path, a);
+          const viaSkill = await executeSkillIfAvailable('calculate', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
           // Inline fallback: strip non-numeric chars, then use Function() constructor.
           // Function() is used instead of eval() because it executes in the global scope
           // rather than the local scope, reducing the risk of accessing closure variables.
@@ -862,8 +920,12 @@ self.addEventListener('message', async (e) => {
       store_memory: {
         description: 'Save a fact, preference, or note to persistent on-device memory.',
         parameters: { type: 'object', properties: { content: { type: 'string', description: 'Text to remember' }, category: { type: 'string', description: 'One of: fact, preference, person, event, note, document' } }, required: ['content'] },
-        // Inline: uses app-internal embedAndStore() which requires the embedding model worker
-        async execute(a) { const c = await embedAndStore(a.content, a.category || 'fact', 'assistant'); return { stored: true, count: c }; }
+        // Skill-first (for parity with skill package), then canonical IndexedDB storage.
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('store_memory', a);
+          const c = await embedAndStore(a.content, a.category || 'fact', 'assistant');
+          return { stored: true, count: c, skill: viaSkill && !viaSkill.error ? 'ok' : 'fallback' };
+        }
       },
       search_memory: {
         description: 'Search stored memories using a semantic query and return the top matches.',
@@ -887,9 +949,31 @@ self.addEventListener('message', async (e) => {
         parameters: { type: 'object', properties: { query: { type: 'string', description: 'Keywords identifying which memories to remove' } }, required: ['query'] },
         // Inline: uses searchMemory() for matching, then deleteChunk() per result
         async execute(a) {
+          await executeSkillIfAvailable('delete_memory', { query: a.query, confirm: true });
           const results = await searchMemory(a.query, 10);
           for (const r of results) await deleteChunk(r.id);
           return { deleted: results.length };
+        }
+      },
+      set_reminder: {
+        description: 'Set a reminder that triggers after a delay in minutes.',
+        parameters: { type: 'object', properties: { message: { type: 'string', description: 'Reminder text to show later' }, delayMinutes: { type: 'number', description: 'Minutes from now to trigger reminder' } }, required: ['message', 'delayMinutes'] },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('set_reminder', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+
+          const delay = Math.max(0.1, Number(a.delayMinutes || 1));
+          const message = String(a.message || '').trim();
+          if (!message) return { error: 'No reminder message provided.' };
+          const fireAt = new Date(Date.now() + delay * 60000).toLocaleTimeString();
+          setTimeout(() => {
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('CloudChat Reminder', { body: message });
+            } else {
+              showToast(`Reminder: ${message}`);
+            }
+          }, delay * 60000);
+          return { result: 'Reminder set.', message, firesAt: fireAt, delayMinutes: delay };
         }
       },
       web_search: {
@@ -899,6 +983,12 @@ self.addEventListener('message', async (e) => {
         async execute(a) {
           const config = getSearchConfig();
           if (config.provider === 'none') return { error: 'Search disabled. Configure a search provider in settings.' };
+          const viaSkill = await executeSkillIfAvailable(
+            'web_search',
+            { query: a.query, provider: config.provider, searxngUrl: config.searxngUrl },
+            config.provider === 'searxng' ? '' : config.apiKey
+          );
+          if (viaSkill && !viaSkill.error) return viaSkill;
           const results = await (
             config.provider === 'brave'   ? SearchProviders.brave(a.query, config.apiKey) :
             config.provider === 'tavily'  ? SearchProviders.tavily(a.query, config.apiKey) :
@@ -911,7 +1001,40 @@ self.addEventListener('message', async (e) => {
         description: 'Fetch the readable text content from a URL.',
         parameters: { type: 'object', properties: { url: { type: 'string', description: 'Full URL to fetch (must start with https:// or http://)' } }, required: ['url'] },
         // Inline: uses app-internal fetchAndExtract() which handles CORS proxying
-        async execute(a) { return fetchAndExtract(a.url); }
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('fetch_page', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return fetchAndExtract(a.url);
+        }
+      },
+      interactive_map: {
+        description: 'Show a map view for a location.',
+        parameters: { type: 'object', properties: { location: { type: 'string', description: 'Location string like city, address, or place name' } }, required: ['location'] },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('interactive_map', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          const loc = String(a.location || '').trim();
+          if (!loc) return { error: 'No location provided.' };
+          return { webview: { iframe: true, url: `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&output=embed` } };
+        }
+      },
+      query_wikipedia: {
+        description: 'Query Wikipedia summary for a topic.',
+        parameters: { type: 'object', properties: { topic: { type: 'string', description: 'Broad topic to search on Wikipedia' }, lang: { type: 'string', description: 'Two-letter language code, e.g., en, es, fr' } }, required: ['topic'] },
+        async execute(a) {
+          const payload = { topic: a.topic, lang: a.lang || 'en' };
+          const viaSkill = await executeSkillIfAvailable('query_wikipedia', payload);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+
+          const lang = String(a.lang || 'en').trim();
+          const topic = String(a.topic || '').trim();
+          if (!topic) return { error: 'No topic provided.' };
+          const url = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic)}`;
+          const res = await fetch(url);
+          if (!res.ok) return { error: `Wikipedia request failed (${res.status})` };
+          const data = await res.json();
+          return { title: data.title || topic, result: data.extract || 'No summary available.' };
+        }
       }
     };
 
@@ -1194,7 +1317,7 @@ self.addEventListener('message', async (e) => {
         .forEach(([name, tool]) => {
           items.push({
             title: `/${name}`,
-            meta: `Tool: ${tool.description}`,
+            meta: `Tool: ${tool.skillDescription || tool.description}`,
             onSelect: () => {
               input.value = '';
               insertToolCallTemplate(name);
@@ -1408,6 +1531,89 @@ self.addEventListener('message', async (e) => {
     /** Maximum number of tool-call/response cycles per user message. */
     const MAX_TOOL_ITERATIONS = 3;
 
+    function normalizeString(value) {
+      return String(value == null ? '' : value).trim();
+    }
+
+    function getDefaultLangCode() {
+      const raw = (navigator.language || 'en').toLowerCase();
+      const m = raw.match(/^[a-z]{2}/);
+      return m ? m[0] : 'en';
+    }
+
+    function normalizeToolArguments(toolName, rawArgs) {
+      const args = rawArgs && typeof rawArgs === 'object' ? { ...rawArgs } : {};
+
+      if (toolName === 'calculate') {
+        args.expression = normalizeString(args.expression || args.formula || args.eq);
+      }
+
+      if (toolName === 'fetch_page') {
+        let url = normalizeString(args.url || args.link || args.uri || args.page_url);
+        if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+        args.url = url;
+      }
+
+      if (toolName === 'web_search') {
+        args.query = normalizeString(args.query || args.q || args.term || args.topic);
+      }
+
+      if (toolName === 'store_memory') {
+        args.content = normalizeString(args.content || args.text || args.note || args.memory);
+        const allowed = new Set(['fact', 'preference', 'person', 'event', 'note', 'document']);
+        const category = normalizeString(args.category || 'fact').toLowerCase();
+        args.category = allowed.has(category) ? category : 'fact';
+      }
+
+      if (toolName === 'search_memory') {
+        args.query = normalizeString(args.query || args.q || args.term || args.text);
+        const limit = Number(args.limit || args.topK || 5);
+        args.limit = Number.isFinite(limit) ? Math.max(1, Math.min(20, Math.floor(limit))) : 5;
+      }
+
+      if (toolName === 'delete_memory') {
+        args.query = normalizeString(args.query || args.q || args.term || args.text || '*');
+        args.confirm = true;
+      }
+
+      if (toolName === 'set_reminder') {
+        args.message = normalizeString(args.message || args.text || args.reminder);
+        const delay = Number(args.delayMinutes ?? args.delay ?? args.minutes ?? 1);
+        args.delayMinutes = Number.isFinite(delay) && delay > 0 ? delay : 1;
+      }
+
+      if (toolName === 'interactive_map') {
+        args.location = normalizeString(args.location || args.place || args.address || args.destination || args.query);
+      }
+
+      if (toolName === 'query_wikipedia') {
+        let topic = normalizeString(args.topic || args.query || args.subject || args.entity || args.term);
+        topic = topic.replace(/^(who|what|when|where|why|how)\s+(is|are|was|were|did|do|does)\s+/i, '').replace(/[?]+$/g, '').trim();
+        if (/(oscars|grammy|super bowl|olympics|world cup|election)/i.test(topic) && !/\b(19|20)\d{2}\b/.test(topic)) {
+          topic = `${new Date().getFullYear()} ${topic}`.trim();
+        }
+        const lang = normalizeString(args.lang || args.language || args.locale || getDefaultLangCode()).toLowerCase();
+        args.topic = topic;
+        args.lang = /^[a-z]{2}$/.test(lang) ? lang : 'en';
+      }
+
+      return args;
+    }
+
+    function validateToolArguments(toolName, args) {
+      const tool = TOOL_REGISTRY[toolName];
+      if (!tool) return { error: `Unknown tool: ${toolName}` };
+      const required = tool.parameters?.required || [];
+      const missing = required.filter((key) => {
+        const v = args[key];
+        return v == null || (typeof v === 'string' && v.trim() === '');
+      });
+      if (missing.length) {
+        return { error: `Missing required argument(s): ${missing.join(', ')}` };
+      }
+      return null;
+    }
+
     /**
      * Force-collapse all still-open thinking blocks inside a message bubble.
      * Called immediately after each generation pass completes so that the
@@ -1568,8 +1774,10 @@ self.addEventListener('message', async (e) => {
               aiEl.appendChild(stepLabel);
             }
 
-            const res = await tool.execute(call.arguments);
-            renderToolCallBlock(aiEl, call.name, call.arguments, res);
+            const normalizedArgs = normalizeToolArguments(call.name, call.arguments);
+            const argError = validateToolArguments(call.name, normalizedArgs);
+            const res = argError || await tool.execute(normalizedArgs);
+            renderToolCallBlock(aiEl, call.name, normalizedArgs, res);
 
             // Feed tool result back into history as a synthetic user turn
             State.history.push({ role: 'ai', text: full });
@@ -1619,11 +1827,13 @@ self.addEventListener('message', async (e) => {
      * @returns {Promise<string>} The complete prompt string ready for inference.
      */
     async function buildPrompt(additionalContext = "", isFollowUpIteration = false) {
+      await ensureToolSkillDocsLoaded();
       const s = document.getElementById('system-prompt').value;
       const toolDefs = Object.entries(TOOL_REGISTRY).map(([n, t]) => ({
         name: n,
-        desc: t.description,
-        params: t.parameters
+        desc: t.skillDescription || t.description,
+        params: t.parameters,
+        guidance: t.skillInstructions || ''
       }));
 
       // Inject document library summaries so the model knows what's available for RAG
@@ -1703,6 +1913,17 @@ self.addEventListener('message', async (e) => {
       pre.textContent = resultStr; // textContent: no XSS risk, no HTML parsing
       result.appendChild(pre);
 
+      if (res && typeof res === 'object' && res.webview && res.webview.url) {
+        const mapLink = document.createElement('a');
+        mapLink.href = String(res.webview.url);
+        mapLink.target = '_blank';
+        mapLink.rel = 'noopener noreferrer';
+        mapLink.textContent = 'Open map view';
+        mapLink.style.display = 'inline-block';
+        mapLink.style.marginTop = '6px';
+        result.appendChild(mapLink);
+      }
+
       block.appendChild(toggle);
       block.appendChild(result);
       el.appendChild(block);
@@ -1737,7 +1958,7 @@ self.addEventListener('message', async (e) => {
         }).join('') : '<span class="param-badge-none">no parameters</span>';
         item.innerHTML = `
           <div class="tool-card-name">🔧 ${escapeHtml(name)}</div>
-          <div class="tool-card-desc">${escapeHtml(tool.description)}</div>
+          <div class="tool-card-desc">${escapeHtml(tool.skillDescription || tool.description)}</div>
           <div class="tool-card-params">${paramStr}</div>
         `;
         const insertBtn = document.createElement('button');
@@ -2072,6 +2293,7 @@ self.addEventListener('message', async (e) => {
     // Init
     window.onload = () => {
       initGemma();
+      ensureToolSkillDocsLoaded().then(() => refreshToolsPanel());
       refreshLibraryPanel();
       refreshHistoryPanel();
       refreshMemoryPanel();
@@ -2115,7 +2337,7 @@ self.addEventListener('message', async (e) => {
     toolInsertBtn.addEventListener('click', () => {
       const items = Object.entries(TOOL_REGISTRY).map(([name, tool]) => ({
         title: name,
-        meta: tool.description,
+        meta: tool.skillDescription || tool.description,
         onSelect: () => insertToolCallTemplate(name)
       }));
       showInputMenu(items);
