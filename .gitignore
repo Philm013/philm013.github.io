@@ -77,3 +77,4 @@ DEV.html
 eslint.config.mjs
 package-lock.json
 *.task
+node_modules/

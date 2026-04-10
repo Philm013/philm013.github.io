@@ -1530,6 +1530,20 @@ self.addEventListener('message', async (e) => {
         }
       }
 
+      // During streaming, suppress partial thinking tag prefixes that haven't
+      // fully arrived yet.  This prevents raw text like "<|ch" or "<|think"
+      // from flashing in the chat while the model is still emitting the tag.
+      if (isStreaming && !think && main) {
+        const lastLt = main.lastIndexOf('<');
+        if (lastLt >= 0) {
+          const tail = main.slice(lastLt);
+          const openers = ['<|think|>', '<|channel>thought', '<tool_call>'];
+          if (openers.some(tag => tag.startsWith(tail) && tag !== tail)) {
+            main = main.slice(0, lastLt).trim();
+          }
+        }
+      }
+
       let html = '';
       if (think && showThinking) {
         const id = 'th-' + Math.random().toString(36).slice(2, 8);
@@ -1851,6 +1865,14 @@ self.addEventListener('message', async (e) => {
           const isFollowUpIteration = iter > 0;
           const prompt = await buildPrompt(ragContext, isFollowUpIteration);
 
+          // On follow-up iterations, create a fresh bubble so the new response
+          // appears below the tool-call blocks from the previous iteration.
+          if (iter > 0) {
+            const bubble = document.createElement('div');
+            bubble.className = 'ai-bubble';
+            aiEl.appendChild(bubble);
+          }
+
           // Stream response tokens; renderMessage re-renders the bubble on each chunk.
           // generateResponse() delivers cumulative (not delta) text on each callback,
           // so we assign full = chunk rather than appending.
@@ -2044,8 +2066,22 @@ Rules:
     function renderMessage(t, r, el = null, options = {}) {
       const c = document.getElementById('chat-container');
       if (!el) { el = document.createElement('div'); el.className = `message ${r}`; c.appendChild(el); }
-      if (r === 'user') { el.innerHTML = `<div class="user-bubble">${escapeHtml(t)}</div>`; }
-      else { el.innerHTML = renderMarkdown(t, options); }
+      if (r === 'user') {
+        el.innerHTML = `<div class="user-bubble">${escapeHtml(t)}</div>`;
+      } else {
+        // Use an inner bubble so that tool-call blocks, step labels, and
+        // other children appended to `el` survive streaming re-renders.
+        // Always update the LAST .ai-bubble (a new one is created per
+        // agentic-loop iteration so content appears after tool blocks).
+        const bubbles = el.querySelectorAll('.ai-bubble');
+        let bubble = bubbles.length ? bubbles[bubbles.length - 1] : null;
+        if (!bubble) {
+          bubble = document.createElement('div');
+          bubble.className = 'ai-bubble';
+          el.appendChild(bubble);
+        }
+        bubble.innerHTML = renderMarkdown(t, options);
+      }
       c.scrollTop = c.scrollHeight; return el;
     }
 
