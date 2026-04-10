@@ -101,6 +101,7 @@ tailwind.config = {
             <div class="hidden md:flex items-center gap-10 text-sm font-medium text-ollama-stone">
                 <a href="#about" class="hover:text-ollama-black transition-colors">About</a>
                 <a href="#projects" class="hover:text-ollama-black transition-colors">Projects</a>
+                <a href="#references" class="hover:text-ollama-black transition-colors">References</a>
                 <a href="https://github.com/philm013" class="hover:text-ollama-black transition-colors flex items-center gap-1">
                     GitHub <span class="iconify" data-icon="lucide:arrow-up-right"></span>
                 </a>
@@ -134,6 +135,9 @@ tailwind.config = {
                 <a href="#projects" class="btn-pill-black px-6 py-2 text-sm">
                     Browse Projects
                 </a>
+                <a href="#references" class="btn-pill-gray px-6 py-2 text-sm">
+                    References
+                </a>
                 <a href="https://github.com/philm013" class="btn-pill-white px-6 py-2 text-sm">
                     GitHub
                 </a>
@@ -147,23 +151,58 @@ tailwind.config = {
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16">
                 <div>
                     <h2 class="text-3xl font-medium">Projects</h2>
-                    <p class="text-ollama-stone mt-2">Filter by category</p>
+                    <p class="text-ollama-stone mt-2">Auto-generated from repo folders and available docs</p>
                 </div>
-                
-                <!-- Filter Bar -->
-                <div id="filter-container" class="flex flex-wrap gap-1 p-1 bg-ollama-snow border border-ollama-gray rounded-full">
-                    <button class="filter-pill active" data-filter="all">All</button>
-                    <button class="filter-pill" data-filter="ai">AI</button>
-                    <button class="filter-pill" data-filter="education">Education</button>
-                    <button class="filter-pill" data-filter="productivity">Tools</button>
-                    <button class="filter-pill" data-filter="collab">Collab</button>
-                    <button class="filter-pill" data-filter="entertainment">Misc</button>
+
+                <div class="w-full space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <input id="search-input" type="search" placeholder="Search projects, tags, or tech" class="md:col-span-2 px-4 py-2.5 rounded-full border border-ollama-gray bg-white text-sm outline-none focus:border-ollama-border" />
+                        <select id="sort-select" class="px-4 py-2.5 rounded-full border border-ollama-gray bg-white text-sm outline-none focus:border-ollama-border">
+                            <option value="title-asc">Sort: Name A-Z</option>
+                            <option value="title-desc">Sort: Name Z-A</option>
+                            <option value="docs-first">Sort: Docs First</option>
+                            <option value="launch-first">Sort: Launch First</option>
+                        </select>
+                        <select id="view-select" class="px-4 py-2.5 rounded-full border border-ollama-gray bg-white text-sm outline-none focus:border-ollama-border">
+                            <option value="grid">View: Grid</option>
+                            <option value="list">View: List</option>
+                            <option value="detailed">View: Detailed List</option>
+                            <option value="compact">View: Compact List</option>
+                        </select>
+                    </div>
+
+                    <div id="filter-container" class="flex flex-wrap gap-1 p-1 bg-ollama-snow border border-ollama-gray rounded-full">
+                        <button class="filter-pill active" data-filter="all">All</button>
+                    </div>
                 </div>
             </div>
 
             <!-- Projects Grid -->
             <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <!-- Cards will be injected here -->
+            </div>
+
+            <div id="empty-state" class="hidden mt-8 text-center text-ollama-stone text-sm">
+                No projects match the current filters.
+            </div>
+        </div>
+    </section>
+
+    <section id="references" class="py-12 md:py-16 border-t border-ollama-gray bg-ollama-snow/50">
+        <div class="container-custom">
+            <div class="flex items-center justify-between gap-4 mb-8">
+                <div>
+                    <h2 class="text-3xl font-medium">Reference Library</h2>
+                    <p class="text-ollama-stone mt-2">Standalone documentation pages from the References folder</p>
+                </div>
+            </div>
+
+            <div id="references-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Reference cards injected here -->
+            </div>
+
+            <div id="references-empty" class="hidden mt-6 text-center text-ollama-stone text-sm">
+                No reference pages were found.
             </div>
         </div>
     </section>
@@ -184,356 +223,587 @@ tailwind.config = {
 
     <!-- Scripts -->
     <script type="module">
-const PROJECTS = [
-    {
-        id: 'ai-editor',
+const grid = document.getElementById('projects-grid');
+const referencesGrid = document.getElementById('references-grid');
+const referencesEmpty = document.getElementById('references-empty');
+const emptyState = document.getElementById('empty-state');
+const filterContainer = document.getElementById('filter-container');
+const searchInput = document.getElementById('search-input');
+const sortSelect = document.getElementById('sort-select');
+const viewSelect = document.getElementById('view-select');
+
+const state = {
+    projects: [],
+    references: [],
+    filter: 'all',
+    query: '',
+    sort: 'title-asc',
+    view: 'grid'
+};
+
+const ICON_BY_CATEGORY = {
+    ai: 'lucide:sparkles',
+    education: 'lucide:graduation-cap',
+    productivity: 'lucide:briefcase',
+    collab: 'lucide:users',
+    entertainment: 'lucide:gamepad-2'
+};
+
+const PROJECT_OVERRIDES = {
+    'AI-Editor': {
         title: 'AI-Editor',
-        description: 'Web-based code editor with AI-powered features for analysis, linting, and generation.',
-        readmePath: './AI-Editor/readme.html',
-        launchPath: './AI-Editor/index.html',
         category: 'ai',
+        description: 'Web-based code editor with AI-powered analysis, linting, and code generation.',
         tags: ['AI', 'Developer Tools', 'Productivity'],
-        techStack: ['Gemini AI', 'Monaco', 'IndexedDB'],
+        techStack: ['Gemini AI', 'JavaScript', 'IndexedDB'],
         icon: 'lucide:code-2'
     },
-    {
-        id: 'archie-ide',
+    ArchieIDE: {
         title: 'ArchieIDE',
-        description: 'Full-featured browser IDE with "Archie" AI assistant, virtual file system, and collab.',
-        readmePath: './ArchieIDE/readme.html',
-        launchPath: './ArchieIDE/index.html',
         category: 'ai',
-        tags: ['AI', 'Developer Tools', 'Collaboration'],
-        techStack: ['Gemini AI', 'VFS', 'PWA'],
+        description: 'Browser IDE with AI assistance and project workspace tooling.',
+        tags: ['AI', 'Developer Tools', 'Workspace'],
+        techStack: ['Gemini AI', 'JavaScript', 'PWA'],
         icon: 'lucide:cpu'
     },
-    {
-        id: 'inquiry-os',
+    InquiryOS: {
         title: 'InquiryOS',
-        description: 'NGSS-aligned platform for scientific inquiry, modeling, data analysis, and CER.',
-        readmePath: './InquiryOS/readme.html',
-        launchPath: './InquiryOS/index.html',
         category: 'education',
-        tags: ['Education', 'Science', 'Data Analysis'],
-        techStack: ['Chart.js', 'Tailwind', 'IndexedDB'],
+        description: 'NGSS-aligned platform for scientific inquiry and classroom workflows.',
+        tags: ['Education', 'NGSS', 'Science'],
+        techStack: ['JavaScript', 'IndexedDB', 'Charts'],
         icon: 'lucide:microscope'
     },
-    {
-        id: 'marked-up',
+    MarkedUp: {
         title: 'MarkedUp',
-        description: 'Powerful web annotation tool for capturing websites and adding rich annotations.',
-        readmePath: './MarkedUp/readme.html',
-        launchPath: './MarkedUp/index.html',
         category: 'productivity',
-        tags: ['Productivity', 'Research', 'Data Analysis'],
-        techStack: ['Canvas API', 'jsPDF', 'JSZip'],
+        description: 'Web annotation and evidence-capture tool for research workflows.',
+        tags: ['Productivity', 'Research', 'Annotation'],
+        techStack: ['JavaScript', 'Canvas API', 'jsPDF'],
         icon: 'lucide:pen-tool'
     },
-    {
-        id: 'flipbook-ai',
+    FlipbookAI: {
         title: 'FlipbookAI',
-        description: 'PDF viewer with a flipbook style and AI-powered document interrogation features.',
-        readmePath: './FlipbookAI/readme.html',
-        launchPath: './FlipbookAI/index.html',
         category: 'ai',
-        tags: ['AI', 'Education', 'Productivity'],
-        techStack: ['pdf.js', 'Gemini AI', 'Panzoom'],
+        description: 'Flipbook-style PDF reader with AI-assisted document exploration.',
+        tags: ['AI', 'Documents', 'Education'],
+        techStack: ['pdf.js', 'Gemini AI', 'IndexedDB'],
         icon: 'lucide:book-open'
     },
-    {
-        id: 'bank-explorer',
+    BankExplorer: {
         title: 'Bank Explorer',
-        description: 'Parse and analyze bank statements with data visualization and AI spending insights.',
-        readmePath: './BankExplorer/readme.html',
-        launchPath: './BankExplorer/index.html',
         category: 'productivity',
-        tags: ['Finance', 'Data Analysis', 'AI'],
-        techStack: ['SheetJS', 'Chart.js', 'Gemini AI'],
+        description: 'Statement parsing and analytics tool with finance-focused insights.',
+        tags: ['Finance', 'Analytics', 'AI'],
+        techStack: ['SheetJS', 'Chart.js', 'JavaScript'],
         icon: 'lucide:landmark'
     },
-    {
-        id: 'card-vault',
+    CardVault: {
         title: 'CardVault',
-        description: 'Sports card cataloging with AI-powered scanning and computer vision capabilities.',
-        readmePath: './CardVault/readme.html',
-        launchPath: './CardVault/index.html',
         category: 'productivity',
-        tags: ['AI', 'Computer Vision', 'Data Analysis'],
-        techStack: ['Gemini Vision', 'IndexedDB', 'WebGPU'],
+        description: 'Sports card catalog with AI-assisted recognition and organization.',
+        tags: ['Catalog', 'Computer Vision', 'AI'],
+        techStack: ['Gemini Vision', 'IndexedDB', 'JavaScript'],
         icon: 'lucide:clover'
     },
-    {
-        id: 'coin-vault',
+    CoinVault: {
         title: 'CoinVault',
-        description: 'Numismatic cataloging tool using AI for identification and grading assistance.',
-        readmePath: './CoinVault/readme.html',
-        launchPath: './CoinVault/index.html',
         category: 'productivity',
-        tags: ['AI', 'Computer Vision', 'Data Analysis'],
-        techStack: ['Gemini Vision', 'IndexedDB', 'Computer Vision'],
+        description: 'Numismatic inventory and grading helper with AI support.',
+        tags: ['Catalog', 'Computer Vision', 'AI'],
+        techStack: ['Gemini Vision', 'IndexedDB', 'JavaScript'],
         icon: 'lucide:coins'
     },
-    {
-        id: 'knowledge-mapper',
+    KnowledgeMapper: {
         title: 'KnowledgeMapper',
-        description: 'Visual knowledge tool using D3.js and Gemini for exploring complex topics via maps.',
-        readmePath: './KnowledgeMapper/readme.html',
-        launchPath: './KnowledgeMapper/index.html',
         category: 'ai',
-        tags: ['AI', 'Education', 'Data Analysis'],
-        techStack: ['D3.js', 'Gemini AI', 'SVG'],
+        description: 'Visual knowledge mapping workspace for exploring connected ideas.',
+        tags: ['Knowledge Graph', 'AI', 'Education'],
+        techStack: ['D3.js', 'JavaScript', 'SVG'],
         icon: 'lucide:network'
     },
-    {
-        id: 'live-deck',
+    LiveDeck: {
         title: 'LiveDeck',
-        description: 'Markdown-backed presentation tool with interactive components and real-time collab.',
-        readmePath: './LiveDeck/readme.html',
-        launchPath: './LiveDeck/index.html',
         category: 'collab',
-        tags: ['Collaboration', 'Real-Time', 'Productivity'],
-        techStack: ['Markdown', 'PeerJS', 'WebRTC'],
+        description: 'Presentation builder with collaborative and interactive delivery features.',
+        tags: ['Collaboration', 'Presentations', 'Real-Time'],
+        techStack: ['Markdown', 'WebRTC', 'PeerJS'],
         icon: 'lucide:presentation'
     },
-    {
-        id: 'work-planner',
+    WorkPlanner: {
         title: 'WorkPlanner',
-        description: 'Jira-inspired project management with sprint planning, task boards, and Gantt charts.',
-        readmePath: './WorkPlanner/readme.html',
-        launchPath: './WorkPlanner/index.html',
         category: 'productivity',
-        tags: ['Productivity', 'Collaboration', 'Data Analysis'],
-        techStack: ['Kanban', 'Gantt', 'PeerJS'],
+        description: 'Project planning environment with scheduling and task tracking views.',
+        tags: ['Planning', 'Tasks', 'Productivity'],
+        techStack: ['JavaScript', 'IndexedDB', 'UI Components'],
         icon: 'lucide:kanban'
     },
-    {
-        id: 'snap-meet',
+    SnapMeet: {
         title: 'SnapMeet',
-        description: 'Real-time, peer-to-peer location sharing and communication for small groups.',
-        readmePath: './SnapMeet/readme.html',
-        launchPath: './SnapMeet/index.html',
         category: 'collab',
-        tags: ['Collaboration', 'Geolocation', 'Real-Time'],
+        description: 'Peer-to-peer location and communication tool for teams and events.',
+        tags: ['Collaboration', 'Maps', 'Real-Time'],
         techStack: ['Leaflet', 'PeerJS', 'WebRTC'],
         icon: 'lucide:map-pin'
     },
-    {
-        id: 'snap-hunt',
+    SnapHunt: {
         title: 'SnapHunt',
-        description: 'Real-world scavenger hunt game using geolocation and photo challenges.',
-        readmePath: './SnapHunt/readme.html',
-        launchPath: './SnapHunt/index.html',
         category: 'entertainment',
-        tags: ['Gaming', 'Geolocation', 'Real-Time'],
-        techStack: ['Geolocation', 'Camera API', 'PWA'],
+        description: 'Geolocation scavenger hunt app with real-world challenges.',
+        tags: ['Game', 'Geolocation', 'Camera'],
+        techStack: ['Geolocation API', 'PWA', 'JavaScript'],
         icon: 'lucide:camera'
     },
-    {
-        id: 'proxima-nova',
+    ProximaNova: {
         title: 'ProximaNova',
-        description: 'Futuristic canvas-based strategic expansion game with real-time management.',
-        readmePath: './ProximaNova/readme.html',
-        launchPath: './ProximaNova/index.html',
         category: 'entertainment',
-        tags: ['Gaming', 'Strategy', 'Real-Time'],
-        techStack: ['Canvas API', 'GameLoop', 'Math'],
+        description: 'Strategic expansion game with dynamic canvas rendering.',
+        tags: ['Game', 'Strategy', 'Canvas'],
+        techStack: ['Canvas API', 'JavaScript', 'Game Loop'],
         icon: 'lucide:rocket'
     },
-    {
-        id: 'mix-tape',
+    MixTape: {
         title: 'MixTape',
-        description: 'Retro-styled music player reminiscent of a Walkman, designed for YouTube tracks.',
-        readmePath: './MixTape/readme.html',
-        launchPath: './MixTape/index.html',
         category: 'entertainment',
-        tags: ['Media', 'Audio', 'Productivity'],
-        techStack: ['YouTube API', 'Web Audio', 'CSS3'],
+        description: 'Retro-inspired music player experience for curated listening.',
+        tags: ['Media', 'Audio', 'UX'],
+        techStack: ['Web Audio', 'JavaScript', 'CSS'],
         icon: 'lucide:music'
     },
-    {
-        id: 'digital-synapse',
+    DigitalSynapse: {
         title: 'Digital Synapse',
-        description: 'Modern science news aggregator and research hub with dark/light mode.',
-        readmePath: './DigitalSynapse/readme.html',
-        launchPath: './DigitalSynapse/ScienceNewsV2.html',
         category: 'entertainment',
-        tags: ['News', 'Science', 'Research'],
-        techStack: ['News API', 'LocalStorage', 'CSS'],
+        description: 'Science news and content dashboard with modern reading views.',
+        tags: ['News', 'Science', 'Reading'],
+        techStack: ['JavaScript', 'LocalStorage', 'CSS'],
         icon: 'lucide:newspaper'
     },
-    {
-        id: 'iptv-player',
+    IPTV: {
         title: 'IPTV Player',
-        description: 'Simple, clean player for IPTV playlists in M3U format with channel management.',
-        readmePath: './IPTV/readme.html',
-        launchPath: './IPTV/index.html',
-        category: 'productivity',
-        tags: ['Media', 'Streaming', 'Productivity'],
-        techStack: ['HLS.js', 'M3U Parser', 'Video.js'],
+        category: 'entertainment',
+        description: 'Playlist-driven streaming player with lightweight controls.',
+        tags: ['Streaming', 'Media', 'Player'],
+        techStack: ['HLS', 'Video', 'JavaScript'],
         icon: 'lucide:tv'
     },
-    {
-        id: 'studio-pro',
+    StudioPro: {
         title: 'StudioPro',
-        description: 'AI template studio with CodeMirror editor for streamlining AI workflows.',
-        readmePath: './StudioPro/readme.html',
-        launchPath: './StudioPro/StudioPro.html',
         category: 'ai',
-        tags: ['AI', 'Developer Tools', 'Productivity'],
-        techStack: ['CodeMirror', 'Gemini AI', 'Reactive UI'],
+        description: 'Template studio for AI workflows and prompt-centered editing.',
+        tags: ['AI', 'Templates', 'Productivity'],
+        techStack: ['CodeMirror', 'JavaScript', 'UI Components'],
         icon: 'lucide:wand-2'
     },
-    {
-        id: 'lets-draw',
+    LetsDraw: {
         title: 'LetsDraw',
-        description: 'Real-time collaborative drawing application with simple UI and peer connectivity.',
-        readmePath: './LetsDraw/readme.html',
-        launchPath: './LetsDraw/index.html',
         category: 'collab',
-        tags: ['Collaboration', 'Real-Time', 'Productivity'],
-        techStack: ['Canvas API', 'PeerJS', 'WebRTC'],
+        description: 'Collaborative drawing canvas for real-time shared sketching.',
+        tags: ['Collaboration', 'Drawing', 'Real-Time'],
+        techStack: ['Canvas API', 'WebRTC', 'PeerJS'],
         icon: 'lucide:palette'
     },
-    {
-        id: 'ngss-explorer',
+    'NGSS-Explorer': {
         title: 'NGSS Explorer',
-        description: 'Interactive tool for exploring Next Gen Science Standards with AI analysis.',
-        readmePath: './NGSS-Explorer/readme.html',
-        launchPath: './NGSS-Explorer/index.html',
         category: 'education',
-        tags: ['Education', 'NGSS', 'AI'],
-        techStack: ['Gemini AI', 'JSON Data', 'D3.js'],
+        description: 'Exploration tool for NGSS standards and aligned instructional planning.',
+        tags: ['Education', 'NGSS', 'Standards'],
+        techStack: ['JavaScript', 'JSON', 'UI Components'],
         icon: 'lucide:compass'
     },
-    {
-        id: 'ngss-tracker',
+    'NGSS-Tracker': {
         title: 'NGSS Tracker',
-        description: 'Track student progress against NGSS standards and manage curriculum planners.',
-        readmePath: './NGSS-Tracker/readme.html',
-        launchPath: './NGSS-Tracker/index.html',
         category: 'education',
-        tags: ['Education', 'NGSS', 'Assessment'],
-        techStack: ['IndexedDB', 'LocalStorage', 'Charts'],
+        description: 'Track standards alignment and monitor progress over time.',
+        tags: ['Education', 'Tracking', 'Assessment'],
+        techStack: ['IndexedDB', 'JavaScript', 'Charts'],
         icon: 'lucide:check-circle'
     },
-    {
-        id: 'think-tank',
+    ThinkTank: {
         title: 'ThinkTank',
-        description: 'AI-powered study tool aligned with NGSS for interactive learning sessions.',
-        readmePath: './ThinkTank/readme.html',
-        launchPath: './ThinkTank/index.html',
         category: 'education',
-        tags: ['Education', 'AI', 'Research'],
-        techStack: ['Gemini AI', 'Speech API', 'IndexedDB'],
+        description: 'Study and inquiry support experience for standards-focused learning.',
+        tags: ['Education', 'AI', 'Learning'],
+        techStack: ['JavaScript', 'IndexedDB', 'Speech API'],
         icon: 'lucide:brain'
     },
-    {
-        id: 'ed-reporter',
+    EdReporter: {
         title: 'EdReporter',
-        description: 'Analyze educational materials against defined criteria with AI assistance.',
-        readmePath: './EdReporter/readme.html',
-        launchPath: './EdReporter/index.html',
         category: 'education',
-        tags: ['Education', 'Assessment', 'AI'],
-        techStack: ['Gemini AI', 'PDF.js', 'OCR'],
+        description: 'Evaluate educational content using structured rubric workflows.',
+        tags: ['Education', 'Rubrics', 'Analysis'],
+        techStack: ['JavaScript', 'PDF', 'OCR'],
         icon: 'lucide:clipboard-list'
     },
-    {
-        id: 'assessment-analyzer',
+    AssesmentAnalyzer: {
         title: 'Assessment Analyzer',
-        description: 'Review educational assessments against rubrics (K-12 Science/EQuIP).',
-        readmePath: './AssesmentAnalyzer/readme.html',
-        launchPath: './AssesmentAnalyzer/index.html',
         category: 'education',
-        tags: ['Education', 'Assessment', 'Research'],
-        techStack: ['Rubrics', 'JSON', 'Data Viz'],
+        description: 'Assessment review tool for K-12 rubric-aligned analysis.',
+        tags: ['Education', 'Assessment', 'Review'],
+        techStack: ['JavaScript', 'JSON', 'Rubrics'],
         icon: 'lucide:bar-chart-3'
     },
-    {
-        id: 'nature-quest',
-        title: 'NatureQuest',
-        description: 'Mobile exploration app using iNaturalist data to discover species and earn XP.',
-        readmePath: './GoOutside/www/readme.html',
-        launchPath: './GoOutside/www/index.html',
-        category: 'entertainment',
-        tags: ['Science', 'Geolocation', 'Gaming'],
-        techStack: ['iNaturalist API', 'Leaflet', 'PWA'],
-        icon: 'lucide:leaf'
-    },
-    {
-        id: 'nexus-ide',
+    NexusIDE: {
         title: 'NexusIDE',
-        description: 'Lightweight dev environment for managing projects, journals, or blogs.',
-        readmePath: './NexusIDE/readme.html',
-        launchPath: './NexusIDE/index.html',
         category: 'productivity',
-        tags: ['Developer Tools', 'Productivity', 'Collaboration'],
-        techStack: ['Markdown', 'CRUD', 'LocalStorage'],
+        description: 'Lightweight development workspace for writing and organizing projects.',
+        tags: ['Developer Tools', 'Productivity', 'Workspace'],
+        techStack: ['JavaScript', 'Markdown', 'Storage'],
         icon: 'lucide:layers'
     }
-];
+};
 
-const grid = document.getElementById('projects-grid');
-const filterBtns = document.querySelectorAll('.filter-pill');
+const NON_PROJECT_FOLDERS = new Set([
+    '.git',
+    '.github',
+    'docs',
+    'js',
+    'json',
+    'node_modules',
+    'plans',
+    'references'
+]);
 
-function renderProjects(filter = 'all') {
-    grid.innerHTML = '';
-    
-    const filtered = filter === 'all' 
-        ? PROJECTS 
-        : PROJECTS.filter(p => p.category === filter);
+function toTitleCase(value) {
+    return value
+        .replace(/[-_]/g, ' ')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, match => match.toUpperCase());
+}
 
-    filtered.forEach((p, idx) => {
-        const card = document.createElement('div');
-        card.className = 'project-card';
-        
-        card.innerHTML = `
-            <div class="flex items-start justify-between gap-4">
-                <div class="space-y-4 flex-grow">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-ollama-snow border border-ollama-gray flex items-center justify-center">
-                            <span class="iconify text-xl text-ollama-black" data-icon="${p.icon}"></span>
-                        </div>
-                        <h3 class="text-xl font-medium">${p.title}</h3>
-                    </div>
-                    <p class="text-ollama-stone leading-relaxed">${p.description}</p>
-                    
-                    <div class="flex flex-wrap gap-1.5">
-                        ${p.techStack.map(tech => `<span class="tech-pill">${tech}</span>`).join('')}
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mt-auto pt-6 flex flex-wrap items-center justify-between gap-4 border-t border-ollama-gray">
-                <div class="flex gap-1.5">
-                    ${p.tags.map(tag => `<span class="tag-pill">${tag}</span>`).join('')}
-                </div>
-                <div class="flex gap-3">
-                    <a href="${p.readmePath}" class="btn-pill-white text-xs px-4 py-2">
-                        Details
-                    </a>
-                    <a href="${p.launchPath}" target="_blank" class="btn-pill-black text-xs px-4 py-2">
-                        Launch
-                    </a>
-                </div>
-            </div>
-        `;
-        
-        grid.appendChild(card);
+function slugify(value) {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+function inferCategory(folderName) {
+    const name = folderName.toLowerCase();
+    if (/ai|chat|smart|editor|ide/.test(name)) return 'ai';
+    if (/ngss|inquiry|report|assessment|explorer|tracker|think/.test(name)) return 'education';
+    if (/snap|deck|draw|meet|planner/.test(name)) return 'collab';
+    if (/mix|game|hunt|gooutside|proxima|iptv|synapse/.test(name)) return 'entertainment';
+    return 'productivity';
+}
+
+function buildProjectDescription(project) {
+    const hasLaunch = Boolean(project.launchPath);
+    const hasDocs = Boolean(project.readmePath);
+    if (hasLaunch && hasDocs) return 'Auto-discovered app with launch page and project documentation.';
+    if (hasLaunch) return 'Auto-discovered app with a launch page.';
+    return 'Auto-discovered documentation-focused project.';
+}
+
+function extractTopLevelProjectFolders(tree) {
+    const folders = new Map();
+    for (const item of tree) {
+        if (!item.path || item.type !== 'blob') continue;
+        const parts = item.path.split('/');
+        if (parts.length < 2) continue;
+        const folder = parts[0];
+        const folderKey = folder.toLowerCase();
+        if (NON_PROJECT_FOLDERS.has(folderKey)) continue;
+        if (!folders.has(folder)) {
+            folders.set(folder, { folder, paths: new Set() });
+        }
+        folders.get(folder).paths.add(item.path);
+    }
+
+    return Array.from(folders.values()).filter(entry => {
+        const paths = Array.from(entry.paths);
+        const hasIndex = paths.some(p => p.toLowerCase() === `${entry.folder.toLowerCase()}/index.html` || p.toLowerCase() === `${entry.folder.toLowerCase()}/www/index.html` || p.toLowerCase().endsWith('/index.html'));
+        const hasReadme = paths.some(p => {
+            const lower = p.toLowerCase();
+            return lower === `${entry.folder.toLowerCase()}/readme.html` || lower === `${entry.folder.toLowerCase()}/readme.md` || lower === `${entry.folder.toLowerCase()}/readme.txt`;
+        });
+        return hasIndex || hasReadme;
     });
 }
 
-// Filter Logic
-filterBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        filterBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        renderProjects(btn.dataset.filter);
-    });
-});
+function pickPath(paths, matcher) {
+    const found = paths.find(matcher);
+    return found ? `./${found}` : null;
+}
 
-// Initial Render
-renderProjects();
+function projectFromFolder(entry) {
+    const paths = Array.from(entry.paths).sort((a, b) => a.length - b.length);
+    const lowerPaths = paths.map(p => p.toLowerCase());
+
+    const readmePath = pickPath(paths, p => {
+        const lower = p.toLowerCase();
+        return lower.endsWith('/readme.html') || lower.endsWith('/readme.md') || lower.endsWith('/readme.txt');
+    });
+
+    const launchPath = pickPath(paths, p => {
+        const lower = p.toLowerCase();
+        return lower.endsWith('/index.html') && !lower.includes('/alt/');
+    }) || pickPath(paths, p => p.toLowerCase().endsWith('.html'));
+
+    const override = PROJECT_OVERRIDES[entry.folder] || null;
+    const category = override?.category || inferCategory(entry.folder);
+    const title = override?.title || toTitleCase(entry.folder);
+    const tags = override?.tags || [toTitleCase(category), launchPath ? 'Launch' : 'Docs', readmePath ? 'Documentation' : 'No Docs'];
+    const techStack = override?.techStack || (lowerPaths.some(p => p.endsWith('.js'))
+        ? ['HTML', 'JavaScript']
+        : ['HTML']);
+
+    return {
+        id: slugify(entry.folder),
+        title,
+        description: override?.description || buildProjectDescription({ launchPath, readmePath }),
+        readmePath,
+        launchPath,
+        category,
+        tags,
+        techStack,
+        icon: override?.icon || ICON_BY_CATEGORY[category] || 'lucide:folder'
+    };
+}
+
+function referencesFromTree(tree) {
+    return tree
+        .filter(item => item.type === 'blob' && /^References\/[^/]+\.html$/i.test(item.path))
+        .map(item => {
+            const filename = item.path.split('/').pop();
+            const name = filename.replace(/\.html$/i, '');
+            return {
+                title: toTitleCase(name),
+                path: `./${item.path}`
+            };
+        })
+        .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+function sortProjects(projects) {
+    const sorted = [...projects];
+    switch (state.sort) {
+        case 'title-desc':
+            sorted.sort((a, b) => b.title.localeCompare(a.title));
+            break;
+        case 'docs-first':
+            sorted.sort((a, b) => Number(Boolean(b.readmePath)) - Number(Boolean(a.readmePath)) || a.title.localeCompare(b.title));
+            break;
+        case 'launch-first':
+            sorted.sort((a, b) => Number(Boolean(b.launchPath)) - Number(Boolean(a.launchPath)) || a.title.localeCompare(b.title));
+            break;
+        default:
+            sorted.sort((a, b) => a.title.localeCompare(b.title));
+            break;
+    }
+    return sorted;
+}
+
+function filterProjects() {
+    const query = state.query.trim().toLowerCase();
+    return state.projects.filter(project => {
+        const matchesFilter = state.filter === 'all' || project.category === state.filter;
+        if (!matchesFilter) return false;
+        if (!query) return true;
+        const haystack = [
+            project.title,
+            project.description,
+            ...(project.tags || []),
+            ...(project.techStack || [])
+        ].join(' ').toLowerCase();
+        return haystack.includes(query);
+    });
+}
+
+function applyViewClass() {
+    if (state.view === 'grid') {
+        grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-8';
+        return;
+    }
+    if (state.view === 'compact') {
+        grid.className = 'grid grid-cols-1 gap-3';
+        return;
+    }
+    if (state.view === 'detailed') {
+        grid.className = 'grid grid-cols-1 gap-8';
+        return;
+    }
+    grid.className = 'grid grid-cols-1 gap-5';
+}
+
+function renderProjectCard(project) {
+    const card = document.createElement('div');
+    const compact = state.view === 'compact';
+    const detailed = state.view === 'detailed';
+    const listMode = state.view === 'list' || detailed || compact;
+
+    card.className = `project-card ${compact ? 'p-4' : 'p-7'} ${listMode ? 'md:flex md:items-center md:justify-between md:gap-6' : ''}`;
+
+    const summaryDescription = detailed
+        ? project.description + ' Generated directly from available repository files.'
+        : project.description;
+
+    card.innerHTML = `
+        <div class="space-y-3 flex-grow">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-ollama-snow border border-ollama-gray flex items-center justify-center shrink-0">
+                    <span class="iconify text-xl text-ollama-black" data-icon="${project.icon}"></span>
+                </div>
+                <div>
+                    <h3 class="${compact ? 'text-base' : 'text-xl'} font-medium">${project.title}</h3>
+                    <p class="text-xs text-ollama-stone uppercase tracking-wider">${toTitleCase(project.category)}</p>
+                </div>
+            </div>
+            ${compact ? '' : `<p class="text-ollama-stone leading-relaxed">${summaryDescription}</p>`}
+            <div class="flex flex-wrap gap-1.5 ${compact ? 'hidden' : ''}">
+                ${(project.techStack || []).map(tech => `<span class="tech-pill">${tech}</span>`).join('')}
+            </div>
+            <div class="flex flex-wrap gap-1.5 ${compact ? 'hidden' : ''}">
+                ${(project.tags || []).map(tag => `<span class="tag-pill">${tag}</span>`).join('')}
+            </div>
+        </div>
+        <div class="${listMode ? '' : 'pt-5 border-t border-ollama-gray'} flex gap-3 ${compact ? 'items-center' : ''}">
+            ${project.readmePath ? `<a href="${project.readmePath}" class="btn-pill-white text-xs px-4 py-2">Details</a>` : ''}
+            ${project.launchPath ? `<a href="${project.launchPath}" target="_blank" class="btn-pill-black text-xs px-4 py-2">Launch</a>` : ''}
+        </div>
+    `;
+
+    return card;
+}
+
+function renderProjects() {
+    applyViewClass();
+    const output = sortProjects(filterProjects());
+    grid.innerHTML = '';
+
+    emptyState.classList.toggle('hidden', output.length > 0);
+    output.forEach(project => {
+        grid.appendChild(renderProjectCard(project));
+    });
+}
+
+function renderReferences() {
+    referencesGrid.innerHTML = '';
+    referencesEmpty.classList.toggle('hidden', state.references.length > 0);
+
+    state.references.forEach(ref => {
+        const card = document.createElement('article');
+        card.className = 'project-card p-6';
+        card.innerHTML = `
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-ollama-bg border border-ollama-gray flex items-center justify-center">
+                        <span class="iconify text-xl text-ollama-black" data-icon="lucide:book-marked"></span>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-medium">${ref.title}</h3>
+                        <p class="text-sm text-ollama-stone">Reference page</p>
+                    </div>
+                </div>
+                <a href="${ref.path}" target="_blank" class="btn-pill-black text-xs px-4 py-2">Open</a>
+            </div>
+        `;
+        referencesGrid.appendChild(card);
+    });
+}
+
+function renderFilterButtons() {
+    const categories = [...new Set(state.projects.map(p => p.category))].sort();
+    filterContainer.innerHTML = '<button class="filter-pill active" data-filter="all">All</button>';
+
+    categories.forEach(category => {
+        const button = document.createElement('button');
+        button.className = 'filter-pill';
+        button.dataset.filter = category;
+        button.textContent = toTitleCase(category);
+        filterContainer.appendChild(button);
+    });
+
+    Array.from(filterContainer.querySelectorAll('.filter-pill')).forEach(button => {
+        button.addEventListener('click', () => {
+            state.filter = button.dataset.filter;
+            Array.from(filterContainer.querySelectorAll('.filter-pill')).forEach(el => el.classList.remove('active'));
+            button.classList.add('active');
+            renderProjects();
+        });
+    });
+}
+
+async function fetchRepoTree() {
+    const endpoints = [
+        'https://api.github.com/repos/philm013/philm013.github.io/git/trees/main?recursive=1',
+        'https://api.github.com/repos/philm013/philm013.github.io/git/trees/master?recursive=1'
+    ];
+
+    for (const endpoint of endpoints) {
+        try {
+            const response = await fetch(endpoint, {
+                headers: {
+                    Accept: 'application/vnd.github+json'
+                }
+            });
+            if (!response.ok) continue;
+            const payload = await response.json();
+            if (Array.isArray(payload.tree)) return payload.tree;
+        } catch (error) {
+            continue;
+        }
+    }
+
+    return null;
+}
+
+function loadFallbackData() {
+    // Fallback for offline/dev mode: keep the page usable.
+    state.projects = [
+        {
+            id: 'portfolio',
+            title: 'Portfolio Source',
+            description: 'Fallback mode active: unable to query GitHub API for auto-discovery.',
+            readmePath: './README.md',
+            launchPath: './index.html',
+            category: 'productivity',
+            tags: ['Fallback', 'Portfolio'],
+            techStack: ['HTML'],
+            icon: 'lucide:triangle-alert'
+        }
+    ];
+
+    state.references = [
+        { title: 'Repo References', path: './References/RepoReferences.html' },
+        { title: 'JS Libraries', path: './References/JS-Libraries.html' }
+    ];
+}
+
+function bindControls() {
+    searchInput.addEventListener('input', event => {
+        state.query = event.target.value || '';
+        renderProjects();
+    });
+
+    sortSelect.addEventListener('change', event => {
+        state.sort = event.target.value;
+        renderProjects();
+    });
+
+    viewSelect.addEventListener('change', event => {
+        state.view = event.target.value;
+        renderProjects();
+    });
+}
+
+async function initPortfolio() {
+    bindControls();
+    const tree = await fetchRepoTree();
+
+    if (!tree) {
+        loadFallbackData();
+    } else {
+        state.projects = extractTopLevelProjectFolders(tree)
+            .map(projectFromFolder)
+            .sort((a, b) => a.title.localeCompare(b.title));
+        state.references = referencesFromTree(tree);
+    }
+
+    renderFilterButtons();
+    renderProjects();
+    renderReferences();
+}
+
+initPortfolio();
     </script>
 </body>
 </html>
