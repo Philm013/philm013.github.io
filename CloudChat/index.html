@@ -706,11 +706,76 @@ self.addEventListener('message', async (e) => {
       return { content: text, url };
     }
 
+    // ── Skills Registry ───────────────────────────────────────
+    // Maps tool names to their AI Edge Gallery skill script paths.
+    // Used by runSkill() to load and execute skills in a hidden iframe.
+    const SKILL_REGISTRY = {
+      calculate:     'skills/built-in/calculate-math/scripts/index.html',
+      store_memory:  'skills/built-in/store-memory/scripts/index.html',
+      search_memory: 'skills/built-in/search-memory/scripts/index.html',
+      delete_memory: 'skills/built-in/delete-memory/scripts/index.html',
+      set_reminder:  'skills/built-in/set-reminder/scripts/index.html',
+      web_search:    'skills/built-in/web-search/scripts/index.html',
+      fetch_page:    'skills/built-in/fetch-page/scripts/index.html',
+    };
+
+    /**
+     * Load a skill script in a hidden iframe and call ai_edge_gallery_get_result.
+     * Falls back to the inline TOOL_REGISTRY execute() if the iframe approach fails.
+     * @param {string} scriptPath - Relative path to the skill's scripts/index.html
+     * @param {object} data - Arguments to pass (will be JSON-stringified)
+     * @param {string} [secret] - Optional API key / secret for the skill
+     * @returns {Promise<object>} Parsed JSON result from the skill
+     */
+    function runSkill(scriptPath, data, secret) {
+      return new Promise((resolve) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;border:0';
+        iframe.sandbox = 'allow-scripts allow-same-origin';
+        document.body.appendChild(iframe);
+
+        const timeout = setTimeout(() => {
+          document.body.removeChild(iframe);
+          resolve({ error: 'Skill timed out after 15s: ' + scriptPath });
+        }, 15000);
+
+        iframe.onload = async () => {
+          try {
+            const fn = iframe.contentWindow && iframe.contentWindow['ai_edge_gallery_get_result'];
+            if (typeof fn !== 'function') {
+              throw new Error('ai_edge_gallery_get_result not found in skill: ' + scriptPath);
+            }
+            const raw = await fn(JSON.stringify(data), secret || '');
+            clearTimeout(timeout);
+            document.body.removeChild(iframe);
+            resolve(typeof raw === 'string' ? JSON.parse(raw) : raw);
+          } catch (e) {
+            clearTimeout(timeout);
+            if (document.body.contains(iframe)) document.body.removeChild(iframe);
+            resolve({ error: 'Skill execution error: ' + e.message });
+          }
+        };
+
+        iframe.src = scriptPath;
+      });
+    }
+
     // ── Agent Tools ──────────────────────────────────────────
+    // Inline implementations remain as fallback / direct execution for tools
+    // that integrate tightly with app internals (embedAndStore, searchMemory, etc.).
+    // Tools with standalone skill scripts also dispatch through runSkill when available.
     const TOOL_REGISTRY = {
       calculate: {
         description: 'Math solver', parameters: { type: 'object', properties: { expression: { type: 'string' } } },
-        async execute(a) { try { return { result: eval(a.expression.replace(/[^0-9+\-*/.()% ]/g,'')) }; } catch(e) { return { error: e.message }; } }
+        async execute(a) {
+          const path = SKILL_REGISTRY.calculate;
+          if (path) return runSkill(path, a);
+          try {
+            const sanitized = String(a.expression).replace(/[^0-9+\-*/.()% ]/g, '');
+            // eslint-disable-next-line no-new-func
+            return { result: Function('"use strict"; return (' + sanitized + ')')() };
+          } catch(e) { return { error: e.message }; }
+        }
       },
       get_current_time: {
         description: 'Current time', parameters: { type: 'object', properties: {} },

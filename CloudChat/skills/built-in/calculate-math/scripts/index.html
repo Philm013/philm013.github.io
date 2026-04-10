@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculate Math</title>
+</head>
+<body>
+  <script>
+    window['ai_edge_gallery_get_result'] = async (data) => {
+      try {
+        const jsonData = JSON.parse(data);
+        const raw = String(jsonData.expression || '');
+
+        // Allow only safe numeric/operator characters
+        const sanitized = raw.replace(/[^0-9+\-*/.()%\s]/g, '');
+
+        if (!sanitized.trim()) {
+          return JSON.stringify({ error: 'No valid mathematical expression provided.' });
+        }
+
+        // Use Function constructor instead of eval for a slightly safer scope
+        // eslint-disable-next-line no-new-func
+        const result = Function('"use strict"; return (' + sanitized + ')')();
+
+        if (typeof result !== 'number' || !isFinite(result)) {
+          return JSON.stringify({ error: 'Expression did not produce a finite numeric result.' });
+        }
+
+        return JSON.stringify({ result: result });
+      } catch (e) {
+        return JSON.stringify({ error: 'Calculation failed: ' + e.message });
+      }
+    };
+  </script>
+
+  <!-- Local test UI -->
+  <div style="margin:20px;padding:20px;border:1px solid #ccc;font-family:sans-serif">
+    <h3>Calculate Math — Test</h3>
+    <input id="expr" type="text" placeholder="e.g. 15 / 100 * 240"
+      style="width:300px;padding:8px;font-size:14px">
+    <button id="run" style="padding:8px 16px;margin-left:8px;cursor:pointer">Run</button>
+    <pre id="out" style="margin-top:12px;padding:10px;background:#f4f4f4;font-size:13px"></pre>
+  </div>
+  <script>
+    document.getElementById('run').addEventListener('click', async () => {
+      const expr = document.getElementById('expr').value;
+      const out = document.getElementById('out');
+      out.textContent = 'Running…';
+      const result = await window['ai_edge_gallery_get_result'](JSON.stringify({ expression: expr }));
+      out.textContent = result;
+    });
+  </script>
+</body>
+</html>
