@@ -600,7 +600,7 @@
                 }
                 
                 const link = document.createElement('a');
-                link.href = `#${id}`;
+                link.href = `#${heading.id}`;
                 link.className = 'anchor-link';
                 link.innerHTML = '🔗';
                 link.style.marginLeft = '10px';
@@ -635,10 +635,6 @@
             const rows = Array.from(table.querySelectorAll('tbody tr'));
             if (rows.length === 0) return;
 
-            const heading = document.createElement('h1');
-            heading.textContent = 'Library Entry Catalog';
-            content.appendChild(heading);
-
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length < 4) return;
@@ -651,6 +647,7 @@
 
                 const h2 = document.createElement('h2');
                 h2.id = entryId;
+                h2.dataset.libraryEntry = 'true';
                 h2.textContent = libraryName;
                 content.appendChild(h2);
 
@@ -720,7 +717,8 @@
 
             let current = null;
             nodes.forEach(node => {
-                if (node.tagName === 'H1' || node.tagName === 'H2') {
+                const isMajorHeading = node.tagName === 'H1' || (node.tagName === 'H2' && node.dataset.libraryEntry !== 'true');
+                if (isMajorHeading) {
                     current = createSection(node.textContent.trim());
                     content.appendChild(current.section);
                     return;

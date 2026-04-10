@@ -151,89 +151,31 @@ tailwind.config = {
     <script>
         const rawMarkdown = `# MarkedUp
 
-    MarkedUp is a local-first browser capture and annotation tool for collecting webpages, screenshots, and PDFs, then marking them up with shapes, text, icons, emojis, notes, and exports.
+Loading documentation...
+`;
+        async function renderReadme() {
+            let markdownToRender = rawMarkdown;
+            try {
+                const candidates = ['README.md', 'readme.md'];
+                for (const file of candidates) {
+                    const response = await fetch(file, { cache: 'no-store' });
+                    if (response.ok) {
+                        markdownToRender = await response.text();
+                        break;
+                    }
+                }
+            } catch (error) {
+                // Fall back to embedded markdown when external files are unavailable.
+            }
 
-    ## Current State
-
-    MarkedUp is a modular vanilla JavaScript app with a local Node server for hosting, proxying, and Playwright-powered captures.
-
-    - Proxied iframe browsing
-    - Live or Playwright-backed page capture
-    - Canvas-based markup tools
-    - Collections and captures stored locally in IndexedDB
-    - PDF import, clipboard paste, notes, and exports
-    - Settings for capture behavior, asset providers, and defaults
-
-    ## Feature Set
-
-    ### Capture and Input
-
-    - Capture the current viewport or a full page
-    - Use auto, live, or node capture modes
-    - Paste images from the clipboard
-    - Import PDFs from a URL or local file
-
-    ### Markup and Review
-
-    - Draw rectangles, circles, arrows, lines, paths, text, point markers, icons, emojis, and stock images
-    - Add notes to numbered point markers
-    - Use undo, redo, zoom, fit-to-view, layers, and selection tools
-
-    ### Export and Organization
-
-    - Organize work into collections
-    - Search, sort, rename, and delete captures
-    - Export selected captures to ZIP or PDF
-    - Copy multiple marked-up captures as a single combined image grid
-
-    ## Runtime Model
-
-    MarkedUp is designed to run through the local Node server.
-
-    - The iframe browser depends on \`/proxy\`
-    - Node capture depends on \`/api/capture\`
-    - Opening \`index.html\` directly is not the primary workflow
-
-    ## Setup
-
-    ### Requirements
-
-    - Node.js 18+
-    - npm
-    - Playwright browser binaries or a local Chrome installation
-
-    ### Install
-
-    \`\`\`bash
-    npm install
-    npx playwright install chromium
-    \`\`\`
-
-    ### Run
-
-    \`\`\`bash
-    npm start
-    \`\`\`
-
-    Open \`http://127.0.0.1:4777\`.
-
-    ## Storage Model
-
-    - IndexedDB database: \`DevMarkupPro\`
-    - Stores: \`sessions_v2\` and \`captures_v2\`
-    - LocalStorage key: \`devmarkup_settings\`
-
-    ## Current Caveats
-
-    - Some sites may still behave poorly inside the proxied iframe
-    - PDF import currently turns the first rendered page into a capture
-    - The project does not currently define lint, test, or build commands beyond starting the server
-    `;
-        if (rawMarkdown.trim()) {
-            document.getElementById('readme-content').innerHTML = marked.parse(rawMarkdown);
-        } else {
-            document.getElementById('readme-content').innerHTML = '<div class="text-center py-24 border border-dashed border-ollama-gray rounded-xl"><span class="iconify text-5xl text-ollama-gray mb-6 mx-auto" data-icon="lucide:file-question"></span><h3 class="text-xl font-medium text-ollama-stone text-center m-0">No documentation found.</h3></div>';
+            if ((markdownToRender || '').trim()) {
+                document.getElementById('readme-content').innerHTML = marked.parse(markdownToRender);
+            } else {
+                document.getElementById('readme-content').innerHTML = '<div class="text-center py-24 border border-dashed border-ollama-gray rounded-xl"><span class="iconify text-5xl text-ollama-gray mb-6 mx-auto" data-icon="lucide:file-question"></span><h3 class="text-xl font-medium text-ollama-stone text-center m-0">No documentation found.</h3></div>';
+            }
         }
+
+        renderReadme();
     </script>
 </body>
 </html>

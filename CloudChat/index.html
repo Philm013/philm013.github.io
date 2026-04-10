@@ -131,6 +131,7 @@
     .btn-primary { background: var(--ollama-black); color: var(--ollama-white); border-color: var(--ollama-black); }
     .btn-primary:hover { opacity: 0.8; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    #folder-btn.folder-open { background: var(--ollama-black); color: var(--ollama-white); border-color: var(--ollama-black); }
 
     /* Panels */
     .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--ollama-border); display: flex; justify-content: space-between; align-items: center; }
@@ -156,6 +157,8 @@
     .slash-menu { position: absolute; bottom: 100%; left: 0; width: 100%; background: #fff; border: 1px solid var(--ollama-border); border-radius: 12px; display: none; flex-direction: column; overflow: hidden; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); margin-bottom: 8px; z-index: 500; }
     .slash-item { padding: 12px 16px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
     .slash-item:hover { background: var(--ollama-snow); }
+    .slash-item-title { font-size: 0.88rem; color: var(--ollama-near-black); }
+    .slash-item-meta { font-size: 0.72rem; color: var(--ollama-stone); margin-top: 2px; }
 
     .hidden { display: none !important; }
 
@@ -280,6 +283,7 @@
         <div id="slash-menu" class="slash-menu"></div>
         <div class="input-container">
           <button class="icon-btn" onclick="document.getElementById('global-file-input').click()">📎</button>
+          <button id="tool-insert-btn" class="icon-btn" title="Insert tool call">🛠️</button>
           <textarea id="chat-input" rows="1" placeholder="Initializing..." disabled></textarea>
           <div style="display: flex; gap: 4px;">
             <button id="send-btn" class="icon-btn primary" onclick="handleSend()" disabled title="Send">➤</button>
@@ -463,6 +467,8 @@
       inference: null,
       history: [],
       isGenerating: false,
+      stopRequested: false,
+      batchStopRequested: false,
       activeModel: REMOTE_MODEL,
       modelReady: false,
       embeddingWorker: null,
@@ -470,7 +476,9 @@
       embeddingQueue: Promise.resolve(),
       activeConversationId: null,
       dirHandle: null,
-      webEnrichedMode: false
+      webEnrichedMode: false,
+      showThinking: true,
+      memoryCategory: 'all'
     };
     window.State = State;
 
@@ -969,6 +977,219 @@ self.addEventListener('message', async (e) => {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    function mergeStreamingText(current, chunk) {
+      const next = String(chunk || '');
+      if (!next) return current;
+      if (!current) return next;
+      if (next.startsWith(current)) return next;
+      if (current === next) return current;
+      const maxOverlap = Math.min(current.length, next.length);
+      for (let i = maxOverlap; i > 0; i--) {
+        if (current.endsWith(next.slice(0, i))) {
+          return current + next.slice(i);
+        }
+      }
+      return current + next;
+    }
+
+    function toToolArgumentTemplate(name) {
+      const tool = TOOL_REGISTRY[name];
+      const required = tool?.parameters?.required || [];
+      const args = {};
+      required.forEach((k) => {
+        args[k] = '';
+      });
+      return `<tool_call>{"name":"${name}","arguments":${JSON.stringify(args)}}</tool_call>`;
+    }
+
+    function insertTextAtCursor(text, replaceStart = null, replaceEnd = null) {
+      const input = document.getElementById('chat-input');
+      const start = replaceStart == null ? input.selectionStart : replaceStart;
+      const end = replaceEnd == null ? input.selectionEnd : replaceEnd;
+      const before = input.value.slice(0, start);
+      const after = input.value.slice(end);
+      input.value = `${before}${text}${after}`;
+      const cursorPos = before.length + text.length;
+      input.selectionStart = cursorPos;
+      input.selectionEnd = cursorPos;
+      input.focus();
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function insertToolCallTemplate(name) {
+      const input = document.getElementById('chat-input');
+      const template = toToolArgumentTemplate(name);
+      const needsNewline = input.value.length > 0 && !input.value.endsWith('\n');
+      insertTextAtCursor(`${needsNewline ? '\n' : ''}${template}`);
+      hideInputMenu();
+    }
+
+    async function buildMentionContextFromText(messageText) {
+      const docTokens = [...messageText.matchAll(/@doc\[([^\]]+)\]/gi)].map(m => m[1].trim()).filter(Boolean);
+      const memTokens = [...messageText.matchAll(/@mem\[([^\]]+)\]/gi)].map(m => m[1].trim()).filter(Boolean);
+      if (!docTokens.length && !memTokens.length) return '';
+
+      const chunks = await getAllChunks();
+      const lines = [];
+
+      [...new Set(docTokens)].forEach((docName) => {
+        const docMatches = chunks
+          .filter(c => String(c.source || '').toLowerCase() === docName.toLowerCase() && (c.category === 'document' || c.category === 'document_summary'))
+          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+          .slice(0, 3);
+        if (!docMatches.length) return;
+        lines.push(`@doc[${docName}]`);
+        docMatches.forEach((m, i) => {
+          lines.push(`- Excerpt ${i + 1}: ${String(m.text || '').slice(0, 350)}`);
+        });
+      });
+
+      [...new Set(memTokens)].forEach((token) => {
+        const q = token.toLowerCase();
+        const memMatches = chunks
+          .filter(c => c.category !== 'document_summary')
+          .filter(c => String(c.text || '').toLowerCase().includes(q) || String(c.source || '').toLowerCase().includes(q))
+          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+          .slice(0, 3);
+        if (!memMatches.length) return;
+        lines.push(`@mem[${token}]`);
+        memMatches.forEach((m, i) => {
+          lines.push(`- Match ${i + 1} (${m.category}/${m.source}): ${String(m.text || '').slice(0, 280)}`);
+        });
+      });
+
+      if (!lines.length) return '';
+      return `\n\n[User-selected references]\n${lines.join('\n')}`;
+    }
+
+    const quickActions = {
+      clear: () => {
+        const input = document.getElementById('chat-input');
+        State.history = [];
+        document.getElementById('chat-container').innerHTML = '';
+        input.value = '';
+      },
+      library: () => showPanel('library'),
+      memory: () => showPanel('memory'),
+      batch: () => showPanel('batch'),
+      settings: () => showPanel('settings'),
+      tools: () => showPanel('tools')
+    };
+
+    function hideInputMenu() {
+      const menu = document.getElementById('slash-menu');
+      menu.style.display = 'none';
+      menu.innerHTML = '';
+    }
+
+    function showInputMenu(items) {
+      const menu = document.getElementById('slash-menu');
+      menu.innerHTML = '';
+      items.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'slash-item';
+        row.innerHTML = `<div class="slash-item-title">${escapeHtml(item.title)}</div>${item.meta ? `<div class="slash-item-meta">${escapeHtml(item.meta)}</div>` : ''}`;
+        row.addEventListener('click', () => {
+          item.onSelect();
+          hideInputMenu();
+          document.getElementById('chat-input').focus();
+        });
+        menu.appendChild(row);
+      });
+      menu.style.display = items.length ? 'flex' : 'none';
+    }
+
+    async function showMentionMenuFromInput() {
+      const input = document.getElementById('chat-input');
+      const cursor = input.selectionStart;
+      const head = input.value.slice(0, cursor);
+      const match = head.match(/(^|\s)@([^\s]*)$/);
+      if (!match) {
+        hideInputMenu();
+        return;
+      }
+
+      const partial = match[2] || '';
+      const replaceStart = cursor - partial.length - 1;
+      const replaceEnd = cursor;
+      const q = partial.toLowerCase();
+      const chunks = await getAllChunks();
+      const docs = [...new Set(chunks.filter(c => c.category === 'document' || c.category === 'document_summary').map(c => String(c.source || '')))]
+        .filter(Boolean)
+        .filter(s => !q || s.toLowerCase().includes(q))
+        .slice(0, 8);
+      const mems = chunks
+        .filter(c => c.category !== 'document_summary')
+        .filter(c => !q || String(c.text || '').toLowerCase().includes(q) || String(c.source || '').toLowerCase().includes(q))
+        .slice(0, 8);
+
+      const items = [];
+      docs.forEach((src) => {
+        items.push({
+          title: `@doc[${src}]`,
+          meta: 'Reference document',
+          onSelect: () => insertTextAtCursor(`@doc[${src}] `, replaceStart, replaceEnd)
+        });
+      });
+      mems.forEach((m) => {
+        const token = String(m.source || m.category || 'memory').slice(0, 40);
+        items.push({
+          title: `@mem[${token}]`,
+          meta: `${m.category}: ${String(m.text || '').slice(0, 60)}`,
+          onSelect: () => insertTextAtCursor(`@mem[${token}] `, replaceStart, replaceEnd)
+        });
+      });
+      showInputMenu(items);
+    }
+
+    function showSlashMenuFromInput() {
+      const input = document.getElementById('chat-input');
+      const val = input.value.trimStart();
+      if (!val.startsWith('/')) {
+        hideInputMenu();
+        return;
+      }
+      const q = val.slice(1).toLowerCase();
+      const items = [];
+
+      Object.keys(quickActions)
+        .filter(k => k.includes(q))
+        .forEach((k) => {
+          items.push({
+            title: `/${k}`,
+            meta: 'Built-in command',
+            onSelect: () => {
+              input.value = '';
+              quickActions[k]();
+            }
+          });
+        });
+
+      Object.entries(TOOL_REGISTRY)
+        .filter(([name]) => name.toLowerCase().includes(q))
+        .forEach(([name, tool]) => {
+          items.push({
+            title: `/${name}`,
+            meta: `Tool: ${tool.description}`,
+            onSelect: () => {
+              input.value = '';
+              insertToolCallTemplate(name);
+            }
+          });
+        });
+
+      items.push({
+        title: '@doc[...] / @mem[...]',
+        meta: 'Type @ to mention documents or memories',
+        onSelect: () => {
+          input.value = '@';
+          input.focus();
+        }
+      });
+
+      showInputMenu(items.slice(0, 14));
+    }
+
     /**
      * Toggle a collapsible block (thinking or tool-call) open/closed.
      * Uses a data attribute on the block element to store its content ID so that
@@ -1018,7 +1239,9 @@ self.addEventListener('message', async (e) => {
      * @param {string} text - Raw model output, possibly containing thinking tags.
      * @returns {string} Sanitized HTML string ready for innerHTML assignment.
      */
-    function renderMarkdown(text) {
+    function renderMarkdown(text, options = {}) {
+      const showThinking = options.showThinking !== false;
+      const isStreaming = !!options.isStreaming;
       let think = ''; let main = text;
 
       // Priority 1: <|think|>...</|/think|> (DeepSeek-R1, Qwen3, etc.)
@@ -1038,13 +1261,12 @@ self.addEventListener('message', async (e) => {
       }
 
       let html = '';
-      if (think) {
+      if (think && showThinking) {
         const id = 'th-' + Math.random().toString(36).slice(2, 8);
-        // Show open + "Thinking..." while streaming, collapsed + "Thought process" when done
-        const isStreaming = !main;
-        const openClass = isStreaming ? ' open' : '';
-        const arrow = isStreaming ? '&#9660;' : '&#9654;';
-        const label = isStreaming ? 'Thinking...' : 'Thought process';
+        const stillThinking = isStreaming || !main;
+        const openClass = stillThinking ? ' open' : '';
+        const arrow = stillThinking ? '&#9660;' : '&#9654;';
+        const label = stillThinking ? 'Thinking...' : 'Thought process';
         // Use data-target instead of an inline closure to avoid embedding IDs in JS code
         html += `<div class="thinking-block">` +
           `<div class="thinking-toggle" data-target="${escapeHtml(id)}" onclick="toggleBlock(this)">` +
@@ -1055,9 +1277,27 @@ self.addEventListener('message', async (e) => {
       }
 
       // Strip tool_call blocks — they are rendered separately by renderToolCallBlock()
-      main = main.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_call>[\s\S]*/g, '');
-      html += DOMPurify.sanitize(marked.parse(main || '...'));
+      main = main.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_call>[\s\S]*/g, '').trim();
+      if (!main) return html || '<span style="color:var(--ollama-stone)">...</span>';
+      html += DOMPurify.sanitize(marked.parse(main));
       return html;
+    }
+
+    function updateSendButtons() {
+      const sendBtn = document.getElementById('send-btn');
+      const searchBtn = document.getElementById('search-send-btn');
+      const searchEnabled = isSearchConfigured() && State.modelReady && !State.isGenerating;
+      if (State.isGenerating) {
+        sendBtn.textContent = '■';
+        sendBtn.title = 'Stop';
+        sendBtn.disabled = false;
+      } else {
+        sendBtn.textContent = '➤';
+        sendBtn.title = 'Send';
+        sendBtn.disabled = !State.modelReady;
+      }
+      searchBtn.disabled = !searchEnabled;
+      searchBtn.style.display = isSearchConfigured() ? '' : 'none';
     }
 
     // ── Core Inference Boot ──────────────────────────────────
@@ -1127,9 +1367,7 @@ self.addEventListener('message', async (e) => {
         State.modelReady = true; updateStatus('online', 'Ready');
         document.getElementById('chat-input').disabled = false;
         document.getElementById('chat-input').placeholder = "Ask anything...";
-        document.getElementById('send-btn').disabled = false;
-        document.getElementById('search-send-btn').disabled = !isSearchConfigured();
-        document.getElementById('search-send-btn').style.display = isSearchConfigured() ? '' : 'none';
+        updateSendButtons();
         document.getElementById('model-rescue').classList.remove('open');
         document.getElementById('global-loader').classList.add('hidden');
       } catch (e) {
@@ -1194,9 +1432,13 @@ self.addEventListener('message', async (e) => {
      *   - string: override text (used by batch processor / programmatic sends).
      */
     async function handleSend(ov = null) {
+      if (State.isGenerating) {
+        State.stopRequested = true;
+        return;
+      }
       const input = document.getElementById('chat-input');
       const text = ov === true ? null : (ov || input.value.trim());
-      if (!ov && (!text || State.isGenerating || !State.modelReady)) return;
+      if (!ov && (!text || !State.modelReady)) return;
 
       const welcomeMsg = document.getElementById('welcome-msg');
       if (welcomeMsg) welcomeMsg.remove();
@@ -1208,20 +1450,28 @@ self.addEventListener('message', async (e) => {
       }
 
       State.isGenerating = true;
+      State.stopRequested = false;
+      input.disabled = true;
+      updateSendButtons();
       const aiEl = renderMessage('', 'ai');
 
       try {
+        let mentionContext = '';
+        if (text) {
+          mentionContext = await buildMentionContextFromText(text);
+        }
+
         // ── RAG pre-fetch ──────────────────────────────────────
         // If the vector store has documents, search for relevant context before
         // the first generation pass so the model has grounding material.
-        let ragContext = "";
+        let ragContext = mentionContext;
         const chunks = await getAllChunks();
         if (text && chunks.length > 0) {
           updateStatus('loading', 'Searching memory...');
           try {
             const rag = await searchMemory(text, 3);
             if (rag.length) {
-              ragContext = "\n\n[Relevant context from your library]\n" +
+              ragContext += "\n\n[Relevant context from your library]\n" +
                 rag.map(r => `Source: ${r.source}\nContent: ${r.text}`).join('\n\n');
             }
           } catch (e) { console.warn('RAG search failed', e); }
@@ -1231,6 +1481,7 @@ self.addEventListener('message', async (e) => {
         // ── Agentic loop ───────────────────────────────────────
         for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
           let full = "";
+          const iterShowThinking = State.showThinking && iter === 0;
           // Pass isFollowUpIteration=true on iter > 0 so buildPrompt omits the
           // "CRITICAL: tool_call not in thinking block" note (the note only matters
           // on the first pass when the model has a chain-of-thought prefix).
@@ -1241,15 +1492,32 @@ self.addEventListener('message', async (e) => {
           // generateResponse() delivers cumulative (not delta) text on each callback,
           // so we assign full = chunk rather than appending.
           await new Promise(res => {
+            let resolved = false;
             State.inference.generateResponse(prompt, (chunk, done) => {
-              if (chunk) full = chunk;
-              renderMessage(full, 'ai', aiEl);
-              if (done) res();
+              if (resolved) return;
+              if (State.stopRequested) {
+                resolved = true;
+                res();
+                return;
+              }
+              full = mergeStreamingText(full, chunk);
+              renderMessage(full, 'ai', aiEl, { isStreaming: !done, showThinking: iterShowThinking });
+              if (done) {
+                resolved = true;
+                res();
+              }
             });
           });
 
           // Transition "Thinking..." → "Thought process" now that streaming finished
           collapseThinkingBlocks(aiEl);
+
+          if (State.stopRequested) {
+            if (full && full.trim()) {
+              State.history.push({ role: 'ai', text: full });
+            }
+            break;
+          }
 
           // ── Tool call detection ────────────────────────────
           const tc = full.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
@@ -1295,7 +1563,13 @@ self.addEventListener('message', async (e) => {
           }
         }
       } catch (e) { renderMessage('Error: ' + e.message, 'ai', aiEl); }
-      finally { State.isGenerating = false; State.webEnrichedMode = false; }
+      finally {
+        State.isGenerating = false;
+        State.stopRequested = false;
+        State.webEnrichedMode = false;
+        input.disabled = false;
+        updateSendButtons();
+      }
     }
     window.handleSend = handleSend;
 
@@ -1365,11 +1639,11 @@ self.addEventListener('message', async (e) => {
       return p;
     }
 
-    function renderMessage(t, r, el = null) {
+    function renderMessage(t, r, el = null, options = {}) {
       const c = document.getElementById('chat-container');
       if (!el) { el = document.createElement('div'); el.className = `message ${r}`; c.appendChild(el); }
       if (r === 'user') { el.innerHTML = `<div class="user-bubble">${escapeHtml(t)}</div>`; }
-      else { el.innerHTML = renderMarkdown(t); }
+      else { el.innerHTML = renderMarkdown(t, options); }
       c.scrollTop = c.scrollHeight; return el;
     }
 
@@ -1442,6 +1716,16 @@ self.addEventListener('message', async (e) => {
           <div class="tool-card-desc">${escapeHtml(tool.description)}</div>
           <div class="tool-card-params">${paramStr}</div>
         `;
+        const insertBtn = document.createElement('button');
+        insertBtn.className = 'btn-block';
+        insertBtn.style.marginTop = '8px';
+        insertBtn.style.padding = '8px 10px';
+        insertBtn.textContent = 'Insert into chat';
+        insertBtn.onclick = () => {
+          hidePanels();
+          insertToolCallTemplate(name);
+        };
+        item.appendChild(insertBtn);
         list.appendChild(item);
       });
     }
@@ -1449,14 +1733,39 @@ self.addEventListener('message', async (e) => {
     // Batch
     document.getElementById('batch-run-btn').onclick = async () => {
       const lines = document.getElementById('batch-textarea').value.split('\n').filter(l => l.trim());
-      let last = "";
-      for (let i = 0; i < lines.length; i++) {
-        let p = lines[i]; if (last) p = p.replace('{{previous}}', last);
-        document.getElementById('chat-input').value = p;
-        await handleSend();
-        const lastMsg = State.history[State.history.length - 1];
-        last = lastMsg ? lastMsg.text : "";
+      const chain = document.getElementById('batch-chain-toggle').checked;
+      const progress = document.getElementById('batch-progress');
+      const runBtn = document.getElementById('batch-run-btn');
+      const stopBtn = document.getElementById('batch-stop-btn');
+      if (!lines.length) {
+        progress.textContent = 'No prompts';
+        return;
       }
+      State.batchStopRequested = false;
+      runBtn.disabled = true;
+      stopBtn.disabled = false;
+      let last = "";
+      try {
+        for (let i = 0; i < lines.length; i++) {
+          if (State.batchStopRequested) break;
+          progress.textContent = `${i + 1}/${lines.length}`;
+          let p = lines[i];
+          if (chain && last) p = p.replace(/\{\{previous\}\}/g, last);
+          await handleSend(p);
+          const lastAi = [...State.history].reverse().find(m => m.role === 'ai' || m.role === 'model');
+          last = lastAi ? lastAi.text : "";
+        }
+        progress.textContent = State.batchStopRequested ? 'Stopped' : 'Complete';
+      } finally {
+        runBtn.disabled = false;
+        stopBtn.disabled = true;
+        State.batchStopRequested = false;
+      }
+    };
+
+    document.getElementById('batch-stop-btn').onclick = () => {
+      State.batchStopRequested = true;
+      if (State.isGenerating) State.stopRequested = true;
     };
 
     // History
@@ -1494,18 +1803,72 @@ self.addEventListener('message', async (e) => {
     // Memory
     async function refreshMemoryPanel() {
       const all = await getAllChunks();
-      const list = document.getElementById('memory-list'); if (!list) return;
-      list.innerHTML = '';
-      // Filter out summaries from the detailed 'Knowledge Base' view to avoid redundancy
+      const list = document.getElementById('memory-list');
+      const pills = document.getElementById('memory-cat-pills');
+      const query = (document.getElementById('memory-search')?.value || '').trim().toLowerCase();
+      if (!list || !pills) return;
+
       const detailed = all.filter(c => c.category !== 'document_summary');
-      detailed.slice(0, 100).forEach(c => {
-        const item = document.createElement('div'); item.className = 'memory-item';
-        item.innerHTML = `<div class="memory-item-text">${escapeHtml(c.text.slice(0, 100))}...<div class="memory-item-meta"><span class="mem-cat mem-cat-${c.category}">${c.category}</span> ${c.source}</div></div><button onclick="window.deleteChunk('${c.id}').then(refreshMemoryPanel)" class="memory-item-del">×</button>`;
+      const counts = detailed.reduce((acc, c) => {
+        acc[c.category] = (acc[c.category] || 0) + 1;
+        return acc;
+      }, {});
+
+      pills.innerHTML = '';
+      const categories = ['all', ...Object.keys(counts).sort()];
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-block';
+        btn.style.width = 'auto';
+        btn.style.padding = '4px 10px';
+        btn.style.fontSize = '0.72rem';
+        btn.style.borderRadius = '9999px';
+        const count = cat === 'all' ? detailed.length : counts[cat];
+        btn.textContent = `${cat} (${count || 0})`;
+        if (State.memoryCategory === cat) {
+          btn.style.background = 'var(--ollama-black)';
+          btn.style.color = 'var(--ollama-white)';
+          btn.style.borderColor = 'var(--ollama-black)';
+        }
+        btn.onclick = () => {
+          State.memoryCategory = cat;
+          refreshMemoryPanel();
+        };
+        pills.appendChild(btn);
+      });
+
+      const filtered = detailed
+        .filter(c => State.memoryCategory === 'all' || c.category === State.memoryCategory)
+        .filter(c => !query || c.text.toLowerCase().includes(query) || String(c.source || '').toLowerCase().includes(query));
+
+      list.innerHTML = '';
+      if (!filtered.length) {
+        list.innerHTML = '<div style="color:var(--ollama-stone);font-size:0.85rem;text-align:center;padding:16px;">No matches found.</div>';
+        return;
+      }
+
+      filtered.slice(0, 150).forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'memory-item';
+        const snippet = c.text.length > 140 ? `${c.text.slice(0, 140)}...` : c.text;
+        item.innerHTML = `<div class="memory-item-text">${escapeHtml(snippet)}<div class="memory-item-meta"><span class="mem-cat mem-cat-${c.category}">${c.category}</span> ${escapeHtml(String(c.source || 'unknown'))}</div></div><button onclick="window.deleteChunk('${c.id}').then(refreshMemoryPanel).then(refreshLibraryPanel)" class="memory-item-del">×</button>`;
         list.appendChild(item);
       });
     }
 
-    function clearMemories() { if(confirm('Clear all?')) openRAGDB().then(db => db.transaction('chunks', 'readwrite').objectStore('chunks').clear().then(() => { refreshMemoryPanel(); refreshLibraryPanel(); })); }
+    async function clearMemories() {
+      if (!confirm('Clear all memories?')) return;
+      const db = await openRAGDB();
+      const tx = db.transaction('chunks', 'readwrite');
+      tx.objectStore('chunks').clear();
+      await new Promise((resolve, reject) => {
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+      await refreshMemoryPanel();
+      await refreshLibraryPanel();
+    }
     window.clearMemories = clearMemories;
 
     // Share
@@ -1557,7 +1920,7 @@ self.addEventListener('message', async (e) => {
       localStorage.setItem('lm_search_provider', v);
       document.getElementById('api-key-row').style.display = (v === 'brave' || v === 'tavily') ? '' : 'none';
       document.getElementById('searxng-url-row').style.display = (v === 'searxng') ? '' : 'none';
-      document.getElementById('search-send-btn').style.display = (v !== 'none') ? '' : 'none';
+      updateSendButtons();
     };
 
     const savedApiKey = localStorage.getItem('lm_search_key');
@@ -1566,7 +1929,19 @@ self.addEventListener('message', async (e) => {
 
     const savedSearxngUrl = localStorage.getItem('lm_searxng_url');
     if (savedSearxngUrl) document.getElementById('searxng-url').value = savedSearxngUrl;
-    document.getElementById('searxng-url').oninput = e => localStorage.setItem('lm_searxng_url', e.target.value);
+    document.getElementById('searxng-url').oninput = e => {
+      localStorage.setItem('lm_searxng_url', e.target.value);
+      updateSendButtons();
+    };
+
+    const thinkingToggleEl = document.getElementById('thinking-toggle');
+    const savedThinking = localStorage.getItem('lm_show_thinking');
+    State.showThinking = savedThinking !== 'false';
+    thinkingToggleEl.checked = State.showThinking;
+    thinkingToggleEl.onchange = e => {
+      State.showThinking = !!e.target.checked;
+      localStorage.setItem('lm_show_thinking', String(State.showThinking));
+    };
 
     // Import/Export
     function exportData() {
@@ -1598,9 +1973,23 @@ self.addEventListener('message', async (e) => {
     document.getElementById('folder-btn').onclick = async () => {
       if (!window.showDirectoryPicker) return showToast('Folder picker not supported');
       try {
-        State.dirHandle = await window.showDirectoryPicker();
+        if (State.dirHandle) {
+          State.dirHandle = null;
+          document.getElementById('folder-btn').classList.remove('folder-open');
+          document.getElementById('folder-btn').textContent = 'Open Folder (Sync)';
+          showToast('Folder closed');
+          return;
+        }
+
+        State.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        document.getElementById('folder-btn').classList.add('folder-open');
+        document.getElementById('folder-btn').textContent = `Folder: ${State.dirHandle.name}`;
         showToast(`Scanning "${State.dirHandle.name}"...`);
         const SUPPORTED = /\.(md|txt|pdf|docx)$/i;
+        const fpKey = 'lm_folder_fp';
+        const fingerprints = JSON.parse(localStorage.getItem(fpKey) || '{}');
+        let ingested = 0;
+        let skipped = 0;
         
         async function walk(dir, prefix = '') {
           for await (const entry of dir.values()) {
@@ -1609,19 +1998,29 @@ self.addEventListener('message', async (e) => {
             else if (SUPPORTED.test(entry.name)) {
               const file = await entry.getFile();
               const fullPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+              const fp = `${file.lastModified}-${file.size}`;
+              if (fingerprints[fullPath] === fp) {
+                skipped++;
+                continue;
+              }
               // eslint-disable-next-line no-useless-assignment
               let text = '';
               if (/\.pdf$/i.test(entry.name)) text = await extractPDFText(file);
               else if (/\.docx$/i.test(entry.name)) text = await extractDOCXText(file);
               else text = await file.text();
               await ingestDocument(fullPath, text);
+              fingerprints[fullPath] = fp;
+              ingested++;
             }
           }
         }
         await walk(State.dirHandle);
-        showToast('Folder sync complete');
+        localStorage.setItem(fpKey, JSON.stringify(fingerprints));
+        showToast(`Folder sync complete (${ingested} ingested${skipped ? `, ${skipped} unchanged` : ''})`);
       } catch (e) { console.error(e); showToast('Folder sync failed'); }
     };
+
+    document.getElementById('memory-search').addEventListener('input', () => refreshMemoryPanel());
 
     // Memory Audit
     document.getElementById('memory-audit-btn').onclick = async () => {
@@ -1652,6 +2051,7 @@ self.addEventListener('message', async (e) => {
       refreshLibraryPanel();
       refreshHistoryPanel();
       refreshMemoryPanel();
+      updateSendButtons();
       const hash = window.location.hash;
       if (hash.startsWith('#lm:')) {
         try {
@@ -1685,25 +2085,61 @@ self.addEventListener('message', async (e) => {
       }
     };
 
-    // Slash menu
-    window.applySlash = t => {
-      const input = document.getElementById('chat-input');
-      if (t === 'clear') { State.history = []; document.getElementById('chat-container').innerHTML = ''; input.value = ''; }
-      else showPanel(t);
-      document.getElementById('slash-menu').style.display = 'none';
-      input.focus();
+    const chatInput = document.getElementById('chat-input');
+    const toolInsertBtn = document.getElementById('tool-insert-btn');
+
+    toolInsertBtn.addEventListener('click', () => {
+      const items = Object.entries(TOOL_REGISTRY).map(([name, tool]) => ({
+        title: name,
+        meta: tool.description,
+        onSelect: () => insertToolCallTemplate(name)
+      }));
+      showInputMenu(items);
+      chatInput.focus();
+    });
+
+    chatInput.oninput = async () => {
+      const val = chatInput.value;
+      if (val.trimStart().startsWith('/')) {
+        showSlashMenuFromInput();
+        return;
+      }
+
+      const cursor = chatInput.selectionStart;
+      const head = chatInput.value.slice(0, cursor);
+      if (/(^|\s)@[^\s]*$/.test(head)) {
+        await showMentionMenuFromInput();
+        return;
+      }
+
+      hideInputMenu();
     };
 
-    document.getElementById('chat-input').oninput = e => {
-      const val = e.target.value; const menu = document.getElementById('slash-menu');
-      if (val.startsWith('/')) {
-        const cmds = ['clear', 'library', 'memory', 'batch', 'settings'].filter(c => c.startsWith(val.slice(1)));
-        menu.innerHTML = cmds.map(c => `<div class="slash-item" onclick="window.applySlash('${c}')">/${c}</div>`).join('');
-        menu.style.display = cmds.length ? 'flex' : 'none';
-      } else menu.style.display = 'none';
+    chatInput.onkeydown = e => {
+      if (e.key === 'Escape') {
+        hideInputMenu();
+        return;
+      }
+
+      if (e.key === 'Enter' && !e.shiftKey) {
+        const menu = document.getElementById('slash-menu');
+        const firstItem = menu.querySelector('.slash-item');
+        if (menu.style.display !== 'none' && firstItem) {
+          e.preventDefault();
+          firstItem.click();
+          return;
+        }
+        e.preventDefault();
+        handleSend();
+      }
     };
 
-    document.getElementById('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('slash-menu');
+      if (!menu.contains(e.target) && e.target !== chatInput && e.target !== toolInsertBtn) {
+        hideInputMenu();
+      }
+    });
   </script>
 </body>
 </html>

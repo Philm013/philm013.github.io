@@ -219,11 +219,35 @@ const Browser = {
         if (!vw || !vh) throw new Error('Display stream has no video dimensions');
 
         const rect = frame.getBoundingClientRect();
-        const sx = vw / Math.max(1, window.innerWidth);
-        const sy = vh / Math.max(1, window.innerHeight);
+        const viewportW = Math.max(
+            1,
+            Math.round(
+                (window.visualViewport && window.visualViewport.width)
+                || document.documentElement.clientWidth
+                || window.innerWidth
+                || 1
+            )
+        );
+        const viewportH = Math.max(
+            1,
+            Math.round(
+                (window.visualViewport && window.visualViewport.height)
+                || document.documentElement.clientHeight
+                || window.innerHeight
+                || 1
+            )
+        );
 
-        const cropX = Math.max(0, Math.floor(rect.left * sx));
-        const cropY = Math.max(0, Math.floor(rect.top * sy));
+        const streamScale = Math.min(vw / viewportW, vh / viewportH);
+        const mappedW = Math.round(viewportW * streamScale);
+        const mappedH = Math.round(viewportH * streamScale);
+        const offsetX = Math.max(0, Math.floor((vw - mappedW) / 2));
+        const offsetY = Math.max(0, Math.floor((vh - mappedH) / 2));
+        const sx = streamScale;
+        const sy = streamScale;
+
+        const cropX = Math.max(0, Math.floor(offsetX + (rect.left * sx)));
+        const cropY = Math.max(0, Math.floor(offsetY + (rect.top * sy)));
         const cropW = Math.max(1, Math.min(vw - cropX, Math.ceil(rect.width * sx)));
         const cropH = Math.max(1, Math.min(vh - cropY, Math.ceil(rect.height * sy)));
 
