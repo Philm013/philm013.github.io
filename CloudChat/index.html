@@ -2482,7 +2482,12 @@ Rules:
         systemPrompt += '\n\nCRITICAL: The <tool_call> block MUST appear in your main response, NEVER inside your thinking/reasoning block. Think first, then output the tool call as your response.';
       }
 
-      // Activate Gemma 4 native thinking mode with the <|think|> token
+      // Activate Gemma 4 native thinking mode by prefixing the system content with
+      // the <|think|> control token. This token is part of the Gemma 4 tokenizer
+      // vocabulary and signals the model to produce a reasoning channel before
+      // responding. Excluded on follow-up iterations (tool-call continuations)
+      // because the model has already reasoned on the first pass and re-adding the
+      // token would waste context budget and can confuse the tool-response format.
       if (State.showThinking && !isFollowUpIteration) {
         systemPrompt = '<|think|>\n' + systemPrompt;
       }
@@ -3197,7 +3202,7 @@ Rules:
     // ── Auto-backup Toggle ──
     const autoBackupToggle = document.getElementById('auto-backup-toggle');
     autoBackupToggle.checked = localStorage.getItem('lm_auto_backup') === 'true';
-    autoBackupToggle.onchange = e => localStorage.setItem('lm_auto_backup', String(e.target.checked));
+    autoBackupToggle.onchange = e => localStorage.setItem('lm_auto_backup', e.target.checked ? 'true' : 'false');
 
     // ── Thinking Toggle ──
     const thinkingToggleEl = document.getElementById('thinking-toggle');
