@@ -409,11 +409,11 @@
   </div>
 
   <!-- Tool Argument Panel/Modal -->
-  <div id="tool-arg-overlay" class="tool-arg-overlay">
+  <div id="tool-arg-overlay" class="tool-arg-overlay" role="dialog" aria-modal="true" aria-labelledby="tool-arg-title">
     <div class="tool-arg-panel">
       <div class="tool-arg-header">
         <span class="tool-arg-title" id="tool-arg-title"></span>
-        <button class="tool-arg-close" id="tool-arg-close-btn">&times;</button>
+        <button class="tool-arg-close" id="tool-arg-close-btn" aria-label="Close">&times;</button>
       </div>
       <div class="tool-arg-desc" id="tool-arg-desc"></div>
       <div id="tool-arg-fields"></div>
@@ -1541,8 +1541,10 @@ self.addEventListener('message', async (e) => {
       });
 
       overlay.classList.add('open');
-      // Focus the first input after a brief delay for animation
+      // Focus the first input after the slide-up / fade-in animation completes (~250ms).
+      // Guard against the panel being closed before the timeout fires.
       setTimeout(() => {
+        if (!overlay.classList.contains('open')) return;
         const first = fieldsEl.querySelector('input, select');
         if (first) first.focus();
       }, 100);
@@ -1798,8 +1800,8 @@ self.addEventListener('message', async (e) => {
         const lastLt = main.lastIndexOf('<');
         if (lastLt >= 0) {
           const tail = main.slice(lastLt);
-          const openers = ['<|think|>', '<|channel>thought', '<tool_call>', '<tool_response>', '<start_of_turn>', '<end_of_turn>'];
-          if (openers.some(tag => tag.startsWith(tail) && tag !== tail)) {
+          const partialTags = ['<|think|>', '<|channel>thought', '<tool_call>', '<tool_response>', '<start_of_turn>', '<end_of_turn>'];
+          if (partialTags.some(tag => tag.startsWith(tail) && tag !== tail)) {
             main = main.slice(0, lastLt).trim();
           }
         }
