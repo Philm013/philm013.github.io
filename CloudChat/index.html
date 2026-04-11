@@ -3397,11 +3397,13 @@ Tool Selection Guidelines:
       }
 
       // Activate Gemma 4 native thinking mode by prefixing the system content with
-      // the <|think|> control token. This token is part of the Gemma 4 tokenizer
-      // vocabulary and signals the model to produce a reasoning channel before
-      // responding. Thinking mode is a conversation-level setting so it is always
-      // included in the system turn when enabled.
-      if (State.showThinking) {
+      // the <|think|> control token.  Per the Gemma 4 docs, thinking mode is a
+      // conversation-level setting included in the system turn.  On follow-up
+      // iterations (tool-call continuations), thinking is disabled to save tokens
+      // and prevent tool calls from being placed inside thinking blocks — this
+      // matches the recommended Gemma 4 agentic pattern.
+      const thinkingActive = State.showThinking && !isFollowUpIteration;
+      if (thinkingActive) {
         systemPrompt = '<|think|>' + systemPrompt;
       }
 
@@ -3478,8 +3480,14 @@ Tool Selection Guidelines:
       // turn (no new <|turn>model). Otherwise, start a new model turn.
       if (newestGroupIsOpenTool) {
         p += historyText;
+      } else if (!thinkingActive) {
+        // Per the Gemma 4 docs, when thinking mode is off, pre-fill an empty
+        // thinking channel to stabilize model behavior.  Larger models may
+        // generate thoughts spontaneously; the empty channel signals the model
+        // to skip reasoning and respond directly.
+        p += historyText + '<|turn>model\n<|channel>thought\n<channel|>';
       } else {
-        p += historyText + `<|turn>model\n`;
+        p += historyText + '<|turn>model\n';
       }
       return p;
     }
