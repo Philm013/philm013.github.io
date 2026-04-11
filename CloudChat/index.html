@@ -964,6 +964,30 @@ self.addEventListener('message', async (e) => {
       return { content: text, url };
     }
 
+    // ── Shared Helpers ─────────────────────────────────────────
+    async function geocodeLocation(location) {
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`;
+      const geoRes = await fetch(geoUrl, { signal: AbortSignal.timeout(8000) });
+      if (!geoRes.ok) throw new Error('Geocoding failed: ' + geoRes.status);
+      const geoData = await geoRes.json();
+      if (!geoData.results || !geoData.results.length) throw new Error(`Could not find location: "${location}"`);
+      const place = geoData.results[0];
+      return {
+        lat: place.latitude, lon: place.longitude,
+        name: `${place.name}${place.admin1 ? ', ' + place.admin1 : ''}${place.country ? ', ' + place.country : ''}`,
+        shortName: `${place.name}${place.country ? ', ' + place.country : ''}`
+      };
+    }
+
+    function wmoDescription(code) {
+      const map = {0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Icy fog',
+        51:'Light drizzle',53:'Moderate drizzle',55:'Dense drizzle',61:'Slight rain',63:'Moderate rain',
+        65:'Heavy rain',71:'Slight snow',73:'Moderate snow',75:'Heavy snow',77:'Snow grains',
+        80:'Slight showers',81:'Moderate showers',82:'Violent showers',85:'Slight snow showers',
+        86:'Heavy snow showers',95:'Thunderstorm',96:'Thunderstorm with slight hail',99:'Thunderstorm with heavy hail'};
+      return map[code] || 'Unknown';
+    }
+
     // ── Skills Registry ───────────────────────────────────────
     // Maps TOOL_REGISTRY keys to their AI Edge Gallery skill script paths.
     // When a key is present the tool's execute() will delegate to runSkill(),
@@ -980,12 +1004,22 @@ self.addEventListener('message', async (e) => {
       interactive_map: 'skills/built-in/interactive-map/scripts/index.html',
       query_wikipedia: 'skills/built-in/query-wikipedia/scripts/index.html',
       search_media:  'skills/built-in/search-media/scripts/index.html',
+      calculate_hash: 'skills/built-in/calculate-hash/scripts/index.html',
+      mood_tracker:  'skills/built-in/mood-tracker/scripts/index.html',
+      generate_qr_code: 'skills/built-in/qr-code/scripts/index.html',
+      text_spinner:  'skills/built-in/text-spinner/scripts/index.html',
       weather_forecast:   'skills/featured/weather-forecast/scripts/index.html',
       historical_weather: 'skills/featured/historical-weather/scripts/index.html',
       marine_weather:     'skills/featured/marine-weather/scripts/index.html',
       explore_public_apis:'skills/featured/api-explorer/scripts/index.html',
       useless_fact:       'skills/featured/useless-facts/scripts/index.html',
       trivia_question:    'skills/featured/trivia-quest/scripts/index.html',
+      batch_processor:    'skills/featured/batch-processor/scripts/index.html',
+      document_ingester:  'skills/featured/document-ingester/scripts/index.html',
+      rag_chat:           'skills/featured/rag-chat/scripts/index.html',
+      mood_music:         'skills/featured/mood-music/scripts/index.html',
+      restaurant_roulette:'skills/featured/restaurant-roulette/scripts/index.html',
+      virtual_piano:      'skills/featured/virtual-piano/scripts/index.html',
     };
 
     const SKILL_DOC_REGISTRY = {
@@ -1007,6 +1041,16 @@ self.addEventListener('message', async (e) => {
       explore_public_apis: 'skills/featured/api-explorer/SKILL.md',
       useless_fact: 'skills/featured/useless-facts/SKILL.md',
       trivia_question: 'skills/featured/trivia-quest/SKILL.md',
+      calculate_hash: 'skills/built-in/calculate-hash/SKILL.md',
+      mood_tracker: 'skills/built-in/mood-tracker/SKILL.md',
+      generate_qr_code: 'skills/built-in/qr-code/SKILL.md',
+      text_spinner: 'skills/built-in/text-spinner/SKILL.md',
+      batch_processor: 'skills/featured/batch-processor/SKILL.md',
+      document_ingester: 'skills/featured/document-ingester/SKILL.md',
+      rag_chat: 'skills/featured/rag-chat/SKILL.md',
+      mood_music: 'skills/featured/mood-music/SKILL.md',
+      restaurant_roulette: 'skills/featured/restaurant-roulette/SKILL.md',
+      virtual_piano: 'skills/featured/virtual-piano/SKILL.md',
     };
 
     let toolSkillDocsLoaded = false;
@@ -1309,7 +1353,37 @@ self.addEventListener('message', async (e) => {
         async execute(a) {
           const viaSkill = await executeSkillIfAvailable('weather_forecast', { location: a.location });
           if (viaSkill && !viaSkill.error) return viaSkill;
-          return { error: 'Weather skill not available.' };
+          // Inline fallback: Open-Meteo Forecast API
+          try {
+            const loc = String(a.location || '').trim();
+            if (!loc) return { error: 'No location provided.' };
+            const geo = await geocodeLocation(loc);
+            const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lon}` +
+              `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,precipitation` +
+              `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,wind_speed_10m_max` +
+              `&timezone=auto&forecast_days=7`;
+            const forecastRes = await fetch(forecastUrl, { signal: AbortSignal.timeout(8000) });
+            if (!forecastRes.ok) throw new Error('Forecast fetch failed: ' + forecastRes.status);
+            const data = await forecastRes.json();
+            const current = data.current;
+            const daily = data.daily;
+            const forecast = daily.time.map((date, i) => ({
+              date, condition: wmoDescription(daily.weather_code[i]),
+              high: `${daily.temperature_2m_max[i]}°C`, low: `${daily.temperature_2m_min[i]}°C`,
+              precipitation: `${daily.precipitation_sum[i]}mm`, maxWind: `${daily.wind_speed_10m_max[i]} km/h`
+            }));
+            return {
+              result: {
+                location: geo.name, coordinates: { lat: geo.lat.toFixed(4), lon: geo.lon.toFixed(4) },
+                current: {
+                  condition: wmoDescription(current.weather_code), temperature: `${current.temperature_2m}°C`,
+                  humidity: `${current.relative_humidity_2m}%`, wind: `${current.wind_speed_10m} km/h`,
+                  precipitation: `${current.precipitation}mm`
+                },
+                forecast
+              }
+            };
+          } catch (e) { return { error: viaSkill?.error || e.message }; }
         }
       },
       historical_weather: {
@@ -1326,7 +1400,48 @@ self.addEventListener('message', async (e) => {
         async execute(a) {
           const viaSkill = await executeSkillIfAvailable('historical_weather', { location: a.location, start_date: a.start_date, end_date: a.end_date });
           if (viaSkill && !viaSkill.error) return viaSkill;
-          return { error: 'Historical weather skill not available.' };
+          // Inline fallback: Open-Meteo Archive API
+          try {
+            const loc = String(a.location || '').trim();
+            const startDate = String(a.start_date || '').trim();
+            const endDate = String(a.end_date || '').trim();
+            if (!loc) return { error: 'No location provided.' };
+            if (!startDate || !endDate) return { error: 'start_date and end_date are required (YYYY-MM-DD format).' };
+            const geo = await geocodeLocation(loc);
+            const archiveUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${geo.lat}&longitude=${geo.lon}` +
+              `&start_date=${startDate}&end_date=${endDate}` +
+              `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&timezone=auto`;
+            const archiveRes = await fetch(archiveUrl, { signal: AbortSignal.timeout(10000) });
+            if (!archiveRes.ok) throw new Error('Archive API failed: ' + archiveRes.status);
+            const data = await archiveRes.json();
+            const d = data.daily;
+            if (!d || !d.time || !d.time.length) return { error: 'No historical data available for the specified date range.' };
+            const maxTemps = d.temperature_2m_max.filter(v => v !== null);
+            const minTemps = d.temperature_2m_min.filter(v => v !== null);
+            const precip = d.precipitation_sum.filter(v => v !== null);
+            const hottest = { value: Math.max(...maxTemps), date: d.time[d.temperature_2m_max.indexOf(Math.max(...maxTemps))] };
+            const coldest = { value: Math.min(...minTemps), date: d.time[d.temperature_2m_min.indexOf(Math.min(...minTemps))] };
+            const totalPrecip = precip.reduce((s, v) => s + v, 0).toFixed(1);
+            const avgMax = (maxTemps.reduce((s, v) => s + v, 0) / maxTemps.length).toFixed(1);
+            const avgMin = (minTemps.reduce((s, v) => s + v, 0) / minTemps.length).toFixed(1);
+            const step = Math.max(1, Math.floor(d.time.length / 10));
+            const sample = d.time.filter((_, i) => i % step === 0).slice(0, 10).map((date) => {
+              const idx = d.time.indexOf(date);
+              return { date, high: `${d.temperature_2m_max[idx]}°C`, low: `${d.temperature_2m_min[idx]}°C`, precipitation: `${d.precipitation_sum[idx]}mm` };
+            });
+            return {
+              result: {
+                location: geo.shortName, period: { start: startDate, end: endDate, days: d.time.length },
+                summary: {
+                  averageHigh: `${avgMax}°C`, averageLow: `${avgMin}°C`,
+                  hottestDay: { date: hottest.date, temp: `${hottest.value}°C` },
+                  coldestDay: { date: coldest.date, temp: `${coldest.value}°C` },
+                  totalPrecipitation: `${totalPrecip}mm`
+                },
+                sample
+              }
+            };
+          } catch (e) { return { error: viaSkill?.error || e.message }; }
         }
       },
       marine_weather: {
@@ -1335,7 +1450,40 @@ self.addEventListener('message', async (e) => {
         async execute(a) {
           const viaSkill = await executeSkillIfAvailable('marine_weather', { location: a.location });
           if (viaSkill && !viaSkill.error) return viaSkill;
-          return { error: 'Marine weather skill not available.' };
+          // Inline fallback: Open-Meteo Marine API
+          try {
+            const loc = String(a.location || '').trim();
+            if (!loc) return { error: 'No location provided.' };
+            const geo = await geocodeLocation(loc);
+            const compassDir = (deg) => {
+              if (deg == null) return 'N/A';
+              const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+              return dirs[Math.round(deg / 45) % 8];
+            };
+            const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${geo.lat}&longitude=${geo.lon}` +
+              `&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction` +
+              `&daily=wave_height_max,swell_wave_height_max&timezone=auto&forecast_days=7`;
+            const marineRes = await fetch(marineUrl, { signal: AbortSignal.timeout(8000) });
+            if (!marineRes.ok) return { error: `Marine data not available for "${geo.shortName}". This API only works for coastal/ocean locations.` };
+            const data = await marineRes.json();
+            const current = data.current || {};
+            const daily = data.daily || {};
+            const forecast = (daily.time || []).map((date, i) => ({
+              date, maxWaveHeight: `${daily.wave_height_max?.[i] ?? 'N/A'}m`,
+              maxSwellHeight: `${daily.swell_wave_height_max?.[i] ?? 'N/A'}m`
+            }));
+            return {
+              result: {
+                location: geo.shortName, coordinates: { lat: geo.lat.toFixed(4), lon: geo.lon.toFixed(4) },
+                current: {
+                  waveHeight: `${current.wave_height ?? 'N/A'}m`, waveDirection: compassDir(current.wave_direction),
+                  wavePeriod: `${current.wave_period ?? 'N/A'}s`, swellHeight: `${current.swell_wave_height ?? 'N/A'}m`,
+                  swellDirection: compassDir(current.swell_wave_direction)
+                },
+                forecast
+              }
+            };
+          } catch (e) { return { error: viaSkill?.error || e.message }; }
         }
       },
       explore_public_apis: {
@@ -1351,7 +1499,41 @@ self.addEventListener('message', async (e) => {
         async execute(a) {
           const viaSkill = await executeSkillIfAvailable('explore_public_apis', { category: a.category || '', keyword: a.keyword || '' });
           if (viaSkill && !viaSkill.error) return viaSkill;
-          return { error: 'API explorer skill not available.' };
+          // Inline fallback: publicapis.org with CORS proxy fallback
+          try {
+            const category = String(a.category || '').trim();
+            const keyword = String(a.keyword || '').trim().toLowerCase();
+            let apiUrl = 'https://api.publicapis.org/entries';
+            if (category) apiUrl += `?category=${encodeURIComponent(category)}`;
+            let data;
+            try {
+              const res = await fetch(apiUrl, { signal: AbortSignal.timeout(8000) });
+              if (!res.ok) throw new Error('Primary endpoint failed');
+              data = await res.json();
+            } catch {
+              // CORS fallback: api.allorigins.win is a public CORS proxy.
+              // Used only as a fallback when the primary endpoint fails from the browser.
+              // NOTE: Third-party proxies can potentially inspect traffic; only use for non-sensitive public API data.
+              const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
+              const res2 = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+              if (!res2.ok) throw new Error('API Explorer fetch failed: ' + res2.status);
+              data = await res2.json();
+            }
+            let entries = data.entries || [];
+            if (keyword) {
+              entries = entries.filter(e =>
+                (e.API || '').toLowerCase().includes(keyword) ||
+                (e.Description || '').toLowerCase().includes(keyword) ||
+                (e.Category || '').toLowerCase().includes(keyword)
+              );
+            }
+            const results = entries.slice(0, 10).map(e => ({
+              name: e.API, description: e.Description, category: e.Category,
+              link: e.Link, auth: e.Auth || 'None', https: e.HTTPS
+            }));
+            if (!results.length) return { result: { message: 'No APIs found matching your search.', total: 0, results: [] } };
+            return { result: { total_found: entries.length, showing: results.length, results } };
+          } catch (e) { return { error: viaSkill?.error || e.message }; }
         }
       },
       useless_fact: {
@@ -1360,7 +1542,27 @@ self.addEventListener('message', async (e) => {
         async execute() {
           const viaSkill = await executeSkillIfAvailable('useless_fact', {});
           if (viaSkill && !viaSkill.error) return viaSkill;
-          return { error: 'Useless facts skill not available.' };
+          // Inline fallback: uselessfacts API with static list fallback
+          try {
+            const res = await fetch('https://uselessfacts.jsph.pl/random.json?language=en', { signal: AbortSignal.timeout(8000) });
+            if (!res.ok) throw new Error('Useless facts API failed');
+            const data = await res.json();
+            return { result: { fact: data.text || data.fact || 'No fact available.', source: 'uselessfacts.jsph.pl' } };
+          } catch {
+            const facts = [
+              "Honey never spoils. Archaeologists have found 3000-year-old honey in Egyptian tombs that was still edible.",
+              "A group of flamingos is called a 'flamboyance'.",
+              "Bananas are berries, but strawberries are not.",
+              "The Eiffel Tower can grow more than 6 inches in summer due to thermal expansion.",
+              "Octopuses have three hearts and blue blood.",
+              "A day on Venus is longer than a year on Venus.",
+              "Wombat feces are cube-shaped.",
+              "The human nose can detect over 1 trillion different scents.",
+              "Cleopatra lived closer in time to the Moon landing than to the building of the Great Pyramid.",
+              "There are more possible iterations of a game of chess than there are atoms in the observable universe."
+            ];
+            return { result: { fact: facts[Math.floor(Math.random() * facts.length)], source: 'curated' } };
+          }
         }
       },
       trivia_question: {
@@ -1376,7 +1578,198 @@ self.addEventListener('message', async (e) => {
         async execute(a) {
           const viaSkill = await executeSkillIfAvailable('trivia_question', { category: a.category || null, difficulty: a.difficulty || '' });
           if (viaSkill && !viaSkill.error) return viaSkill;
-          return { error: 'Trivia skill not available.' };
+          // Inline fallback: Open Trivia Database API
+          try {
+            const category = a.category ? `&category=${parseInt(a.category, 10)}` : '';
+            const diffLower = String(a.difficulty || '').toLowerCase();
+            const difficulty = ['easy', 'medium', 'hard'].includes(diffLower)
+              ? `&difficulty=${diffLower}` : '';
+            const url = `https://opentdb.com/api.php?amount=1&type=multiple${category}${difficulty}&encode=url3986`;
+            const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+            if (!res.ok) throw new Error('Open Trivia DB failed: ' + res.status);
+            const data = await res.json();
+            if (data.response_code !== 0 || !data.results || !data.results.length) {
+              return { error: 'No trivia question available for these parameters. Try different settings.' };
+            }
+            const q = data.results[0];
+            const decode = (s) => decodeURIComponent(s);
+            const allAnswers = [...q.incorrect_answers.map(decode), decode(q.correct_answer)].sort(() => Math.random() - 0.5);
+            const letters = ['A', 'B', 'C', 'D'];
+            const choices = allAnswers.map((ans, i) => `${letters[i]}. ${ans}`);
+            const correctLetter = letters[allAnswers.indexOf(decode(q.correct_answer))];
+            return {
+              result: {
+                category: decode(q.category), difficulty: q.difficulty, question: decode(q.question),
+                choices, correct_answer: `${correctLetter}. ${decode(q.correct_answer)}`,
+                instructions: 'Present the question and choices to the user. After they answer (or ask for the answer), reveal the correct answer.'
+              }
+            };
+          } catch (e) { return { error: viaSkill?.error || e.message }; }
+        }
+      },
+      // ── Additional Skills ─────────────────────────────────────
+      calculate_hash: {
+        description: 'Calculate the SHA-1 hash of a given text string.',
+        parameters: { type: 'object', properties: { text: { type: 'string', description: 'The text to hash' } }, required: ['text'] },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('calculate_hash', { text: a.text });
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          try {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(String(a.text || ''));
+            const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return { result: { hash: hashHex, algorithm: 'SHA-1', input: a.text } };
+          } catch (e) { return { error: e.message }; }
+        }
+      },
+      mood_tracker: {
+        description: 'Log and track daily mood on a 1-10 scale with optional comments. Retrieves mood history for analysis.',
+        parameters: {
+          type: 'object',
+          properties: {
+            action: { type: 'string', enum: ['log', 'history'], description: '"log" to record a mood entry, "history" to retrieve past entries' },
+            score: { type: 'number', description: 'Mood score from 1 (very bad) to 10 (excellent). Required for "log" action.' },
+            comment: { type: 'string', description: 'Optional note about why you feel this way' }
+          },
+          required: ['action']
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('mood_tracker', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: viaSkill?.error || 'Mood tracker skill could not be loaded.' };
+        }
+      },
+      generate_qr_code: {
+        description: 'Generate a QR code image for a given URL or text.',
+        parameters: {
+          type: 'object',
+          properties: {
+            text: { type: 'string', description: 'The URL or text to encode in the QR code' },
+            size: { type: 'number', description: 'QR code size in pixels (default 200)' }
+          },
+          required: ['text']
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('generate_qr_code', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: viaSkill?.error || 'QR code skill could not be loaded.' };
+        }
+      },
+      text_spinner: {
+        description: 'Display styled text on screen with animation effects.',
+        parameters: {
+          type: 'object',
+          properties: {
+            text: { type: 'string', description: 'The text to display' },
+            label: { type: 'string', description: 'Display label or style for the text' }
+          },
+          required: ['text']
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('text_spinner', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: viaSkill?.error || 'Text spinner skill could not be loaded.' };
+        }
+      },
+      batch_processor: {
+        description: 'Execute a sequence of prompts in order, where each step can reference the previous result using {{previous}}. Useful for multi-step workflows.',
+        parameters: {
+          type: 'object',
+          properties: {
+            prompts: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Array of prompt strings to execute sequentially. Use {{previous}} to reference the prior step output.'
+            }
+          },
+          required: ['prompts']
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('batch_processor', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: viaSkill?.error || 'Batch processor skill could not be loaded.' };
+        }
+      },
+      document_ingester: {
+        description: 'Ingest a document (PDF, DOCX, or TXT) into local memory by chunking its text for later retrieval.',
+        parameters: {
+          type: 'object',
+          properties: {
+            text: { type: 'string', description: 'The full text content of the document to ingest' },
+            source: { type: 'string', description: 'Source name or filename for the document' },
+            chunk_size: { type: 'number', description: 'Number of characters per chunk (default 500)' }
+          },
+          required: ['text']
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('document_ingester', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: viaSkill?.error || 'Document ingester skill could not be loaded.' };
+        }
+      },
+      rag_chat: {
+        description: 'Search previously ingested documents using semantic similarity and return relevant passages for answering questions.',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'The question or search query to find relevant document passages' },
+            top_k: { type: 'number', description: 'Number of top results to return (default 3)' }
+          },
+          required: ['query']
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('rag_chat', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: viaSkill?.error || 'RAG chat skill could not be loaded.' };
+        }
+      },
+      mood_music: {
+        description: 'Generate or find music based on a mood or genre description.',
+        parameters: {
+          type: 'object',
+          properties: {
+            mood: { type: 'string', description: 'Mood or feeling (e.g. "happy", "relaxing", "energetic")' },
+            genre: { type: 'string', description: 'Music genre (e.g. "jazz", "pop", "classical")' }
+          },
+          required: ['mood']
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('mood_music', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: viaSkill?.error || 'Mood music skill could not be loaded.' };
+        }
+      },
+      restaurant_roulette: {
+        description: 'Spin a roulette wheel to randomly pick a restaurant or cuisine type for a given location.',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: 'City or area to find restaurants in' },
+            cuisine: { type: 'string', description: 'Preferred cuisine type (optional)' }
+          },
+          required: ['location']
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('restaurant_roulette', a);
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: viaSkill?.error || 'Restaurant roulette skill could not be loaded.' };
+        }
+      },
+      virtual_piano: {
+        description: 'Open an interactive virtual piano keyboard that can be played in the browser.',
+        parameters: {
+          type: 'object',
+          properties: {
+            note: { type: 'string', description: 'Optional specific note to play (e.g. "C4", "A3")' }
+          },
+          required: []
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('virtual_piano', a || {});
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: viaSkill?.error || 'Virtual piano skill could not be loaded.' };
         }
       }
     };
