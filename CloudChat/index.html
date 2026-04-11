@@ -1103,14 +1103,26 @@ self.addEventListener('message', async (e) => {
         }
       },
       interactive_map: {
-        description: 'Show a map view for a location.',
-        parameters: { type: 'object', properties: { location: { type: 'string', description: 'Location string like city, address, or place name' } }, required: ['location'] },
+        description: 'Show a map view for a location, optionally searching for specific places nearby (e.g. restaurants, shops, landmarks).',
+        parameters: { type: 'object', properties: { location: { type: 'string', description: 'Location string like city, address, or place name' }, search_query: { type: 'string', description: 'Optional search term for places to find at the location (e.g. "donut shops", "restaurants", "gas stations")' } }, required: ['location'] },
         async execute(a) {
           const viaSkill = await executeSkillIfAvailable('interactive_map', a);
           if (viaSkill && !viaSkill.error) return viaSkill;
           const loc = String(a.location || '').trim();
           if (!loc) return { error: 'No location provided.' };
-          return { webview: { iframe: true, url: `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&output=embed` } };
+          const search = String(a.search_query || '').trim();
+          // Build the embed query: include search term if provided
+          const embedQuery = search ? `${search} near ${loc}` : loc;
+          const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(embedQuery)}&output=embed`;
+          // Build Google Maps URLs API links for richer user interaction
+          const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(embedQuery)}`;
+          const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(loc)}`;
+          return {
+            webview: { iframe: true, url: embedUrl },
+            map_links: { search: searchUrl, directions: directionsUrl },
+            location: loc,
+            search_query: search || null
+          };
         }
       },
       query_wikipedia: {
@@ -1538,7 +1550,7 @@ self.addEventListener('message', async (e) => {
         const lastLt = main.lastIndexOf('<');
         if (lastLt >= 0) {
           const tail = main.slice(lastLt);
-          const openers = ['<|think|>', '<|channel>thought', '<tool_call>'];
+          const openers = ['<|think|>', '<|channel>thought', '<tool_call>', '<tool_response>'];
           if (openers.some(tag => tag.startsWith(tail) && tag !== tail)) {
             main = main.slice(0, lastLt).trim();
           }
@@ -1563,6 +1575,10 @@ self.addEventListener('message', async (e) => {
 
       // Strip tool_call blocks — they are rendered separately by renderToolCallBlock()
       main = main.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_call>[\s\S]*/g, '').trim();
+
+      // Strip tool_response blocks — these are internal context fed back by the
+      // agentic loop and should never be displayed to the user.
+      main = main.replace(/<tool_response>[\s\S]*?<\/tool_response>/g, '').replace(/<tool_response>[\s\S]*/g, '').trim();
 
       // Strip Gemma turn markers that may leak into model output on follow-up iterations
       main = main.replace(/<start_of_turn>(?:model|user)\n?/g, '').replace(/<end_of_turn>/g, '').trim();
@@ -1944,7 +1960,11 @@ self.addEventListener('message', async (e) => {
             // instead of the raw webview JSON which it cannot meaningfully process
             if (res && typeof res === 'object' && res.webview) {
               const loc = normalizedArgs.location || normalizedArgs.query || 'the requested location';
-              toolResponsePayload = { result: `Interactive map displayed for "${loc}".` };
+              const search = normalizedArgs.search_query || '';
+              const desc = search
+                ? `Interactive map displayed showing "${search}" near "${loc}". The user can see the map with search results, and has links to search in Google Maps and get directions.`
+                : `Interactive map displayed for "${loc}". The user can see the embedded map and has links to search in Google Maps and get directions.`;
+              toolResponsePayload = { result: desc };
             }
 
             // Feed tool result back into history as a synthetic user turn
@@ -2131,14 +2151,44 @@ Rules:
       result.appendChild(pre);
 
       if (res && typeof res === 'object' && res.webview && res.webview.url) {
-        const mapLink = document.createElement('a');
-        mapLink.href = String(res.webview.url);
-        mapLink.target = '_blank';
-        mapLink.rel = 'noopener noreferrer';
-        mapLink.textContent = 'Open map view';
-        mapLink.style.display = 'inline-block';
-        mapLink.style.marginTop = '6px';
-        result.appendChild(mapLink);
+        // Show Google Maps URL action links
+        const linkBar = document.createElement('div');
+        linkBar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;';
+
+        const MAPS_LINK_STYLE = 'display:inline-block;padding:4px 10px;border-radius:6px;font-size:0.8rem;text-decoration:none;color:#fff;';
+
+        if (res.map_links && res.map_links.search) {
+          const searchLink = document.createElement('a');
+          searchLink.href = String(res.map_links.search);
+          searchLink.target = '_blank';
+          searchLink.rel = 'noopener noreferrer';
+          searchLink.textContent = '🔍 Search in Google Maps';
+          searchLink.style.cssText = MAPS_LINK_STYLE + 'background:#1a73e8;';
+          linkBar.appendChild(searchLink);
+        }
+
+        if (res.map_links && res.map_links.directions) {
+          const dirLink = document.createElement('a');
+          dirLink.href = String(res.map_links.directions);
+          dirLink.target = '_blank';
+          dirLink.rel = 'noopener noreferrer';
+          dirLink.textContent = '🧭 Get Directions';
+          dirLink.style.cssText = MAPS_LINK_STYLE + 'background:#34a853;';
+          linkBar.appendChild(dirLink);
+        }
+
+        // Fallback: plain "Open map" link when no map_links are present
+        if (!res.map_links) {
+          const mapLink = document.createElement('a');
+          mapLink.href = String(res.webview.url);
+          mapLink.target = '_blank';
+          mapLink.rel = 'noopener noreferrer';
+          mapLink.textContent = 'Open map view';
+          mapLink.style.cssText = MAPS_LINK_STYLE + 'background:#1a73e8;';
+          linkBar.appendChild(mapLink);
+        }
+
+        result.appendChild(linkBar);
       }
 
       block.appendChild(toggle);
