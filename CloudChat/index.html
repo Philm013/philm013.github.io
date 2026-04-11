@@ -1315,6 +1315,30 @@ self.addEventListener('message', async (e) => {
       return current + next;
     }
 
+    /**
+     * Detect if streamed text is stuck in a repeating pattern.
+     * Checks the tail of the text for a short phrase that repeats 4+ times.
+     * @param {string} text - The full accumulated response text so far.
+     * @returns {boolean} True if a repeating loop is detected.
+     */
+    function detectStreamingRepetition(text) {
+      if (!text || text.length < 80) return false;
+      // Check the last 300 chars for repeated short phrases (3–30 chars long)
+      const tail = text.slice(-300);
+      for (let len = 3; len <= 30; len++) {
+        const phrase = tail.slice(-len);
+        // Count how many times this phrase repeats consecutively at the end
+        let count = 0;
+        let pos = tail.length;
+        while (pos >= len && tail.slice(pos - len, pos) === phrase) {
+          count++;
+          pos -= len;
+        }
+        if (count >= 4) return true;
+      }
+      return false;
+    }
+
     function toToolArgumentTemplate(name) {
       const tool = TOOL_REGISTRY[name];
       const required = tool?.parameters?.required || [];
@@ -1928,8 +1952,11 @@ self.addEventListener('message', async (e) => {
 
         // ── Agentic loop ───────────────────────────────────────
         const maxIters = getSettingsValues().maxToolIters;
+        // Track previous tool calls to detect duplicate invocations
+        let prevToolKey = null;
         for (let iter = 0; iter < maxIters; iter++) {
           let full = "";
+          let repetitionDetected = false;
           const iterShowThinking = State.showThinking && iter === 0;
           // Pass isFollowUpIteration=true on iter > 0 so buildPrompt omits the
           // "CRITICAL: tool_call not in thinking block" note (the note only matters
@@ -1958,6 +1985,15 @@ self.addEventListener('message', async (e) => {
                 return;
               }
               full = mergeStreamingText(full, chunk);
+
+              // Detect repetitive output loops (e.g. "turn start turning turn...")
+              if (detectStreamingRepetition(full)) {
+                repetitionDetected = true;
+                resolved = true;
+                res();
+                return;
+              }
+
               renderMessage(full, 'ai', aiEl, { isStreaming: !done, showThinking: iterShowThinking });
               if (done) {
                 resolved = true;
@@ -1968,6 +2004,16 @@ self.addEventListener('message', async (e) => {
 
           // Transition "Thinking..." → "Thought process" now that streaming finished
           collapseThinkingBlocks(aiEl);
+
+          // If repetition was detected, trim the repeated tail and finish
+          if (repetitionDetected) {
+            // Remove the trailing repeated text so the user sees a clean message
+            const cleaned = full.replace(/(.{3,30}?)\1{3,}$/g, '$1').trim();
+            const finalText = cleaned || full;
+            renderMessage(finalText, 'ai', aiEl, { isStreaming: false, showThinking: iterShowThinking });
+            State.history.push({ role: 'ai', text: finalText });
+            break;
+          }
 
           if (State.stopRequested) {
             if (full && full.trim()) {
@@ -1992,6 +2038,39 @@ self.addEventListener('message', async (e) => {
               State.history.push({ role: 'ai', text: full });
               break;
             }
+
+            // ── Duplicate tool call detection ──────────────────
+            // If the model calls the same tool with the same arguments as the
+            // previous iteration, stop the loop to avoid redundant results.
+            const toolKey = JSON.stringify({ name: call.name, arguments: call.arguments });
+            if (toolKey === prevToolKey) {
+              // Feed a system message telling the model it already has the result
+              State.history.push({ role: 'ai', text: full });
+              State.history.push({ role: 'user', text: '[System: You already called this tool with the same arguments. Use the previous result to answer the user\'s question now.]' });
+              // Force a final answer generation
+              const finalPrompt = await buildPrompt("", true);
+              let finalFull = "";
+              const finalBubble = document.createElement('div');
+              finalBubble.className = 'ai-bubble';
+              aiEl.appendChild(finalBubble);
+              await new Promise(res => {
+                let resolved = false;
+                State.inference.generateResponse(finalPrompt, (chunk, done) => {
+                  if (resolved) return;
+                  if (State.stopRequested) { resolved = true; res(); return; }
+                  finalFull = mergeStreamingText(finalFull, chunk);
+                  if (detectStreamingRepetition(finalFull)) { resolved = true; res(); return; }
+                  renderMessage(finalFull, 'ai', aiEl, { isStreaming: !done, showThinking: false });
+                  if (done) { resolved = true; res(); }
+                });
+              });
+              collapseThinkingBlocks(aiEl);
+              if (finalFull && finalFull.trim()) {
+                State.history.push({ role: 'ai', text: finalFull });
+              }
+              break;
+            }
+            prevToolKey = toolKey;
 
             // Strip pre-tool-call filler text from the visible bubble.
             // Models often emit speculative text like "Let me search for that..."
@@ -2039,15 +2118,38 @@ self.addEventListener('message', async (e) => {
               const desc = search
                 ? `Interactive map displayed showing "${search}" near "${loc}". The user can see the map with search results, and has links to search in Google Maps and get directions.`
                 : `Interactive map displayed for "${loc}". The user can see the embedded map and has links to search in Google Maps and get directions.`;
-              toolResponsePayload = { result: desc };
+              toolResponsePayload = { result: desc, note: 'The map is already displayed to the user. Summarize the result — do not call this tool again.' };
             }
 
             // Feed tool result back into history as a synthetic user turn
             State.history.push({ role: 'ai', text: full });
             State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: call.name, result: toolResponsePayload })}\n</tool_response>` });
 
-            // After the last iteration, stop unconditionally (no fourth LLM pass)
-            if (iter === maxIters - 1) break;
+            // On the last iteration, force a final answer (matches LocalMind behavior)
+            if (iter === maxIters - 1) {
+              State.history.push({ role: 'user', text: '[System: Tool call limit reached. Please provide your final answer now.]' });
+              const finalPrompt = await buildPrompt("", true);
+              let finalFull = "";
+              const finalBubble = document.createElement('div');
+              finalBubble.className = 'ai-bubble';
+              aiEl.appendChild(finalBubble);
+              await new Promise(res => {
+                let resolved = false;
+                State.inference.generateResponse(finalPrompt, (chunk, done) => {
+                  if (resolved) return;
+                  if (State.stopRequested) { resolved = true; res(); return; }
+                  finalFull = mergeStreamingText(finalFull, chunk);
+                  if (detectStreamingRepetition(finalFull)) { resolved = true; res(); return; }
+                  renderMessage(finalFull, 'ai', aiEl, { isStreaming: !done, showThinking: false });
+                  if (done) { resolved = true; res(); }
+                });
+              });
+              collapseThinkingBlocks(aiEl);
+              if (finalFull && finalFull.trim()) {
+                State.history.push({ role: 'ai', text: finalFull });
+              }
+              break;
+            }
 
             // Clear RAG context for follow-up iterations; it's already in history
             ragContext = "";
@@ -2098,7 +2200,9 @@ Rules:
 - Never fabricate tool results.
 - Always use the <tool_call> XML format provided below. Do not invent other formats.
 - You can translate text between 140+ languages directly — no tool needed for translation.
-- When returning images or media results, always include proper attribution and photographer credits.`;
+- When returning images or media results, always include proper attribution and photographer credits.
+- NEVER call the same tool with the same arguments more than once. If you already received a tool result, use it to answer — do not call the tool again.
+- After a tool result is returned, summarize the findings for the user. Do not call additional tools unless the user asks a follow-up question.`;
 
     function getSettingsValues() {
       return {
