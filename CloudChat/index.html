@@ -375,7 +375,7 @@
     /* Camera overlay */
     #camera-overlay { display: none; position: fixed; inset: 0; z-index: 1000; background: #000; flex-direction: column; align-items: center; justify-content: center; }
     #camera-overlay.open { display: flex; }
-    #camera-preview { max-width: 100%; max-height: 80dvh; object-fit: contain; }
+    #camera-preview { max-width: 100%; max-height: 80vh; max-height: 80dvh; object-fit: contain; }
     .cam-controls { display: flex; gap: 12px; margin-top: 16px; }
     .cam-controls button { padding: 10px 20px; border-radius: 8px; border: none; font-size: 1rem; cursor: pointer; }
     .cam-controls button:first-child { background: #4f46e5; color: #fff; }
@@ -1171,6 +1171,7 @@
     let currentAssistantEl = null;
     let cameraStream      = null;
     let mediaRecorder     = null;
+    let workerBlobUrl     = null;
 
     // ── Image / File Attachment Management ────────────────────
     let attachments = []; // [{type:'image', blob:Blob, thumb:string, name:string}]
@@ -1502,7 +1503,10 @@ self.addEventListener('message', async ({ data }) => {
   }
 });
 `;
-      return new Worker(URL.createObjectURL(new Blob([code], { type: 'application/javascript' })), { type: 'module' });
+      const blobUrl = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+      const w = new Worker(blobUrl, { type: 'module' });
+      workerBlobUrl = blobUrl;
+      return w;
     }
 
     function attachWorkerHandlers(w) {
@@ -1554,7 +1558,11 @@ self.addEventListener('message', async ({ data }) => {
       const m = MODELS[key];
       if (!m) return;
 
-      if (inferenceWorker) { inferenceWorker.terminate(); inferenceWorker = null; }
+      if (inferenceWorker) {
+        inferenceWorker.terminate();
+        if (workerBlobUrl) { URL.revokeObjectURL(workerBlobUrl); workerBlobUrl = null; }
+        inferenceWorker = null;
+      }
 
       activeModelKey = key;
       workerReady    = false;
@@ -1629,7 +1637,7 @@ self.addEventListener('message', async ({ data }) => {
         } else if (att.type === 'audio') {
           const raw     = await att.blob.arrayBuffer();
           const ctx     = new OfflineAudioContext(1, 1, 16000);
-          const decoded = await ctx.decodeAudioData(raw.slice(0));
+          const decoded = await ctx.decodeAudioData(raw);
           result.push({ type: 'audio', pcmData: decoded.getChannelData(0).buffer, mimeType: att.blob.type });
         }
       }
