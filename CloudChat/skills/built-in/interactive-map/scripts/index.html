@@ -31,10 +31,10 @@ limitations under the License.
           const jsonData = JSON.parse(data);
           const location = jsonData.location;
           const searchQuery = jsonData.search_query || '';
+          const encodedLocation = encodeURIComponent(location);
           const encodedQuery = searchQuery
             ? encodeURIComponent(`${searchQuery} near ${location}`)
-            : encodeURIComponent(location);
-          const encodedLocation = encodeURIComponent(location);
+            : encodedLocation;
           const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`;
           const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedLocation}`;
           return JSON.stringify({
