@@ -1362,8 +1362,6 @@ self.addEventListener('message', async (e) => {
       try { return JSON.parse(s); } catch { /* attempt repair */ }
       // Remove trailing commas before } or ]
       s = s.replace(/,\s*([}\]])/g, '$1');
-      // Replace single quotes with double quotes (carefully)
-      s = s.replace(/'/g, '"');
       // Remove trailing garbage after last }
       const lastBrace = s.lastIndexOf('}');
       if (lastBrace >= 0) s = s.slice(0, lastBrace + 1);
@@ -2296,6 +2294,11 @@ self.addEventListener('message', async (e) => {
 
           try {
             const call = repairAndParseJSON(tc[1]);
+            if (!call) {
+              // JSON repair failed — save response and stop
+              State.history.push({ role: 'ai', text: full });
+              break;
+            }
             const tool = TOOL_REGISTRY[call.name];
             if (!tool) {
               // Unknown tool name — save and stop rather than looping infinitely
@@ -3194,7 +3197,7 @@ Rules:
     // ── Auto-backup Toggle ──
     const autoBackupToggle = document.getElementById('auto-backup-toggle');
     autoBackupToggle.checked = localStorage.getItem('lm_auto_backup') === 'true';
-    autoBackupToggle.onchange = e => localStorage.setItem('lm_auto_backup', e.target.checked);
+    autoBackupToggle.onchange = e => localStorage.setItem('lm_auto_backup', String(e.target.checked));
 
     // ── Thinking Toggle ──
     const thinkingToggleEl = document.getElementById('thinking-toggle');
