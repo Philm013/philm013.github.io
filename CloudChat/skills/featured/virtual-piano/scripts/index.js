@@ -17,7 +17,7 @@
 window['ai_edge_gallery_get_result'] = async (dataStr) => {
   try {
     // Points the app directly to your local UI!
-    const fullUrl = `ui.html?v=${Date.now()}`;
+    const fullUrl = `skills/featured/virtual-piano/assets/ui.html?v=${Date.now()}`;
 
     return JSON.stringify({
       webview: {url: fullUrl},
