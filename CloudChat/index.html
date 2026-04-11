@@ -1903,6 +1903,34 @@ self.addEventListener('message', async (e) => {
      *   - true: continuation pass after a tool call (no new user message rendered).
      *   - string: override text (used by batch processor / programmatic sends).
      */
+    /**
+     * Stream a final-answer response from the model into a new AI bubble.
+     * Used when the agentic loop needs to force a concluding generation pass
+     * (e.g. duplicate tool call detected or tool iteration limit reached).
+     * @param {HTMLElement} aiEl - The parent AI message element.
+     * @returns {Promise<string>} The accumulated response text.
+     */
+    async function streamFinalResponse(aiEl) {
+      const finalPrompt = await buildPrompt("", true);
+      let finalFull = "";
+      const finalBubble = document.createElement('div');
+      finalBubble.className = 'ai-bubble';
+      aiEl.appendChild(finalBubble);
+      await new Promise(res => {
+        let resolved = false;
+        State.inference.generateResponse(finalPrompt, (chunk, done) => {
+          if (resolved) return;
+          if (State.stopRequested) { resolved = true; res(); return; }
+          finalFull = mergeStreamingText(finalFull, chunk);
+          if (detectStreamingRepetition(finalFull)) { resolved = true; res(); return; }
+          renderMessage(finalFull, 'ai', aiEl, { isStreaming: !done, showThinking: false });
+          if (done) { resolved = true; res(); }
+        });
+      });
+      collapseThinkingBlocks(aiEl);
+      return finalFull;
+    }
+
     async function handleSend(ov = null) {
       if (State.isGenerating) {
         State.stopRequested = true;
@@ -2048,23 +2076,7 @@ self.addEventListener('message', async (e) => {
               State.history.push({ role: 'ai', text: full });
               State.history.push({ role: 'user', text: '[System: You already called this tool with the same arguments. Use the previous result to answer the user\'s question now.]' });
               // Force a final answer generation
-              const finalPrompt = await buildPrompt("", true);
-              let finalFull = "";
-              const finalBubble = document.createElement('div');
-              finalBubble.className = 'ai-bubble';
-              aiEl.appendChild(finalBubble);
-              await new Promise(res => {
-                let resolved = false;
-                State.inference.generateResponse(finalPrompt, (chunk, done) => {
-                  if (resolved) return;
-                  if (State.stopRequested) { resolved = true; res(); return; }
-                  finalFull = mergeStreamingText(finalFull, chunk);
-                  if (detectStreamingRepetition(finalFull)) { resolved = true; res(); return; }
-                  renderMessage(finalFull, 'ai', aiEl, { isStreaming: !done, showThinking: false });
-                  if (done) { resolved = true; res(); }
-                });
-              });
-              collapseThinkingBlocks(aiEl);
+              const finalFull = await streamFinalResponse(aiEl);
               if (finalFull && finalFull.trim()) {
                 State.history.push({ role: 'ai', text: finalFull });
               }
@@ -2128,23 +2140,7 @@ self.addEventListener('message', async (e) => {
             // On the last iteration, force a final answer (matches LocalMind behavior)
             if (iter === maxIters - 1) {
               State.history.push({ role: 'user', text: '[System: Tool call limit reached. Please provide your final answer now.]' });
-              const finalPrompt = await buildPrompt("", true);
-              let finalFull = "";
-              const finalBubble = document.createElement('div');
-              finalBubble.className = 'ai-bubble';
-              aiEl.appendChild(finalBubble);
-              await new Promise(res => {
-                let resolved = false;
-                State.inference.generateResponse(finalPrompt, (chunk, done) => {
-                  if (resolved) return;
-                  if (State.stopRequested) { resolved = true; res(); return; }
-                  finalFull = mergeStreamingText(finalFull, chunk);
-                  if (detectStreamingRepetition(finalFull)) { resolved = true; res(); return; }
-                  renderMessage(finalFull, 'ai', aiEl, { isStreaming: !done, showThinking: false });
-                  if (done) { resolved = true; res(); }
-                });
-              });
-              collapseThinkingBlocks(aiEl);
+              const finalFull = await streamFinalResponse(aiEl);
               if (finalFull && finalFull.trim()) {
                 State.history.push({ role: 'ai', text: finalFull });
               }
