@@ -1384,17 +1384,16 @@ self.addEventListener('message', async (e) => {
     }
 
     async function analyzeImages(imageInfos) {
-      const results = [];
-      for (const img of imageInfos) {
+      const promises = imageInfos.map(async (img) => {
         try {
           const description = await analyzeImage(img.blob);
-          results.push({ name: img.name, description });
+          return { name: img.name, description };
         } catch (e) {
           console.warn(`Image analysis failed for ${img.name}:`, e);
-          results.push({ name: img.name, description: 'Image attached (analysis unavailable)' });
+          return { name: img.name, description: 'Image attached (analysis unavailable)' };
         }
-      }
-      return results;
+      });
+      return Promise.all(promises);
     }
 
     // ── RAG: IndexedDB Vector Store ──────────────────────────
@@ -3457,7 +3456,7 @@ self.addEventListener('message', async (e) => {
         // Analyze attached images using vision AI
         let imageAnalysis = [];
         if (imageBlobs.length > 0) {
-          updateStatus('loading', 'Analyzing image...');
+          updateStatus('loading', imageBlobs.length === 1 ? 'Analyzing image...' : `Analyzing ${imageBlobs.length} images...`);
           try {
             imageAnalysis = await analyzeImages(imageBlobs);
           } catch (e) { console.warn('Image analysis failed:', e); }
