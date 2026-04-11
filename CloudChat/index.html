@@ -503,9 +503,8 @@
     <!-- Rescue section (fades in over neural background when model is missing) -->
     <div class="loader-rescue" id="loader-rescue">
       <div class="rescue-title">Model Required</div>
-      <div class="rescue-desc">Private AI requires 1.2 GB neural weights. Choose an option below to get started.</div>
+      <div class="rescue-desc">Private AI requires model weights downloaded from HuggingFace. Click below to retry loading.</div>
       <button class="btn-rescue btn-rescue-primary" id="download-btn">⬇️ Download &amp; Install</button>
-      <button class="btn-rescue btn-rescue-secondary" onclick="document.getElementById('model-upload-input').click()">📁 Supply Local File (.task)</button>
       <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
       <div class="rescue-status" id="download-status"></div>
     </div>
@@ -1296,7 +1295,17 @@
 
     async function purgeCache() {
       if (!confirm("Clear model cache? This will require a redownload.")) return;
+      // Clear legacy MediaPipe cache
       indexedDB.deleteDatabase(ModelCacheDB.name);
+      // Clear HuggingFace Transformers.js cache
+      if (typeof caches !== 'undefined') {
+        const keys = await caches.keys();
+        for (const key of keys) {
+          if (key.includes('transformers') || key.includes('onnx')) {
+            await caches.delete(key);
+          }
+        }
+      }
       location.reload();
     }
     window.purgeCache = purgeCache;
