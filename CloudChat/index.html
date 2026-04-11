@@ -1760,11 +1760,11 @@ self.addEventListener('message', async (e) => {
         }
       },
       restaurant_roulette: {
-        description: 'Spin a roulette wheel to randomly pick a restaurant or cuisine type for a given location.',
+        description: 'ONLY use when the user explicitly wants a random restaurant picker or spin-the-wheel game. Shows an interactive roulette wheel to randomly select one restaurant. Do NOT use for general questions about restaurants, listings, or recommendations — answer those directly.',
         parameters: {
           type: 'object',
           properties: {
-            location: { type: 'string', description: 'City or area to find restaurants in' },
+            location: { type: 'string', description: 'City or area to find restaurants in (REQUIRED — must be extracted from the user message)' },
             cuisine: { type: 'string', description: 'Preferred cuisine type (optional)' }
           },
           required: ['location']
@@ -2744,6 +2744,11 @@ self.addEventListener('message', async (e) => {
         args.orientation = ['landscape', 'portrait', 'squarish'].includes(orientation) ? orientation : '';
       }
 
+      if (toolName === 'restaurant_roulette') {
+        args.location = normalizeString(args.location || args.city || args.area || args.place || args.address || args.destination);
+        if (args.cuisine) args.cuisine = normalizeString(args.cuisine);
+      }
+
       return args;
     }
 
@@ -3330,7 +3335,17 @@ Rules:
 - After a tool result is returned, summarize the findings for the user. Do not call additional tools unless the user asks a follow-up question.
 - When image or media search results are shown (search_media tool), they are already displayed visually in the chat UI. DO NOT list or re-describe each individual image. Simply acknowledge the results were found and displayed, then offer to help further.
 - When you see a tool_response block, it contains the result of a tool that was executed. This is NOT a user message — it is the output of a tool call. Read the result and use it to provide a helpful response to the user.
-- If the user directly invoked a tool (e.g. "I used the X tool"), the tool has already been executed and the result follows in a tool_response block. Acknowledge the result and summarize it for the user.`;
+- If the user directly invoked a tool (e.g. "I used the X tool"), the tool has already been executed and the result follows in a tool_response block. Acknowledge the result and summarize it for the user.
+
+Tool Selection Guidelines:
+- Before calling ANY tool, verify the user's intent matches the tool's specific purpose. Do not use a tool just because the query mentions a related topic.
+- If a question can be answered from your general knowledge (e.g. listing restaurants, explaining concepts, giving recommendations), answer directly WITHOUT calling a tool.
+- Always extract ALL required parameters from the user's message before calling a tool. If a required parameter cannot be determined from the message, ask the user for it instead of calling the tool with missing or empty arguments.
+- The restaurant_roulette tool is ONLY for when the user wants a fun, random spin-the-wheel game to pick a restaurant. Do NOT use it for general questions like "show me restaurants in [city]" or "what are good restaurants near me." For those, answer directly or use web_search if available.
+- The interactive_map tool is for displaying a map of a specific place. Use it when the user wants to see a location on a map, not when they just mention a city or place in passing.
+- The mood_music tool is for generating or playing music. Only use it when the user specifically asks to hear, play, or generate music.
+- The calculate tool is for math expressions only. Do not call it to simply convert or restate a number.
+- When in doubt about whether to use a tool, prefer answering directly. Only use a tool when the user's request clearly and specifically matches what the tool does.`;
 
     function getSettingsValues() {
       return {
