@@ -4549,7 +4549,9 @@ Tool Selection Guidelines:
           chunks.push(value); loaded += value.length;
           const pct = (loaded/total*100);
           fill.style.width = pct + '%';
-          status.textContent = `${(loaded/1024/1024).toFixed(1)} / ${(total/1024/1024).toFixed(1)} MB (${pct.toFixed(0)}%)`;
+          const loadedMB = (loaded / (1024 * 1024)).toFixed(1);
+          const totalMB = (total / (1024 * 1024)).toFixed(1);
+          status.textContent = `${loadedMB} / ${totalMB} MB (${pct.toFixed(0)}%)`;
         }
         status.textContent = 'Initializing model...';
         const full = new Uint8Array(loaded); let offset = 0; for(const c of chunks) { full.set(c, offset); offset += c.length; }
@@ -4643,7 +4645,7 @@ Tool Selection Guidelines:
               type: 'image',
               blob: file,
               thumb: URL.createObjectURL(file),
-              name: 'pasted-image.png',
+              name: `pasted-image.${(file.type.split('/')[1] || 'png')}`,
             });
           }
         }
