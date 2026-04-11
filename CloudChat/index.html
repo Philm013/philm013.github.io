@@ -1072,6 +1072,7 @@ self.addEventListener('message', async (e) => {
       },
       web_search: {
         description: 'Search the web for up-to-date information using the configured search provider.',
+        requiresWeb: true,
         parameters: { type: 'object', properties: { query: { type: 'string', description: 'Concise keyword search query (3–8 words)' } }, required: ['query'] },
         // Inline: reads search provider config from app settings (Brave / Tavily / SearXNG)
         async execute(a) {
