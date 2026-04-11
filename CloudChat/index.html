@@ -1893,6 +1893,18 @@ self.addEventListener('message', async (e) => {
       try { return JSON.parse(s); } catch { return null; }
     }
 
+    /**
+     * Strip thinking/reasoning blocks from model output text.
+     * Handles both Gemma 4 (<|channel>thought...<channel|>) and
+     * DeepSeek/Qwen (<|think|>...<|/think|>) formats.
+     */
+    function stripThoughts(text) {
+      return text
+        .replace(/<\|channel>thought\n?[\s\S]*?<channel\|>/g, '')
+        .replace(/<\|think\|>[\s\S]*?<\|\/think\|>/g, '')
+        .trim();
+    }
+
     // ── Gemma 4 Structured Format Helpers ────────────────────
     // Gemma 4 uses <|"|> as a string delimiter inside structured data blocks
     // (tool declarations, tool calls, tool responses). Numbers and booleans
@@ -1941,12 +1953,15 @@ self.addEventListener('message', async (e) => {
 
     /**
      * Parse a Gemma 4 native tool call: <|tool_call>call:name{...}<tool_call|>
+     * Handles tools with no parameters (no braces or empty braces).
      * Returns { name, arguments } or null if parsing fails.
      */
     function parseGemmaToolCall(text) {
       if (!text) return null;
-      const m = text.match(/<\|tool_call>call:([a-zA-Z_]\w*)\s*(\{[\s\S]*\})\s*<tool_call\|>/);
+      // Match with optional arguments block (tools may have no parameters)
+      const m = text.match(/<\|tool_call>call:([a-zA-Z_]\w*)\s*(\{[\s\S]*\})?\s*<tool_call\|>/);
       if (!m) return null;
+      if (!m[2] || m[2] === '{}') return { name: m[1], arguments: {} };
       const args = parseGemmaStructuredData(m[2]);
       return args !== null ? { name: m[1], arguments: args } : { name: m[1], arguments: {} };
     }
@@ -2413,6 +2428,7 @@ self.addEventListener('message', async (e) => {
         const lastLt = main.lastIndexOf('<');
         if (lastLt >= 0) {
           const tail = main.slice(lastLt);
+          // Gemma 4 native tokens + legacy fallback tokens (without |) for backward compatibility
           const partialTags = ['<|think|>', '<|channel>thought', '<|tool_call>', '<|tool_response>', '<|turn>', '<turn|>', '<tool_call>', '<tool_response>'];
           if (partialTags.some(tag => tag.startsWith(tail) && tag !== tail)) {
             main = main.slice(0, lastLt).trim();
@@ -3089,8 +3105,10 @@ self.addEventListener('message', async (e) => {
             }
 
             // Feed tool call + response into history as a combined model turn
-            // (Gemma 4 format: tool_call and tool_response are part of the same model turn)
-            // Strip trailing <|tool_response> stop token if the model emitted it
+            // (Gemma 4 format: tool_call and tool_response are part of the same model turn).
+            // Per the Gemma 4 spec, <|tool_response> acts as a stop sequence — the model
+            // emits it after the tool call to signal the application should execute the tool.
+            // Strip it so we can append the full response:name{...}<tool_response|> block.
             const cleanFull = full.replace(/<\|tool_response>\s*$/, '');
             const toolRespFormatted = `<|tool_response>response:${call.name}${formatGemmaObject(toolResponsePayload)}<tool_response|>`;
             State.history.push({ role: 'ai', text: cleanFull + toolRespFormatted, _isToolTurn: true });
@@ -3395,7 +3413,9 @@ Rules:
       // a final response) are merged into ONE <|turn>model\n...<turn|> block.
       const historyBudget = getSettingsValues().historyBudget;
 
-      // Group consecutive model entries into single model turns
+      // Group consecutive model entries into single model turns.
+      // Only model entries are merged; user entries always form their own group
+      // (each user group has exactly one entry).
       const groups = [];
       for (const m of State.history) {
         const role = m.role === 'ai' || m.role === 'model' ? 'model' : 'user';
@@ -3421,8 +3441,7 @@ Rules:
             if (!m._isToolTurn) {
               hasNonToolEntry = true;
               // Strip thoughts from regular model entries
-              text = text.replace(/<\|channel>thought\n?[\s\S]*?<channel\|>/g, '').trim();
-              text = text.replace(/<\|think\|>[\s\S]*?<\|\/think\|>/g, '').trim();
+              text = stripThoughts(text);
             }
             combinedText += text;
           }
