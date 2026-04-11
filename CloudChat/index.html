@@ -2086,7 +2086,8 @@ self.addEventListener('message', async (e) => {
             }
           }
           State.history.push({ role: 'user', text: `I used the ${toolName} tool with these arguments: ${JSON.stringify(normalizedArgs)}` });
-          State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: toolName, result: toolResponsePayload })}\n</tool_response>` });
+          State.history.push({ role: 'ai', text: `<tool_call>\n${JSON.stringify({ name: toolName, arguments: normalizedArgs })}\n</tool_call>` });
+          State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: toolName, result: toolResponsePayload })}\n</tool_response>\nUse the tool result above to respond to the user.` });
           handleSend(true);
         } catch (e) {
           renderToolCallBlock(aiEl, toolName, args, { error: e.message });
@@ -3020,7 +3021,7 @@ self.addEventListener('message', async (e) => {
 
             // Feed tool result back into history as a synthetic user turn
             State.history.push({ role: 'ai', text: full });
-            State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: call.name, result: toolResponsePayload })}\n</tool_response>` });
+            State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: call.name, result: toolResponsePayload })}\n</tool_response>\nUse the tool result above to respond to the user.` });
 
             // On the last iteration, force a final answer (matches LocalMind behavior)
             if (iter === maxIters - 1) {
@@ -3238,7 +3239,9 @@ Rules:
 - When returning images or media results, always include proper attribution and photographer credits.
 - NEVER call the same tool with the same arguments more than once. If you already received a tool result, use it to answer — do not call the tool again.
 - After a tool result is returned, summarize the findings for the user. Do not call additional tools unless the user asks a follow-up question.
-- When image or media search results are shown (search_media tool), they are already displayed visually in the chat UI. DO NOT list or re-describe each individual image. Simply acknowledge the results were found and displayed, then offer to help further.`;
+- When image or media search results are shown (search_media tool), they are already displayed visually in the chat UI. DO NOT list or re-describe each individual image. Simply acknowledge the results were found and displayed, then offer to help further.
+- When you see a <tool_response> block, it contains the result of a tool that was executed. This is NOT a user message — it is the output of a tool call. Read the result and use it to provide a helpful response to the user.
+- If the user directly invoked a tool (e.g. "I used the X tool"), the tool has already been executed and the result follows in a <tool_response> block. Acknowledge the result and summarize it for the user.`;
 
     function getSettingsValues() {
       return {
@@ -3744,6 +3747,9 @@ Rules:
         const INTERNAL_PREFIXES = ['<tool_response>', '[System:', 'I used the ', 'I clicked '];
         const isInternal = !isAi && INTERNAL_PREFIXES.some(p => m.text.startsWith(p));
         if (isInternal) return;
+        // Skip AI entries that are purely synthetic tool_call blocks (e.g. from
+        // direct tool invocations) — they have no visible content to display.
+        if (isAi && /^\s*<tool_call>[\s\S]*<\/tool_call>\s*$/.test(m.text)) return;
 
         const role = isAi ? 'ai' : 'user';
         const el = renderMessage(m.text, role);
