@@ -88,6 +88,23 @@
     
     .panel-handle { display: none; width: 40px; height: 4px; background: var(--ollama-light-gray); border-radius: 2px; margin: 8px auto; flex-shrink: 0; }
 
+    /* Plus menu (mobile action consolidation) */
+    #plus-menu-btn { display: none; }
+    .plus-menu {
+      display: none; position: absolute; bottom: calc(100% + 8px); left: 8px;
+      background: #fff; border: 1px solid var(--ollama-border); border-radius: 12px;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.1); flex-direction: column; overflow: hidden;
+      z-index: 500; min-width: 180px;
+    }
+    .plus-menu.open { display: flex; }
+    .plus-menu-item {
+      padding: 12px 16px; border: none; background: none; text-align: left;
+      font-size: 0.9rem; cursor: pointer; font-family: inherit; color: var(--ollama-near-black);
+      transition: background 0.15s;
+    }
+    .plus-menu-item:hover { background: var(--ollama-snow); }
+    .plus-menu-item + .plus-menu-item { border-top: 1px solid var(--ollama-border); }
+
     @media (max-width: 768px) {
       body { flex-direction: column; } #desktop-sidebar { display: none; }
       nav#mobile-nav { display: flex; height: var(--nav-height); background: #fff; border-top: 1px solid var(--ollama-border); justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom, 12px); }
@@ -96,7 +113,11 @@
       .overlay-panel { padding: 0; align-items: flex-end; } 
       .panel-window { max-height: 85vh; border-radius: 24px 24px 0 0; transform: translateY(100%); }
       .panel-handle { display: block; }
-      #chat-container { padding: 16px; } .input-row { padding: 12px 16px; }
+      #chat-container { padding: 16px; }
+      .input-row { padding: 8px 0; }
+      .input-container { border-radius: 0; border-left: none; border-right: none; background: var(--ollama-white); }
+      .desktop-action-btn { display: none !important; }
+      #plus-menu-btn { display: flex; }
       .icon-btn { width: 48px; height: 48px; }
     }
 
@@ -332,12 +353,20 @@
       <div class="input-row">
         <div id="slash-menu" class="slash-menu"></div>
         <div class="input-container">
-          <button class="icon-btn" onclick="document.getElementById('global-file-input').click()">📎</button>
-          <button id="tool-insert-btn" class="icon-btn" title="Insert tool call">🛠️</button>
+          <!-- Plus menu button (mobile only) — consolidates action buttons -->
+          <button id="plus-menu-btn" class="icon-btn" onclick="togglePlusMenu()" title="More actions">➕</button>
+          <div id="plus-menu" class="plus-menu">
+            <button class="plus-menu-item" onclick="document.getElementById('global-file-input').click(); togglePlusMenu()">📎 Attach file</button>
+            <button class="plus-menu-item" id="plus-tool-btn" onclick="triggerToolInsert(); togglePlusMenu()">🛠️ Insert tool</button>
+            <button class="plus-menu-item" id="plus-search-btn" onclick="State.webEnrichedMode=true;handleSend(); togglePlusMenu()" style="display:none">🌐 Web search + Send</button>
+          </div>
+          <!-- Desktop-only action buttons -->
+          <button class="icon-btn desktop-action-btn" onclick="document.getElementById('global-file-input').click()">📎</button>
+          <button id="tool-insert-btn" class="icon-btn desktop-action-btn" title="Insert tool call">🛠️</button>
           <textarea id="chat-input" rows="1" placeholder="Initializing..." disabled></textarea>
           <div style="display: flex; gap: 4px;">
             <button id="send-btn" class="icon-btn primary" onclick="handleSend()" disabled title="Send">➤</button>
-            <button id="search-send-btn" class="icon-btn" onclick="State.webEnrichedMode=true;handleSend()" disabled title="Search web + Send" style="display:none">🌐</button>
+            <button id="search-send-btn" class="icon-btn desktop-action-btn" onclick="State.webEnrichedMode=true;handleSend()" disabled title="Search web + Send" style="display:none">🌐</button>
           </div>
         </div>
       </div>
@@ -1537,11 +1566,13 @@ self.addEventListener('message', async (e) => {
       const showThinking = options.showThinking !== false;
       const isStreaming = !!options.isStreaming;
       let think = ''; let main = text;
+      let thinkingComplete = false;
 
       // Priority 1: <|think|>...</|/think|> (DeepSeek-R1, Qwen3, etc.)
       const thinkMatch = text.match(/<\|think\|>([\s\S]*?)(<\|\/think\|>|$)/);
       if (thinkMatch) {
         think = thinkMatch[1].trim();
+        thinkingComplete = thinkMatch[2] === '<|/think|>';
         main = text.replace(/<\|think\|>[\s\S]*?(<\|\/think\|>|$)/, '').trim();
       }
 
@@ -1550,6 +1581,7 @@ self.addEventListener('message', async (e) => {
         const channelMatch = text.match(/<\|channel>thought\n?([\s\S]*?)(<channel\|>|$)/);
         if (channelMatch) {
           think = channelMatch[1].trim();
+          thinkingComplete = channelMatch[2] === '<channel|>';
           main = text.replace(/<\|channel>thought\n?[\s\S]*?(<channel\|>|$)/, '').trim();
         }
       }
@@ -1570,18 +1602,23 @@ self.addEventListener('message', async (e) => {
 
       let html = '';
       if (think && showThinking) {
-        const id = 'th-' + Math.random().toString(36).slice(2, 8);
-        const stillThinking = isStreaming || !main;
-        const openClass = stillThinking ? ' open' : '';
-        const arrow = stillThinking ? '&#9660;' : '&#9654;';
-        const label = stillThinking ? 'Thinking...' : 'Thought process';
-        // Use data-target instead of an inline closure to avoid embedding IDs in JS code
-        html += `<div class="thinking-block">` +
-          `<div class="thinking-toggle" data-target="${escapeHtml(id)}" onclick="toggleBlock(this)">` +
-          `<span>${arrow}</span> ${label}` +
-          `</div>` +
-          `<div class="thinking-content${openClass}" id="${escapeHtml(id)}">${escapeHtml(think)}</div>` +
-          `</div>`;
+        if (isStreaming && !thinkingComplete) {
+          // Thinking is still in progress — show indicator only, buffer content
+          html += `<div class="thinking-block">` +
+            `<div class="thinking-toggle">` +
+            `<span>&#9660;</span> Thinking...` +
+            `</div>` +
+            `</div>`;
+        } else {
+          // Thinking is complete — show full block collapsed
+          const id = 'th-' + Math.random().toString(36).slice(2, 8);
+          html += `<div class="thinking-block">` +
+            `<div class="thinking-toggle" data-target="${escapeHtml(id)}" onclick="toggleBlock(this)">` +
+            `<span>&#9654;</span> Thought process` +
+            `</div>` +
+            `<div class="thinking-content" id="${escapeHtml(id)}">${escapeHtml(think)}</div>` +
+            `</div>`;
+        }
       }
 
       // Strip tool_call blocks — they are rendered separately by renderToolCallBlock()
@@ -1601,6 +1638,7 @@ self.addEventListener('message', async (e) => {
     function updateSendButtons() {
       const sendBtn = document.getElementById('send-btn');
       const searchBtn = document.getElementById('search-send-btn');
+      const plusSearchBtn = document.getElementById('plus-search-btn');
       const searchEnabled = isSearchConfigured() && State.modelReady && !State.isGenerating;
       if (State.isGenerating) {
         sendBtn.textContent = '■';
@@ -1613,6 +1651,9 @@ self.addEventListener('message', async (e) => {
       }
       searchBtn.disabled = !searchEnabled;
       searchBtn.style.display = isSearchConfigured() ? '' : 'none';
+      if (plusSearchBtn) {
+        plusSearchBtn.style.display = isSearchConfigured() ? '' : 'none';
+      }
     }
 
     // ── Core Inference Boot ──────────────────────────────────
@@ -2833,6 +2874,38 @@ Rules:
 
     const chatInput = document.getElementById('chat-input');
     const toolInsertBtn = document.getElementById('tool-insert-btn');
+
+    // ── Plus menu (mobile action consolidation) ────────────
+    function togglePlusMenu() {
+      const menu = document.getElementById('plus-menu');
+      menu.classList.toggle('open');
+      // Update search button visibility in the plus menu
+      const plusSearchBtn = document.getElementById('plus-search-btn');
+      if (plusSearchBtn) {
+        plusSearchBtn.style.display = isSearchConfigured() ? '' : 'none';
+      }
+    }
+    window.togglePlusMenu = togglePlusMenu;
+
+    function triggerToolInsert() {
+      const items = Object.entries(TOOL_REGISTRY).map(([name, tool]) => ({
+        title: name,
+        meta: tool.skillDescription || tool.description,
+        onSelect: () => insertToolCallTemplate(name)
+      }));
+      showInputMenu(items);
+      chatInput.focus();
+    }
+    window.triggerToolInsert = triggerToolInsert;
+
+    // Close plus menu when clicking outside
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('plus-menu');
+      const btn = document.getElementById('plus-menu-btn');
+      if (menu && menu.classList.contains('open') && !menu.contains(e.target) && e.target !== btn) {
+        menu.classList.remove('open');
+      }
+    });
 
     toolInsertBtn.addEventListener('click', () => {
       const items = Object.entries(TOOL_REGISTRY).map(([name, tool]) => ({
