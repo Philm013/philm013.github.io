@@ -30,12 +30,21 @@ limitations under the License.
         try {
           const jsonData = JSON.parse(data);
           const location = jsonData.location;
+          const searchQuery = jsonData.search_query || '';
+          const encodedQuery = searchQuery
+            ? encodeURIComponent(`${searchQuery} near ${location}`)
+            : encodeURIComponent(location);
           const encodedLocation = encodeURIComponent(location);
+          const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`;
+          const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedLocation}`;
           return JSON.stringify({
             webview: {
               iframe: true,
-              url: `https://maps.google.com/maps?q=${encodedLocation}&output=embed`,
+              url: `https://maps.google.com/maps?q=${encodedQuery}&output=embed`,
             },
+            map_links: { search: searchUrl, directions: directionsUrl },
+            location: location,
+            search_query: searchQuery || null,
           });
         } catch (e) {
           console.error(e);
