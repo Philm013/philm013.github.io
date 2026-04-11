@@ -2146,14 +2146,22 @@ Rules:
 
       // ── Render interactive map iframe inline ─────────────────
       if (res && typeof res === 'object' && res.webview && res.webview.iframe && res.webview.url) {
-        const iframe = document.createElement('iframe');
-        iframe.src = String(res.webview.url);
-        iframe.style.cssText = 'width:100%;height:300px;border:none;border-radius:8px;margin-top:8px;';
-        iframe.loading = 'lazy';
-        iframe.referrerPolicy = 'no-referrer';
-        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
-        iframe.allowFullscreen = true;
-        el.appendChild(iframe);
+        const mapUrl = String(res.webview.url);
+        // Only embed iframes from trusted map domains to prevent loading malicious content
+        const TRUSTED_MAP_HOSTS = ['maps.google.com', 'www.google.com', 'maps.googleapis.com'];
+        try {
+          const parsed = new URL(mapUrl);
+          if (TRUSTED_MAP_HOSTS.includes(parsed.hostname) && parsed.protocol === 'https:') {
+            const iframe = document.createElement('iframe');
+            iframe.src = mapUrl;
+            iframe.style.cssText = 'width:100%;height:300px;border:none;border-radius:8px;margin-top:8px;';
+            iframe.loading = 'lazy';
+            iframe.referrerPolicy = 'no-referrer';
+            iframe.setAttribute('sandbox', 'allow-scripts');
+            iframe.allowFullscreen = true;
+            el.appendChild(iframe);
+          }
+        } catch (_e) { /* invalid URL — skip iframe embed */ }
       }
 
       // ── Render media results (images/videos) inline ──────────
