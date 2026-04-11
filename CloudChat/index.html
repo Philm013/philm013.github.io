@@ -180,6 +180,19 @@
     .media-card-info { padding: 6px 8px; font-size: 0.72rem; color: var(--ollama-stone); }
     .media-card-info a { color: var(--ollama-stone); text-decoration: underline; }
 
+    /* Attachment bar (image/audio/video previews before send) */
+    .attachment-bar { display: none; flex-wrap: wrap; gap: 8px; padding: 8px 24px 0; max-width: 800px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+    .attachment-bar.visible { display: flex; }
+    .attachment-chip { position: relative; width: 56px; height: 56px; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--ollama-border); background: var(--ollama-snow); display: flex; align-items: center; justify-content: center; }
+    .attachment-chip img { width: 100%; height: 100%; object-fit: cover; }
+    .attachment-chip .remove-btn { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff; border: none; font-size: 0.65rem; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; opacity: 0; transition: opacity 0.15s; }
+    .attachment-chip:hover .remove-btn { opacity: 1; }
+
+    /* User message attachment thumbnails */
+    .msg-attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .msg-attachments img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--ollama-border); cursor: pointer; transition: transform 0.15s; }
+    .msg-attachments img:hover { transform: scale(1.05); }
+
     /* Tool argument panel — bottom sheet on mobile, centered modal on desktop */
     .tool-arg-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 1500; display: none; align-items: flex-end; justify-content: center; }
     .tool-arg-overlay.open { display: flex; }
@@ -211,9 +224,23 @@
     .progress-bar { width: 100%; height: 8px; background: var(--ollama-light-gray); border-radius: 4px; overflow: hidden; margin: 20px 0; }
     #download-fill { height: 100%; background: var(--ollama-black); width: 0%; transition: width 0.3s; }
 
-    /* Rescue Overlay */
-    #model-rescue { position: fixed; inset: 0; background: #fff; z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; }
-    #model-rescue.open { display: flex; }
+    /* Rescue Overlay — hidden, content moved into #global-loader */
+    #model-rescue { display: none; }
+
+    /* Rescue section inside the neural loader */
+    .loader-rescue { display: none; flex-direction: column; align-items: center; gap: 14px; margin-top: 28px; position: relative; z-index: 1; animation: rescueFadeIn 0.8s ease-out both; }
+    .loader-rescue.visible { display: flex; }
+    @keyframes rescueFadeIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    .loader-rescue .rescue-title { font-size: 1.2rem; font-weight: 600; color: #fff; margin-bottom: 2px; }
+    .loader-rescue .rescue-desc { font-size: 0.82rem; color: rgba(255,255,255,0.65); max-width: 360px; text-align: center; margin-bottom: 8px; }
+    .loader-rescue .btn-rescue { width: 100%; max-width: 280px; padding: 12px 20px; border-radius: 10px; font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; border: 1px solid rgba(100,180,255,0.3); }
+    .loader-rescue .btn-rescue-primary { background: rgba(100,180,255,0.2); color: #fff; }
+    .loader-rescue .btn-rescue-primary:hover { background: rgba(100,180,255,0.35); }
+    .loader-rescue .btn-rescue-secondary { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.15); }
+    .loader-rescue .btn-rescue-secondary:hover { background: rgba(255,255,255,0.15); }
+    .loader-rescue .progress-bar { width: 100%; max-width: 280px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin: 0; }
+    .loader-rescue .progress-bar #download-fill { background: rgba(100,180,255,0.7); }
+    .loader-rescue .rescue-status { font-size: 0.72rem; color: rgba(255,255,255,0.5); }
 
     /* Loader */
     #global-loader { position: fixed; inset: 0; background: var(--ollama-black); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; overflow: hidden; }
@@ -373,18 +400,19 @@
     <div class="loader-title">System Initializing</div>
     <div id="loader-msg" class="loader-sub">Preparing neural environment...</div>
     <div id="global-boot-log" class="boot-log" style="height: 100px; max-width: 400px; opacity: 1;"></div>
+    <!-- Rescue section (fades in over neural background when model is missing) -->
+    <div class="loader-rescue" id="loader-rescue">
+      <div class="rescue-title">Model Required</div>
+      <div class="rescue-desc">Private AI requires 1.2 GB neural weights. Choose an option below to get started.</div>
+      <button class="btn-rescue btn-rescue-primary" id="download-btn">⬇️ Download &amp; Install</button>
+      <button class="btn-rescue btn-rescue-secondary" onclick="document.getElementById('model-upload-input').click()">📁 Supply Local File (.task)</button>
+      <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
+      <div class="rescue-status" id="download-status"></div>
+    </div>
   </div>
 
-  <!-- Rescue Overlay -->
-  <div id="model-rescue">
-    <div style="font-size:3rem; margin-bottom:20px;">📦</div>
-    <div style="font-weight:600; font-size:1.5rem; margin-bottom:10px;">Model Required</div>
-    <div id="rescue-desc" style="color:var(--ollama-stone); max-width:400px; margin-bottom:30px;">Private AI requires 1.2GB weights. Click below to install.</div>
-    <button class="btn-block btn-primary" style="max-width:300px" id="download-btn">Download & Install (Automatic)</button>
-    <button class="btn-block" style="max-width:300px" onclick="document.getElementById('model-upload-input').click()">Supply Local File (.task)</button>
-    <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
-    <div id="download-status" style="font-size:0.75rem; color:var(--ollama-stone); margin-top:10px;"></div>
-  </div>
+  <!-- Legacy rescue overlay (hidden, superseded by loader-rescue) -->
+  <div id="model-rescue"></div>
 
   <aside id="desktop-sidebar">
     <div class="sidebar-header">Gemma 4</div>
@@ -415,6 +443,7 @@
       </div>
     </main>
     <footer class="bottom-stack">
+      <div class="attachment-bar" id="attachment-bar"></div>
       <div class="input-row">
         <div id="slash-menu" class="slash-menu"></div>
         <div class="input-container">
@@ -715,6 +744,55 @@
       memoryCategory: 'all'
     };
     window.State = State;
+
+    // ── Image / File Attachment Management ────────────────────
+    let attachments = []; // [{type:'image', blob:Blob, thumb:string, name:string}]
+
+    function addAttachment(att) {
+      attachments.push(att);
+      renderAttachmentBar();
+    }
+
+    function removeAttachment(index) {
+      const att = attachments[index];
+      if (att.thumb) URL.revokeObjectURL(att.thumb);
+      attachments.splice(index, 1);
+      renderAttachmentBar();
+    }
+
+    function clearAttachments() {
+      for (const att of attachments) {
+        if (att.thumb) URL.revokeObjectURL(att.thumb);
+      }
+      attachments = [];
+      renderAttachmentBar();
+    }
+
+    function renderAttachmentBar() {
+      const bar = document.getElementById('attachment-bar');
+      bar.innerHTML = '';
+      if (attachments.length === 0) {
+        bar.classList.remove('visible');
+        return;
+      }
+      bar.classList.add('visible');
+      attachments.forEach((att, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'attachment-chip';
+        if (att.type === 'image') {
+          const img = document.createElement('img');
+          img.src = att.thumb;
+          img.alt = att.name;
+          chip.appendChild(img);
+        }
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.textContent = '\u00D7';
+        removeBtn.addEventListener('click', () => removeAttachment(i));
+        chip.appendChild(removeBtn);
+        bar.appendChild(chip);
+      });
+    }
 
     // ── Persistent Storage Request ────────────────────────────
     async function requestPersistentStorage() {
@@ -2609,9 +2687,9 @@ self.addEventListener('message', async (e) => {
             let fetchPath = REMOTE_MODEL;
             try { const check = await fetch(LOCAL_MODEL, { method: 'HEAD' }); if (check.ok) { fetchPath = LOCAL_MODEL; logBoot("📡 Nearby weights detected on host. Score!"); await wait(400); } } catch (_e) { /* local model not available — proceed with remote */ }
             if (fetchPath === REMOTE_MODEL) {
-              document.getElementById('model-rescue').classList.add('open');
-              document.getElementById('global-loader').classList.add('hidden');
-              stopNeuralNetworkAnimation();
+              // Show rescue options within the neural loader (no separate overlay)
+              logBoot("📦 Model not found locally. Manual action required.");
+              document.getElementById('loader-rescue').classList.add('visible');
               updateStatus('error', 'Model Required');
               return;
             }
@@ -2651,16 +2729,15 @@ self.addEventListener('message', async (e) => {
         document.getElementById('chat-input').disabled = false;
         document.getElementById('chat-input').placeholder = "Ask anything...";
         updateSendButtons();
-        document.getElementById('model-rescue').classList.remove('open');
+        document.getElementById('loader-rescue').classList.remove('visible');
         document.getElementById('global-loader').classList.add('hidden');
         stopNeuralNetworkAnimation();
       } catch (e) {
         console.error(e);
         logBoot("💀 CRITICAL FAILURE: BRAIN NOT FOUND");
         updateStatus('error', 'Brain Failure');
-        document.getElementById('global-loader').classList.add('hidden');
-        stopNeuralNetworkAnimation();
-        document.getElementById('model-rescue').classList.add('open');
+        // Show rescue options within the loader instead of a separate overlay
+        document.getElementById('loader-rescue').classList.add('visible');
       }
     }
 
@@ -2874,10 +2951,13 @@ self.addEventListener('message', async (e) => {
 
       if (text && ov !== true) {
         input.value = ''; input.style.height = 'auto';
-        const userEl = renderMessage(text, 'user');
+        // Capture current attachment thumbnails before clearing
+        const imageThumbs = attachments.filter(a => a.type === 'image').map(a => a.thumb);
+        const userEl = renderMessage(text, 'user', null, { images: imageThumbs });
         userEl.dataset.histFrom = turnHistFrom;
-        State.history.push({ role: 'user', text });
+        State.history.push({ role: 'user', text, _images: imageThumbs.length > 0 ? imageThumbs : undefined });
         addMessageActions(userEl, 'user');
+        clearAttachments();
       }
 
       State.isGenerating = true;
@@ -3496,7 +3576,17 @@ Tool Selection Guidelines:
       const c = document.getElementById('chat-container');
       if (!el) { el = document.createElement('div'); el.className = `message ${r}`; c.appendChild(el); }
       if (r === 'user') {
-        el.innerHTML = `<div class="user-bubble">${escapeHtml(t)}</div>`;
+        let html = '';
+        // Render image attachments if provided
+        if (options.images && options.images.length > 0) {
+          html += '<div class="msg-attachments">';
+          for (const src of options.images) {
+            html += `<img src="${escapeHtml(src)}" alt="Attached image" loading="lazy">`;
+          }
+          html += '</div>';
+        }
+        html += `<div class="user-bubble">${escapeHtml(t)}</div>`;
+        el.innerHTML = html;
       } else {
         // Use an inner bubble so that tool-call blocks, step labels, and
         // other children appended to `el` survive streaming re-renders.
@@ -3922,7 +4012,7 @@ Tool Selection Guidelines:
         if (isAi && /^\s*<tool_call>[\s\S]*<\/tool_call>\s*$/.test(m.text)) return;
 
         const role = isAi ? 'ai' : 'user';
-        const el = renderMessage(m.text, role);
+        const el = renderMessage(m.text, role, null, { images: m._images });
         if (role === 'user') {
           el.dataset.histFrom = idx;
           lastUserHistFrom = idx;
@@ -4163,19 +4253,34 @@ Tool Selection Guidelines:
     }
 
     // Files
-    document.getElementById('global-file-input').onchange = e => {
-      for (const file of e.target.files) {
-        (async () => {
-          // eslint-disable-next-line no-useless-assignment
-          let text = '';
-          try {
-            if (file.name.endsWith('.pdf')) text = await extractPDFText(file);
-            else if (file.name.endsWith('.docx')) text = await extractDOCXText(file);
-            else text = await file.text();
-            await ingestDocument(file.name, text);
-          } catch (err) { console.error('File ingest error', err); showToast(`Failed to ingest ${file.name}`); }
-        })();
+    function handleUploadedFiles(files) {
+      for (const file of files) {
+        if (file.type.startsWith('image/')) {
+          // Image → add as visual attachment (like LocalMind)
+          addAttachment({
+            type: 'image',
+            blob: file,
+            thumb: URL.createObjectURL(file),
+            name: file.name,
+          });
+        } else {
+          // Document → ingest into RAG library
+          (async () => {
+            // eslint-disable-next-line no-useless-assignment
+            let text = '';
+            try {
+              if (file.name.endsWith('.pdf')) text = await extractPDFText(file);
+              else if (file.name.endsWith('.docx')) text = await extractDOCXText(file);
+              else text = await file.text();
+              await ingestDocument(file.name, text);
+            } catch (err) { console.error('File ingest error', err); showToast(`Failed to ingest ${file.name}`); }
+          })();
+        }
       }
+    }
+
+    document.getElementById('global-file-input').onchange = e => {
+      handleUploadedFiles(e.target.files);
     };
 
     // Drag & Drop
@@ -4187,18 +4292,7 @@ Tool Selection Guidelines:
       e.preventDefault(); dragCounter = 0; document.getElementById('drag-overlay').classList.remove('visible');
       const files = e.dataTransfer?.files;
       if (!files || !files.length) return;
-      for (const file of files) {
-        (async () => {
-          // eslint-disable-next-line no-useless-assignment
-          let text = '';
-          try {
-            if (file.name.endsWith('.pdf')) text = await extractPDFText(file);
-            else if (file.name.endsWith('.docx')) text = await extractDOCXText(file);
-            else text = await file.text();
-            await ingestDocument(file.name, text);
-          } catch { showToast(`Failed to ingest ${file.name}`); }
-        })();
-      }
+      handleUploadedFiles(files);
     });
 
     // Settings toggles & persistence
@@ -4444,21 +4538,33 @@ Tool Selection Guidelines:
 
     document.getElementById('download-btn').onclick = () => {
       const fill = document.getElementById('download-fill');
+      const status = document.getElementById('download-status');
       document.getElementById('progress-container').classList.remove('hidden');
+      status.textContent = 'Starting download...';
       fetch(REMOTE_MODEL).then(async res => {
         const reader = res.body.getReader(); const total = +res.headers.get('Content-Length');
         let loaded = 0; const chunks = [];
         while(true) {
           const {done, value} = await reader.read(); if (done) break;
-          chunks.push(value); loaded += value.length; fill.style.width = (loaded/total*100) + '%';
+          chunks.push(value); loaded += value.length;
+          const pct = (loaded/total*100);
+          fill.style.width = pct + '%';
+          const loadedMB = (loaded / (1024 * 1024)).toFixed(1);
+          const totalMB = (total / (1024 * 1024)).toFixed(1);
+          status.textContent = `${loadedMB} / ${totalMB} MB (${pct.toFixed(0)}%)`;
         }
+        status.textContent = 'Initializing model...';
         const full = new Uint8Array(loaded); let offset = 0; for(const c of chunks) { full.set(c, offset); offset += c.length; }
+        document.getElementById('loader-rescue').classList.remove('visible');
         initGemma(full, true);
+      }).catch(err => {
+        status.textContent = 'Download failed: ' + err.message;
       });
     };
 
     document.getElementById('model-upload-input').onchange = async e => {
       if (e.target.files.length) {
+        document.getElementById('loader-rescue').classList.remove('visible');
         const r = await e.target.files[0].arrayBuffer();
         initGemma(new Uint8Array(r), true);
       }
@@ -4526,6 +4632,26 @@ Tool Selection Guidelines:
       hideInputMenu();
     };
 
+    // ── Paste images from clipboard ─────────────────────────
+    chatInput.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            addAttachment({
+              type: 'image',
+              blob: file,
+              thumb: URL.createObjectURL(file),
+              name: `pasted-image.${(file.type.split('/')[1] || 'png')}`,
+            });
+          }
+        }
+      }
+    });
+
     chatInput.onkeydown = e => {
       if (e.key === 'Escape') {
         hideInputMenu();
@@ -4552,6 +4678,6 @@ Tool Selection Guidelines:
       }
     });
   </script>
-  <div class="drag-overlay" id="drag-overlay">📁 Drop files to add to Library</div>
+  <div class="drag-overlay" id="drag-overlay">📁 Drop files to attach images or add to Library</div>
 </body>
 </html>
