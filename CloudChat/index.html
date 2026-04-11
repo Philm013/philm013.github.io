@@ -372,6 +372,17 @@
     .drag-overlay { display: none; position: fixed; inset: 0; z-index: 900; background: rgba(102,126,234,0.08); border: 3px dashed #667eea; align-items: center; justify-content: center; font-size: 1.1rem; color: #667eea; font-weight: 600; pointer-events: none; }
     .drag-overlay.visible { display: flex; }
 
+    /* Camera overlay */
+    #camera-overlay { display: none; position: fixed; inset: 0; z-index: 1000; background: #000; flex-direction: column; align-items: center; justify-content: center; }
+    #camera-overlay.open { display: flex; }
+    #camera-preview { max-width: 100%; max-height: 80dvh; object-fit: contain; }
+    .cam-controls { display: flex; gap: 12px; margin-top: 16px; }
+    .cam-controls button { padding: 10px 20px; border-radius: 8px; border: none; font-size: 1rem; cursor: pointer; }
+    .cam-controls button:first-child { background: #4f46e5; color: #fff; }
+    .cam-controls button:last-child { background: #374151; color: #fff; }
+    /* Mic recording state */
+    #mic-btn.recording { background: #ef4444; color: #fff; border-radius: 50%; }
+
     /* Message action bar */
     .msg-actions { display: flex; align-items: center; gap: 2px; margin-top: 6px; opacity: 0; transition: opacity 0.2s; flex-wrap: wrap; }
     .message:hover .msg-actions, .message:focus-within .msg-actions { opacity: 1; }
@@ -543,12 +554,16 @@
           <button id="plus-menu-btn" class="icon-btn" onclick="togglePlusMenu()" title="More actions">➕</button>
           <div id="plus-menu" class="plus-menu">
             <button class="plus-menu-item" onclick="document.getElementById('global-file-input').click(); togglePlusMenu()">📎 Attach file</button>
+            <button class="plus-menu-item plus-camera-btn" onclick="document.getElementById('camera-btn').click(); togglePlusMenu()" style="display:none">📷 Take photo</button>
+            <button class="plus-menu-item plus-mic-btn" onclick="document.getElementById('mic-btn').click(); togglePlusMenu()" style="display:none">🎤 Record audio</button>
             <button class="plus-menu-item" id="plus-tool-btn" onclick="triggerToolInsert(); togglePlusMenu()">🛠️ Insert tool</button>
             <button class="plus-menu-item" id="plus-search-btn" onclick="State.webEnrichedMode=true;handleSend(); togglePlusMenu()" style="display:none">🌐 Web search + Send</button>
           </div>
           <!-- Desktop-only action buttons -->
           <button class="icon-btn desktop-action-btn" onclick="document.getElementById('global-file-input').click()">📎</button>
           <button id="tool-insert-btn" class="icon-btn desktop-action-btn" title="Insert tool call">🛠️</button>
+          <button id="camera-btn" class="icon-btn desktop-action-btn" title="Take photo" style="display:none">📷</button>
+          <button id="mic-btn" class="icon-btn desktop-action-btn" title="Record audio" style="display:none">🎤</button>
           <textarea id="chat-input" rows="1" placeholder="Initializing..." disabled></textarea>
           <div style="display: flex; gap: 4px;">
             <button id="send-btn" class="icon-btn primary" onclick="handleSend()" disabled title="Send">➤</button>
@@ -697,6 +712,17 @@
       <div class="panel-header"><strong>Settings</strong><button onclick="hidePanels()" class="icon-btn" aria-label="Close panel">✕</button></div>
       <div class="panel-content" style="max-height: 80vh; overflow-y: auto;">
 
+        <!-- ── Model Selection ───────────────────────────────── -->
+        <div class="settings-section">
+          <label class="settings-label">Model</label>
+          <p class="settings-hint">Choose the AI model. Larger models are more capable but require more memory.</p>
+          <select id="model-select" class="settings-select">
+            <option value="gemma3-1b">Gemma 3 1B (~760 MB) — Fast, text-only</option>
+            <option value="gemma4-e2b" selected>Gemma 4 E2B (~1.5 GB) — Multimodal, tools</option>
+            <option value="gemma4-e4b">Gemma 4 E4B (~4.9 GB) — Multimodal, best quality</option>
+          </select>
+        </div>
+
         <!-- ── System Prompt ──────────────────────────────── -->
         <div class="settings-section">
           <label class="settings-label">System Prompt</label>
@@ -709,9 +735,11 @@
         <div class="settings-section">
           <label class="settings-label">Generation</label>
 
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; margin-bottom: 12px;">
-            <input type="checkbox" id="thinking-toggle" checked> Show reasoning (Thinking Mode)
-          </label>
+          <div id="thinking-row" style="margin-bottom: 12px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="thinking-toggle" checked> Show reasoning (Thinking Mode)
+            </label>
+          </div>
 
           <label class="settings-sublabel">Temperature <span id="temp-value" class="settings-value-badge">0.7</span></label>
           <input type="range" id="temperature-slider" min="0" max="1.5" step="0.05" value="0.7" class="settings-range">
@@ -1060,7 +1088,6 @@
 
   <script type="module">
     /* global mammoth, pdfjsLib, markdownit, DOMPurify */
-    import { LlmInference, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai';
     import * as pdfjsLibModule from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs';
     window.pdfjsLib = pdfjsLibModule;
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
@@ -1079,30 +1106,50 @@
     }
 
     // ── Configuration & Models ──────────────────────────────
-    const REMOTE_MODEL = 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task';
-    const LOCAL_MODEL = './gemma-4-E2B-it-web.task';
-    
     const MODELS = {
+      'gemma3-1b': {
+        id:           'onnx-community/gemma-3-1b-it-ONNX-GQA',
+        label:        'Gemma 3 1B',
+        dtype:        'q4f16',
+        size:         '~760 MB',
+        type:         'causal',
+        multimodal:   false,
+        agentCapable: false,
+        contextSize:  4096,
+        genConfig:    { temperature: 0.7, top_k: 50, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.0 },
+      },
       'gemma4-e2b': {
-        id: REMOTE_MODEL,
-        label: 'Gemma 4 E2B',
-        size: '~1.5 GB',
-        type: 'mediapipe',
+        id:           'onnx-community/gemma-4-E2B-it-ONNX',
+        label:        'Gemma 4 E2B',
+        dtype:        'q4f16',
+        size:         '~1.5 GB',
+        type:         'multimodal',
+        multimodal:   true,
         agentCapable: true,
-        contextSize: 8192,
-        genConfig: { temperature: 0.7, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
+        contextSize:  8192,
+        genConfig:    { temperature: 0.7, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
+      },
+      'gemma4-e4b': {
+        id:           'onnx-community/gemma-4-E4B-it-ONNX',
+        label:        'Gemma 4 E4B',
+        dtype:        'q4f16',
+        size:         '~4.9 GB',
+        type:         'multimodal',
+        multimodal:   true,
+        agentCapable: true,
+        contextSize:  12288,
+        genConfig:    { temperature: 0.7, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
       },
     };
+    let activeModelKey = localStorage.getItem('lm_active_model') || 'gemma4-e2b';
     window.MODELS = MODELS;
 
     // ── State ───────────────────────────────────────────────────
     const State = {
-      inference: null,
       history: [],
       isGenerating: false,
       stopRequested: false,
       batchStopRequested: false,
-      activeModel: REMOTE_MODEL,
       modelReady: false,
       embeddingWorker: null,
       embeddingReady: false,
@@ -1114,6 +1161,16 @@
       memoryCategory: 'all'
     };
     window.State = State;
+
+    // ── Inference Worker State ────────────────────────────────
+    let inferenceWorker   = null;
+    let workerReady       = false;
+    let generateResolve   = null;
+    let currentTokenAccum = '';
+    let msgIdCounter      = 0;
+    let currentAssistantEl = null;
+    let cameraStream      = null;
+    let mediaRecorder     = null;
 
     // ── Image / File Attachment Management ────────────────────
     let attachments = []; // [{type:'image', blob:Blob, thumb:string, name:string}]
@@ -1310,6 +1367,273 @@ self.addEventListener('message', async (e) => {
         });
       }));
       return State.embeddingQueue;
+    }
+
+    // ── Inference Web Worker ─────────────────────────────────
+    function createInferenceWorker() {
+      const code = `
+import {
+  env, AutoTokenizer, AutoModelForCausalLM,
+  AutoProcessor, Gemma4ForConditionalGeneration,
+  load_image, TextStreamer, InterruptableStoppingCriteria,
+} from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4/+esm';
+
+env.allowLocalModels  = true;
+env.localModelPath    = '/models/';
+env.allowRemoteModels = true;
+
+let processor = null, tokenizer = null, model = null, loadedType = null;
+const stopping_criteria = new InterruptableStoppingCriteria();
+
+const progress = p => self.postMessage({ type: 'progress', data: p });
+
+async function loadCausal(modelId, dtype) {
+  processor = null; tokenizer = null; model = null;
+  tokenizer = await AutoTokenizer.from_pretrained(modelId, { progress_callback: progress });
+  model = await AutoModelForCausalLM.from_pretrained(modelId, {
+    dtype, device: 'webgpu', progress_callback: progress,
+  });
+  self.postMessage({ type: 'warmup' });
+  await model.generate({ ...tokenizer('a'), max_new_tokens: 1 });
+  loadedType = 'causal';
+  self.postMessage({ type: 'ready' });
+}
+
+async function loadMultimodal(modelId, dtype) {
+  processor = null; tokenizer = null; model = null;
+  processor = await AutoProcessor.from_pretrained(modelId, { progress_callback: progress });
+  tokenizer = processor.tokenizer;
+  model = await Gemma4ForConditionalGeneration.from_pretrained(modelId, {
+    dtype, device: 'webgpu', progress_callback: progress,
+  });
+  self.postMessage({ type: 'warmup' });
+  await model.generate({ ...tokenizer('a'), max_new_tokens: 1 });
+  loadedType = 'multimodal';
+  self.postMessage({ type: 'ready' });
+}
+
+async function generateCausal(chatMessages, id, genConfig) {
+  stopping_criteria.reset();
+  try {
+    const inputs = tokenizer.apply_chat_template(chatMessages, {
+      add_generation_prompt: true, return_dict: true,
+    });
+    const streamer = new TextStreamer(tokenizer, {
+      skip_prompt: true, skip_special_tokens: true,
+      callback_function: text => self.postMessage({ type: 'token', token: text, id }),
+    });
+    const gc = genConfig || {};
+    await model.generate({
+      ...inputs,
+      max_new_tokens:     gc.max_new_tokens     || 2048,
+      do_sample:          true,
+      temperature:        gc.temperature        ?? 0.7,
+      top_k:              gc.top_k              ?? 50,
+      top_p:              gc.top_p              ?? 0.95,
+      repetition_penalty: gc.repetition_penalty ?? 1.0,
+      streamer, stopping_criteria,
+    });
+    self.postMessage({ type: 'complete', id });
+  } catch (err) {
+    self.postMessage({ type: 'error', message: err.message || String(err) });
+    self.postMessage({ type: 'complete', id });
+  }
+}
+
+async function generateMultimodal(chatMessages, id, attData, enableThinking, genConfig) {
+  stopping_criteria.reset();
+  try {
+    const prompt = processor.apply_chat_template(chatMessages, {
+      add_generation_prompt: true,
+      enable_thinking: enableThinking || false,
+    });
+
+    const images = [], audios = [];
+    for (const att of (attData || [])) {
+      if (att.type === 'image') {
+        const blobUrl = URL.createObjectURL(new Blob([att.data], { type: att.mimeType || 'image/jpeg' }));
+        images.push(await load_image(blobUrl));
+        URL.revokeObjectURL(blobUrl);
+      } else if (att.type === 'audio') {
+        audios.push(att.pcmData instanceof Float32Array ? att.pcmData : new Float32Array(att.pcmData));
+      }
+    }
+
+    const imageArg = images.length ? (images.length === 1 ? images[0] : images) : null;
+    const audioArg = audios.length ? (audios.length === 1 ? audios[0] : audios) : null;
+    const inputs   = await processor(prompt, imageArg, audioArg, { add_special_tokens: false });
+
+    const streamer = new TextStreamer(processor.tokenizer, {
+      skip_prompt: true, skip_special_tokens: true,
+      callback_function: text => self.postMessage({ type: 'token', token: text, id }),
+    });
+    const gc = genConfig || {};
+    await model.generate({
+      ...inputs,
+      max_new_tokens:     gc.max_new_tokens     || 2048,
+      do_sample:          true,
+      temperature:        gc.temperature        ?? 1.0,
+      top_k:              gc.top_k              ?? 64,
+      top_p:              gc.top_p              ?? 0.95,
+      repetition_penalty: gc.repetition_penalty ?? 1.1,
+      streamer, stopping_criteria,
+    });
+    self.postMessage({ type: 'complete', id });
+  } catch (err) {
+    self.postMessage({ type: 'error', message: err.message || String(err) });
+    self.postMessage({ type: 'complete', id });
+  }
+}
+
+self.addEventListener('message', async ({ data }) => {
+  const { type, modelId, dtype, modelType, messages, id, attachments, enableThinking, generationConfig } = data;
+  if (type === 'load') {
+    try {
+      if (modelType === 'multimodal') await loadMultimodal(modelId, dtype);
+      else                            await loadCausal(modelId, dtype);
+    } catch (err) {
+      self.postMessage({ type: 'error', message: err.message || String(err) });
+    }
+  } else if (type === 'generate') {
+    if (loadedType === 'multimodal') await generateMultimodal(messages, id, attachments, enableThinking, generationConfig);
+    else                             await generateCausal(messages, id, generationConfig);
+  } else if (type === 'stop') {
+    stopping_criteria.interrupt();
+  }
+});
+`;
+      return new Worker(URL.createObjectURL(new Blob([code], { type: 'application/javascript' })), { type: 'module' });
+    }
+
+    function attachWorkerHandlers(w) {
+      w.addEventListener('error', e => {
+        console.error('Worker error:', e);
+        showToast('Model worker crashed: ' + e.message);
+        updateStatus('error', 'Worker Error');
+      });
+
+      w.addEventListener('message', ({ data }) => {
+        if (data.type === 'progress') {
+          const p   = data.data;
+          const pct = p.progress != null ? ` ${Math.round(p.progress)}%` : '';
+          if (p.status === 'downloading' || p.status === 'loading')
+            updateStatus('loading', (p.name || 'Model') + pct);
+
+        } else if (data.type === 'warmup') {
+          updateStatus('loading', 'Compiling shaders…');
+
+        } else if (data.type === 'ready') {
+          workerReady = true;
+          State.modelReady = true;
+          updateStatus('online', 'Ready');
+          document.getElementById('chat-input').disabled = false;
+          document.getElementById('chat-input').placeholder = 'Ask anything...';
+          updateSendButtons();
+          updateMultimodalUI();
+          // Hide the loader if it's still visible
+          document.getElementById('global-loader')?.classList.add('hidden');
+          stopNeuralNetworkAnimation();
+
+        } else if (data.type === 'token') {
+          currentTokenAccum += data.token;
+          if (currentAssistantEl) {
+            renderMessage(currentTokenAccum, 'ai', currentAssistantEl, { isStreaming: true, showThinking: State.showThinking });
+          }
+
+        } else if (data.type === 'complete') {
+          if (generateResolve) { generateResolve(currentTokenAccum); generateResolve = null; }
+
+        } else if (data.type === 'error') {
+          showToast('Generation error: ' + data.message);
+          if (generateResolve) { generateResolve(''); generateResolve = null; }
+        }
+      });
+    }
+
+    function loadModel(key) {
+      const m = MODELS[key];
+      if (!m) return;
+
+      if (inferenceWorker) { inferenceWorker.terminate(); inferenceWorker = null; }
+
+      activeModelKey = key;
+      workerReady    = false;
+      State.modelReady = false;
+      localStorage.setItem('lm_active_model', key);
+      document.getElementById('chat-input').disabled = true;
+      updateStatus('loading', 'Loading model…');
+
+      if (!m.multimodal) clearAttachments();
+      updateMultimodalUI();
+
+      // Show the loader with neural animation
+      document.getElementById('global-loader')?.classList.remove('hidden');
+      startNeuralNetworkAnimation();
+      const logBoot = (msg) => {
+        const log = document.getElementById('global-boot-log');
+        if (!log) return;
+        const line = document.createElement('div'); line.className = 'boot-line'; line.innerText = msg; log.prepend(line);
+        if (log.children.length > 6) log.removeChild(log.lastChild);
+        const loaderMsg = document.getElementById('loader-msg');
+        if (loaderMsg) loaderMsg.innerText = msg;
+      };
+      logBoot(`Loading ${m.label} (${m.size})…`);
+
+      // Update model selector if it exists
+      const modelSelect = document.getElementById('model-select');
+      if (modelSelect) modelSelect.value = key;
+
+      inferenceWorker = createInferenceWorker();
+      attachWorkerHandlers(inferenceWorker);
+      inferenceWorker.postMessage({ type: 'load', modelId: m.id, dtype: m.dtype, modelType: m.type });
+    }
+
+    function generateOnce(chatMessages, attData, enableThinking, genConfig) {
+      return new Promise(resolve => {
+        generateResolve   = resolve;
+        currentTokenAccum = '';
+        inferenceWorker.postMessage({
+          type:             'generate',
+          messages:         chatMessages,
+          id:               ++msgIdCounter,
+          attachments:      attData || null,
+          enableThinking:   enableThinking || false,
+          generationConfig: genConfig || {},
+        });
+      });
+    }
+
+    function stopGeneration() {
+      if (inferenceWorker) inferenceWorker.postMessage({ type: 'stop' });
+    }
+
+    function updateMultimodalUI() {
+      const m    = MODELS[activeModelKey];
+      const show = m?.multimodal && workerReady;
+      const cameraBtn = document.getElementById('camera-btn');
+      const micBtn    = document.getElementById('mic-btn');
+      if (cameraBtn) cameraBtn.style.display = show ? '' : 'none';
+      if (micBtn) micBtn.style.display = show ? '' : 'none';
+      // Plus-menu camera/mic items
+      document.querySelectorAll('.plus-camera-btn').forEach(el => { el.style.display = show ? '' : 'none'; });
+      document.querySelectorAll('.plus-mic-btn').forEach(el => { el.style.display = show ? '' : 'none'; });
+      const thinkRow = document.getElementById('thinking-row');
+      if (thinkRow) thinkRow.style.display = m?.multimodal ? '' : 'none';
+    }
+
+    async function prepareAttachmentsForWorker() {
+      const result = [];
+      for (const att of attachments) {
+        if (att.type === 'image') {
+          result.push({ type: 'image', data: await att.blob.arrayBuffer(), mimeType: att.blob.type || 'image/jpeg' });
+        } else if (att.type === 'audio') {
+          const raw     = await att.blob.arrayBuffer();
+          const ctx     = new OfflineAudioContext(1, 1, 16000);
+          const decoded = await ctx.decodeAudioData(raw.slice(0));
+          result.push({ type: 'audio', pcmData: decoded.getChannelData(0).buffer, mimeType: att.blob.type });
+        }
+      }
+      return result;
     }
 
     // ── RAG: IndexedDB Vector Store ──────────────────────────
@@ -2389,6 +2713,24 @@ self.addEventListener('message', async (e) => {
         .trim();
     }
 
+    function extractThinking(text) {
+      let thinkContent = '';
+      let mainContent = text;
+      const thinkMatch = text.match(/<\|think\|>([\s\S]*?)(<\|\/think\|>|$)/);
+      if (thinkMatch) {
+        thinkContent = thinkMatch[1].trim();
+        mainContent = text.replace(/<\|think\|>[\s\S]*?(<\|\/think\|>|$)/, '').trim();
+      }
+      if (!thinkContent) {
+        const channelMatch = text.match(/<\|channel>thought\n?([\s\S]*?)(<channel\|>|$)/);
+        if (channelMatch) {
+          thinkContent = channelMatch[1].trim();
+          mainContent = text.replace(/<\|channel>thought\n?[\s\S]*?(<channel\|>|$)/, '').trim();
+        }
+      }
+      return { thinkContent, mainContent };
+    }
+
     // ── Gemma 4 Structured Format Helpers ────────────────────
     // Gemma 4 uses <|"|> as a string delimiter inside structured data blocks
     // (tool declarations, tool calls, tool responses). Numbers and booleans
@@ -2642,10 +2984,10 @@ self.addEventListener('message', async (e) => {
               toolResponsePayload = { result: resultText, note: `The ${toolLabel} is embedded inline in the chat.` };
             }
           }
-          State.history.push({ role: 'user', text: `I used the ${toolName} tool with these arguments: ${JSON.stringify(normalizedArgs)}` });
+          State.history.push({ role: 'user', content: `I used the ${toolName} tool with these arguments: ${JSON.stringify(normalizedArgs)}` });
           const toolCallStr = `<|tool_call>call:${toolName}${formatGemmaObject(normalizedArgs)}<tool_call|>`;
           const toolRespStr = `<|tool_response>response:${toolName}${formatGemmaObject(toolResponsePayload)}<tool_response|>`;
-          State.history.push({ role: 'ai', text: toolCallStr + toolRespStr, _isToolTurn: true });
+          State.history.push({ role: 'assistant', content: toolCallStr + toolRespStr, _isToolTurn: true });
           handleSend(true);
         } catch (e) {
           renderToolCallBlock(aiEl, toolName, args, { error: e.message });
@@ -3049,102 +3391,9 @@ self.addEventListener('message', async (e) => {
     }
 
     // ── Core Inference Boot ──────────────────────────────────
-    async function initGemma(source = null, isStream = false) {
-      const logBoot = (msg) => {
-        const log = document.getElementById('global-boot-log');
-        const line = document.createElement('div'); line.className = 'boot-line'; line.innerText = msg; log.prepend(line);
-        if (log.children.length > 6) log.removeChild(log.lastChild);
-        document.getElementById('loader-msg').innerText = msg;
-      };
-      const wait = (ms) => new Promise(r => setTimeout(r, ms));
-
-      try {
-        document.getElementById('global-loader').classList.remove('hidden');
-        startNeuralNetworkAnimation();
-        await requestPersistentStorage();
-        updateStatus('loading', 'Initializing...');
-        logBoot("☕ Waking up the brain... coffee first.");
-        await wait(800);
-        logBoot("🔌 Plugging in the neurons...");
-        await wait(600);
-        
-        let modelPath;
-        if (isStream && source) {
-          updateStatus('loading', 'Caching...');
-          logBoot("📦 Ingesting manual data stream...");
-          await wait(400);
-          const blob = new Blob([source]); await ModelCacheDB.save('gemma_task', blob);
-          logBoot("💾 Neural weights committed to disk. No refunds.");
-          await wait(500);
-          modelPath = URL.createObjectURL(blob);
-        } else {
-          updateStatus('loading', 'Scanning Cache...');
-          logBoot("🔍 Rummaging through local storage...");
-          await wait(700);
-          let modelBlob = await ModelCacheDB.get('gemma_task');
-          if (modelBlob instanceof Blob) {
-            logBoot("🎉 Gemma core found! Like finding leftovers in the fridge.");
-            await wait(600);
-            modelPath = URL.createObjectURL(modelBlob);
-          } else {
-            updateStatus('loading', 'Locating...');
-            logBoot("🤷 Local cache miss. Asking the internet nicely...");
-            await wait(500);
-            let fetchPath = REMOTE_MODEL;
-            try { const check = await fetch(LOCAL_MODEL, { method: 'HEAD' }); if (check.ok) { fetchPath = LOCAL_MODEL; logBoot("📡 Nearby weights detected on host. Score!"); await wait(400); } } catch (_e) { /* local model not available — proceed with remote */ }
-            if (fetchPath === REMOTE_MODEL) {
-              // Show rescue options within the neural loader (no separate overlay)
-              logBoot("📦 Model not found locally. Manual action required.");
-              document.getElementById('loader-rescue').classList.add('visible');
-              updateStatus('error', 'Model Required');
-              return;
-            }
-            updateStatus('loading', 'Downloading...');
-            logBoot("⬇️ Downloading from remote repository...");
-            await wait(300);
-            const res = await fetch(fetchPath); modelBlob = await res.blob();
-            updateStatus('loading', 'Caching...');
-            logBoot("📥 Download complete. Stashing for next time...");
-            await wait(500);
-            await ModelCacheDB.save('gemma_task', modelBlob);
-            logBoot("✅ Persistence verified. We won't forget this time.");
-            await wait(400);
-            modelPath = URL.createObjectURL(modelBlob);
-          }
-        }
-
-        updateStatus('loading', 'Linking...');
-        logBoot("🧮 Allocating WebGPU buffers... hold tight.");
-        await wait(800);
-        const f = await FilesetResolver.forGenAiTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm");
-        
-        updateStatus('loading', 'Booting...');
-        logBoot("🧬 Inflating neural layers... almost sentient.");
-        await wait(700);
-        logBoot("⚡ Connecting synapses... don't blink.");
-        await wait(500);
-        
-        State.inference = await LlmInference.createFromOptions(f, {
-          baseOptions: { modelAssetPath: modelPath, delegate: navigator.gpu ? "GPU" : "CPU" },
-          maxTokens: getSettingsValues().maxTokens, temperature: getSettingsValues().temperature
-        });
-        
-        logBoot("🚀 Inference engine is hot. Let's go!");
-        await wait(400);
-        State.modelReady = true; updateStatus('online', 'Ready');
-        document.getElementById('chat-input').disabled = false;
-        document.getElementById('chat-input').placeholder = "Ask anything...";
-        updateSendButtons();
-        document.getElementById('loader-rescue').classList.remove('visible');
-        document.getElementById('global-loader').classList.add('hidden');
-        stopNeuralNetworkAnimation();
-      } catch (e) {
-        console.error(e);
-        logBoot("💀 CRITICAL FAILURE: BRAIN NOT FOUND");
-        updateStatus('error', 'Brain Failure');
-        // Show rescue options within the loader instead of a separate overlay
-        document.getElementById('loader-rescue').classList.add('visible');
-      }
+    // initGemma is now replaced by loadModel() — kept as a thin wrapper for backward compatibility
+    function initGemma() {
+      loadModel(activeModelKey);
     }
 
     // ── Sending & Agent Loop ───────────────────────────────
@@ -3298,35 +3547,34 @@ self.addEventListener('message', async (e) => {
      */
     /**
      * Stream a final-answer response from the model into a new AI bubble.
-     * Used when the agentic loop needs to force a concluding generation pass
-     * (e.g. duplicate tool call detected or tool iteration limit reached).
+     * Used when the agentic loop needs to force a concluding generation pass.
      * @param {HTMLElement} aiEl - The parent AI message element.
      * @returns {Promise<string>} The accumulated response text.
      */
     async function streamFinalResponse(aiEl) {
-      const finalPrompt = await buildPrompt("", true);
-      let finalFull = "";
-      const finalBubble = document.createElement('div');
-      finalBubble.className = 'ai-bubble';
-      aiEl.appendChild(finalBubble);
-      await new Promise(res => {
-        let resolved = false;
-        State.inference.generateResponse(finalPrompt, (chunk, done) => {
-          if (resolved) return;
-          if (State.stopRequested) { resolved = true; res(); return; }
-          finalFull = mergeStreamingText(finalFull, chunk);
-          if (detectStreamingRepetition(finalFull)) { resolved = true; res(); return; }
-          renderMessage(finalFull, 'ai', aiEl, { isStreaming: !done, showThinking: false });
-          if (done) { resolved = true; res(); }
-        });
-      });
+      const m = MODELS[activeModelKey];
+      const sysPrompt = buildAgentSystemPrompt('');
+      const chatMessages = await buildContextMessages(State.history, sysPrompt);
+      const bubble = document.createElement('div');
+      bubble.className = 'ai-bubble';
+      aiEl.appendChild(bubble);
+      currentAssistantEl = aiEl;
+      currentTokenAccum = '';
+      const finalFull = await generateOnce(chatMessages, null, false, m.genConfig);
       collapseThinkingBlocks(aiEl);
+      currentAssistantEl = null;
       return finalFull;
+    }
+
+    function formatToolResponse(toolName, result) {
+      const payload = typeof result === 'string' ? result : JSON.stringify(result);
+      return `[Tool result for ${toolName}]: ${payload}`;
     }
 
     async function handleSend(ov = null, rerunHistFrom = null) {
       if (State.isGenerating) {
         State.stopRequested = true;
+        stopGeneration();
         return;
       }
       const input = document.getElementById('chat-input');
@@ -3336,13 +3584,13 @@ self.addEventListener('message', async (e) => {
       const welcomeMsg = document.getElementById('welcome-msg');
       if (welcomeMsg) welcomeMsg.remove();
 
+      const m = MODELS[activeModelKey];
+      const enableThinking = State.showThinking;
+      const isAgent = m.agentCapable;
+
       // Determine the "turn start" index in history for this turn.
-      // This is stored on message elements so actions (edit/delete/rerun) know
-      // where to slice history.
       let turnHistFrom;
       if (ov === true) {
-        // Continuation or programmatic rerun — use explicit histFrom when supplied,
-        // otherwise derive it from the last rendered user element.
         if (rerunHistFrom !== null) {
           turnHistFrom = rerunHistFrom;
         } else {
@@ -3351,13 +3599,19 @@ self.addEventListener('message', async (e) => {
           turnHistFrom = userMsgs.length ? parseInt(userMsgs[userMsgs.length - 1].dataset.histFrom) : 0;
         }
       } else {
-        // Normal send — user message will be pushed at this index
         turnHistFrom = State.history.length;
+      }
+
+      // Prepare multimodal attachments for worker transfer
+      const isMultimodal = m.multimodal && attachments.length > 0;
+      let attData = null;
+      if (isMultimodal && text && ov !== true) {
+        attData = await prepareAttachmentsForWorker();
       }
 
       if (text && ov !== true) {
         input.value = ''; input.style.height = 'auto';
-        // Capture current attachment data before clearing (single pass)
+        // Capture current attachment data before clearing
         const imageThumbs = [], imageNames = [], audioAtts = [], videoAtts = [], docAtts = [];
         for (const a of attachments) {
           if (a.type === 'image') { imageThumbs.push(a.thumb); imageNames.push(a.name); }
@@ -3367,7 +3621,22 @@ self.addEventListener('message', async (e) => {
         }
         const userEl = renderMessage(text, 'user', null, { images: imageThumbs, audios: audioAtts, videos: videoAtts });
         userEl.dataset.histFrom = turnHistFrom;
-        // Build attachment context for the model
+
+        // Build user content — multimodal if applicable
+        let userContent;
+        if (isMultimodal && attData) {
+          const blocks = [];
+          for (const att of attData) {
+            if (att.type === 'image') blocks.push({ type: 'image' });
+            if (att.type === 'audio') blocks.push({ type: 'audio' });
+          }
+          if (text) blocks.push({ type: 'text', text });
+          userContent = blocks;
+        } else {
+          userContent = text;
+        }
+
+        // Build attachment context for non-multimodal models
         const attachCtx = [];
         if (imageThumbs.length) attachCtx.push(`${imageThumbs.length} image(s) attached: ${imageNames.join(', ')}`);
         if (audioAtts.length) attachCtx.push(`${audioAtts.length} audio file(s) attached: ${audioAtts.map(a => a.name).join(', ')}`);
@@ -3376,13 +3645,24 @@ self.addEventListener('message', async (e) => {
           const docContext = docAtts.map(d => `--- ${d.name} ---\n${d.text}`).join('\n\n');
           attachCtx.push(`${docAtts.length} document(s) attached:\n${docContext}`);
         }
-        const historyText = attachCtx.length ? `${text}\n\n[Attached media: ${attachCtx.join('; ')}]` : text;
-        State.history.push({
-          role: 'user', text: historyText,
-          _images: imageThumbs.length > 0 ? imageThumbs : undefined,
-          _audios: audioAtts.length > 0 ? audioAtts : undefined,
-          _videos: videoAtts.length > 0 ? videoAtts : undefined,
-        });
+
+        // For history: use multimodal content blocks if multimodal, else string
+        if (isMultimodal) {
+          State.history.push({
+            role: 'user', content: userContent,
+            _images: imageThumbs.length > 0 ? imageThumbs : undefined,
+            _audios: audioAtts.length > 0 ? audioAtts : undefined,
+            _videos: videoAtts.length > 0 ? videoAtts : undefined,
+          });
+        } else {
+          const historyText = attachCtx.length ? `${text}\n\n[Attached media: ${attachCtx.join('; ')}]` : text;
+          State.history.push({
+            role: 'user', content: historyText,
+            _images: imageThumbs.length > 0 ? imageThumbs : undefined,
+            _audios: audioAtts.length > 0 ? audioAtts : undefined,
+            _videos: videoAtts.length > 0 ? videoAtts : undefined,
+          });
+        }
         addMessageActions(userEl, 'user');
         clearAttachments();
       }
@@ -3401,8 +3681,6 @@ self.addEventListener('message', async (e) => {
         }
 
         // ── RAG pre-fetch ──────────────────────────────────────
-        // If the vector store has documents, search for relevant context before
-        // the first generation pass so the model has grounding material.
         let ragContext = mentionContext;
         const chunks = await getAllChunks();
         if (text && chunks.length > 0) {
@@ -3417,230 +3695,193 @@ self.addEventListener('message', async (e) => {
           updateStatus('online', 'Ready');
         }
 
-        // ── Agentic loop ───────────────────────────────────────
-        const maxIters = getSettingsValues().maxToolIters;
-        // Track previous tool calls to detect duplicate invocations
-        let prevToolKey = null;
-        for (let iter = 0; iter < maxIters; iter++) {
-          let full = "";
-          let repetitionDetected = false;
-          const iterShowThinking = State.showThinking && iter === 0;
-          // Pass isFollowUpIteration=true on iter > 0 so buildPrompt omits the
-          // CRITICAL tool placement note (the note only matters on the first pass
-          // when the model has a chain-of-thought prefix).
-          const isFollowUpIteration = iter > 0;
-          const prompt = await buildPrompt(ragContext, isFollowUpIteration);
-
-          // On follow-up iterations, create a fresh bubble so the new response
-          // appears below the tool-call blocks from the previous iteration.
-          if (iter > 0) {
-            const bubble = document.createElement('div');
-            bubble.className = 'ai-bubble';
-            aiEl.appendChild(bubble);
-          }
-
-          // Stream response tokens; renderMessage re-renders the bubble on each chunk.
-          // generateResponse() delivers cumulative (not delta) text on each callback,
-          // so we assign full = chunk rather than appending.
-          await new Promise(res => {
-            let resolved = false;
-            State.inference.generateResponse(prompt, (chunk, done) => {
-              if (resolved) return;
-              if (State.stopRequested) {
-                resolved = true;
-                res();
-                return;
-              }
-              full = mergeStreamingText(full, chunk);
-
-              // Detect repetitive output loops (e.g. "turn start turning turn...")
-              if (detectStreamingRepetition(full)) {
-                repetitionDetected = true;
-                resolved = true;
-                res();
-                return;
-              }
-
-              renderMessage(full, 'ai', aiEl, { isStreaming: !done, showThinking: iterShowThinking });
-              if (done) {
-                resolved = true;
-                res();
-              }
-            });
-          });
-
-          // Transition "Thinking..." → "Thought process" now that streaming finished
+        // ── Non-agent: single pass ───────────────────────────────
+        if (!isAgent) {
+          const sysPrompt = getSystemPrompt() + (ragContext ? '\n\n' + ragContext : '');
+          const chatMessages = await buildContextMessages(State.history, sysPrompt);
+          currentAssistantEl = aiEl;
+          currentTokenAccum = '';
+          const response = await generateOnce(chatMessages, attData, enableThinking, m.genConfig);
           collapseThinkingBlocks(aiEl);
+          renderMessage(response, 'ai', aiEl, { isStreaming: false, showThinking: State.showThinking });
+          State.history.push({ role: 'assistant', content: response });
+          currentAssistantEl = null;
+        } else {
+          // ── Agentic loop ─────────────────────────────────────────
+          const maxIters = getSettingsValues().maxToolIters;
+          let prevToolKey = null;
+          let currentAttData = attData;
 
-          // If repetition was detected, trim the repeated tail and finish
-          if (repetitionDetected) {
-            // Remove the trailing repeated text so the user sees a clean message
-            const cleaned = full.replace(/(.{3,30}?)\1{3,}$/g, '$1').trim();
-            const finalText = cleaned || full;
-            renderMessage(finalText, 'ai', aiEl, { isStreaming: false, showThinking: iterShowThinking });
-            State.history.push({ role: 'ai', text: finalText });
-            break;
-          }
+          for (let iter = 0; iter < maxIters; iter++) {
+            const iterShowThinking = enableThinking && iter === 0;
 
-          if (State.stopRequested) {
-            if (full && full.trim()) {
-              State.history.push({ role: 'ai', text: full });
+            // On follow-up iterations, create a fresh bubble
+            if (iter > 0) {
+              const bubble = document.createElement('div');
+              bubble.className = 'ai-bubble';
+              aiEl.appendChild(bubble);
             }
-            break;
-          }
 
-          // ── Tool call detection ────────────────────────────
-          // Priority 1: Gemma 4 native format <|tool_call>call:name{...}<tool_call|>
-          let call = parseGemmaToolCall(full);
+            // Build messages and generate
+            const sysPrompt = buildAgentSystemPrompt(ragContext);
+            const chatMessages = await buildContextMessages(State.history, sysPrompt);
+            currentAssistantEl = aiEl;
+            currentTokenAccum = '';
+            const full = await generateOnce(chatMessages, currentAttData, iterShowThinking, m.genConfig);
+            currentAttData = null; // attachments only on first pass
 
-          // Priority 2: Gemma 4 native format inside thinking block
-          if (!call) {
-            const thinkContent = full.match(/<\|channel>thought\n?([\s\S]*?)<channel\|>/)?.[1] || full.match(/<\|think\|>([\s\S]*?)<\|\/think\|>/)?.[1] || '';
-            if (thinkContent) {
-              call = parseGemmaToolCall(thinkContent);
+            // Transition "Thinking..." → "Thought process"
+            collapseThinkingBlocks(aiEl);
+
+            // Check for repetition
+            if (detectStreamingRepetition(full)) {
+              const cleaned = full.replace(/(.{3,30}?)\1{3,}$/g, '$1').trim();
+              const finalText = cleaned || full;
+              renderMessage(finalText, 'ai', aiEl, { isStreaming: false, showThinking: iterShowThinking });
+              State.history.push({ role: 'assistant', content: finalText });
+              break;
             }
-          }
 
-          // Fallback 1: Legacy <tool_call>JSON</tool_call> format
-          if (!call) {
-            let tc = full.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
-            if (!tc) {
+            if (State.stopRequested) {
+              if (full && full.trim()) {
+                State.history.push({ role: 'assistant', content: full });
+              }
+              break;
+            }
+
+            // ── Tool call detection ────────────────────────────
+            // Priority 1: Gemma 4 native format
+            let call = parseGemmaToolCall(full);
+
+            // Priority 2: Inside thinking block
+            if (!call) {
               const thinkContent = full.match(/<\|channel>thought\n?([\s\S]*?)<channel\|>/)?.[1] || full.match(/<\|think\|>([\s\S]*?)<\|\/think\|>/)?.[1] || '';
               if (thinkContent) {
-                tc = thinkContent.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
+                call = parseGemmaToolCall(thinkContent);
               }
             }
-            if (tc) call = repairAndParseJSON(tc[1]);
-          }
 
-          // Fallback 2: bare JSON object with "name" and "arguments" keys
-          if (!call) {
-            const jsonMatch = full.match(/\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[\s\S]*?\}\s*\}/);
-            if (jsonMatch) {
-              call = repairAndParseJSON(jsonMatch[0]);
-            }
-          }
-          if (!call) {
-            // No tool call in this response — the agent is done
-            State.history.push({ role: 'ai', text: full });
-            break;
-          }
-
-          try {
-            const tool = TOOL_REGISTRY[call.name];
-            if (!tool) {
-              // Unknown tool name — save and stop rather than looping infinitely
-              State.history.push({ role: 'ai', text: full });
-              break;
-            }
-
-            // ── Duplicate tool call detection ──────────────────
-            // If the model calls the same tool with the same arguments as the
-            // previous iteration, stop the loop to avoid redundant results.
-            const toolKey = JSON.stringify({ name: call.name, arguments: call.arguments });
-            if (toolKey === prevToolKey) {
-              // Feed a system message telling the model it already has the result
-              State.history.push({ role: 'ai', text: full });
-              State.history.push({ role: 'user', text: '[System: You already called this tool with the same arguments. Use the previous result to answer the user\'s question now.]' });
-              // Force a final answer generation
-              const finalFull = await streamFinalResponse(aiEl);
-              if (finalFull && finalFull.trim()) {
-                State.history.push({ role: 'ai', text: finalFull });
-              }
-              break;
-            }
-            prevToolKey = toolKey;
-
-            // Strip pre-tool-call filler text from the visible bubble.
-            // Models often emit speculative text like "Let me search for that..."
-            // before the <|tool_call> tag. This text is inaccurate since the tool
-            // hasn't run yet, so we clear the bubble and only keep thinking blocks.
-            {
-              const bubbles = aiEl.querySelectorAll('.ai-bubble');
-              const bubble = bubbles.length ? bubbles[bubbles.length - 1] : null;
-              if (bubble) {
-                const hasThink = /<\|think\|>/.test(full) || /<\|channel>thought/.test(full);
-                if (hasThink) {
-                  // Extract all thinking blocks, strip everything else
-                  const thinkBlocks = full.match(/<\|think\|>[\s\S]*?<\|\/think\|>/g)
-                    || full.match(/<\|channel>thought[\s\S]*?<channel\|>/g)
-                    || [];
-                  const thinkOnly = thinkBlocks.join('\n');
-                  bubble.innerHTML = renderMarkdown(thinkOnly, { showThinking: iterShowThinking });
-                } else {
-                  // No thinking block — clear filler text entirely
-                  bubble.innerHTML = '';
+            // Fallback 1: Legacy <tool_call>JSON</tool_call>
+            if (!call) {
+              let tc = full.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
+              if (!tc) {
+                const thinkContent = full.match(/<\|channel>thought\n?([\s\S]*?)<channel\|>/)?.[1] || full.match(/<\|think\|>([\s\S]*?)<\|\/think\|>/)?.[1] || '';
+                if (thinkContent) {
+                  tc = thinkContent.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
                 }
               }
+              if (tc) call = repairAndParseJSON(tc[1]);
             }
 
-            // Show "Step N/MAX" label on second and subsequent iterations
-            if (iter > 0) {
-              const stepLabel = document.createElement('div');
-              stepLabel.style.cssText = 'font-size:0.68rem;color:var(--ollama-stone);margin:6px 0 2px;font-weight:500';
-              stepLabel.textContent = `Step ${iter + 1}/${maxIters}`;
-              aiEl.appendChild(stepLabel);
-            }
-
-            const normalizedArgs = normalizeToolArguments(call.name, call.arguments);
-            const argError = validateToolArguments(call.name, normalizedArgs);
-            const res = argError || await tool.execute(normalizedArgs);
-            renderToolCallBlock(aiEl, call.name, normalizedArgs, res);
-
-            // Build a model-friendly tool response (matches LocalMind's formatToolResponse)
-            let toolResponsePayload = res;
-            // For display-only results (maps, webviews), give the model a text summary
-            // instead of the raw webview JSON which it cannot meaningfully process
-            if (res && typeof res === 'object' && res.webview) {
-              if (res.map_links) {
-                const loc = normalizedArgs.location || normalizedArgs.query || 'the requested location';
-                const search = normalizedArgs.search_query || '';
-                const desc = search
-                  ? `Interactive map displayed showing "${search}" near "${loc}". The user can see the map with search results, and has links to search in Google Maps and get directions.`
-                  : `Interactive map displayed for "${loc}". The user can see the embedded map and has links to search in Google Maps and get directions.`;
-                toolResponsePayload = { result: desc, note: 'The map is already displayed to the user. Summarize the result — do not call this tool again.' };
-              } else {
-                const toolLabel = call.name.replace(/_/g, ' ');
-                const resultText = res.result || `The ${toolLabel} is now displayed inline in the chat.`;
-                toolResponsePayload = { result: resultText, note: `The ${toolLabel} is embedded inline in the chat for the user. Acknowledge it is displayed — do not call this tool again.` };
+            // Fallback 2: bare JSON
+            if (!call) {
+              const jsonMatch = full.match(/\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[\s\S]*?\}\s*\}/);
+              if (jsonMatch) {
+                call = repairAndParseJSON(jsonMatch[0]);
               }
             }
 
-            // For media search results, they are already visually displayed in the chat UI.
-            // Give the model a concise summary so it does not re-describe each image individually.
-            if (call.name === 'search_media' && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
-              const count = res.results.length;
-              const mediaType = normalizedArgs.type === 'video' ? 'video' : 'image';
-              toolResponsePayload = {
-                result: `${count} ${mediaType}${count !== 1 ? 's' : ''} for "${normalizedArgs.query}" are now displayed in the chat UI. Do NOT list or describe each ${mediaType} individually — they are already visible to the user. Simply acknowledge the results are shown.`
-              };
-            }
-
-            // Feed tool call + response into history as a combined model turn
-            // (Gemma 4 format: tool_call and tool_response are part of the same model turn).
-            // Per the Gemma 4 spec, <|tool_response> acts as a stop sequence — the model
-            // emits it after the tool call to signal the application should execute the tool.
-            // Strip it so we can append the full response:name{...}<tool_response|> block.
-            const cleanFull = full.replace(/<\|tool_response>\s*$/, '');
-            const toolRespFormatted = `<|tool_response>response:${call.name}${formatGemmaObject(toolResponsePayload)}<tool_response|>`;
-            State.history.push({ role: 'ai', text: cleanFull + toolRespFormatted, _isToolTurn: true });
-
-            // On the last iteration, force a final answer (matches LocalMind behavior)
-            if (iter === maxIters - 1) {
-              State.history.push({ role: 'user', text: '[System: Tool call limit reached. Please provide your final answer now.]' });
-              const finalFull = await streamFinalResponse(aiEl);
-              if (finalFull && finalFull.trim()) {
-                State.history.push({ role: 'ai', text: finalFull });
-              }
+            if (!call) {
+              // No tool call — agent is done
+              State.history.push({ role: 'assistant', content: full });
               break;
             }
 
-            // Clear RAG context for follow-up iterations; it's already in history
-            ragContext = "";
-          } catch(e) {
-            console.error("Tool failed", e);
-            State.history.push({ role: 'ai', text: full });
-            break;
+            try {
+              const tool = TOOL_REGISTRY[call.name];
+              if (!tool) {
+                State.history.push({ role: 'assistant', content: full });
+                break;
+              }
+
+              // ── Duplicate tool call detection ──────────────────
+              const toolKey = JSON.stringify({ name: call.name, arguments: call.arguments });
+              if (toolKey === prevToolKey) {
+                State.history.push({ role: 'assistant', content: full });
+                State.history.push({ role: 'user', content: '[System: You already called this tool with the same arguments. Use the previous result to answer the user\'s question now.]' });
+                const finalFull = await streamFinalResponse(aiEl);
+                if (finalFull && finalFull.trim()) {
+                  State.history.push({ role: 'assistant', content: finalFull });
+                }
+                break;
+              }
+              prevToolKey = toolKey;
+
+              // Strip pre-tool-call filler text from the visible bubble
+              {
+                const bubbles = aiEl.querySelectorAll('.ai-bubble');
+                const bubble = bubbles.length ? bubbles[bubbles.length - 1] : null;
+                if (bubble) {
+                  const hasThink = /<\|think\|>/.test(full) || /<\|channel>thought/.test(full);
+                  if (hasThink) {
+                    const thinkBlocks = full.match(/<\|think\|>[\s\S]*?<\|\/think\|>/g)
+                      || full.match(/<\|channel>thought[\s\S]*?<channel\|>/g)
+                      || [];
+                    const thinkOnly = thinkBlocks.join('\n');
+                    bubble.innerHTML = renderMarkdown(thinkOnly, { showThinking: iterShowThinking });
+                  } else {
+                    bubble.innerHTML = '';
+                  }
+                }
+              }
+
+              // Show step label on second and subsequent iterations
+              if (iter > 0) {
+                const stepLabel = document.createElement('div');
+                stepLabel.style.cssText = 'font-size:0.68rem;color:var(--ollama-stone);margin:6px 0 2px;font-weight:500';
+                stepLabel.textContent = `Step ${iter + 1}/${maxIters}`;
+                aiEl.appendChild(stepLabel);
+              }
+
+              const normalizedArgs = normalizeToolArguments(call.name, call.arguments);
+              const argError = validateToolArguments(call.name, normalizedArgs);
+              const res = argError || await tool.execute(normalizedArgs);
+              renderToolCallBlock(aiEl, call.name, normalizedArgs, res);
+
+              // Build model-friendly tool response payload
+              let toolResponsePayload = res;
+              if (res && typeof res === 'object' && res.webview) {
+                if (res.map_links) {
+                  const loc = normalizedArgs.location || normalizedArgs.query || 'the requested location';
+                  const search = normalizedArgs.search_query || '';
+                  const desc = search
+                    ? `Interactive map displayed showing "${search}" near "${loc}".`
+                    : `Interactive map displayed for "${loc}".`;
+                  toolResponsePayload = { result: desc, note: 'The map is already displayed. Summarize — do not call this tool again.' };
+                } else {
+                  const toolLabel = call.name.replace(/_/g, ' ');
+                  const resultText = res.result || `The ${toolLabel} is now displayed.`;
+                  toolResponsePayload = { result: resultText, note: `The ${toolLabel} is embedded inline. Do not call again.` };
+                }
+              }
+              if (call.name === 'search_media' && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
+                const count = res.results.length;
+                const mediaType = normalizedArgs.type === 'video' ? 'video' : 'image';
+                toolResponsePayload = {
+                  result: `${count} ${mediaType}${count !== 1 ? 's' : ''} for "${normalizedArgs.query}" displayed. Do NOT list individually.`
+                };
+              }
+
+              // Feed tool call + response into history
+              State.history.push({ role: 'assistant', content: full, _isToolTurn: true });
+              State.history.push({ role: 'user', content: formatToolResponse(call.name, toolResponsePayload) });
+
+              // On the last iteration, force a final answer
+              if (iter === maxIters - 1) {
+                State.history.push({ role: 'user', content: '[System: Tool call limit reached. Provide your final answer now.]' });
+                const finalFull = await streamFinalResponse(aiEl);
+                if (finalFull && finalFull.trim()) {
+                  State.history.push({ role: 'assistant', content: finalFull });
+                }
+                break;
+              }
+
+              ragContext = "";
+            } catch(e) {
+              console.error("Tool failed", e);
+              State.history.push({ role: 'assistant', content: full });
+              break;
+            }
           }
         }
       } catch (e) { renderMessage('Error: ' + e.message, 'ai', aiEl); }
@@ -3648,6 +3889,7 @@ self.addEventListener('message', async (e) => {
         State.isGenerating = false;
         State.stopRequested = false;
         State.webEnrichedMode = false;
+        currentAssistantEl = null;
         input.disabled = false;
         updateSendButtons();
         addMessageActions(aiEl, 'ai');
@@ -3728,7 +3970,7 @@ self.addEventListener('message', async (e) => {
         editBtn.addEventListener('click', () => {
           if (State.isGenerating) { showToast('Cannot edit while generating.'); return; }
           const histFrom = parseInt(el.dataset.histFrom ?? '0');
-          const originalText = State.history[histFrom]?.text || '';
+          const originalText = State.history[histFrom]?.content || State.history[histFrom]?.text || '';
           // Replace the bubble content with an inline editor
           const bubble = el.querySelector('.user-bubble');
           if (!bubble) return;
@@ -3863,140 +4105,67 @@ Tool Selection Guidelines:
       };
     }
 
-    async function buildPrompt(additionalContext = "", isFollowUpIteration = false) {
-      await ensureToolSkillDocsLoaded();
+    function getSystemPrompt() {
       const userPrompt = document.getElementById('system-prompt').value.trim();
+      return userPrompt || DEFAULT_SYSTEM_PROMPT;
+    }
 
-      // Build Gemma 4 native tool declarations using <|tool>declaration:name{...}<tool|>
-      const webConfigured = isSearchConfigured();
+    function buildAgentSystemPrompt(additionalContext) {
+      const webConfigured  = isSearchConfigured();
       const mediaConfigured = isMediaConfigured();
-      const toolDeclarations = Object.entries(TOOL_REGISTRY)
+
+      const toolDefs = Object.entries(TOOL_REGISTRY)
         .filter(([name, t]) => {
           if (t.requiresWeb && name === 'web_search' && !webConfigured) return false;
           if (t.requiresWeb && name === 'search_media' && !mediaConfigured) return false;
           return true;
         })
-        .map(([name, t]) => {
-          const desc = t.skillDescription || t.description;
-          const decl = { description: desc };
-          if (t.parameters?.properties && Object.keys(t.parameters.properties).length) {
-            const params = {};
-            for (const [pName, pDef] of Object.entries(t.parameters.properties)) {
-              const param = { type: pDef.type };
-              if (pDef.description) param.description = pDef.description;
-              if (pDef.enum) param.enum = pDef.enum;
-              params[pName] = param;
-            }
-            decl.parameters = params;
-          }
-          if (t.parameters?.required?.length) decl.required = t.parameters.required;
-          return `<|tool>declaration:${name}${formatGemmaObject(decl)}<tool|>`;
-        })
-        .join('');
+        .map(([name, t]) => ({
+          type:     'function',
+          function: { name, description: t.skillDescription || t.description, parameters: t.parameters },
+        }));
 
-      // Build the system prompt
-      let systemPrompt = userPrompt || DEFAULT_SYSTEM_PROMPT;
+      let prompt = `${getSystemPrompt()}
 
-      // On the first pass, remind the model that tool_call must be in the main
-      // response, NOT inside the thinking/reasoning channel.
-      if (!isFollowUpIteration) {
-        systemPrompt += '\n\nCRITICAL: Tool calls MUST appear in your main response after the thought channel, NEVER inside your thinking block.';
+You have access to the following tools. Use them when they would genuinely help.
+<tools>
+${JSON.stringify(toolDefs, null, 2)}
+</tools>
+
+To call a tool, output EXACTLY this format in your main response (NEVER inside a thinking block):
+<tool_call>
+{"name": "tool_name", "arguments": {"param": "value"}}
+</tool_call>
+
+Rules:
+- Call only one tool per response.
+- After receiving tool results, provide your final answer directly without calling more tools unless necessary.
+- Never output a tool_call inside <|think|> or <|channel>thought blocks.`;
+
+      if (additionalContext) prompt += '\n\n' + additionalContext;
+      return prompt;
+    }
+
+    async function buildContextMessages(history, sysPrompt) {
+      const m         = MODELS[activeModelKey];
+      const maxChars  = (m?.contextSize || 4096) * 4;
+      const messages  = [{ role: 'user', content: sysPrompt },
+                         { role: 'assistant', content: 'Understood.' }];
+      let   charCount = sysPrompt.length;
+
+      const recent = [];
+      for (let i = history.length - 1; i >= 0; i--) {
+        const entry = history[i];
+        const txt = typeof entry.content === 'string'
+          ? entry.content
+          : (entry.content || []).map(b => b.text || '').join(' ');
+        charCount += txt.length;
+        if (charCount > maxChars && recent.length > 0) break;
+        // Map role to HF-compatible roles
+        const role = (entry.role === 'ai' || entry.role === 'model' || entry.role === 'assistant') ? 'assistant' : 'user';
+        recent.unshift({ role, content: entry.content || entry.text || '' });
       }
-
-      // Activate Gemma 4 native thinking mode by prefixing the system content with
-      // the <|think|> control token.  Per the Gemma 4 docs, thinking mode is a
-      // conversation-level setting included in the system turn.  On follow-up
-      // iterations (tool-call continuations), thinking is disabled to save tokens
-      // and prevent tool calls from being placed inside thinking blocks — this
-      // matches the recommended Gemma 4 agentic pattern.
-      const thinkingActive = State.showThinking && !isFollowUpIteration;
-      if (thinkingActive) {
-        systemPrompt = '<|think|>' + systemPrompt;
-      }
-
-      // Inject document library summaries so the model knows what's available for RAG
-      let docContext = '';
-      try {
-        const chunks = await getAllChunks();
-        const summaries = chunks.filter(c => c.category === 'document_summary');
-        if (summaries.length) {
-          const budget = summaries.sort((a, b) => b.timestamp - a.timestamp).slice(0, 15);
-          docContext = "\n\nDocuments in your library:\n" +
-            budget.map(sm => `- ${sm.source}: ${sm.text}`).join('\n');
-        }
-      } catch (e) { console.warn('Failed to load summaries for prompt', e); }
-
-      // Gemma 4 system turn: <|turn>system\n{content}{toolDecls}<turn|>
-      let p = `<|turn>system\n${systemPrompt}${toolDeclarations}${docContext}${additionalContext}<turn|>\n`;
-
-      // Append conversation history.
-      // Gemma 4 rules for thought management:
-      //  - Strip thoughts from regular (completed) model turns
-      //  - Preserve thoughts in tool turns (same model turn with tool_call + tool_response)
-      // Gemma 4 turn structure: consecutive model entries (tool turns followed by
-      // a final response) are merged into ONE <|turn>model\n...<turn|> block.
-      const historyBudget = getSettingsValues().historyBudget;
-
-      // Group consecutive model entries into single model turns.
-      // Only model entries are merged; user entries always form their own group
-      // (each user group has exactly one entry).
-      const groups = [];
-      for (const m of State.history) {
-        const role = m.role === 'ai' || m.role === 'model' ? 'model' : 'user';
-        const prev = groups.length ? groups[groups.length - 1] : null;
-        if (role === 'model' && prev && prev.role === 'model') {
-          prev.entries.push(m);
-        } else {
-          groups.push({ role, entries: [m] });
-        }
-      }
-
-      // Build history text from groups (newest first for budget trimming)
-      let historyText = "";
-      const reversedGroups = [...groups].reverse();
-      let newestGroupIsOpenTool = false;
-      for (let gi = 0; gi < reversedGroups.length; gi++) {
-        const group = reversedGroups[gi];
-        if (group.role === 'model') {
-          let combinedText = '';
-          let hasNonToolEntry = false;
-          for (const m of group.entries) {
-            let text = m.text;
-            if (!m._isToolTurn) {
-              hasNonToolEntry = true;
-              // Strip thoughts from regular model entries
-              text = stripThoughts(text);
-            }
-            combinedText += text;
-          }
-          // A model group with only tool turns is "open" (model needs to continue)
-          const turnEnd = hasNonToolEntry ? '<turn|>\n' : '';
-          const entry = `<|turn>model\n${combinedText}${turnEnd}`;
-          if ((historyText.length + entry.length) > historyBudget) break;
-          historyText = entry + historyText;
-          if (gi === 0) newestGroupIsOpenTool = !hasNonToolEntry;
-        } else {
-          const m = group.entries[0];
-          const entry = `<|turn>user\n${m.text}<turn|>\n`;
-          if ((historyText.length + entry.length) > historyBudget) break;
-          historyText = entry + historyText;
-        }
-      }
-
-      // If the newest model group is an open tool turn, the model continues that
-      // turn (no new <|turn>model). Otherwise, start a new model turn.
-      if (newestGroupIsOpenTool) {
-        p += historyText;
-      } else if (!thinkingActive) {
-        // Per the Gemma 4 docs, when thinking mode is off, pre-fill an empty
-        // thinking channel to stabilize model behavior.  Larger models may
-        // generate thoughts spontaneously; the empty channel signals the model
-        // to skip reasoning and respond directly.
-        p += historyText + '<|turn>model\n<|channel>thought\n<channel|>';
-      } else {
-        p += historyText + '<|turn>model\n';
-      }
-      return p;
+      return messages.concat(recent);
     }
 
     function renderMessage(t, r, el = null, options = {}) {
@@ -4121,7 +4290,7 @@ Tool Selection Guidelines:
                 // Feed content to model for summarization
                 const contentSnippet = (fetchRes && fetchRes.content) ? fetchRes.content.slice(0, 2000) : '';
                 if (contentSnippet) {
-                  State.history.push({ role: 'user', text: `I clicked "Fetch & Read" on this search result. Here is the page content:\n\nURL: ${item.url}\nContent: ${contentSnippet}\n\nPlease summarize this page.` });
+                  State.history.push({ role: 'user', content: `I clicked "Fetch & Read" on this search result. Here is the page content:\n\nURL: ${item.url}\nContent: ${contentSnippet}\n\nPlease summarize this page.` });
                   handleSend(true);
                 }
               } catch (e) {
@@ -4397,8 +4566,8 @@ Tool Selection Guidelines:
           let p = lines[i];
           if (chain && last) p = p.replace(/\{\{previous\}\}/g, last);
           await handleSend(p);
-          const lastAi = [...State.history].reverse().find(m => m.role === 'ai' || m.role === 'model');
-          last = lastAi ? lastAi.text : "";
+          const lastAi = [...State.history].reverse().find(m => m.role === 'ai' || m.role === 'model' || m.role === 'assistant');
+          last = lastAi ? (lastAi.content || lastAi.text || '') : "";
         }
         progress.textContent = State.batchStopRequested ? 'Stopped' : 'Complete';
       } finally {
@@ -4417,7 +4586,12 @@ Tool Selection Guidelines:
     async function saveConversation(msgs) {
       if (!msgs.length) return;
       const db = await openRAGDB(); const tx = db.transaction('conversations', 'readwrite');
-      const title = msgs.find(m => m.role === 'user')?.text.slice(0, 50) || 'Untitled';
+      const firstUser = msgs.find(m => m.role === 'user');
+      let title = 'Untitled';
+      if (firstUser) {
+        const c = firstUser.content || firstUser.text || '';
+        title = (typeof c === 'string' ? c : (c.map?.(b => b.text || '').join(' ') || '')).slice(0, 50) || 'Untitled';
+      }
       tx.objectStore('conversations').put({ id: State.activeConversationId || Date.now().toString(), title, messages: msgs, updated: Date.now() });
     }
 
@@ -4441,20 +4615,18 @@ Tool Selection Guidelines:
       const c = document.getElementById('chat-container'); c.innerHTML = '';
       let lastUserHistFrom = 0;
       State.history.forEach((m, idx) => {
-        const isAi = m.role === 'model' || m.role === 'ai';
-        // Skip internal entries that are injected as user-role messages in history
-        // (tool responses, system messages, synthetic continuations)
-        const INTERNAL_PREFIXES = ['<|tool_response>', '<tool_response>', '[System:', 'I used the ', 'I clicked '];
-        const isInternal = !isAi && INTERNAL_PREFIXES.some(p => m.text.startsWith(p));
+        const isAi = m.role === 'model' || m.role === 'ai' || m.role === 'assistant';
+        const msgText = m.content || m.text || '';
+        const displayText = typeof msgText === 'string' ? msgText : (msgText.map?.(b => b.text || '').join(' ') || '');
+        // Skip internal entries
+        const INTERNAL_PREFIXES = ['<|tool_response>', '<tool_response>', '[System:', 'I used the ', 'I clicked ', '[Tool result'];
+        const isInternal = !isAi && INTERNAL_PREFIXES.some(p => displayText.startsWith(p));
         if (isInternal) return;
-        // Skip AI entries that are purely tool turn blocks (tool_call + tool_response
-        // combined in one model turn) — they have no visible content to display.
         if (isAi && m._isToolTurn) return;
-        // Legacy: skip AI entries that are purely synthetic tool_call blocks
-        if (isAi && /^\s*<tool_call>[\s\S]*<\/tool_call>\s*$/.test(m.text)) return;
+        if (isAi && /^\s*<tool_call>[\s\S]*<\/tool_call>\s*$/.test(displayText)) return;
 
         const role = isAi ? 'ai' : 'user';
-        const el = renderMessage(m.text, role, null, { images: m._images, audios: m._audios, videos: m._videos });
+        const el = renderMessage(displayText, role, null, { images: m._images, audios: m._audios, videos: m._videos });
         if (role === 'user') {
           el.dataset.histFrom = idx;
           lastUserHistFrom = idx;
@@ -4842,7 +5014,7 @@ Tool Selection Guidelines:
       const keysToRemove = [
         'lm_sys_prompt', 'lm_search_provider', 'lm_search_key', 'lm_searxng_url',
         'lm_unsplash_key', 'lm_pexels_key', 'lm_show_thinking', 'lm_temperature',
-        'lm_max_tokens', 'lm_history_budget', 'lm_max_tool_iters'
+        'lm_max_tokens', 'lm_history_budget', 'lm_max_tool_iters', 'lm_active_model'
       ];
       keysToRemove.forEach(k => localStorage.removeItem(k));
       document.getElementById('system-prompt').value = DEFAULT_SYSTEM_PROMPT;
@@ -4860,6 +5032,8 @@ Tool Selection Guidelines:
       document.getElementById('searxng-url-row').style.display = 'none';
       thinkingToggleEl.checked = true;
       State.showThinking = true;
+      const modelSelect = document.getElementById('model-select');
+      if (modelSelect) modelSelect.value = 'gemma4-e2b';
       updateSendButtons();
       showToast('All settings reset to defaults.');
     };
@@ -5170,48 +5344,96 @@ Tool Selection Guidelines:
     // Init
     window.onload = () => {
       restoreFromSession();
-      initGemma();
+      loadModel(activeModelKey);
       ensureToolSkillDocsLoaded().then(() => refreshToolsPanel());
       refreshLibraryPanel();
       refreshHistoryPanel();
       refreshMemoryPanel();
       updateSendButtons();
+      updateMultimodalUI();
       checkShareLink();
+
+      // Wire up model selector if present
+      const modelSelect = document.getElementById('model-select');
+      if (modelSelect) {
+        modelSelect.value = activeModelKey;
+        modelSelect.onchange = () => loadModel(modelSelect.value);
+      }
     };
 
+    // Download / upload buttons — now simply retry loadModel
     document.getElementById('download-btn').onclick = () => {
-      const fill = document.getElementById('download-fill');
-      const status = document.getElementById('download-status');
-      document.getElementById('progress-container').classList.remove('hidden');
-      status.textContent = 'Starting download...';
-      fetch(REMOTE_MODEL).then(async res => {
-        const reader = res.body.getReader(); const total = +res.headers.get('Content-Length');
-        let loaded = 0; const chunks = [];
-        while(true) {
-          const {done, value} = await reader.read(); if (done) break;
-          chunks.push(value); loaded += value.length;
-          const pct = (loaded/total*100);
-          fill.style.width = pct + '%';
-          const loadedMB = (loaded / (1024 * 1024)).toFixed(1);
-          const totalMB = (total / (1024 * 1024)).toFixed(1);
-          status.textContent = `${loadedMB} / ${totalMB} MB (${pct.toFixed(0)}%)`;
-        }
-        status.textContent = 'Initializing model...';
-        const full = new Uint8Array(loaded); let offset = 0; for(const c of chunks) { full.set(c, offset); offset += c.length; }
-        document.getElementById('loader-rescue').classList.remove('visible');
-        initGemma(full, true);
-      }).catch(err => {
-        status.textContent = 'Download failed: ' + err.message;
-      });
+      document.getElementById('loader-rescue').classList.remove('visible');
+      loadModel(activeModelKey);
     };
 
     document.getElementById('model-upload-input').onchange = async e => {
+      // Legacy .task file upload no longer supported — inform user
       if (e.target.files.length) {
-        document.getElementById('loader-rescue').classList.remove('visible');
-        const r = await e.target.files[0].arrayBuffer();
-        initGemma(new Uint8Array(r), true);
+        showToast('Manual .task file upload is no longer supported. Models are downloaded automatically from HuggingFace.');
       }
     };
+
+    // ── Camera & Mic handlers ─────────────────────────────────
+    const cameraBtnEl = document.getElementById('camera-btn');
+    if (cameraBtnEl) {
+      cameraBtnEl.addEventListener('click', async () => {
+        try {
+          cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          document.getElementById('camera-preview').srcObject = cameraStream;
+          document.getElementById('camera-overlay').classList.add('open');
+        } catch (err) { showToast('Camera error: ' + err.message); }
+      });
+    }
+    const camCapBtn = document.getElementById('cam-capture-btn');
+    if (camCapBtn) {
+      camCapBtn.addEventListener('click', () => {
+        const video  = document.getElementById('camera-preview');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        canvas.toBlob(blob => {
+          if (blob) addAttachment({ type: 'image', blob, thumb: URL.createObjectURL(blob), name: 'camera-photo.jpg', mimeType: 'image/jpeg' });
+          closeCameraOverlay();
+        }, 'image/jpeg', 0.85);
+      });
+    }
+    const camCancelBtn = document.getElementById('cam-cancel-btn');
+    if (camCancelBtn) {
+      camCancelBtn.addEventListener('click', closeCameraOverlay);
+    }
+    function closeCameraOverlay() {
+      document.getElementById('camera-overlay')?.classList.remove('open');
+      if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+      const preview = document.getElementById('camera-preview');
+      if (preview) preview.srcObject = null;
+    }
+
+    const micBtnEl = document.getElementById('mic-btn');
+    if (micBtnEl) {
+      micBtnEl.addEventListener('click', async () => {
+        if (mediaRecorder?.state === 'recording') { mediaRecorder.stop(); return; }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const chunks = [];
+          mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+          mediaRecorder.addEventListener('dataavailable', e => { if (e.data.size > 0) chunks.push(e.data); });
+          mediaRecorder.addEventListener('stop', () => {
+            stream.getTracks().forEach(t => t.stop());
+            micBtnEl.classList.remove('recording');
+            micBtnEl.textContent = '🎤';
+            if (chunks.length) {
+              const blob = new Blob(chunks, { type: 'audio/webm' });
+              addAttachment({ type: 'audio', blob, thumb: URL.createObjectURL(blob), name: 'recording.webm', mimeType: 'audio/webm' });
+            }
+            mediaRecorder = null;
+          });
+          mediaRecorder.start();
+          micBtnEl.classList.add('recording');
+          micBtnEl.textContent = '⏹';
+        } catch (err) { showToast('Microphone error: ' + err.message); }
+      });
+    }
 
     const chatInput = document.getElementById('chat-input');
     const toolInsertBtn = document.getElementById('tool-insert-btn');
@@ -5357,5 +5579,13 @@ Tool Selection Guidelines:
     });
   </script>
   <div class="drag-overlay" id="drag-overlay">📁 Drop files to attach images or add to Library</div>
+  <!-- Camera overlay modal -->
+  <div id="camera-overlay">
+    <video id="camera-preview" autoplay playsinline></video>
+    <div class="cam-controls">
+      <button id="cam-capture-btn">📸 Capture</button>
+      <button id="cam-cancel-btn">Cancel</button>
+    </div>
+  </div>
 </body>
 </html>
