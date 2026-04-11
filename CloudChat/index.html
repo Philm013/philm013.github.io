@@ -654,7 +654,7 @@
   </div>
 
   <div style="display: none;">
-    <input type="file" id="global-file-input" multiple accept=".txt,.md,.json,.csv,.pdf,.docx,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp3,.wav,.ogg,.mp4,.webm,text/plain,application/pdf,application/json,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*,audio/*,video/*">
+    <input type="file" id="global-file-input" multiple accept=".txt,.md,.json,.csv,.pdf,.docx,text/plain,application/pdf,application/json,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*,audio/*,video/*">
     <input type="file" id="model-upload-input" accept=".task,application/octet-stream">
     <input type="file" id="import-file-input" accept=".json,application/json">
   </div>
@@ -2420,12 +2420,14 @@ self.addEventListener('message', async (e) => {
 
     // ── Neural Network Background Animation ─────────────────
     let neuralAnimId = null;
+    let neuralResizeHandler = null;
     function startNeuralNetworkAnimation() {
       const canvas = document.getElementById('neural-net-canvas');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       const nodes = [];
       const NODE_COUNT = 50;
+      const CONNECTION_DIST = 150;
       let w, h;
 
       function resize() {
@@ -2433,7 +2435,8 @@ self.addEventListener('message', async (e) => {
         h = canvas.height = canvas.offsetHeight;
       }
       resize();
-      window.addEventListener('resize', resize);
+      neuralResizeHandler = resize;
+      window.addEventListener('resize', neuralResizeHandler);
 
       for (let i = 0; i < NODE_COUNT; i++) {
         nodes.push({
@@ -2451,11 +2454,11 @@ self.addEventListener('message', async (e) => {
             const dx = nodes[i].x - nodes[j].x;
             const dy = nodes[i].y - nodes[j].y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < 150) {
+            if (dist < CONNECTION_DIST) {
               ctx.beginPath();
               ctx.moveTo(nodes[i].x, nodes[i].y);
               ctx.lineTo(nodes[j].x, nodes[j].y);
-              ctx.strokeStyle = `rgba(100,180,255,${0.3 * (1 - dist / 150)})`;
+              ctx.strokeStyle = `rgba(100,180,255,${0.3 * (1 - dist / CONNECTION_DIST)})`;
               ctx.lineWidth = 0.5;
               ctx.stroke();
             }
@@ -2478,6 +2481,7 @@ self.addEventListener('message', async (e) => {
     }
     function stopNeuralNetworkAnimation() {
       if (neuralAnimId) { cancelAnimationFrame(neuralAnimId); neuralAnimId = null; }
+      if (neuralResizeHandler) { window.removeEventListener('resize', neuralResizeHandler); neuralResizeHandler = null; }
     }
 
     // ── Core Inference Boot ──────────────────────────────────
@@ -3580,9 +3584,12 @@ Rules:
           const fsBtn = document.createElement('button');
           fsBtn.className = 'webview-fullscreen-btn';
           fsBtn.textContent = '⛶ Full Screen';
+          fsBtn.setAttribute('aria-label', 'Toggle full screen');
           fsBtn.addEventListener('click', () => {
             container.classList.toggle('webview-fullscreen');
-            fsBtn.textContent = container.classList.contains('webview-fullscreen') ? '✕ Exit Full Screen' : '⛶ Full Screen';
+            const isFs = container.classList.contains('webview-fullscreen');
+            fsBtn.textContent = isFs ? '✕ Exit Full Screen' : '⛶ Full Screen';
+            fsBtn.setAttribute('aria-label', isFs ? 'Exit full screen' : 'Toggle full screen');
           });
           container.appendChild(fsBtn);
 
