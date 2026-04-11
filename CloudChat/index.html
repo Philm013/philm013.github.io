@@ -1562,6 +1562,9 @@ self.addEventListener('message', async (e) => {
 
       // Strip tool_call blocks — they are rendered separately by renderToolCallBlock()
       main = main.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_call>[\s\S]*/g, '').trim();
+
+      // Strip Gemma turn markers that may leak into model output on follow-up iterations
+      main = main.replace(/<start_of_turn>(?:model|user)\n?/g, '').replace(/<end_of_turn>/g, '').trim();
       if (!main) return html || '<span style="color:var(--ollama-stone)">...</span>';
       html += DOMPurify.sanitize(markdownEngine.render(main));
       return html;
@@ -1934,9 +1937,18 @@ self.addEventListener('message', async (e) => {
             const res = argError || await tool.execute(normalizedArgs);
             renderToolCallBlock(aiEl, call.name, normalizedArgs, res);
 
+            // Build a model-friendly tool response (matches LocalMind's formatToolResponse)
+            let toolResponsePayload = res;
+            // For display-only results (maps, webviews), give the model a text summary
+            // instead of the raw webview JSON which it cannot meaningfully process
+            if (res && typeof res === 'object' && res.webview) {
+              const loc = normalizedArgs.location || normalizedArgs.query || 'the requested location';
+              toolResponsePayload = { result: `Interactive map displayed for "${loc}".` };
+            }
+
             // Feed tool result back into history as a synthetic user turn
             State.history.push({ role: 'ai', text: full });
-            State.history.push({ role: 'user', text: `<tool_response>${JSON.stringify(res)}</tool_response>` });
+            State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: call.name, result: toolResponsePayload })}\n</tool_response>` });
 
             // After the last iteration, stop unconditionally (no fourth LLM pass)
             if (iter === maxIters - 1) break;
@@ -2131,6 +2143,18 @@ Rules:
       block.appendChild(toggle);
       block.appendChild(result);
       el.appendChild(block);
+
+      // ── Render interactive map iframe inline ─────────────────
+      if (res && typeof res === 'object' && res.webview && res.webview.iframe && res.webview.url) {
+        const iframe = document.createElement('iframe');
+        iframe.src = String(res.webview.url);
+        iframe.style.cssText = 'width:100%;height:300px;border:none;border-radius:8px;margin-top:8px;';
+        iframe.loading = 'lazy';
+        iframe.referrerPolicy = 'no-referrer';
+        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+        iframe.allowFullscreen = true;
+        el.appendChild(iframe);
+      }
 
       // ── Render media results (images/videos) inline ──────────
       if (name === 'search_media' && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
