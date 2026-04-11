@@ -1644,9 +1644,16 @@ self.addEventListener('message', async ({ data }) => {
         if (att.type === 'image') {
           result.push({ type: 'image', data: await att.blob.arrayBuffer(), mimeType: att.blob.type || 'image/jpeg' });
         } else if (att.type === 'audio') {
-          const raw     = await att.blob.arrayBuffer();
-          const ctx     = new OfflineAudioContext(1, 1, 16000);
-          const decoded = await ctx.decodeAudioData(raw);
+          const raw = await att.blob.arrayBuffer();
+          // First decode at native sample rate to determine duration
+          const tempCtx = new AudioContext();
+          const tempDecoded = await tempCtx.decodeAudioData(raw.slice(0));
+          const durationSecs = tempDecoded.duration;
+          await tempCtx.close();
+          // Re-decode at 16 kHz mono for the Gemma audio processor
+          const targetLength = Math.ceil(durationSecs * 16000);
+          const ctx = new OfflineAudioContext(1, Math.max(targetLength, 1), 16000);
+          const decoded = await ctx.decodeAudioData(raw.slice(0));
           result.push({ type: 'audio', pcmData: decoded.getChannelData(0).buffer, mimeType: att.blob.type });
         }
       }
@@ -5396,7 +5403,12 @@ Rules:
     if (cameraBtnEl) {
       cameraBtnEl.addEventListener('click', async () => {
         try {
-          cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          // Try rear camera first, fall back to front camera, then any camera
+          try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          } catch {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          }
           document.getElementById('camera-preview').srcObject = cameraStream;
           document.getElementById('camera-overlay').classList.add('open');
         } catch (err) { showToast('Camera error: ' + err.message); }
@@ -5433,15 +5445,20 @@ Rules:
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const chunks = [];
-          mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+          // Choose a supported MIME type (Safari doesn't support webm)
+          const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']
+            .find(t => MediaRecorder.isTypeSupported(t)) || '';
+          const recorderOptions = mimeType ? { mimeType } : {};
+          const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+          mediaRecorder = new MediaRecorder(stream, recorderOptions);
           mediaRecorder.addEventListener('dataavailable', e => { if (e.data.size > 0) chunks.push(e.data); });
           mediaRecorder.addEventListener('stop', () => {
             stream.getTracks().forEach(t => t.stop());
             micBtnEl.classList.remove('recording');
             micBtnEl.textContent = '🎤';
             if (chunks.length) {
-              const blob = new Blob(chunks, { type: 'audio/webm' });
-              addAttachment({ type: 'audio', blob, thumb: URL.createObjectURL(blob), name: 'recording.webm', mimeType: 'audio/webm' });
+              const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+              addAttachment({ type: 'audio', blob, thumb: URL.createObjectURL(blob), name: `recording.${ext}`, mimeType: blob.type });
             }
             mediaRecorder = null;
           });
