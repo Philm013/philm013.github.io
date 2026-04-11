@@ -716,7 +716,6 @@
           <label class="settings-label">Model</label>
           <p class="settings-hint">Choose the AI model. Larger models are more capable but require more memory.</p>
           <select id="model-select" class="settings-select">
-            <option value="gemma3-1b">Gemma 3 1B (~760 MB) — Fast, text-only</option>
             <option value="gemma4-e2b" selected>Gemma 4 E2B (~1.5 GB) — Multimodal, tools</option>
             <option value="gemma4-e4b">Gemma 4 E4B (~4.9 GB) — Multimodal, best quality</option>
           </select>
@@ -1106,17 +1105,6 @@
 
     // ── Configuration & Models ──────────────────────────────
     const MODELS = {
-      'gemma3-1b': {
-        id:           'onnx-community/gemma-3-1b-it-ONNX-GQA',
-        label:        'Gemma 3 1B',
-        dtype:        'q4f16',
-        size:         '~760 MB',
-        type:         'causal',
-        multimodal:   false,
-        agentCapable: false,
-        contextSize:  4096,
-        genConfig:    { temperature: 0.7, top_k: 50, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.0 },
-      },
       'gemma4-e2b': {
         id:           'onnx-community/gemma-4-E2B-it-ONNX',
         label:        'Gemma 4 E2B',
