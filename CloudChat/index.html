@@ -1456,7 +1456,7 @@ self.addEventListener('message', async (e) => {
             if (!loc) return { error: 'No location provided.' };
             const geo = await geocodeLocation(loc);
             const compassDir = (deg) => {
-              if (deg === null || deg === undefined) return 'N/A';
+              if (deg == null) return 'N/A';
               const dirs = ['N','NE','E','SE','S','SW','W','NW'];
               return dirs[Math.round(deg / 45) % 8];
             };
@@ -1580,9 +1580,10 @@ self.addEventListener('message', async (e) => {
           if (viaSkill && !viaSkill.error) return viaSkill;
           // Inline fallback: Open Trivia Database API
           try {
-            const category = a.category ? `&category=${parseInt(a.category)}` : '';
-            const difficulty = ['easy', 'medium', 'hard'].includes(String(a.difficulty || '').toLowerCase())
-              ? `&difficulty=${a.difficulty.toLowerCase()}` : '';
+            const category = a.category ? `&category=${parseInt(a.category, 10)}` : '';
+            const diffLower = String(a.difficulty || '').toLowerCase();
+            const difficulty = ['easy', 'medium', 'hard'].includes(diffLower)
+              ? `&difficulty=${diffLower}` : '';
             const url = `https://opentdb.com/api.php?amount=1&type=multiple${category}${difficulty}&encode=url3986`;
             const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
             if (!res.ok) throw new Error('Open Trivia DB failed: ' + res.status);
