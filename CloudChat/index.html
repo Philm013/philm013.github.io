@@ -3283,7 +3283,9 @@ Rules:
         const metaDiv = document.createElement('div');
         metaDiv.className = 'memory-item-meta';
         const catSpan = document.createElement('span');
-        catSpan.className = `mem-cat mem-cat-${c.category}`;
+        const ALLOWED_CATEGORIES = ['fact', 'preference', 'finding', 'document', 'document_summary', 'conversation', 'person', 'event', 'note'];
+        const safeCat = ALLOWED_CATEGORIES.includes(c.category) ? c.category : 'fact';
+        catSpan.className = `mem-cat mem-cat-${safeCat}`;
         catSpan.textContent = c.category;
         metaDiv.appendChild(catSpan);
         metaDiv.appendChild(document.createTextNode(' ' + String(c.source || 'unknown')));
@@ -3375,7 +3377,7 @@ Rules:
     document.getElementById('share-copy-btn').onclick = () => {
       navigator.clipboard.writeText(document.getElementById('share-url-input').value)
         .then(() => showToast('Link copied!'))
-        .catch(() => showToast('Failed to copy link.'));
+        .catch((e) => { console.warn('Clipboard write failed', e); showToast('Failed to copy link.'); });
     };
 
     async function checkShareLink() {
@@ -3581,7 +3583,7 @@ Rules:
         const conversations = await new Promise(r => db.transaction('conversations').objectStore('conversations').getAll().onsuccess = e => r(e.target.result));
         const blob = new Blob([JSON.stringify({ chunks, conversations })], { type: 'application/json' });
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'localmind_backup.json'; a.click();
-      }).catch(() => showToast('Export failed.'));
+      }).catch((e) => { console.error('Export failed', e); showToast('Export failed.'); });
     }
     window.exportData = exportData;
 
@@ -3596,7 +3598,7 @@ Rules:
             data.conversations.forEach(c => tx.objectStore('conversations').put(c));
           }
           showToast('Import complete'); refreshMemoryPanel(); refreshHistoryPanel(); refreshLibraryPanel();
-        } catch { showToast('Import failed'); }
+        } catch (e) { console.error('Import failed', e); showToast('Import failed'); }
       });
     };
 
