@@ -23,11 +23,7 @@ This skill retrieves and displays all memories stored by the user.
 
 ## Instructions
 
-Call the `run_js` tool with the `search-memory` skill's `index.html` script using an empty or broad query to retrieve all stored memories:
-- script name: `../search-memory/scripts/index.html`
-- data: A JSON string with:
-  - query: `""`  (empty string to list all)
-  - limit: 50
+Call the `list_memories` tool with no parameters.
 
 After receiving the result, present the memories in a clear, organized format:
 1. Group memories by category (e.g., "fact", "preference", "document").

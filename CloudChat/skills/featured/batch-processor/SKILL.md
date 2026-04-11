@@ -31,11 +31,8 @@ Step 3: "Explain the translation in one sentence: {{previous}}"
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following fields:
-  - prompts: Array of Strings. **Required.** The ordered list of prompts to process. Each may contain `{{previous}}`.
-  - context: String. **Optional.** Initial context or seed text for the first `{{previous}}` substitution (default: empty string).
+Call the `batch_processor` tool with the following parameter:
+- `prompts`: Array of Strings. **Required.** The ordered list of prompts to process. Each may contain `{{previous}}`.
 
 ### Rules
 - Process each prompt in order, substituting `{{previous}}` with the prior step's result.

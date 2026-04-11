@@ -23,14 +23,8 @@ This skill searches the web using Brave Search, Tavily, or a self-hosted SearXNG
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following fields:
-  - query: String. **Required.** The search query (3–8 focused keywords work best).
-  - provider: String. **Optional.** One of `"brave"`, `"tavily"`, or `"searxng"`. Defaults to `"brave"`.
-  - searxngUrl: String. **Conditional.** Required only when provider is `"searxng"`. The base URL of the SearXNG instance.
-
-The secret passed to this skill is the API key for Brave or Tavily (not needed for SearXNG).
+Call the `web_search` tool with the following parameter:
+- `query`: String. **Required.** The search query (3–8 focused keywords work best).
 
 ### Rules
 - Formulate a concise, keyword-focused query — avoid full sentences.

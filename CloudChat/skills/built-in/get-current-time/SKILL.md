@@ -22,7 +22,9 @@ This is a text-only skill. The current date and time are injected into the model
 
 ## Instructions
 
-Use the current date and time provided in your system context to answer the user's question.
+Call the `get_current_time` tool with no parameters to retrieve the current date and time.
+
+Alternatively, use the current date and time provided in your system context to answer the user's question.
 
 - If the user asks for the local time, report it using the locale format present in the system context.
 - If the user asks for time in a specific city or timezone, calculate the offset from UTC and report the correct time.

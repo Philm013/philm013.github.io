@@ -22,10 +22,8 @@ This skill evaluates mathematical expressions safely using JavaScript.
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following field:
-  - expression: String. The mathematical expression to evaluate (e.g., `"2 * 3 + 1"`, `"15 / 100 * 240"`).
+Call the `calculate` tool with the following parameter:
+- `expression`: String. **Required.** The mathematical expression to evaluate (e.g., `"2 * 3 + 1"`, `"15 / 100 * 240"`).
 
 ### Rules
 - Only pass numeric expressions. Do NOT pass natural language like "fifteen percent of 240" — convert it to a math expression first.

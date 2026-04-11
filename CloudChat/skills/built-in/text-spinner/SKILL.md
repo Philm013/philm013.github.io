@@ -3,9 +3,10 @@ name: text-spinner
 description: Spin the given text on my head.
 ---
 
-# Instructions
+# Text Spinner
 
-You MUST use the `run_js` tool with the following exact parameters:
+## Instructions
 
-- data: A JSON string with the following fields:
-  - label: The text string to spin on my head.
+Call the `text_spinner` tool with the following parameters:
+- `text`: String. **Required.** The text to display.
+- `label`: String. **Optional.** A label for the spinning text.
