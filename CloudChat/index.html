@@ -944,7 +944,7 @@
             <li><strong>Paste:</strong> Paste images directly from your clipboard (Ctrl/Cmd+V)</li>
             <li><strong>Preview:</strong> Click any image thumbnail in a message to view it full-size in a lightbox</li>
             <li><strong>Formats:</strong> JPEG, PNG, GIF, WebP, SVG, and all browser-supported image formats</li>
-            <li><strong>Context:</strong> The AI is informed about attached images and can discuss them based on filename and context</li>
+            <li><strong>Context:</strong> Attached images are analyzed by a vision AI model (downloaded on first use) that generates a description, enabling the AI to discuss the image content</li>
           </ul>
 
           <h4>🎵 Audio</h4>
@@ -971,7 +971,7 @@
           </ul>
 
           <h4>⚠️ Multimodal Note</h4>
-          <p>The Gemma 4 E2B model used in this app is a <strong>text-focused model</strong>. While you can attach and display media files in the conversation, the AI processes text-based descriptions of attachments rather than analyzing visual/audio content directly. For full multimodal analysis, consider using the <strong>LocalMind</strong> version which supports Gemma 4 multimodal models.</p>
+          <p>Attached images are automatically analyzed using a lightweight vision AI model (ViT-GPT2, ~300 MB, downloaded once on first use). The generated description is passed to the Gemma 4 text model so it can discuss image content. Audio and video files are displayed inline but are not analyzed — the AI references them by filename only. For native multimodal inference (direct image/audio processing by the model), consider using <strong>LocalMind</strong> which supports Gemma 4 multimodal models.</p>
         </div>
 
         <div class="about-section" data-tab="tools">
@@ -1107,6 +1107,8 @@
       embeddingWorker: null,
       embeddingReady: false,
       embeddingQueue: Promise.resolve(),
+      visionWorker: null,
+      visionReady: false,
       activeConversationId: null,
       dirHandle: null,
       webEnrichedMode: false,
@@ -1310,6 +1312,89 @@ self.addEventListener('message', async (e) => {
         });
       }));
       return State.embeddingQueue;
+    }
+
+    // ── Vision: Image Analysis Worker (WASM/CPU) ───────────
+    function createVisionWorker() {
+      const code = `
+import { env, pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4/+esm';
+env.allowLocalModels = true; env.localModelPath = '/models/'; env.allowRemoteModels = true;
+let captioner = null;
+self.addEventListener('message', async (e) => {
+  const { type, imageData, mimeType, id } = e.data;
+  if (type === 'load') {
+    try {
+      captioner = await pipeline('image-to-text', 'Xenova/vit-gpt2-image-captioning', { device: 'wasm' });
+      self.postMessage({ type: 'ready' });
+    } catch (err) { self.postMessage({ type: 'error', message: err.message || String(err) }); }
+  } else if (type === 'analyze') {
+    try {
+      if (!captioner) throw new Error('Vision model not loaded');
+      const blob = new Blob([imageData], { type: mimeType || 'image/jpeg' });
+      const url = URL.createObjectURL(blob);
+      const result = await captioner(url);
+      URL.revokeObjectURL(url);
+      const text = result?.[0]?.generated_text || 'Unable to describe image';
+      self.postMessage({ type: 'result', text, id });
+    } catch (err) { self.postMessage({ type: 'error', message: err.message || String(err), id }); }
+  }
+});`;
+      const blob = new Blob([code], { type: 'application/javascript' });
+      const url = URL.createObjectURL(blob);
+      return new Worker(url, { type: 'module' });
+    }
+
+    function ensureVisionWorker() {
+      if (State.visionReady) return Promise.resolve();
+      if (State.visionWorker) {
+        return new Promise((resolve, reject) => {
+          const handler = (e) => {
+            if (e.data.type === 'ready') { State.visionReady = true; State.visionWorker.removeEventListener('message', handler); resolve(); }
+            else if (e.data.type === 'error') { State.visionWorker.removeEventListener('message', handler); reject(new Error(e.data.message)); }
+          };
+          State.visionWorker.addEventListener('message', handler);
+        });
+      }
+      State.visionWorker = createVisionWorker();
+      return new Promise((resolve, reject) => {
+        const handler = (e) => {
+          if (e.data.type === 'ready') { State.visionReady = true; State.visionWorker.removeEventListener('message', handler); resolve(); }
+          else if (e.data.type === 'error') { State.visionWorker.removeEventListener('message', handler); reject(new Error(e.data.message)); }
+        };
+        State.visionWorker.addEventListener('message', handler);
+        State.visionWorker.postMessage({ type: 'load' });
+      });
+    }
+
+    async function analyzeImage(imageBlob) {
+      await ensureVisionWorker();
+      const buffer = await imageBlob.arrayBuffer();
+      return new Promise((resolve, reject) => {
+        const id = Math.random().toString(36).slice(2);
+        const handler = (e) => {
+          if (e.data.id === id) {
+            State.visionWorker.removeEventListener('message', handler);
+            if (e.data.type === 'result') resolve(e.data.text);
+            else reject(new Error(e.data.message || 'Analysis failed'));
+          }
+        };
+        State.visionWorker.addEventListener('message', handler);
+        State.visionWorker.postMessage({ type: 'analyze', imageData: buffer, mimeType: imageBlob.type, id }, [buffer]);
+      });
+    }
+
+    async function analyzeImages(imageInfos) {
+      const results = [];
+      for (const img of imageInfos) {
+        try {
+          const description = await analyzeImage(img.blob);
+          results.push({ name: img.name, description });
+        } catch (e) {
+          console.warn(`Image analysis failed for ${img.name}:`, e);
+          results.push({ name: img.name, description: 'Image attached (analysis unavailable)' });
+        }
+      }
+      return results;
     }
 
     // ── RAG: IndexedDB Vector Store ──────────────────────────
@@ -3358,18 +3443,34 @@ self.addEventListener('message', async (e) => {
       if (text && ov !== true) {
         input.value = ''; input.style.height = 'auto';
         // Capture current attachment data before clearing (single pass)
-        const imageThumbs = [], imageNames = [], audioAtts = [], videoAtts = [], docAtts = [];
+        const imageThumbs = [], imageNames = [], imageBlobs = [], audioAtts = [], videoAtts = [], docAtts = [];
         for (const a of attachments) {
-          if (a.type === 'image') { imageThumbs.push(a.thumb); imageNames.push(a.name); }
+          if (a.type === 'image') { imageThumbs.push(a.thumb); imageNames.push(a.name); imageBlobs.push({ blob: a.blob, name: a.name }); }
           else if (a.type === 'audio') { audioAtts.push({ thumb: a.thumb, name: a.name }); }
           else if (a.type === 'video') { videoAtts.push({ thumb: a.thumb, name: a.name }); }
           else if (a.type === 'document') { docAtts.push({ name: a.name, text: a.text }); }
         }
         const userEl = renderMessage(text, 'user', null, { images: imageThumbs, audios: audioAtts, videos: videoAtts });
         userEl.dataset.histFrom = turnHistFrom;
+        clearAttachments();
+
+        // Analyze attached images using vision AI
+        let imageAnalysis = [];
+        if (imageBlobs.length > 0) {
+          updateStatus('loading', 'Analyzing image...');
+          try {
+            imageAnalysis = await analyzeImages(imageBlobs);
+          } catch (e) { console.warn('Image analysis failed:', e); }
+          updateStatus('online', 'Ready');
+        }
+
         // Build attachment context for the model
         const attachCtx = [];
-        if (imageThumbs.length) attachCtx.push(`${imageThumbs.length} image(s) attached: ${imageNames.join(', ')}`);
+        if (imageAnalysis.length > 0) {
+          attachCtx.push(imageAnalysis.map(a => `[Image "${a.name}": ${a.description}]`).join('\n'));
+        } else if (imageThumbs.length) {
+          attachCtx.push(`${imageThumbs.length} image(s) attached: ${imageNames.join(', ')}`);
+        }
         if (audioAtts.length) attachCtx.push(`${audioAtts.length} audio file(s) attached: ${audioAtts.map(a => a.name).join(', ')}`);
         if (videoAtts.length) attachCtx.push(`${videoAtts.length} video file(s) attached: ${videoAtts.map(a => a.name).join(', ')}`);
         if (docAtts.length) {
@@ -3384,7 +3485,6 @@ self.addEventListener('message', async (e) => {
           _videos: videoAtts.length > 0 ? videoAtts : undefined,
         });
         addMessageActions(userEl, 'user');
-        clearAttachments();
       }
 
       State.isGenerating = true;
