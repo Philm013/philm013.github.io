@@ -216,12 +216,29 @@
     #model-rescue.open { display: flex; }
 
     /* Loader */
-    #global-loader { position: fixed; inset: 0; background: var(--ollama-black); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; }
+    #global-loader { position: fixed; inset: 0; background: var(--ollama-black); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; overflow: hidden; }
     #global-loader.hidden { display: none; }
-    .neural-core { width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; animation: pulse 2s infinite; }
+    #neural-net-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.4; }
+    .neural-core { width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; animation: pulse 2s infinite; position: relative; z-index: 1; }
     @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.5; } }
-    .boot-log { margin-top: 24px; font-family: var(--font-mono); font-size: 0.7rem; color: rgba(255,255,255,0.5); text-align: left; width: 100%; max-width: 300px; }
-    .boot-line { margin-bottom: 4px; }
+    .loader-title { font-size: 1.4rem; font-weight: 600; margin-bottom: 8px; position: relative; z-index: 1; }
+    .loader-sub { font-size: 0.85rem; opacity: 0.8; position: relative; z-index: 1; min-height: 1.2em; }
+    .boot-log { margin-top: 24px; font-family: var(--font-mono); font-size: 0.7rem; color: rgba(255,255,255,0.5); text-align: left; width: 100%; max-width: 400px; position: relative; z-index: 1; }
+    .boot-line { margin-bottom: 4px; animation: fadeInLine 0.4s ease; }
+    @keyframes fadeInLine { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+
+    /* Inline webview embed (tool results) */
+    .tool-webview-container { position: relative; margin-top: 8px; border-radius: 10px; overflow: hidden; border: 1px solid var(--ollama-border); background: var(--ollama-snow); }
+    .tool-webview-container iframe { width: 100%; height: 300px; border: none; display: block; }
+    .tool-webview-container .webview-link-bar { display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 10px; background: var(--ollama-snow); border-top: 1px solid var(--ollama-border); align-items: center; }
+    .tool-webview-container .webview-link-bar a { font-size: 0.78rem; color: #2563eb; text-decoration: none; }
+    .tool-webview-container .webview-link-bar a:hover { text-decoration: underline; }
+    .webview-fullscreen-btn { position: absolute; top: 8px; right: 8px; z-index: 10; background: rgba(0,0,0,0.55); color: #fff; border: none; border-radius: 6px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; backdrop-filter: blur(4px); transition: background 0.2s; }
+    .webview-fullscreen-btn:hover { background: rgba(0,0,0,0.8); }
+    .tool-webview-container.webview-fullscreen { position: fixed; inset: 0; z-index: 5000; border-radius: 0; border: none; margin: 0; }
+    .tool-webview-container.webview-fullscreen iframe { height: 100%; }
+    .tool-webview-container.webview-fullscreen .webview-link-bar { display: none; }
+    .tool-webview-container.webview-fullscreen .webview-fullscreen-btn { top: 12px; right: 12px; padding: 6px 14px; font-size: 0.85rem; }
 
     /* Slash Menu */
     .slash-menu {
@@ -349,6 +366,7 @@
 
   <!-- Global Loader Overlay -->
   <div id="global-loader" class="hidden">
+    <canvas id="neural-net-canvas"></canvas>
     <div class="neural-core">
       <div style="font-size: 2rem; color: #fff; position: relative; z-index: 1;">🧠</div>
     </div>
@@ -636,7 +654,7 @@
   </div>
 
   <div style="display: none;">
-    <input type="file" id="global-file-input" multiple accept=".txt,.md,.json,.csv,.pdf,.docx,text/plain,application/pdf,application/json,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    <input type="file" id="global-file-input" multiple accept=".txt,.md,.json,.csv,.pdf,.docx,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp3,.wav,.ogg,.mp4,.webm,text/plain,application/pdf,application/json,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*,audio/*,video/*">
     <input type="file" id="model-upload-input" accept=".task,application/octet-stream">
     <input type="file" id="import-file-input" accept=".json,application/json">
   </div>
@@ -2057,9 +2075,15 @@ self.addEventListener('message', async (e) => {
           // Feed the result to the model so it can respond naturally
           let toolResponsePayload = res;
           if (res && typeof res === 'object' && res.webview) {
-            const loc = normalizedArgs.location || normalizedArgs.query || 'the requested location';
-            const search = normalizedArgs.search_query || '';
-            toolResponsePayload = { result: search ? `Map displayed for "${search}" near "${loc}".` : `Map displayed for "${loc}".` };
+            if (res.map_links) {
+              const loc = normalizedArgs.location || normalizedArgs.query || 'the requested location';
+              const search = normalizedArgs.search_query || '';
+              toolResponsePayload = { result: search ? `Map displayed for "${search}" near "${loc}".` : `Map displayed for "${loc}".` };
+            } else {
+              const toolLabel = toolName.replace(/_/g, ' ');
+              const resultText = res.result || `The ${toolLabel} is now displayed inline in the chat.`;
+              toolResponsePayload = { result: resultText, note: `The ${toolLabel} is embedded inline in the chat.` };
+            }
           }
           State.history.push({ role: 'user', text: `I used the ${toolName} tool with these arguments: ${JSON.stringify(normalizedArgs)}` });
           State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: toolName, result: toolResponsePayload })}\n</tool_response>` });
@@ -2394,81 +2418,164 @@ self.addEventListener('message', async (e) => {
       }
     }
 
+    // ── Neural Network Background Animation ─────────────────
+    let neuralAnimId = null;
+    function startNeuralNetworkAnimation() {
+      const canvas = document.getElementById('neural-net-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const nodes = [];
+      const NODE_COUNT = 50;
+      let w, h;
+
+      function resize() {
+        w = canvas.width = canvas.offsetWidth;
+        h = canvas.height = canvas.offsetHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      for (let i = 0; i < NODE_COUNT; i++) {
+        nodes.push({
+          x: Math.random() * w, y: Math.random() * h,
+          vx: (Math.random() - 0.5) * 0.6, vy: (Math.random() - 0.5) * 0.6,
+          r: 2 + Math.random() * 2
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        // Draw connections
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dx = nodes[i].x - nodes[j].x;
+            const dy = nodes[i].y - nodes[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 150) {
+              ctx.beginPath();
+              ctx.moveTo(nodes[i].x, nodes[i].y);
+              ctx.lineTo(nodes[j].x, nodes[j].y);
+              ctx.strokeStyle = `rgba(100,180,255,${0.3 * (1 - dist / 150)})`;
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+        // Draw nodes
+        for (const node of nodes) {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(100,180,255,0.6)';
+          ctx.fill();
+          // Move
+          node.x += node.vx; node.y += node.vy;
+          if (node.x < 0 || node.x > w) node.vx *= -1;
+          if (node.y < 0 || node.y > h) node.vy *= -1;
+        }
+        neuralAnimId = requestAnimationFrame(draw);
+      }
+      draw();
+    }
+    function stopNeuralNetworkAnimation() {
+      if (neuralAnimId) { cancelAnimationFrame(neuralAnimId); neuralAnimId = null; }
+    }
+
     // ── Core Inference Boot ──────────────────────────────────
     async function initGemma(source = null, isStream = false) {
       const logBoot = (msg) => {
         const log = document.getElementById('global-boot-log');
         const line = document.createElement('div'); line.className = 'boot-line'; line.innerText = msg; log.prepend(line);
-        if (log.children.length > 5) log.removeChild(log.lastChild);
+        if (log.children.length > 6) log.removeChild(log.lastChild);
         document.getElementById('loader-msg').innerText = msg;
       };
+      const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
       try {
         document.getElementById('global-loader').classList.remove('hidden');
+        startNeuralNetworkAnimation();
         await requestPersistentStorage();
         updateStatus('loading', 'Initializing...');
-        logBoot("System wake-up initiated...");
+        logBoot("☕ Waking up the brain... coffee first.");
+        await wait(800);
+        logBoot("🔌 Plugging in the neurons...");
+        await wait(600);
         
         let modelPath;
         if (isStream && source) {
           updateStatus('loading', 'Caching...');
-          logBoot("Ingesting manual data stream...");
+          logBoot("📦 Ingesting manual data stream...");
+          await wait(400);
           const blob = new Blob([source]); await ModelCacheDB.save('gemma_task', blob);
-          logBoot("Neural weights committed to disk.");
+          logBoot("💾 Neural weights committed to disk. No refunds.");
+          await wait(500);
           modelPath = URL.createObjectURL(blob);
         } else {
           updateStatus('loading', 'Scanning Cache...');
-          logBoot("Scanning local sectors...");
+          logBoot("🔍 Rummaging through local storage...");
+          await wait(700);
           let modelBlob = await ModelCacheDB.get('gemma_task');
           if (modelBlob instanceof Blob) {
-            logBoot("Gemma core found in local storage.");
+            logBoot("🎉 Gemma core found! Like finding leftovers in the fridge.");
+            await wait(600);
             modelPath = URL.createObjectURL(modelBlob);
           } else {
             updateStatus('loading', 'Locating...');
-            logBoot("Local cache miss. Searching network...");
+            logBoot("🤷 Local cache miss. Asking the internet nicely...");
+            await wait(500);
             let fetchPath = REMOTE_MODEL;
-            try { const check = await fetch(LOCAL_MODEL, { method: 'HEAD' }); if (check.ok) { fetchPath = LOCAL_MODEL; logBoot("Nearby weights detected on host."); } } catch (_e) { /* local model not available — proceed with remote */ }
+            try { const check = await fetch(LOCAL_MODEL, { method: 'HEAD' }); if (check.ok) { fetchPath = LOCAL_MODEL; logBoot("📡 Nearby weights detected on host. Score!"); await wait(400); } } catch (_e) { /* local model not available — proceed with remote */ }
             if (fetchPath === REMOTE_MODEL) {
               document.getElementById('model-rescue').classList.add('open');
               document.getElementById('global-loader').classList.add('hidden');
+              stopNeuralNetworkAnimation();
               updateStatus('error', 'Model Required');
               return;
             }
             updateStatus('loading', 'Downloading...');
-            logBoot("Downloading from remote repository...");
+            logBoot("⬇️ Downloading from remote repository...");
+            await wait(300);
             const res = await fetch(fetchPath); modelBlob = await res.blob();
             updateStatus('loading', 'Caching...');
-            logBoot("Download complete. Persisting weights...");
+            logBoot("📥 Download complete. Stashing for next time...");
+            await wait(500);
             await ModelCacheDB.save('gemma_task', modelBlob);
-            logBoot("Persistence verified.");
+            logBoot("✅ Persistence verified. We won't forget this time.");
+            await wait(400);
             modelPath = URL.createObjectURL(modelBlob);
           }
         }
 
         updateStatus('loading', 'Linking...');
-        logBoot("Allocating WebGPU buffers...");
+        logBoot("🧮 Allocating WebGPU buffers... hold tight.");
+        await wait(800);
         const f = await FilesetResolver.forGenAiTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm");
         
         updateStatus('loading', 'Booting...');
-        logBoot("Inflating neural layers...");
+        logBoot("🧬 Inflating neural layers... almost sentient.");
+        await wait(700);
+        logBoot("⚡ Connecting synapses... don't blink.");
+        await wait(500);
         
         State.inference = await LlmInference.createFromOptions(f, {
           baseOptions: { modelAssetPath: modelPath, delegate: navigator.gpu ? "GPU" : "CPU" },
           maxTokens: getSettingsValues().maxTokens, temperature: getSettingsValues().temperature
         });
         
-        logBoot("Inference engine hot.");
+        logBoot("🚀 Inference engine is hot. Let's go!");
+        await wait(400);
         State.modelReady = true; updateStatus('online', 'Ready');
         document.getElementById('chat-input').disabled = false;
         document.getElementById('chat-input').placeholder = "Ask anything...";
         updateSendButtons();
         document.getElementById('model-rescue').classList.remove('open');
         document.getElementById('global-loader').classList.add('hidden');
+        stopNeuralNetworkAnimation();
       } catch (e) {
         console.error(e);
-        logBoot("CRITICAL FAILURE: BRAIN NOT FOUND");
+        logBoot("💀 CRITICAL FAILURE: BRAIN NOT FOUND");
         updateStatus('error', 'Brain Failure');
         document.getElementById('global-loader').classList.add('hidden');
+        stopNeuralNetworkAnimation();
         document.getElementById('model-rescue').classList.add('open');
       }
     }
@@ -2883,12 +2990,18 @@ self.addEventListener('message', async (e) => {
             // For display-only results (maps, webviews), give the model a text summary
             // instead of the raw webview JSON which it cannot meaningfully process
             if (res && typeof res === 'object' && res.webview) {
-              const loc = normalizedArgs.location || normalizedArgs.query || 'the requested location';
-              const search = normalizedArgs.search_query || '';
-              const desc = search
-                ? `Interactive map displayed showing "${search}" near "${loc}". The user can see the map with search results, and has links to search in Google Maps and get directions.`
-                : `Interactive map displayed for "${loc}". The user can see the embedded map and has links to search in Google Maps and get directions.`;
-              toolResponsePayload = { result: desc, note: 'The map is already displayed to the user. Summarize the result — do not call this tool again.' };
+              if (res.map_links) {
+                const loc = normalizedArgs.location || normalizedArgs.query || 'the requested location';
+                const search = normalizedArgs.search_query || '';
+                const desc = search
+                  ? `Interactive map displayed showing "${search}" near "${loc}". The user can see the map with search results, and has links to search in Google Maps and get directions.`
+                  : `Interactive map displayed for "${loc}". The user can see the embedded map and has links to search in Google Maps and get directions.`;
+                toolResponsePayload = { result: desc, note: 'The map is already displayed to the user. Summarize the result — do not call this tool again.' };
+              } else {
+                const toolLabel = call.name.replace(/_/g, ' ');
+                const resultText = res.result || `The ${toolLabel} is now displayed inline in the chat.`;
+                toolResponsePayload = { result: resultText, note: `The ${toolLabel} is embedded inline in the chat for the user. Acknowledge it is displayed — do not call this tool again.` };
+              }
             }
 
             // For media search results, they are already visually displayed in the chat UI.
@@ -3377,11 +3490,11 @@ Rules:
       }
 
       if (res && typeof res === 'object' && res.webview && res.webview.url) {
-        // Show Google Maps URL action links
+        // Show action links inside the collapsible block
         const linkBar = document.createElement('div');
         linkBar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;';
 
-        const MAPS_LINK_STYLE = 'display:inline-block;padding:4px 10px;border-radius:6px;font-size:0.8rem;text-decoration:none;color:#fff;';
+        const LINK_STYLE = 'display:inline-block;padding:4px 10px;border-radius:6px;font-size:0.8rem;text-decoration:none;color:#fff;';
 
         if (res.map_links && res.map_links.search) {
           const searchLink = document.createElement('a');
@@ -3389,7 +3502,7 @@ Rules:
           searchLink.target = '_blank';
           searchLink.rel = 'noopener noreferrer';
           searchLink.textContent = '🔍 Search in Google Maps';
-          searchLink.style.cssText = MAPS_LINK_STYLE + 'background:#1a73e8;';
+          searchLink.style.cssText = LINK_STYLE + 'background:#1a73e8;';
           linkBar.appendChild(searchLink);
         }
 
@@ -3399,19 +3512,19 @@ Rules:
           dirLink.target = '_blank';
           dirLink.rel = 'noopener noreferrer';
           dirLink.textContent = '🧭 Get Directions';
-          dirLink.style.cssText = MAPS_LINK_STYLE + 'background:#34a853;';
+          dirLink.style.cssText = LINK_STYLE + 'background:#34a853;';
           linkBar.appendChild(dirLink);
         }
 
-        // Fallback: plain "Open map" link when no map_links are present
+        // Generic "Open" link for all webview tools
         if (!res.map_links) {
-          const mapLink = document.createElement('a');
-          mapLink.href = String(res.webview.url);
-          mapLink.target = '_blank';
-          mapLink.rel = 'noopener noreferrer';
-          mapLink.textContent = 'Open map view';
-          mapLink.style.cssText = MAPS_LINK_STYLE + 'background:#1a73e8;';
-          linkBar.appendChild(mapLink);
+          const openLink = document.createElement('a');
+          openLink.href = String(res.webview.url);
+          openLink.target = '_blank';
+          openLink.rel = 'noopener noreferrer';
+          openLink.textContent = '🔗 Open in new tab';
+          openLink.style.cssText = LINK_STYLE + 'background:#1a73e8;';
+          linkBar.appendChild(openLink);
         }
 
         result.appendChild(linkBar);
@@ -3428,24 +3541,80 @@ Rules:
         if (arrow) arrow.innerHTML = '&#9660;';
       }
 
-      // ── Render interactive map iframe inline ─────────────────
-      if (res && typeof res === 'object' && res.webview && res.webview.iframe && res.webview.url) {
-        const mapUrl = String(res.webview.url);
-        // Only embed iframes from trusted map domains to prevent loading malicious content
-        const TRUSTED_MAP_HOSTS = ['maps.google.com', 'www.google.com', 'maps.googleapis.com'];
-        try {
-          const parsed = new URL(mapUrl);
-          if (TRUSTED_MAP_HOSTS.includes(parsed.hostname) && parsed.protocol === 'https:') {
-            const iframe = document.createElement('iframe');
-            iframe.src = mapUrl;
-            iframe.style.cssText = 'width:100%;height:300px;border:none;border-radius:8px;margin-top:8px;';
-            iframe.loading = 'lazy';
-            iframe.referrerPolicy = 'no-referrer';
-            iframe.setAttribute('sandbox', 'allow-scripts');
-            iframe.allowFullscreen = true;
-            el.appendChild(iframe);
+      // ── Render inline embedded webview for ALL tools with webview.url ──
+      if (res && typeof res === 'object' && res.webview && res.webview.url) {
+        const webviewUrl = String(res.webview.url);
+
+        // Determine if this is a trusted external embed (Google Maps) or a local skill
+        let shouldEmbed = false;
+        let iframeSandbox = 'allow-scripts allow-same-origin';
+
+        if (res.webview.iframe) {
+          // Map-style external embed — validate against trusted hosts
+          const TRUSTED_MAP_HOSTS = ['maps.google.com', 'www.google.com', 'maps.googleapis.com'];
+          try {
+            const parsed = new URL(webviewUrl);
+            if (TRUSTED_MAP_HOSTS.includes(parsed.hostname) && parsed.protocol === 'https:') {
+              shouldEmbed = true;
+              iframeSandbox = 'allow-scripts';
+            }
+          } catch (_e) { /* invalid URL — skip */ }
+        } else if (webviewUrl.startsWith('skills/')) {
+          // Local skill webview (piano, restaurant roulette, mood music, etc.)
+          shouldEmbed = true;
+        }
+
+        if (shouldEmbed) {
+          const container = document.createElement('div');
+          container.className = 'tool-webview-container';
+
+          const iframe = document.createElement('iframe');
+          iframe.src = webviewUrl;
+          iframe.loading = 'lazy';
+          iframe.referrerPolicy = 'no-referrer';
+          iframe.setAttribute('sandbox', iframeSandbox);
+          iframe.allowFullscreen = true;
+          container.appendChild(iframe);
+
+          // Full-screen toggle button
+          const fsBtn = document.createElement('button');
+          fsBtn.className = 'webview-fullscreen-btn';
+          fsBtn.textContent = '⛶ Full Screen';
+          fsBtn.addEventListener('click', () => {
+            container.classList.toggle('webview-fullscreen');
+            fsBtn.textContent = container.classList.contains('webview-fullscreen') ? '✕ Exit Full Screen' : '⛶ Full Screen';
+          });
+          container.appendChild(fsBtn);
+
+          // Link bar below the iframe
+          const embedLinkBar = document.createElement('div');
+          embedLinkBar.className = 'webview-link-bar';
+
+          if (res.map_links && res.map_links.search) {
+            const sl = document.createElement('a');
+            sl.href = String(res.map_links.search);
+            sl.target = '_blank'; sl.rel = 'noopener noreferrer';
+            sl.textContent = '🔍 Open in Maps';
+            embedLinkBar.appendChild(sl);
           }
-        } catch (_e) { /* invalid URL — skip iframe embed */ }
+          if (res.map_links && res.map_links.directions) {
+            const dl = document.createElement('a');
+            dl.href = String(res.map_links.directions);
+            dl.target = '_blank'; dl.rel = 'noopener noreferrer';
+            dl.textContent = '🧭 Directions';
+            embedLinkBar.appendChild(dl);
+          }
+          if (!res.map_links) {
+            const ol = document.createElement('a');
+            ol.href = webviewUrl;
+            ol.target = '_blank'; ol.rel = 'noopener noreferrer';
+            ol.textContent = '🔗 Open in new tab';
+            embedLinkBar.appendChild(ol);
+          }
+
+          container.appendChild(embedLinkBar);
+          el.appendChild(container);
+        }
       }
 
     }
