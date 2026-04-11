@@ -4735,7 +4735,11 @@ self.addEventListener('message', async (e) => {
       // Build toggle header
       const toggle = document.createElement('div');
       toggle.className = 'tool-call-toggle';
-      toggle.setAttribute('onclick', `document.getElementById('${blockId}').classList.toggle('open'); this.querySelector('span').textContent = document.getElementById('${blockId}').classList.contains('open') ? '\\u25BC' : '\\u25B6'`);
+      toggle.addEventListener('click', function() {
+        resultDiv.classList.toggle('open');
+        const arrow = this.querySelector('span');
+        if (arrow) arrow.textContent = resultDiv.classList.contains('open') ? '\u25BC' : '\u25B6';
+      });
 
       const resultDiv = document.createElement('div');
       resultDiv.className = 'tool-call-result';
@@ -4779,6 +4783,7 @@ self.addEventListener('message', async (e) => {
             fetchBtn.textContent = '📄 Fetch & Read';
             fetchBtn.title = 'Ask the AI to fetch and read this page';
             fetchBtn.addEventListener('click', () => {
+              if (!chatInput) return;
               chatInput.value = `Please fetch and summarize this page: ${item.url}`;
               sendMessage();
             });
@@ -4959,8 +4964,11 @@ self.addEventListener('message', async (e) => {
         if (currentAssistantEl) {
           const hasThink = /<\|think\|>/.test(response) || /<\|channel>thought/.test(response);
           if (hasThink) {
-            // Re-render with only the thinking block content
-            const thinkOnly = response.replace(/<tool_call>[\s\S]*/, '').replace(/^[\s\S]*?(<\|think\|>[\s\S]*?<\|\/think\|>)[\s\S]*$/, '$1');
+            // Extract all thinking blocks, strip everything else
+            const thinkBlocks = response.match(/<\|think\|>[\s\S]*?<\|\/think\|>/g)
+              || response.match(/<\|channel>thought[\s\S]*?<channel\|>/g)
+              || [];
+            const thinkOnly = thinkBlocks.join('\n');
             updateAssistantBubble(currentAssistantEl.bubble, thinkOnly);
           } else {
             // No thinking block — clear filler text entirely

@@ -1960,14 +1960,16 @@ self.addEventListener('message', async (e) => {
               const bubbles = aiEl.querySelectorAll('.ai-bubble');
               const bubble = bubbles.length ? bubbles[bubbles.length - 1] : null;
               if (bubble) {
-                // Re-render with only thinking content (main text stripped)
-                const thinkOnly = full.replace(/<tool_call>[\s\S]*/, '').replace(/^[\s\S]*?(<\|think\|>[\s\S]*?<\|\/think\|>)[\s\S]*$/, '$1');
                 const hasThink = /<\|think\|>/.test(full) || /<\|channel>thought/.test(full);
                 if (hasThink) {
-                  // Keep only the thinking block, strip filler text
+                  // Extract all thinking blocks, strip everything else
+                  const thinkBlocks = full.match(/<\|think\|>[\s\S]*?<\|\/think\|>/g)
+                    || full.match(/<\|channel>thought[\s\S]*?<channel\|>/g)
+                    || [];
+                  const thinkOnly = thinkBlocks.join('\n');
                   bubble.innerHTML = renderMarkdown(thinkOnly, { showThinking: iterShowThinking });
                 } else {
-                  // No thinking block — just show a brief status
+                  // No thinking block — clear filler text entirely
                   bubble.innerHTML = '';
                 }
               }
@@ -2215,6 +2217,7 @@ Rules:
             fetchBtn.title = 'Ask the AI to fetch and read this page';
             fetchBtn.addEventListener('click', () => {
               const input = document.getElementById('chat-input');
+              if (!input) return;
               input.value = `Please fetch and summarize this page: ${item.url}`;
               handleSend();
             });
