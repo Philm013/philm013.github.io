@@ -19,7 +19,9 @@ window['ai_edge_gallery_get_result'] = async (dataStr) => {
       if (!res.ok) throw new Error('Primary endpoint failed');
       data = await res.json();
     } catch {
-      // CORS fallback
+      // CORS fallback: api.allorigins.win is a public CORS proxy.
+      // Used only as a fallback when the primary endpoint fails from the browser.
+      // NOTE: Third-party proxies can potentially inspect traffic; only use for non-sensitive public API data.
       const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
       const res2 = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
       if (!res2.ok) throw new Error('API Explorer fetch failed: ' + res2.status);

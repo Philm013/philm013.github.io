@@ -3171,12 +3171,9 @@ Rules:
       State.history.forEach((m, idx) => {
         const isAi = m.role === 'model' || m.role === 'ai';
         // Skip internal entries that are injected as user-role messages in history
-        const isInternal = !isAi && (
-          m.text.startsWith('<tool_response>') ||
-          m.text.startsWith('[System:') ||
-          m.text.startsWith('I used the ') ||
-          m.text.startsWith('I clicked ')
-        );
+        // (tool responses, system messages, synthetic continuations)
+        const INTERNAL_PREFIXES = ['<tool_response>', '[System:', 'I used the ', 'I clicked '];
+        const isInternal = !isAi && INTERNAL_PREFIXES.some(p => m.text.startsWith(p));
         if (isInternal) return;
 
         const role = isAi ? 'ai' : 'user';
