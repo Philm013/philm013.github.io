@@ -1,1076 +1,1092 @@
-# CloudChat Migration PRD: `index.html` ← LocalMind
+# index.html → LocalMind Migration Guide
 
-**Version:** 1.0  
-**Reference Source:** `LocalChatExampleComprehensive.html` (LocalMind)  
-**Target File:** `index.html` (Gemma 4 Ultimate)  
-**Lines of Source:** 4,428 (LocalMind) vs. 493 (index.html)
-
----
-
-## Executive Summary
-
-`index.html` is a working skeleton of a MediaPipe-based on-device chat app with a sidebar, panels, and three basic agent tools. `LocalChatExampleComprehensive.html` (LocalMind) is a fully realized private AI assistant built on the same MediaPipe stack. This document is a complete feature-by-feature audit identifying every feature gap, the exact source code to reference, and guidance on how to integrate each one into `index.html`.
+**Source of truth:** `LocalMind.html`  
+**Target:** `index.html`  
+**Goal:** Replace MediaPipe inference with Hugging Face Transformers.js, add a Web Worker,
+add multimodal input (camera · mic · image/audio attachments), and wire up the full agentic
+feature set already present in `LocalMind.html`.
 
 ---
 
-## Table of Contents
+## Overview
 
-1. [Feature Inventory](#1-feature-inventory)
-2. [Gap Analysis — What's Missing](#2-gap-analysis)
-3. [Feature Migration Specs](#3-feature-migration-specs)
-   - F01 — WebGPU Availability Check
-   - F02 — RAG Embedding Worker (MiniLM)
-   - F03 — IndexedDB Vector Store & Conversation History
-   - F04 — Full Agent Tool Registry
-   - F05 — Web Search Integration (Brave / Tavily / SearXNG)
-   - F06 — Complete Document Processing Pipeline
-   - F07 — Folder Ingestion (File System API)
-   - F08 — Agentic Loop with Context Budget
-   - F09 — Memory Inspector Panel (with Audit)
-   - F10 — Batch Prompts Engine
-   - F11 — Encrypted Share Links
-   - F12 — Save Response as Markdown (with Folder Write)
-   - F13 — Thinking Mode Toggle
-   - F14 — Response Source Badges
-   - F15 — Toast Notifications
-   - F16 — Drag & Drop File Ingestion
-   - F17 — Auto-Backup on New Chat
-   - F18 — Help Popover (Tabbed)
-   - F19 — Model Cache Info & Clear UI
-   - F20 — Conversation Restore (History Panel Logic)
-4. [Already Implemented in index.html](#4-already-implemented)
-5. [Dependency & Library Notes](#5-dependency--library-notes)
-6. [Implementation Order (Suggested)](#6-implementation-order)
-7. [Skills Architecture](#7-skills-architecture)
-   - 7.1 Skills Folder Structure
-   - 7.2 Feature-to-Skill Mapping
-   - 7.3 Skill Types
-   - 7.4 JS Skill Execution Model
-   - 7.5 Shared Storage Model
-   - 7.6 Skill Configuration & Secrets
-   - 7.7 Skill Loader in index.html
-   - 7.8 Testing Skills Independently
+| Area | index.html (current) | LocalMind.html (target) |
+|---|---|---|
+| Inference library | MediaPipe `LlmInference` | `@huggingface/transformers@4` |
+| Runs in | Main thread | Web Worker |
+| Models | 1 (MediaPipe `.task`) | 3 ONNX HF repos |
+| Multimodal | ❌ | ✅ image + audio |
+| Camera / mic | ❌ | ✅ |
+| Token streaming | Cumulative chunks | Delta tokens |
+| Thinking mode | Partial | Full `<|think|>` extraction |
+| Tool system prompt | Plain text | JSON schema injection |
+
+The migration is broken into **9 phases** in strict dependency order.
+Each phase includes the exact code to add/remove/modify.
 
 ---
 
-## 1. Feature Inventory
+## Phase 1 — Remove MediaPipe Imports
 
-Full feature list extracted from LocalMind (`LocalChatExampleComprehensive.html`):
+### Remove
+Find and delete this import (top of `<script type="module">`):
 
-| # | Feature | Category | Status in index.html |
-|---|---------|----------|----------------------|
-| F01 | WebGPU availability check with graceful error | Infrastructure | ❌ Missing |
-| F02 | MiniLM Embedding Worker (via Transformers.js) | RAG/AI | ❌ Missing |
-| F03 | IndexedDB vector store (`chunks`, `profile`, `conversations`) | Data | ❌ Missing |
-| F04 | Full tool registry: `store_memory`, `search_memory`, `set_reminder`, `list_memories`, `delete_memory` | Agent | ⚠️ Partial (3 of 9 tools) |
-| F05 | Web search: Brave / Tavily / SearXNG with API key management | Search | ❌ Missing |
-| F06 | PDF extraction (lazy PDF.js), DOCX extraction (lazy Mammoth), extractive summary, RAG ingestion | Docs | ⚠️ Partial (no RAG) |
-| F07 | Folder ingestion via `showDirectoryPicker` with file fingerprinting | Docs | ❌ Missing |
-| F08 | Agentic loop (3 iterations), `buildContextMessages` sliding window, tool step indicator | AI | ⚠️ Partial (no loop, no budget) |
-| F09 | Memory inspector: category pills, source grouping, text search, bulk delete, memory audit | UI | ⚠️ Panel exists, no logic |
-| F10 | Batch prompts: run sequentially, `{{previous}}` substitution, chain mode, stop | UI | ⚠️ Panel exists, no logic |
-| F11 | Encrypted share links (AES-256-GCM + PBKDF2), import banner | Sharing | ❌ Missing |
-| F12 | "Save as MD" per response, code block download button, folder-integrated write | Export | ❌ Missing |
-| F13 | Thinking mode toggle (user checkbox), collapse-on-finish behavior | UX | ⚠️ Parsing exists, no toggle |
-| F14 | Response source badges (On-device / Agent / Web-enriched + source links) | UX | ❌ Missing |
-| F15 | `showToast()` non-blocking notifications | UX | ❌ Missing (`alert()` used) |
-| F16 | Drag & drop file ingestion with visual overlay | UX | ❌ Missing |
-| F17 | Auto-backup toggle (download full JSON on New Chat) | Data | ❌ Missing |
-| F18 | Multi-tab help popover (About / Models / Features / Things to Try + click-to-paste) | UX | ❌ Missing |
-| F19 | Model cache info viewer (size in MB) + "Clear cache" button | Settings | ⚠️ Purge exists, no size info |
-| F20 | Conversation resume from history sidebar | UX | Panel exists, no logic |
-| F21 | RAG auto-inject into chat system prompt | AI | ❌ Missing |
-| F22 | Post-session summarization (embed conversation on New Chat) | AI | ❌ Missing |
-| F23 | `sessionStorage` chat persistence across tab refreshes | Data | ❌ Missing |
-| F24 | User profile store (`profile` IndexedDB object store) | Data | ❌ Missing |
-| F25 | Stop generation button (toggle send btn to ■ stop) | UX | ❌ Missing |
-| F26 | Lightweight custom Markdown renderer (with thinking & tool block support) | Render | ⚠️ Uses marked.js instead |
-
----
-
-## 2. Gap Analysis
-
-### Critical Missing Systems (Blockers for Feature Parity)
-
-1. **RAG System (F02, F03, F21)** — The entire embedding/vector-search pipeline is absent. Without it, tools like `store_memory`, `search_memory`, and document ingestion have nowhere to persist or retrieve data.
-
-2. **Agentic Loop + Context Budget (F08)** — The current `handleSend` does one generation pass. Tool calls require a multi-turn loop and a sliding-window context builder to fit within the model's 8K context.
-
-3. **Toast System (F15)** — Multiple features (doc ingestion, folder, export, share, cache clear) all rely on `showToast()`. Must be added before those features work correctly.
-
-4. **IndexedDB Schema (F03)** — index.html only has a `model_cache` store. LocalMind uses a 3-store schema: `chunks` (vectors), `profile` (user working memory), and `conversations` (history).
-
----
-
-## 3. Feature Migration Specs
-
----
-
-### F01 — WebGPU Availability Check
-
-**Priority:** High  
-**Reference:** `LocalChatExampleComprehensive.html` lines 1804–1818
-
-**What it does:** Before loading anything, checks `navigator.gpu`. If absent, renders an error UI in the chat area and throws to halt the module script.
-
-**Code to Port (verbatim):**
 ```js
-// ── WebGPU check ─────────────────────────────
-const hasWebGPU = !!navigator.gpu;
-if (!hasWebGPU) {
-  document.getElementById('chat-container').innerHTML = `
-    <div class="webgpu-error">
-      <div style="font-size:2rem;margin-bottom:12px">⚠</div>
-      <h2>WebGPU Not Available</h2>
-      <p>This app requires WebGPU to run the AI model in your browser.
-      Please use Chrome 113+, Edge 113+, or Firefox 130+ on a device with a compatible GPU.</p>
-    </div>`;
-  updateStatus('error', 'Not supported');
-  throw new Error('WebGPU not available');
-}
+import { LlmInference, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai';
 ```
 
-**Integration Notes:**  
-- Place at the very top of the `<script type="module">` block, before any imports resolve.
-- The error div class `webgpu-error` needs a CSS rule added (text-align center, padding, red color). Reference LocalMind lines 1447–1463 for the exact CSS.
-- Map `chat-container` to index.html's `<main id="chat-container">`.
+Also delete or repurpose `REMOTE_MODEL` / `LOCAL_MODEL` constants — they reference `.task` URLs
+that are no longer used.
+
+### Note
+No replacement import is needed at the top level. The HuggingFace library is imported
+**inside the worker string** in Phase 3.
 
 ---
 
-### F02 — RAG Embedding Worker (MiniLM)
+## Phase 2 — Update Model Registry
 
-**Priority:** Critical (blocks F04 memory tools, F06 docs, F09 memory panel)  
-**Reference:** `LocalChatExampleComprehensive.html` lines 2360–2453
+### Replace the existing `MODELS` object with
 
-**What it does:** Spawns a `Worker` (created from a Blob URL) that loads `Xenova/all-MiniLM-L6-v2` via Transformers.js in WASM mode. Provides serialized `embedTexts(texts[])` which returns float arrays.
-
-**Code to Port:**
 ```js
-// ── RAG: Embedding Worker (MiniLM, WASM/CPU) ─────────────
-let embeddingWorker = null;
-let embeddingReady = false;
-let embeddingQueue = Promise.resolve();
+const MODELS = {
+  'gemma3-1b': {
+    id:           'onnx-community/gemma-3-1b-it-ONNX-GQA',
+    label:        'Gemma 3 1B',
+    dtype:        'q4f16',
+    size:         '~760 MB',
+    type:         'causal',       // → AutoModelForCausalLM
+    multimodal:   false,
+    agentCapable: false,
+    contextSize:  4096,
+    genConfig:    { temperature: 0.7, top_k: 50, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.0 },
+  },
+  'gemma4-e2b': {
+    id:           'onnx-community/gemma-4-E2B-it-ONNX',
+    label:        'Gemma 4 E2B',
+    dtype:        'q4f16',
+    size:         '~1.5 GB',
+    type:         'multimodal',   // → Gemma4ForConditionalGeneration
+    multimodal:   true,
+    agentCapable: true,
+    contextSize:  8192,
+    genConfig:    { temperature: 0.7, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
+  },
+  'gemma4-e4b': {
+    id:           'onnx-community/gemma-4-E4B-it-ONNX',
+    label:        'Gemma 4 E4B',
+    dtype:        'q4f16',
+    size:         '~4.9 GB',
+    type:         'multimodal',
+    multimodal:   true,
+    agentCapable: true,
+    contextSize:  12288,
+    genConfig:    { temperature: 0.7, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
+  },
+};
 
-function createEmbeddingWorker() {
+let activeModelKey = localStorage.getItem('lm_active_model') || 'gemma4-e2b';
+```
+
+**Key field changes:**
+- `type` must be `'causal'` or `'multimodal'` (not `'mediapipe'`)
+- `dtype: 'q4f16'` is required for the worker's `from_pretrained()` call
+- `id` must be a HuggingFace repo ID (not a URL)
+
+---
+
+## Phase 3 — Create the Inference Web Worker
+
+This is the largest single change. The worker handles all model loading and generation.
+Reference: `LocalMind.html` lines 4261–4471.
+
+### Add `createInferenceWorker()` near the top of your script
+
+```js
+function createInferenceWorker() {
   const code = `
-import { env, pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4/+esm';
-env.allowLocalModels = true;
-env.localModelPath = '/models/';
+import {
+  env, AutoTokenizer, AutoModelForCausalLM,
+  AutoProcessor, Gemma4ForConditionalGeneration,
+  load_image, TextStreamer, InterruptableStoppingCriteria,
+} from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4/+esm';
+
+env.allowLocalModels  = true;
+env.localModelPath    = '/models/';
 env.allowRemoteModels = true;
-let embedder = null;
-self.addEventListener('message', async (e) => {
-  const { type, texts, id } = e.data;
+
+let processor = null, tokenizer = null, model = null, loadedType = null;
+const stopping_criteria = new InterruptableStoppingCriteria();
+
+const progress = p => self.postMessage({ type: 'progress', data: p });
+
+async function loadCausal(modelId, dtype) {
+  processor = null; tokenizer = null; model = null;
+  tokenizer = await AutoTokenizer.from_pretrained(modelId, { progress_callback: progress });
+  model = await AutoModelForCausalLM.from_pretrained(modelId, {
+    dtype, device: 'webgpu', progress_callback: progress,
+  });
+  self.postMessage({ type: 'warmup' });
+  await model.generate({ ...tokenizer('a'), max_new_tokens: 1 });
+  loadedType = 'causal';
+  self.postMessage({ type: 'ready' });
+}
+
+async function loadMultimodal(modelId, dtype) {
+  processor = null; tokenizer = null; model = null;
+  processor = await AutoProcessor.from_pretrained(modelId, { progress_callback: progress });
+  tokenizer = processor.tokenizer;
+  model = await Gemma4ForConditionalGeneration.from_pretrained(modelId, {
+    dtype, device: 'webgpu', progress_callback: progress,
+  });
+  self.postMessage({ type: 'warmup' });
+  await model.generate({ ...tokenizer('a'), max_new_tokens: 1 });
+  loadedType = 'multimodal';
+  self.postMessage({ type: 'ready' });
+}
+
+async function generateCausal(chatMessages, id, genConfig) {
+  stopping_criteria.reset();
+  try {
+    const inputs = tokenizer.apply_chat_template(chatMessages, {
+      add_generation_prompt: true, return_dict: true,
+    });
+    const streamer = new TextStreamer(tokenizer, {
+      skip_prompt: true, skip_special_tokens: true,
+      callback_function: text => self.postMessage({ type: 'token', token: text, id }),
+    });
+    const gc = genConfig || {};
+    await model.generate({
+      ...inputs,
+      max_new_tokens:     gc.max_new_tokens     || 2048,
+      do_sample:          true,
+      temperature:        gc.temperature        ?? 0.7,
+      top_k:              gc.top_k              ?? 50,
+      top_p:              gc.top_p              ?? 0.95,
+      repetition_penalty: gc.repetition_penalty ?? 1.0,
+      streamer, stopping_criteria,
+    });
+    self.postMessage({ type: 'complete', id });
+  } catch (err) {
+    self.postMessage({ type: 'error', message: err.message || String(err) });
+    self.postMessage({ type: 'complete', id });
+  }
+}
+
+async function generateMultimodal(chatMessages, id, attData, enableThinking, genConfig) {
+  stopping_criteria.reset();
+  try {
+    const prompt = processor.apply_chat_template(chatMessages, {
+      add_generation_prompt: true,
+      enable_thinking: enableThinking || false,
+    });
+
+    const images = [], audios = [];
+    for (const att of (attData || [])) {
+      if (att.type === 'image') {
+        const blobUrl = URL.createObjectURL(new Blob([att.data], { type: att.mimeType || 'image/jpeg' }));
+        images.push(await load_image(blobUrl));
+        URL.revokeObjectURL(blobUrl);
+      } else if (att.type === 'audio') {
+        audios.push(att.pcmData instanceof Float32Array ? att.pcmData : new Float32Array(att.pcmData));
+      }
+    }
+
+    const imageArg = images.length ? (images.length === 1 ? images[0] : images) : null;
+    const audioArg = audios.length ? (audios.length === 1 ? audios[0] : audios) : null;
+    const inputs   = await processor(prompt, imageArg, audioArg, { add_special_tokens: false });
+
+    const streamer = new TextStreamer(processor.tokenizer, {
+      skip_prompt: true, skip_special_tokens: true,
+      callback_function: text => self.postMessage({ type: 'token', token: text, id }),
+    });
+    const gc = genConfig || {};
+    await model.generate({
+      ...inputs,
+      max_new_tokens:     gc.max_new_tokens     || 2048,
+      do_sample:          true,
+      temperature:        gc.temperature        ?? 1.0,
+      top_k:              gc.top_k              ?? 64,
+      top_p:              gc.top_p              ?? 0.95,
+      repetition_penalty: gc.repetition_penalty ?? 1.1,
+      streamer, stopping_criteria,
+    });
+    self.postMessage({ type: 'complete', id });
+  } catch (err) {
+    self.postMessage({ type: 'error', message: err.message || String(err) });
+    self.postMessage({ type: 'complete', id });
+  }
+}
+
+self.addEventListener('message', async ({ data }) => {
+  const { type, modelId, dtype, modelType, messages, id, attachments, enableThinking, generationConfig } = data;
   if (type === 'load') {
     try {
-      embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
-        device: 'wasm',
-        progress_callback: (p) => self.postMessage({ type: 'progress', data: p }),
-      });
-      self.postMessage({ type: 'ready' });
-    } catch (err) { self.postMessage({ type: 'error', message: err.message }); }
-  } else if (type === 'embed') {
-    try {
-      const results = [];
-      for (const text of texts) {
-        const output = await embedder(text, { pooling: 'mean', normalize: true });
-        results.push(Array.from(output.data));
-      }
-      self.postMessage({ type: 'embeddings', vectors: results, id });
-    } catch (err) { self.postMessage({ type: 'error', message: err.message, id }); }
+      if (modelType === 'multimodal') await loadMultimodal(modelId, dtype);
+      else                            await loadCausal(modelId, dtype);
+    } catch (err) {
+      self.postMessage({ type: 'error', message: err.message || String(err) });
+    }
+  } else if (type === 'generate') {
+    if (loadedType === 'multimodal') await generateMultimodal(messages, id, attachments, enableThinking, generationConfig);
+    else                             await generateCausal(messages, id, generationConfig);
+  } else if (type === 'stop') {
+    stopping_criteria.interrupt();
   }
-});`;
-  const blob = new Blob([code], { type: 'application/javascript' });
-  return new Worker(URL.createObjectURL(blob), { type: 'module' });
+});
+`;
+  return new Worker(URL.createObjectURL(new Blob([code], { type: 'application/javascript' })), { type: 'module' });
 }
 ```
 
-**Key functions to port:** `ensureEmbeddingWorker()`, `embedTexts(texts)` — lines 2413–2453.
-
-**Integration Notes:**
-- The worker is lazy-started: `ensureEmbeddingWorker()` is called the first time embedding is needed (on first document upload, first send with RAG, etc.). Do not start it on page load.
-- `embeddingQueue` serializes all embed calls to prevent race conditions.
-- The worker downloads `~23MB` on first run; no UI feedback needed beyond a toast.
-
----
-
-### F03 — IndexedDB Vector Store & Conversation History
-
-**Priority:** Critical  
-**Reference:** `LocalChatExampleComprehensive.html` lines 2455–2599
-
-**What it does:**
-- Opens `localmind_rag` (v2) with three object stores: `chunks`, `profile`, `conversations`.
-- `chunks` stores embedded text fragments with `{id, text, embedding, category, source, timestamp}`.
-- `conversations` stores full chat sessions with `{id, title, messages, modelKey, updated}`.
-- `profile` stores user working memory `{key, name, preferences, facts}`.
-
-**Core DB functions to port:**
-```
-openRAGDB()             — lines 2459–2480
-storeChunks(chunks)     — lines 2482–2491
-getAllChunks()          — lines 2493–2501
-deleteChunk(id)         — lines 2503–2511
-clearAllChunks()        — lines 2513–2521
-saveConversation()      — lines 2528–2554
-getAllConversations()    — lines 2557–2565
-getConversation(id)     — lines 2567–2575
-deleteConversation(id)  — lines 2577–2582
-exportAllData()         — lines 2584–2587
-importData(data)        — lines 2589–2600
-cosineSimilarity(a, b)  — lines 2602–2610
-searchByVector()        — lines 2612–2620
-getProfile()            — lines 2623–2631
-saveProfile()           — lines 2633–2641
-chunkText()             — lines 2644–2668
-embedAndStore()         — lines 2670–2684
-searchMemory()          — lines 2686–2689
-```
-
-**Integration Notes:**
-- index.html currently uses `LocalMind_Model_Cache_v1` for model blob storage. Keep that DB separate — it handles model caching, not RAG.
-- The new `localmind_rag` DB should coexist alongside the existing `LocalMind_Model_Cache_v1` DB.
-- DB version is 2; the `onupgradeneeded` handler creates all three stores.
-- `chunkText(text, maxChars=900, overlapChars=200)` uses sentence-boundary splitting with overlap — this is important for retrieval quality. Port it exactly.
-- `cosineSimilarity` must be kept as a plain synchronous function (not async) since it's called in tight loops during audit.
-
----
-
-### F04 — Full Agent Tool Registry
-
-**Priority:** High  
-**Reference:** `LocalChatExampleComprehensive.html` lines 1852–1993 (base tools) + 2131–2172 (web tools)
-
-**Currently in index.html:** `calculate`, `get_current_time`, `fetch_page` (basic, uses eval directly)
-
-**Missing tools to add:**
-
-| Tool | Source Lines | Description |
-|------|-------------|-------------|
-| `store_memory` | 1885–1901 | Embeds and stores fact/preference/finding via `embedAndStore()` |
-| `search_memory` | 1902–1924 | Semantic search over stored chunks via `searchMemory()` |
-| `set_reminder` | 1926–1953 | Browser `Notification` + `showToast` after N minutes |
-| `list_memories` | 1955–1973 | Returns chunk count by category + 5 most recent |
-| `delete_memory` | 1975–1993 | Semantic search → delete matches with score ≥ 0.5 |
-| `web_search` | 2131–2152 | Multi-provider search (requires search config) |
-| `fetch_page` | 2154–2172 | Full Readability.js extraction with semantic pre-filter |
-
-**Fix for `calculate` (security hardening):**  
-LocalMind's version avoids `eval()` entirely:
-```js
-// Reference: line 1862–1866
-const expr = String(args.expression).replace(/[^0-9+\-*/.()% ]/g, '');
-const result = Function('"use strict"; return (' + expr + ')')();
-```
-index.html uses raw `eval()` — replace with the `Function` constructor pattern.
-
-**Fix for `fetch_page`:**  
-LocalMind's version lazy-loads `Readability.js` and performs a semantic pre-filter using embeddings if available (lines 2085–2129). The basic `allorigins.win` proxy is kept as fallback.
-
-**Integration Notes:**
-- `web_search` and `fetch_page` should be registered as `requiresWeb: true` and only included in the tool schema when `isSearchConfigured()` returns true.
-- Memory tools (`store_memory`, `search_memory`, `list_memories`, `delete_memory`) depend on F02 (embedding) and F03 (DB) being active.
-- `set_reminder` needs a `showToast()` call (F15 must be ported first).
-
----
-
-### F05 — Web Search Integration
-
-**Priority:** Medium  
-**Reference:** `LocalChatExampleComprehensive.html` lines 1995–2069 (providers) + 2798–2837 (settings UI)
-
-**What it does:**
-- Supports three providers: **Brave Search**, **Tavily**, **SearXNG** (self-hosted).
-- API key stored in `localStorage` (`lm_search_provider`, `lm_search_key`, `lm_searxng_url`).
-- A second send button (🌐) appears when search is configured — clicking it pre-runs a search, injects results into the system prompt, then generates normally.
-
-**Providers to port:**
-```js
-SearchProviders.brave(query, apiKey)   // lines 2016–2025
-SearchProviders.tavily(query, apiKey)  // lines 2026–2036
-SearchProviders.searxng(query, url)    // lines 2038–2047
-```
-
-**Helper functions:**
-```js
-parseApiError(res, provider)  // lines 1996–2013 — human-readable HTTP error messages
-getSearchConfig()             // lines 2049–2054
-isSearchConfigured()          // lines 2056–2061
-executeWebSearch(query)       // lines 2063–2069
-```
-
-**HTML to add inside `#settings-panel`:**
-```html
-<div id="searchSettingsSection">
-  <label for="searchProvider">Web search provider</label>
-  <select id="searchProvider">
-    <option value="none">None (offline only)</option>
-    <option value="tavily">Tavily (free tier, no card)</option>
-    <option value="brave">Brave Search (privacy-first)</option>
-    <option value="searxng">SearXNG (self-hosted)</option>
-  </select>
-  <div id="apiKeyRow">
-    <label for="searchApiKey">API key</label>
-    <input type="password" id="searchApiKey" placeholder="Paste your API key">
-  </div>
-  <div id="searxngUrlRow">
-    <label for="searxngUrl">SearXNG instance URL</label>
-    <input type="text" id="searxngUrl" placeholder="https://searx.example.com">
-  </div>
-</div>
-```
-
-**Add 🌐 send button** next to the existing ➤ button in `#input-row`.
-
-**Integration Notes:**
-- The 🌐 button should only be visible when `isSearchConfigured() && MODELS[activeKey].agentCapable`.
-- Web search results are also cached into RAG (`embedAndStore(snippetText, 'finding', 'web-search')`).
-- The `fetch_page` tool (F04) uses a semantic pre-filter via embeddings when available.
-
----
-
-### F06 — Complete Document Processing Pipeline
-
-**Priority:** High  
-**Reference:** `LocalChatExampleComprehensive.html` lines 3360–3571
-
-**Current state in index.html:** File input exists, PDF.js + Mammoth loaded at startup, but files are never processed or stored anywhere.
-
-**Functions to port:**
-
-| Function | Lines | Notes |
-|----------|-------|-------|
-| `handleFiles(files)` | 3369–3408 | Routes by extension to text/PDF/DOCX handlers |
-| `ensurePDFJS()` | 3498–3512 | Lazy-loads PDF.js module (not at startup) |
-| `ensureMammoth()` | 3514–3525 | Lazy-loads Mammoth |
-| `extractPDFText(blob)` | 3527–3538 | Returns `{text, pageCount}` |
-| `extractDOCXText(blob)` | 3540–3545 | Returns raw text string |
-| `extractiveSummary(text, n=3)` | 3547–3557 | Sentence scoring for summaries |
-| `ingestDocument(fileName, textPromise)` | 3559–3571 | Full pipeline: embed + summary + toast |
-
-**Integration Notes:**
-- Remove the eager `<script>` tags for PDF.js and Mammoth from `<head>` — LocalMind lazy-loads them only when a PDF/DOCX is uploaded (saves ~600KB on initial page load).
-- `handleFiles` must call `embedAndStore()` (F02/F03) — requires RAG to be set up first.
-- Text files (.txt, .md, .json, .csv) are ingested directly via `file.text()`.
-- The file input accept attribute should be `.txt,.md,.json,.csv,.pdf,.docx`.
-- Each document gets two entries in RAG: one as `category: 'document'` (chunked full text) and one as `category: 'document_summary'` (3-sentence extractive summary).
-
----
-
-### F07 — Folder Ingestion (File System API)
-
-**Priority:** Medium  
-**Reference:** `LocalChatExampleComprehensive.html` lines 3410–3493
-
-**What it does:**
-- Button opens `showDirectoryPicker()`.
-- Recursively walks the folder, ingesting all `.md`, `.txt`, `.pdf`, `.docx` files.
-- Uses `lastModified + size` as a fingerprint stored in `localStorage` (`lm_folder_fp`) to skip unchanged files on re-open.
-- Button turns highlighted (`.folder-open`) while a folder is open.
-- When a folder is open, "Save as MD" buttons on responses write directly to that folder.
-
-**HTML to add** (alongside `docsBtn` in the actions bar):
-```html
-<button class="btn-icon" id="folderBtn" title="Open folder">Folder</button>
-```
-
-**CSS for folder-open state** (LocalMind line 645–648):
-```css
-.btn-icon.folder-open {
-  background: var(--indigo-100);
-  color: var(--indigo-600);
-}
-```
-
-**State variable:** `let dirHandle = null;` — must be accessible from both the folder button handler and the "Save as MD" button logic.
-
-**Integration Notes:**
-- `showDirectoryPicker` is only supported in Chromium-based browsers. Show a toast for unsupported browsers.
-- Fingerprint logic prevents re-embedding files that haven't changed — critical for large vaults.
-- The `walk` function is recursive and handles nested directories.
-
----
-
-### F08 — Agentic Loop with Context Budget
-
-**Priority:** Critical  
-**Reference:** `LocalChatExampleComprehensive.html` lines 2290–2358 (context) + 3838–4042 (send/loop)
-
-**Current state in index.html:** Single-pass generation. Tool calls are parsed and a recursive `handleSend(true)` is called — fragile, no iteration cap, no context management.
-
-**Core functions to port:**
-
-**1. Token budget helper:**
-```js
-function approxTokens(text) {
-  return Math.ceil(String(text).length / 3.5);
-}
-```
-
-**2. Sliding window context builder:**
-```js
-// Reference: lines 2299–2358
-let conversationSummary = '';
-
-function buildContextMessages(allMessages, systemPrompt, modelKey) {
-  const maxCtx = MODELS[modelKey]?.contextSize || 4096;
-  const budgetForHistory = maxCtx - 2048 - 300;
-  // ... (port full function including pair-grouping and summary injection)
-}
-```
-
-**3. Agentic loop inside `sendMessage()`:**
-```js
-// Reference: lines 3973–4041
-const MAX_TOOL_ITERATIONS = 3;
-let loopMessages = [...chatMessages];
-for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
-  const response = await generateOnce(loopMessages, ...);
-  const { toolCalls, cleanText } = parseToolCalls(response);
-  if (toolCalls.length === 0) { finishGeneration(response, ...); return; }
-  // execute tool, render tool block, push to loopMessages, continue
-}
-```
-
-**4. Robust `parseToolCalls(text)`:**  
-The current index.html parser is a simple regex. LocalMind's version (lines 2210–2270) adds:
-- Bare JSON fallback (model omits `<tool_call>` tags)
-- Tool call buried inside thinking block fallback
-- `repairAndParseJSON()` for trailing commas, single quotes, unquoted keys
-
-**5. `renderToolCallBlock(bubble, toolName, args, result)`:**  
-Renders a collapsible block (lines 3876–3890) — replaces the basic `renderToolBadge()` in index.html.
-
-**6. `generateOnce(chatMessages, enableThinking, genConfig)`:**  
-Replace the `State.inference.generateResponse(buildPrompt(), ...)` call with the proper Gemma chat template (lines 3838–3874):
-```js
-// Format Gemma chat template
-let prompt = "";
-for (const msg of chatMessages) {
-  const role = msg.role === 'assistant' ? 'model' : msg.role;
-  prompt += `<start_of_turn>${role}\n${msg.content}<end_of_turn>\n`;
-}
-prompt += `<start_of_turn>model\n`;
-```
-
-**7. Stop generation:**  
-Replace the current disabled `send-btn` with a toggle that sets `generating = false` (line 4119–4127). The MediaPipe API doesn't support mid-stream cancellation directly; setting the flag causes the loop to exit after the current chunk resolves.
-
-**Integration Notes:**
-- The `buildPrompt()` function in index.html currently uses a custom Gemma turn format — replace with the standard `<start_of_turn>`/`<end_of_turn>` template which LocalMind uses.
-- `MODELS[key].contextSize` must be set on the model registry entry (8192 for Gemma 4 E2B).
-- Post-generation: summarize the last 10 messages and store as `category: 'conversation'` on New Chat (lines 3318–3328).
-
----
-
-### F09 — Memory Inspector Panel (with Audit)
-
-**Priority:** High  
-**Reference:** `LocalChatExampleComprehensive.html` lines 2839–3185
-
-**Current state in index.html:** The `#memory-panel` overlay has a `#memory-list` div and an "Audit Outliers" button but zero logic wired up.
-
-**Functions to port:**
-
-| Function | Lines | Description |
-|----------|-------|-------------|
-| `refreshMemoryPanel()` | 2908–3003 | Fetch all chunks, filter, render with category pills and source groups |
-| `makeChunkItem(chunk, showCat)` | 2885–2906 | Renders a single memory row with delete button |
-| `relTime(ts)` | 2865–2874 | "3d ago" relative time helper |
-| `srcBasename(src)` | 2876–2879 | Strips path to filename |
-| `catBadgeHtml(cat)` | 2881–2883 | `<span class="mem-cat mem-cat-fact">` helper |
-| `runMemoryAudit()` | 3040–3094 | Pairwise cosine similarity → stale/dupe/outlier sets |
-| `renderAuditResults()` | 3097–3134 | Renders the three audit sections |
-| `makeAuditSection()` | 3145–3185 | Individual audit section with bulk delete |
-| `rerunAudit()` | 3136–3143 | Re-runs audit after a deletion |
-
-**HTML changes to `#memory-panel` overlay:**
-```html
-<div class="memory-header">
-  <strong>Local Memory (RAG)</strong>
-  <span class="memory-count" id="memoryCount">0 chunks</span>
-</div>
-<div class="memory-search-row">
-  <input type="text" id="memorySearch" placeholder="Search memories..." class="memory-search-input">
-  <button class="btn-icon" id="memoryClearAll">Clear All</button>
-</div>
-<div class="memory-cat-pills" id="memoryCatPills"></div>
-<div class="memory-list" id="memoryList"></div>
-<div class="memory-search-row" style="margin-top:8px;border-top:...;padding-top:8px">
-  <button class="btn-icon" id="memoryExport">Export</button>
-  <button class="btn-icon" id="memoryImport">Import</button>
-  <button class="btn-icon" id="memoryAuditBtn">Audit</button>
-  <input type="file" id="importFileInput" accept=".json" style="display:none">
-</div>
-```
-
-**CSS to add:** Category badge colors (lines 1037–1042), memory item styles (lines 990–1025), audit section styles (lines 1052–1086), category pill styles (lines 915–935), source group styles (lines 937–982).
-
-**Integration Notes:**
-- The audit uses pairwise cosine similarity which is O(n²) — capped at 600 chunks (`CAP = 600`). Port that cap.
-- `memoryCatFilter` state variable must be module-level: `let memoryCatFilter = 'all';`
-- `auditMode` state variable: `let auditMode = false;`
-- The Export/Import buttons need `memoryExport`, `memoryImport`, and `importFileInput` event listeners (lines 3187–3217).
-
----
-
-### F10 — Batch Prompts Engine
-
-**Priority:** Medium  
-**Reference:** `LocalChatExampleComprehensive.html` lines 4143–4235
-
-**Current state in index.html:** The `#batch-panel` overlay HTML exists but no JS is wired up.
-
-**Functions to port:**
+### Add worker state variables
 
 ```js
-parseBatchPrompts()         // line 4163–4165
-updateBatchCount()          // lines 4167–4171
-batchRunBtn click handler   // lines 4181–4235
-batchStopBtn click handler  // lines 4175–4179
+let inferenceWorker   = null;
+let workerReady       = false;
+let generateResolve   = null;
+let currentTokenAccum = '';
+let msgIdCounter      = 0;
+let currentAssistantEl = null;  // reference to the bubble being streamed into
 ```
 
-**Variables to add:**
+### Add `attachWorkerHandlers(w)`
+
 ```js
-let batchRunning = false;
-let batchShouldStop = false;
-```
+function attachWorkerHandlers(w) {
+  w.addEventListener('error', e => {
+    console.error('Worker error:', e);
+    showToast('Model worker crashed: ' + e.message);
+    updateStatus('error', 'Worker Error');
+  });
 
-**`{{previous}}` substitution logic** (lines 4204–4210):
-```js
-// Explicit substitution
-if (i > 0 && lastResponse) {
-  prompt = prompt.replace(/\{\{previous\}\}/g, lastResponse);
-}
-// Auto-inject chain (if no explicit placeholder)
-if (batchChainToggle.checked && i > 0 && lastResponse && !prompts[i].includes('{{previous}}')) {
-  prompt = `${prompt}\n\n[Previous response for context:\n${lastResponse}\n]`;
-}
-```
+  w.addEventListener('message', ({ data }) => {
+    if (data.type === 'progress') {
+      const p   = data.data;
+      const pct = p.progress != null ? ` ${Math.round(p.progress)}%` : '';
+      if (p.status === 'downloading' || p.status === 'loading')
+        updateStatus('loading', (p.name || 'Model') + pct);
 
-**HTML changes to `#batch-panel`:**  
-Add `id="batchTextarea"`, `id="batchCount"`, `id="batchProgress"`, `id="batchRunBtn"`, `id="batchStopBtn"`, `id="batchChainToggle"`.
+    } else if (data.type === 'warmup') {
+      updateStatus('loading', 'Compiling shaders…');
 
-**Integration Notes:**
-- Batch runner calls `sendMessage()` in a `for` loop — requires `sendMessage` to be a standalone `async function` (not `window.handleSend`) that returns a promise resolved when generation ends.
-- `batchRunBtn.disabled` should be controlled by `updateBatchCount()` which checks `modelReady && !batchRunning`.
+    } else if (data.type === 'ready') {
+      workerReady = true;
+      updateStatus('online', 'Ready');
+      document.getElementById('chat-input').disabled = false;
+      updateMultimodalUI();
 
----
+    } else if (data.type === 'token') {
+      currentTokenAccum += data.token;
+      if (currentAssistantEl) {
+        renderAssistantText(currentTokenAccum, currentAssistantEl, true);
+        currentAssistantEl.scrollIntoView({ block: 'end', behavior: 'smooth' });
+      }
 
-### F11 — Encrypted Share Links
+    } else if (data.type === 'complete') {
+      if (generateResolve) { generateResolve(currentTokenAccum); generateResolve = null; }
 
-**Priority:** Medium  
-**Reference:** `LocalChatExampleComprehensive.html` lines 4237–4422
-
-**What it does:**
-- "Share" button opens a modal.
-- User optionally checks "Encrypt with passphrase".
-- "Generate" button encodes conversation as `#lm:<base64>` (plain) or `#lme:<salt>.<iv>.<cipher>` (AES-256-GCM, PBKDF2 200k iterations).
-- On page load, if URL hash matches those patterns, an import banner appears.
-
-**Crypto functions to port:**
-```js
-b64ToArr(b64)                     // line 4243
-arrToB64(arr)                     // line 4246
-deriveKey(passphrase, salt)       // lines 4249–4257
-encryptPayload(json, passphrase)  // lines 4260–4267
-decryptPayload(encoded, pass)     // lines 4269–4277
-buildConversationPayload()        // lines 4279–4286
-checkShareLink()                  // lines 4369–4385
-```
-
-**HTML to add:**
-- Share modal: `#shareBackdrop` → `.share-modal` with passphrase checkbox, URL input, Generate + Copy + Close buttons (lines 1772–1790).
-- Import banner: `#importBanner` fixed top bar with message, optional password input, Load + Dismiss buttons (lines 1763–1769).
-
-**Integration Notes:**
-- `crypto.subtle` is available in all modern browsers but only on HTTPS/localhost. No external library needed.
-- `buildConversationPayload()` serializes only text content (blobs are stripped).
-- The `shareBtn` should be disabled (or show a toast) when `messages.length === 0`.
-- `checkShareLink()` must be called at the end of module init (after model is loaded and history is restored).
-
----
-
-### F12 — Save Response as Markdown
-
-**Priority:** Medium  
-**Reference:** `LocalChatExampleComprehensive.html` lines 4080–4106
-
-**What it does:**  
-Each assistant response bubble gets a "Save as MD" button. If `dirHandle` is set (F07 folder is open), it writes directly to the folder using the File System Access API. Otherwise it triggers a download.
-
-**Code to port (inside `finishGeneration()`):**
-```js
-if (response && response.length > 20) {
-  const saveBtn = document.createElement('button');
-  saveBtn.className = 'save-md-btn';
-  saveBtn.textContent = dirHandle ? `Save to ${dirHandle.name}` : 'Save as MD';
-  saveBtn.addEventListener('click', async () => {
-    const filename = `response-${new Date().toISOString().slice(0, 16).replace(/:/g, '')}.md`;
-    if (dirHandle) {
-      const fh = await dirHandle.getFileHandle(filename, { create: true });
-      const writable = await fh.createWritable();
-      await writable.write(response);
-      await writable.close();
-      showToast(`Saved to ${dirHandle.name}/${filename}`);
-    } else {
-      const blob = new Blob([response], { type: 'text/markdown' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+    } else if (data.type === 'error') {
+      showToast('Generation error: ' + data.message);
+      if (generateResolve) { generateResolve(''); generateResolve = null; }
     }
   });
-  bubble.appendChild(saveBtn);
 }
 ```
 
-**Code block download button** — added inline during Markdown rendering (LocalMind line 3655–3656):
+### Add `loadModel(key)`
+
 ```js
-return `<pre><code id="${codeId}">${escapeHtml(code.trim())}</code>
-        <button class="code-download-btn" onclick="downloadCodeBlock('${codeId}','${ext}')"
-        title="Download">↓</button></pre>`;
-```
+function loadModel(key) {
+  const m = MODELS[key];
+  if (!m) return;
 
-**CSS for `.save-md-btn`:** lines 385–401. For `.code-download-btn`: lines 365–383.
+  if (inferenceWorker) { inferenceWorker.terminate(); inferenceWorker = null; }
 
----
+  activeModelKey = key;
+  workerReady    = false;
+  localStorage.setItem('lm_active_model', key);
+  document.getElementById('chat-input').disabled = true;
+  updateStatus('loading', 'Loading model…');
 
-### F13 — Thinking Mode Toggle
+  if (!m.multimodal) clearAttachments();
+  updateMultimodalUI();
 
-**Priority:** Low  
-**Reference:** `LocalChatExampleComprehensive.html` lines 1656–1659, 3612–3680
-
-**What it does:**
-- A checkbox in Settings labeled "Show reasoning (thinking mode)" — only visible for agent-capable models.
-- When checked, the `<|think|>` / `<|channel>thought` block is rendered as a collapsible "Thought process" section.
-- After generation finishes, all open thinking blocks are collapsed (lines 4050–4062).
-
-**Integration Notes:**
-- index.html already has `parseThought()` but it always renders the thought block. Add a check: `if (!thinkingToggle.checked) { skip thought rendering; }`.
-- The thinking row should be hidden by default and shown only when `MODELS[activeModelKey].agentCapable`.
-- `thinkingRow.classList.toggle('hidden', !isAgent)` — reference line 3355.
-
----
-
-### F14 — Response Source Badges
-
-**Priority:** Medium  
-**Reference:** `LocalChatExampleComprehensive.html` lines 4063–4079
-
-**What it does:** After generation, the first child of the assistant bubble gets a badge:
-- `<span class="msg-source-badge on-device">On-device</span>` — no tools, no web.
-- `<span class="msg-source-badge" style="...indigo...">Agent</span>` — tools used but no web.
-- `<span class="msg-source-badge web-enriched">Web-enriched · N sources</span>` + source link block.
-
-**CSS** for badge styles: lines 818–855.
-
-**Integration Notes:**
-- The badge is inserted at `bubble.insertBefore(badge, bubble.firstChild)`.
-- Source links appear below the response text, not at the top.
-- `allSources` is accumulated during the agentic loop and passed into `finishGeneration()`.
-
----
-
-### F15 — Toast Notifications
-
-**Priority:** Critical (required by many features)  
-**Reference:** `LocalChatExampleComprehensive.html` lines 3573–3580
-
-**Code to port (verbatim — it's tiny):**
-```js
-function showToast(msg) {
-  const toast = document.createElement('div');
-  toast.textContent = msg;
-  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);' +
-    'background:var(--ollama-near-black);color:white;padding:10px 20px;border-radius:8px;' +
-    'font-size:0.82rem;z-index:1000;opacity:0;transition:opacity 0.3s';
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => toast.style.opacity = '1');
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+  inferenceWorker = createInferenceWorker();
+  attachWorkerHandlers(inferenceWorker);
+  inferenceWorker.postMessage({ type: 'load', modelId: m.id, dtype: m.dtype, modelType: m.type });
 }
 ```
 
-**Integration Notes:**
-- Replace all `alert()` calls in index.html with `showToast()`.
-- Adjust `bottom` offset to clear the mobile nav bar (`80px` works when nav-height is 72px).
-- The color variables should match index.html's CSS variable names (`--ollama-near-black` instead of `--gray-800`).
+### Add `generateOnce()`
+
+```js
+function generateOnce(chatMessages, attData, enableThinking, genConfig) {
+  return new Promise(resolve => {
+    generateResolve   = resolve;
+    currentTokenAccum = '';
+    inferenceWorker.postMessage({
+      type:             'generate',
+      messages:         chatMessages,
+      id:               ++msgIdCounter,
+      attachments:      attData || null,
+      enableThinking:   enableThinking || false,
+      generationConfig: genConfig || {},
+    });
+  });
+}
+```
+
+### Remove
+Delete all references to:
+- `State.inference` (and the `State` object if inference was its only purpose)
+- `LlmInference.createFromOptions()`
+- `FilesetResolver.forGenAiTasks()`
+- `State.inference.generateResponse()`
+- `mergeStreamingText()` — MediaPipe-specific cumulative text helper
+
+### Replace stop generation
+
+```js
+// Old: State.inference.stop()
+// New:
+function stopGeneration() {
+  if (inferenceWorker) inferenceWorker.postMessage({ type: 'stop' });
+}
+```
 
 ---
 
-### F16 — Drag & Drop File Ingestion
+## Phase 4 — Rewrite the Send / Agentic Loop
 
-**Priority:** Low  
-**Reference:** `LocalChatExampleComprehensive.html` lines 3582–3610
+The agentic loop structure (max 3 iterations, tool parsing, result appending) stays the same —
+only the generation call changes from a MediaPipe callback to `generateOnce()`.
 
-**What it does:** Tracks `dragenter`/`dragleave` with a counter (handles child-element re-fires) and shows a dashed overlay. On `drop`, calls `handleFiles(e.dataTransfer.files)`.
+### Key structural changes
 
-**HTML to add** inside the chat card:
+1. **Message format:** switch from `{ role, text }` to `{ role, content }` where `content` is
+   a plain string for text-only or an array of content blocks for multimodal.
+2. **Streaming:** MediaPipe gave cumulative text; HF Transformers.js gives delta tokens that the
+   worker handler accumulates in `currentTokenAccum`.
+3. **Attachments:** only passed on iteration 0 of the agentic loop.
+
+### Rewrite `sendMessage()` (ref: LocalMind.html lines 4809–5009)
+
+```js
+async function sendMessage() {
+  const text = document.getElementById('chat-input').value.trim();
+  const m    = MODELS[activeModelKey];
+  if (!text && attachments.length === 0) return;
+  if (!workerReady) { showToast('Model not ready yet.'); return; }
+
+  const enableThinking = document.getElementById('thinking-toggle')?.checked || false;
+  const isMultimodal   = m.multimodal && attachments.length > 0;
+  const isAgent        = m.agentCapable;
+
+  // Prepare attachment data for worker transfer
+  const attData = isMultimodal ? await prepareAttachmentsForWorker() : null;
+
+  // Build user message content
+  let userContent;
+  if (isMultimodal && attData) {
+    const blocks = [];
+    for (const att of attData) {
+      if (att.type === 'image') blocks.push({ type: 'image' });
+      if (att.type === 'audio') blocks.push({ type: 'audio' });
+    }
+    if (text) blocks.push({ type: 'text', text });
+    userContent = blocks;
+  } else {
+    userContent = text;
+  }
+
+  // Update UI: render user bubble, clear input, clear attachments
+  document.getElementById('chat-input').value = '';
+  renderUserMessage(userContent, attData);   // show thumbnail previews in bubble
+  clearAttachments();
+  conversationHistory.push({ role: 'user', content: userContent });
+
+  // Create assistant bubble (streaming target)
+  currentAssistantEl = createAssistantBubble();
+
+  const sysPrompt    = isAgent ? buildAgentSystemPrompt() : getSystemPrompt();
+  const chatMessages = buildContextMessages(conversationHistory, sysPrompt, activeModelKey);
+
+  // ── Non-agent: single pass ──────────────────────────────────────────────
+  if (!isAgent) {
+    const response = await generateOnce(chatMessages, attData, enableThinking, m.genConfig);
+    finishGeneration(response);
+    return;
+  }
+
+  // ── Agentic loop ────────────────────────────────────────────────────────
+  const MAX_ITERS    = 3;
+  let loopMessages   = [...chatMessages];
+  let currentAttData = attData;
+  const toolsUsed    = [];
+
+  for (let iter = 0; iter < MAX_ITERS; iter++) {
+    const iterThinking = iter === 0 ? enableThinking : false;
+    const response     = await generateOnce(loopMessages, currentAttData, iterThinking, m.genConfig);
+    currentAttData     = null;  // attachments only on first pass
+
+    const { toolCalls } = parseToolCalls(response);
+
+    if (toolCalls.length === 0) {
+      finishGeneration(response);
+      return;
+    }
+
+    // Execute first tool call
+    const tc   = toolCalls[0];
+    const tool = TOOL_REGISTRY[tc.name];
+    let toolResult;
+    try {
+      toolResult = tool ? await tool.execute(tc.arguments, { userQuery: text })
+                        : { error: `Unknown tool: ${tc.name}` };
+    } catch (e) {
+      toolResult = { error: e.message };
+    }
+
+    toolsUsed.push(tc.name);
+
+    // In the current bubble: keep only thinking blocks, strip filler text
+    const hasThinking = /<\|think\|>/.test(response) || /<\|channel>thought/.test(response);
+    if (hasThinking) {
+      const { thinkContent } = extractThinking(response);
+      renderAssistantText('<|think|>' + thinkContent + '<|/think|>', currentAssistantEl, false);
+    } else {
+      currentAssistantEl.innerHTML = '';
+    }
+
+    renderToolCallBlock(currentAssistantEl, tc.name, tc.arguments, toolResult);
+
+    loopMessages.push({ role: 'assistant', content: response });
+    loopMessages.push({ role: 'user',      content: formatToolResponse(tc.name, toolResult) });
+    currentTokenAccum = '';
+
+    if (iter === MAX_ITERS - 1) {
+      loopMessages.push({ role: 'user', content: '[System: Tool call limit reached. Provide your final answer now.]' });
+      const finalResponse = await generateOnce(loopMessages, null, false, m.genConfig);
+      finishGeneration(finalResponse);
+      return;
+    }
+  }
+}
+```
+
+### `buildContextMessages()` — windowing
+
+```js
+function buildContextMessages(history, sysPrompt, modelKey) {
+  const m           = MODELS[modelKey];
+  const maxChars    = (m?.contextSize || 4096) * 4;  // ~4 chars/token estimate
+  const messages    = [{ role: 'user', content: sysPrompt },
+                       { role: 'assistant', content: 'Understood.' }];
+  let   charCount   = sysPrompt.length;
+
+  // Walk history newest-first, add until budget exhausted
+  const recent = [];
+  for (let i = history.length - 1; i >= 0; i--) {
+    const txt = typeof history[i].content === 'string'
+      ? history[i].content
+      : history[i].content.map(b => b.text || '').join(' ');
+    charCount += txt.length;
+    if (charCount > maxChars && recent.length > 0) break;
+    recent.unshift(history[i]);
+  }
+  return messages.concat(recent);
+}
+```
+
+### `finishGeneration(response)`
+
+```js
+function finishGeneration(response) {
+  renderAssistantText(response, currentAssistantEl, false);
+  collapseThinkingBlocks(currentAssistantEl);
+  conversationHistory.push({ role: 'assistant', content: response });
+  saveConversation();
+  currentAssistantEl = null;
+}
+```
+
+---
+
+## Phase 5 — Multimodal Input UI
+
+### HTML — add to the input area
+
 ```html
-<div class="drag-overlay" id="dragOverlay">Drop files to ingest</div>
+<!-- Attachment preview strip (above input row) -->
+<div id="attachment-strip" style="display:none">
+  <div id="attachment-items"></div>
+</div>
+
+<!-- Camera and mic buttons (alongside existing 📎 attach button) -->
+<button id="camera-btn" class="icon-btn" title="Take photo"    style="display:none">📷</button>
+<button id="mic-btn"    class="icon-btn" title="Record audio"  style="display:none">🎤</button>
+
+<!-- Update existing file input to accept images and audio too -->
+<input type="file" id="global-file-input" multiple
+  accept="image/*,audio/*,video/mp4,.txt,.md,.json,.csv,.pdf,.docx">
+
+<!-- Camera overlay modal -->
+<div id="camera-overlay">
+  <video id="camera-preview" autoplay playsinline></video>
+  <div class="cam-controls">
+    <button id="cam-capture-btn">📸 Capture</button>
+    <button id="cam-cancel-btn">Cancel</button>
+  </div>
+</div>
 ```
 
-**CSS for drag overlay** (lines 1427–1444):
+### CSS
+
 ```css
-.drag-overlay {
-  display: none; position: absolute; inset: 0; z-index: 50;
-  background: rgba(102, 126, 234, 0.08); border: 2px dashed var(--indigo-500);
-  align-items: center; justify-content: center; font-size: 0.9rem;
-  color: var(--indigo-500); font-weight: 500; pointer-events: none;
+/* Attachment strip */
+#attachment-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px 0;
 }
-.drag-overlay.visible { display: flex; }
+.attachment-chip {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.attachment-chip img {
+  display: block;
+  width: 60px; height: 60px;
+  object-fit: cover;
+}
+.attachment-chip .att-label {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.attachment-chip .remove-att {
+  position: absolute;
+  top: 3px; right: 3px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  border: none; border-radius: 50%;
+  width: 18px; height: 18px;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+
+/* Camera overlay */
+#camera-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 1000;
+  background: #000;
+  flex-direction: column;
+  align-items: center; justify-content: center;
+}
+#camera-overlay.open { display: flex; }
+#camera-preview {
+  max-width: 100%;
+  max-height: 80dvh;
+  object-fit: contain;
+}
+.cam-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* Mic recording state */
+#mic-btn.recording {
+  background: var(--red-500, #ef4444);
+  color: #fff;
+}
 ```
 
-**Integration Notes:**
-- The event listeners attach to `document.querySelector('.card')` or `document.querySelector('.main-screen')` — map to index.html's main content area.
-- Requires F06 (handleFiles) to be implemented.
+### `updateMultimodalUI()`
+
+```js
+function updateMultimodalUI() {
+  const m            = MODELS[activeModelKey];
+  const show         = m?.multimodal && workerReady;
+  document.getElementById('camera-btn').style.display = show ? '' : 'none';
+  document.getElementById('mic-btn').style.display    = show ? '' : 'none';
+  const thinkRow = document.getElementById('thinking-row');
+  if (thinkRow) thinkRow.style.display = m?.multimodal ? '' : 'none';
+}
+```
 
 ---
 
-### F17 — Auto-Backup on New Chat
+## Phase 6 — Attachment Handling JavaScript
 
-**Priority:** Low  
-**Reference:** `LocalChatExampleComprehensive.html` lines 3309–3343
+Reference: `LocalMind.html` lines 3689–4073.
 
-**What it does:**
-- A toggle in Settings: "Auto-download backup on New Chat".
-- State stored in `localStorage('lm_auto_backup')`.
-- When "New Chat" is clicked, if toggle is on and there are messages, `exportAllData()` → JSON blob → download.
+### Attachment state variables
 
-**HTML to add to settings panel:**
+```js
+let attachments   = [];      // [{ type, blob, thumb, name, mimeType }]
+let cameraStream  = null;
+let mediaRecorder = null;
+```
+
+### Core attachment functions
+
+```js
+function addAttachment(att) {
+  attachments.push(att);
+  renderAttachmentStrip();
+}
+
+function removeAttachment(i) {
+  if (attachments[i]?.thumb) URL.revokeObjectURL(attachments[i].thumb);
+  attachments.splice(i, 1);
+  renderAttachmentStrip();
+}
+
+function clearAttachments() {
+  attachments.forEach(a => { if (a.thumb) URL.revokeObjectURL(a.thumb); });
+  attachments = [];
+  renderAttachmentStrip();
+}
+
+function renderAttachmentStrip() {
+  const strip = document.getElementById('attachment-strip');
+  const items = document.getElementById('attachment-items');
+  items.innerHTML = '';
+  if (!attachments.length) { strip.style.display = 'none'; return; }
+  strip.style.display = 'flex';
+  attachments.forEach((att, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'attachment-chip';
+    if (att.type === 'image') {
+      const img = document.createElement('img');
+      img.src = att.thumb;
+      chip.appendChild(img);
+    } else {
+      const lbl = document.createElement('span');
+      lbl.className = 'att-label';
+      lbl.textContent = (att.type === 'audio' ? '🎵 ' : '📄 ') + att.name;
+      chip.appendChild(lbl);
+    }
+    const rm = document.createElement('button');
+    rm.className = 'remove-att';
+    rm.textContent = '×';
+    rm.onclick = () => removeAttachment(i);
+    chip.appendChild(rm);
+    items.appendChild(chip);
+  });
+}
+```
+
+### `prepareAttachmentsForWorker()`
+
+```js
+async function prepareAttachmentsForWorker() {
+  const result = [];
+  for (const att of attachments) {
+    if (att.type === 'image') {
+      result.push({ type: 'image', data: await att.blob.arrayBuffer(), mimeType: att.blob.type || 'image/jpeg' });
+    } else if (att.type === 'audio') {
+      // Decode to mono Float32 at 16 kHz — required by Gemma audio processor
+      const raw     = await att.blob.arrayBuffer();
+      const ctx     = new OfflineAudioContext(1, 1, 16000);
+      const decoded = await ctx.decodeAudioData(raw.slice(0));
+      result.push({ type: 'audio', pcmData: decoded.getChannelData(0).buffer, mimeType: att.blob.type });
+    }
+  }
+  return result;
+}
+```
+
+### `handleFiles()` — route by MIME type
+
+```js
+function handleFiles(files) {
+  const m = MODELS[activeModelKey];
+  for (const file of files) {
+    if (file.type.startsWith('image/')) {
+      if (m?.multimodal)
+        addAttachment({ type: 'image', blob: file, thumb: URL.createObjectURL(file), name: file.name, mimeType: file.type });
+    } else if (file.type.startsWith('audio/')) {
+      if (m?.multimodal)
+        addAttachment({ type: 'audio', blob: file, thumb: URL.createObjectURL(file), name: file.name, mimeType: file.type });
+    } else {
+      // Text / PDF / DOCX → RAG ingestion (existing behavior unchanged)
+      (async () => {
+        let text = '';
+        if (file.name.endsWith('.pdf'))        text = await extractPDFText(file);
+        else if (file.name.endsWith('.docx'))  text = await extractDOCXText(file);
+        else                                   text = await file.text();
+        await ingestDocument(file.name, text);
+      })();
+    }
+  }
+}
+```
+
+**Update** the existing `global-file-input` change handler to call `handleFiles(e.target.files)` instead of calling `ingestDocument()` directly.
+
+### Camera capture
+
+```js
+document.getElementById('camera-btn').addEventListener('click', async () => {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    document.getElementById('camera-preview').srcObject = cameraStream;
+    document.getElementById('camera-overlay').classList.add('open');
+  } catch (err) { showToast('Camera error: ' + err.message); }
+});
+
+document.getElementById('cam-capture-btn').addEventListener('click', () => {
+  const video  = document.getElementById('camera-preview');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(blob => {
+    if (blob) addAttachment({ type: 'image', blob, thumb: URL.createObjectURL(blob), name: 'camera-photo.jpg', mimeType: 'image/jpeg' });
+    closeCameraOverlay();
+  }, 'image/jpeg', 0.85);
+});
+
+document.getElementById('cam-cancel-btn').addEventListener('click', closeCameraOverlay);
+
+function closeCameraOverlay() {
+  document.getElementById('camera-overlay').classList.remove('open');
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  document.getElementById('camera-preview').srcObject = null;
+}
+```
+
+### Microphone recording
+
+```js
+document.getElementById('mic-btn').addEventListener('click', async () => {
+  if (mediaRecorder?.state === 'recording') { mediaRecorder.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const chunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+    mediaRecorder.addEventListener('dataavailable', e => { if (e.data.size > 0) chunks.push(e.data); });
+    mediaRecorder.addEventListener('stop', () => {
+      stream.getTracks().forEach(t => t.stop());
+      document.getElementById('mic-btn').classList.remove('recording');
+      document.getElementById('mic-btn').textContent = '🎤';
+      if (chunks.length) {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        addAttachment({ type: 'audio', blob, thumb: URL.createObjectURL(blob), name: 'recording.webm', mimeType: 'audio/webm' });
+      }
+      mediaRecorder = null;
+    });
+    mediaRecorder.start();
+    document.getElementById('mic-btn').classList.add('recording');
+    document.getElementById('mic-btn').textContent = '⏹';
+  } catch (err) { showToast('Microphone error: ' + err.message); }
+});
+```
+
+### Clipboard paste
+
+```js
+document.addEventListener('paste', e => {
+  if (!MODELS[activeModelKey]?.multimodal) return;
+  for (const item of (e.clipboardData?.items || [])) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      if (blob) addAttachment({ type: 'image', blob, thumb: URL.createObjectURL(blob), name: 'pasted-image.png', mimeType: blob.type });
+    }
+  }
+});
+```
+
+### Drag and drop — update existing handler
+
+```js
+// Replace the existing drop handler body with:
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  dragCounter = 0;
+  document.getElementById('drag-overlay')?.classList.remove('visible');
+  if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+});
+```
+
+---
+
+## Phase 7 — Agent System Prompt & Missing Tools
+
+### Add `buildAgentSystemPrompt()` (ref: LocalMind.html lines 2413–2447)
+
+The model must receive tool definitions in JSON schema format. Replace any plain-text tool
+descriptions in the current system prompt with:
+
+```js
+function buildAgentSystemPrompt() {
+  const m             = MODELS[activeModelKey];
+  const webConfigured = isSearchConfigured();
+
+  const toolDefs = Object.entries(TOOL_REGISTRY)
+    .filter(([, t]) => !t.requiresWeb || webConfigured)
+    .map(([name, t]) => ({
+      type:     'function',
+      function: { name, description: t.description, parameters: t.parameters },
+    }));
+
+  return `${getSystemPrompt()}
+
+You have access to the following tools. Use them when they would genuinely help.
+<tools>
+${JSON.stringify(toolDefs, null, 2)}
+</tools>
+
+To call a tool, output EXACTLY this format in your main response (NEVER inside a thinking block):
+<tool_call>
+{"name": "tool_name", "arguments": {"param": "value"}}
+</tool_call>
+
+Rules:
+- Call only one tool per response.
+- After receiving tool results, provide your final answer directly without calling more tools unless necessary.
+- Never output a tool_call inside <|think|> or <|channel>thought blocks.`;
+}
+```
+
+### Add missing tools to `TOOL_REGISTRY`
+
+These exist in LocalMind but may be absent in index.html:
+
+```js
+// Current date/time
+TOOL_REGISTRY.get_current_time = {
+  description: 'Get the current date and time, optionally in a specific IANA timezone.',
+  parameters: {
+    type: 'object',
+    properties: {
+      timezone: { type: 'string', description: 'IANA timezone string e.g. "America/New_York". Defaults to local timezone.' },
+    },
+  },
+  execute(args) {
+    const tz  = args.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return { datetime: new Date().toLocaleString('en-US', { timeZone: tz, dateStyle: 'full', timeStyle: 'long' }), timezone: tz };
+  },
+};
+
+// List all stored memories
+TOOL_REGISTRY.list_memories = {
+  description: 'List facts and memories stored in long-term memory. Optionally filter by category.',
+  parameters: {
+    type: 'object',
+    properties: {
+      category: { type: 'string', description: 'Filter by category: fact, preference, finding, document (optional).' },
+    },
+  },
+  async execute(args) {
+    const all      = await getAllChunks();
+    const filtered = args.category ? all.filter(c => c.category === args.category) : all;
+    return { count: filtered.length, memories: filtered.map(c => ({ id: c.id, text: c.text.slice(0, 200), category: c.category })) };
+  },
+};
+
+// Delete a memory chunk by ID
+TOOL_REGISTRY.delete_memory = {
+  description: 'Delete a specific memory chunk by its ID (use list_memories to find IDs).',
+  parameters: {
+    type: 'object',
+    properties: { id: { type: 'string', description: 'The chunk ID to delete.' } },
+    required: ['id'],
+  },
+  async execute(args) {
+    await deleteChunk(args.id);
+    return { success: true, deleted: args.id };
+  },
+};
+```
+
+Ensure each existing tool in `TOOL_REGISTRY` has:
+- `description` — plain English, used in the system prompt
+- `parameters` — valid JSON Schema object
+- `requiresWeb: true` on `web_search` and `fetch_page` (so they are omitted when no search key is set)
+
+---
+
+## Phase 8 — Thinking Mode Rendering
+
+Reference: `LocalMind.html` lines 4076–4143, 5018–5028.
+
+### Key differences from MediaPipe
+
+- HF Transformers.js streams **delta tokens** — thinking tokens arrive before `<|/think|>` closes.
+- `enable_thinking` is passed to `processor.apply_chat_template()`, not injected as a prefix token.
+- Thinking must be **disabled on follow-up agentic iterations** (already handled in Phase 4 with `iterThinking = iter === 0 ? enableThinking : false`).
+
+### Add `extractThinking(text)`
+
+```js
+function extractThinking(text) {
+  // New Gemma 4 format
+  let match = text.match(/<\|think\|>([\s\S]*?)(<\|\/think\|>|$)/);
+  if (match) return {
+    thinkContent: match[1].trim(),
+    mainContent:  text.replace(/<\|think\|>[\s\S]*?(<\|\/think\|>|$)/, '').trim(),
+    complete:     match[2] === '<|/think|>',
+  };
+  // Legacy channel format
+  match = text.match(/<\|channel>thought\n?([\s\S]*?)(<channel\|>|$)/);
+  if (match) return {
+    thinkContent: match[1].trim(),
+    mainContent:  text.replace(/<\|channel>thought\n?[\s\S]*?(<channel\|>|$)/, '').trim(),
+    complete:     match[2] === '<channel|>',
+  };
+  return { thinkContent: '', mainContent: text, complete: true };
+}
+```
+
+### Add `renderAssistantText(text, bubble, isStreaming)`
+
+This replaces whatever you currently use to update the streaming bubble.
+
+```js
+function renderAssistantText(text, bubble, isStreaming) {
+  const { thinkContent, mainContent, complete } = extractThinking(text);
+  bubble.innerHTML = '';
+
+  if (thinkContent) {
+    const stillOpen = isStreaming && !complete;
+    const block     = document.createElement('div');
+    block.className = 'thinking-block';
+    block.innerHTML = `
+      <div class="thinking-toggle"
+           onclick="const c=this.nextElementSibling; c.classList.toggle('open');
+                    this.querySelector('span').textContent = c.classList.contains('open') ? '▼' : '▶';">
+        <span>${stillOpen ? '▼' : '▶'}</span>
+        ${stillOpen ? 'Thinking…' : 'Thought process'}
+      </div>
+      <div class="thinking-content${stillOpen ? ' open' : ''}">${escapeHtml(thinkContent)}</div>
+    `;
+    bubble.appendChild(block);
+  }
+
+  if (mainContent) {
+    const main = document.createElement('div');
+    main.innerHTML = renderMarkdown(mainContent);  // your existing markdown renderer
+    bubble.appendChild(main);
+  } else if (!thinkContent) {
+    bubble.innerHTML = '<span style="opacity:0.4">…</span>';
+  }
+}
+```
+
+### Add `collapseThinkingBlocks(bubble)` — call in `finishGeneration()`
+
+```js
+function collapseThinkingBlocks(bubble) {
+  bubble.querySelectorAll('.thinking-content.open').forEach(el => {
+    el.classList.remove('open');
+    const toggle = el.previousElementSibling;
+    if (!toggle) return;
+    const arrow = toggle.querySelector('span');
+    if (arrow) arrow.textContent = '▶';
+    toggle.childNodes.forEach(n => {
+      if (n.nodeType === Node.TEXT_NODE && n.textContent.includes('Thinking'))
+        n.textContent = ' Thought process';
+    });
+  });
+}
+```
+
+### Add thinking toggle CSS
+
+```css
+.thinking-block    { margin: 8px 0; border-left: 3px solid var(--indigo-400, #818cf8); padding-left: 8px; }
+.thinking-toggle   { cursor: pointer; font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 6px; color: var(--indigo-400, #818cf8); }
+.thinking-content  { display: none; margin-top: 6px; font-size: 0.8rem; opacity: 0.75; white-space: pre-wrap; }
+.thinking-content.open { display: block; }
+```
+
+### Add thinking toggle UI element
+
 ```html
-<label class="toggle-row">
-  <input type="checkbox" id="autoBackupToggle">
-  Auto-download backup on New Chat
+<label id="thinking-row" style="display:none; align-items:center; gap:6px; font-size:0.8rem;">
+  <input type="checkbox" id="thinking-toggle">
+  Enable thinking
 </label>
 ```
 
-**Integration Notes:**
-- Wire to the existing "New Chat" button logic.
-- Requires F03 (`exportAllData()`).
-
----
-
-### F18 — Help Popover (Tabbed)
-
-**Priority:** Medium  
-**Reference:** `LocalChatExampleComprehensive.html` lines 1504–1624 (HTML) + 2715–2741 (JS)
-
-**What it does:** A `?` button in the header opens a floating popover with four tabs: About, Models, Features (full feature list with UL items), and Things to Try (clickable example prompts).
-
-**HTML:** See lines 1509–1623 for the full help popover structure.  
-**CSS:** Lines 77–211.  
-**JS:** 24 lines (tab switching + click-to-paste prompts) at lines 2716–2741.
-
-**Integration Notes:**
-- Update the "About", "Models", and "Features" tab content to describe index.html's capabilities as they expand.
-- The `try-prompt` click handler uses `data-prompt` attribute and dispatches an `input` event to trigger auto-resize.
-- The popover uses `e.stopPropagation()` + `document.addEventListener('click', close)` for outside-click dismissal.
-
----
-
-### F19 — Model Cache Info & Clear UI
-
-**Priority:** Low  
-**Reference:** `LocalChatExampleComprehensive.html` lines 2751–2796
-
-**Current state in index.html:** Has `purgeCache()` which deletes the IndexedDB model blob. LocalMind uses the **Cache API** (for Transformers.js), which is different.
-
-**Integration Notes:**
-- index.html's model is stored in IndexedDB (blob). LocalMind's MiniLM embedding model is stored in the **Cache API** (via Transformers.js).
-- The `refreshCacheInfo()` function (lines 2753–2792) queries `caches.keys()` for entries containing "transformers" to find Transformers.js cached models.
-- After adding the embedding worker (F02), add the cache info section to Settings — it shows total MB and a "Clear model cache" button for the Transformers.js cache.
-- The existing `purgeCache()` for the MediaPipe model blob should remain separate.
-
----
-
-### F20 — Conversation Restore (History Panel Logic)
-
-**Priority:** High  
-**Reference:** `LocalChatExampleComprehensive.html` lines 3219–3344
-
-**Current state in index.html:** History panel overlay exists with `#history-list` div but no JS logic.
-
-**Functions to port:**
-
-| Function | Lines | Description |
-|----------|-------|-------------|
-| `openHistorySidebar()` | 3227–3233 | Adds 'open' class, calls `refreshHistoryPanel()` |
-| `closeHistorySidebar()` | 3235–3238 | Removes 'open' class |
-| `refreshHistoryPanel()` | 3247–3284 | Fetches all convs, renders items with title/meta/delete |
-| `resetChatUI()` | 3286–3294 | Clears messages, new ID, empties chat area |
-| `resumeConversation(conv)` | 3296–3306 | Loads messages array, re-renders all bubbles |
-| `renderRestoredMessages()` | 3700–3721 | Renders all messages from `messages[]` array |
-| `saveChat()` | 3754–3759 | Persists `messages[]` to `sessionStorage` |
-| `newChatBtn` handler | 3314–3344 | Archive → post-session summary → auto-backup → reset |
-
-**State variable:** `let activeConversationId = null;`  
-**Helper:** `function newConversationId() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6); }`
-
-**Integration Notes:**
-- index.html uses `State.history[]` for conversation turns. Refactor to `let messages = []` (LocalMind pattern) for consistency with all ported code.
-- `sessionStorage.setItem('localmind_chat', ...)` allows chat to survive tab refreshes.
-- On page load, restore from `sessionStorage` before calling `renderRestoredMessages()`.
-
----
-
-## 4. Already Implemented
-
-The following features from LocalMind are **already present** in `index.html`:
-
-| Feature | index.html Implementation | Notes |
-|---------|--------------------------|-------|
-| MediaPipe LlmInference boot | `initGemma()` lines 244–343 | ✅ Works; LocalMind's `loadModel()` is cleaner |
-| IndexedDB model blob cache | `DB` object lines 202–230 | ✅ Different store name than LocalMind |
-| Model rescue / download UI | `#model-rescue` overlay | ✅ Not in LocalMind (which uses Cache API) |
-| Streaming token render | `State.inference.generateResponse(...)` | ✅ Works; LocalMind's `generateOnce()` is cleaner |
-| Thought block parsing | `parseThought()` lines 407–412 | ✅ Partial — uses Gemma channel format |
-| Tool call parsing (basic) | `parsePartialTool()` + regex in `handleSend` | ⚠️ Works for simple cases; LocalMind's is more robust |
-| Tool registry (3 tools) | `TOOL_REGISTRY` lines 346–350 | ⚠️ Missing 6 tools, `eval()` security issue |
-| Desktop sidebar + mobile nav | Full sidebar layout | ✅ Better than LocalMind's single-card layout |
-| Overlay panel system | `showPanel()` / `hidePanels()` | ✅ index.html has a richer panel system |
-| System prompt textarea | `#system-prompt` | ✅ Present |
-| Slash menu | `handleSlash()` lines 458–483 | ✅ Not in LocalMind — index.html exclusive feature |
-| Auto-resize textarea | `oninput` handler line 485–488 | ✅ Present |
-| Persistent storage request | `requestPersistentStorage()` | ✅ Not in LocalMind |
-| MathJax support | Script tag in `<head>` | ✅ Not in LocalMind |
-
----
-
-## 5. Dependency & Library Notes
-
-| Library | index.html | LocalMind | Action |
-|---------|------------|-----------|--------|
-| `@mediapipe/tasks-genai` | ✅ CDN import | ✅ CDN import | No change |
-| `marked.min.js` | ✅ `<script>` in head | ❌ Custom renderer | Optional: replace with LocalMind's custom renderer for lighter build and thinking/tool block integration |
-| `dompurify/purify.min.js` | ✅ `<script>` in head | ❌ Uses `escapeHtml()` | Keep for XSS safety; add `escapeHtml()` utility alongside |
-| `mammoth@1.8.0` | ✅ Eager load in head | ✅ Lazy-loaded | Change to lazy-load (saves ~300KB on initial load) |
-| `pdfjs-dist@4.4.168` | ✅ Eager module in head | ✅ Lazy-loaded | Change to lazy-load |
-| `mathjax@3` | ✅ Async in head | ❌ Not present | Keep |
-| `@huggingface/transformers@4` | ❌ Missing | ✅ Worker blob import | Add (F02) |
-| `@mozilla/readability@0.5.0` | ❌ Missing | ✅ Lazy-loaded in `ensureReadability()` | Add with F04 `fetch_page` tool |
-
----
-
-## 6. Implementation Order
-
-Implement features in this order to minimize broken intermediate states:
-
-### Phase 1 — Infrastructure (unblocks everything else)
-1. **F15** Toast notifications — 10 lines, unblocks user feedback
-2. **F01** WebGPU check — 15 lines, safety net
-3. **F03** IndexedDB schema — DB helpers, unblocks all data features
-4. **F02** Embedding Worker — unblocks RAG, memory tools, doc ingestion
-
-### Phase 2 — Core AI Features
-5. **F08** Agentic loop + context budget — replaces fragile recursive handleSend
-6. **F04** Full tool registry — add 6 missing tools (requires F02/F03)
-7. **F21+F22** RAG auto-inject + post-session summary — requires F02/F03/F08
-
-### Phase 3 — Document & Data
-8. **F06** Document processing pipeline — requires F02/F03
-9. **F20** Conversation history logic — requires F03
-10. **F09** Memory inspector logic — requires F02/F03
-
-### Phase 4 — Search & Sharing
-11. **F05** Web search integration — requires F08
-12. **F11** Encrypted share links — independent, add Share modal
-13. **F12** Save as Markdown + code download — requires finishGeneration refactor
-
-### Phase 5 — UX Polish
-14. **F10** Batch prompts engine — requires sendMessage refactor from Phase 2
-15. **F14** Response source badges — requires F08
-16. **F13** Thinking mode toggle — small change
-17. **F16** Drag & drop — requires F06
-18. **F07** Folder ingestion — requires F06
-19. **F17** Auto-backup — requires F03/F20
-20. **F18** Help popover — standalone HTML/CSS/JS
-21. **F19** Model cache info UI — small addition to settings
-
----
-
-## 7. Skills Architecture
-
-CloudChat tools have been refactored into a modular **Skills** architecture following the [AI Edge Gallery Standards](skills/README.md). This enables each capability to be independently developed, tested, and loaded.
-
----
-
-### 7.1 Skills Folder Structure
-
-```
-CloudChat/skills/
-├── README.md                          ← AI Edge Gallery Skills specification
-├── built-in/
-│   ├── calculate-math/                ← JS skill: safe math evaluation
-│   │   ├── SKILL.md
-│   │   └── scripts/index.html
-│   ├── get-current-time/              ← Text-only skill: timezone-aware time
-│   │   └── SKILL.md
-│   ├── store-memory/                  ← JS skill: persist facts to localStorage
-│   │   ├── SKILL.md
-│   │   └── scripts/index.html
-│   ├── search-memory/                 ← JS skill: keyword search over memories
-│   │   ├── SKILL.md
-│   │   └── scripts/index.html
-│   ├── set-reminder/                  ← JS skill: browser notification reminders
-│   │   ├── SKILL.md
-│   │   └── scripts/index.html
-│   ├── list-memories/                 ← Text-only skill: display stored memories
-│   │   └── SKILL.md
-│   ├── delete-memory/                 ← JS skill: keyword-matched memory deletion
-│   │   ├── SKILL.md
-│   │   └── scripts/index.html
-│   ├── web-search/                    ← JS skill: Brave/Tavily/SearXNG search
-│   │   ├── SKILL.md
-│   │   └── scripts/index.html
-│   └── fetch-page/                    ← JS skill: URL content extraction
-│       ├── SKILL.md
-│       └── scripts/index.html
-└── featured/
-    ├── document-ingester/             ← JS skill: PDF/DOCX/TXT chunking + storage
-    │   ├── SKILL.md
-    │   └── scripts/index.html
-    ├── rag-chat/                      ← JS skill: semantic search over documents
-    │   ├── SKILL.md
-    │   └── scripts/index.html
-    └── batch-processor/               ← JS skill: sequential prompt pipeline
-        ├── SKILL.md
-        └── scripts/index.html
+```js
+const thinkingToggle = document.getElementById('thinking-toggle');
+thinkingToggle.checked = localStorage.getItem('lm_thinking') === 'true';
+thinkingToggle.addEventListener('change', () => localStorage.setItem('lm_thinking', thinkingToggle.checked));
 ```
 
 ---
 
-### 7.2 Feature-to-Skill Mapping
+## Phase 9 — Model Selector & Startup Wiring
 
-| Original Feature | Skill | Type | Notes |
-|-----------------|-------|------|-------|
-| F04 `calculate` tool | `built-in/calculate-math` | JS | Uses `Function()` constructor instead of `eval()` — safer |
-| F04 `get_current_time` tool | `built-in/get-current-time` | Text-only | LLM uses system context timestamp |
-| F04 `store_memory` tool | `built-in/store-memory` | JS | Uses `localStorage` keyed by `cloudchat_memories` |
-| F04 `search_memory` tool | `built-in/search-memory` | JS | Keyword relevance scoring |
-| F04 `list_memories` tool | `built-in/list-memories` | Text-only | Delegates to `search-memory` with empty query |
-| F04 `delete_memory` tool | `built-in/delete-memory` | JS | Keyword-matched deletion with wildcard `*` support |
-| F05 `web_search` tool | `built-in/web-search` | JS | Brave / Tavily / SearXNG; API key via `require-secret` |
-| F04 `fetch_page` tool | `built-in/fetch-page` | JS | Direct fetch + allorigins.win CORS proxy fallback |
-| F06 Document processing pipeline | `featured/document-ingester` | JS | Text chunking with overlap; stores to `cloudchat_memories` |
-| F21 RAG retrieval | `featured/rag-chat` | JS | Token-based relevance scoring over ingested chunks |
-| F10 Batch prompts engine | `featured/batch-processor` | JS | `{{previous}}` template substitution |
+### Add model selector to header or settings panel
 
----
-
-### 7.3 Skill Types
-
-#### Text-Only Skills
-A `SKILL.md`-only skill that gives the LLM persona instructions or orchestration rules without executing JavaScript.
-
-- **`get-current-time`** — Instructs the LLM to use the current date/time from its system context and handle timezone conversions.
-- **`list-memories`** — Instructs the LLM to call `search-memory` with an empty query and present results in a human-friendly format.
-
-#### JavaScript (JS) Skills
-Skills with a `SKILL.md` and a `scripts/index.html` that exposes `window.ai_edge_gallery_get_result`.
-
-Each script:
-1. Receives a JSON-stringified `data` parameter from the LLM-generated `run_js` call.
-2. Executes its logic (storage, search, fetch, notification).
-3. Returns a JSON string with a `result` field on success or an `error` field on failure.
-
----
-
-### 7.4 JS Skill Execution Model
-
-```
-User prompt
-    │
-    ▼
-LLM detects skill trigger
-    │
-    ▼
-LLM outputs: run_js { script_name: "index.html", data: "{...}" }
-    │
-    ▼
-App loads scripts/index.html in hidden iframe/webview
-    │
-    ▼
-Calls: window.ai_edge_gallery_get_result(data, secret?)
-    │
-    ▼
-Returns: JSON string { result?, error?, image?: { base64 }, webview?: { url } }
-    │
-    ▼
-App injects result back into LLM context
-    │
-    ▼
-LLM synthesises final response to user
+```html
+<select id="model-select">
+  <option value="gemma3-1b">Gemma 3 1B · Text only (~760 MB)</option>
+  <option value="gemma4-e2b" selected>Gemma 4 E2B · Multimodal (~1.5 GB)</option>
+  <option value="gemma4-e4b">Gemma 4 E4B · Multimodal (~4.9 GB)</option>
+</select>
 ```
 
-In `index.html`, the skill dispatcher uses a hidden `<iframe>` to load and execute each skill's `scripts/index.html`, then calls `contentWindow.ai_edge_gallery_get_result(data)` via `postMessage` bridge.
+### Wire up selector
 
----
-
-### 7.5 Shared Storage Model
-
-Memory skills (`store-memory`, `search-memory`, `delete-memory`) and document skills (`document-ingester`, `rag-chat`) share a common `localStorage` key:
-
-```
-Key: cloudchat_memories
-Value: JSON array of memory objects:
-  {
-    id: string,          // unique ID (timestamp + random)
-    content: string,     // stored text
-    category: string,    // "fact" | "preference" | "person" | "event" | "note" | "document" | "document_summary"
-    source?: string,     // file name for document chunks
-    timestamp: string    // ISO 8601
-  }
+```js
+const modelSelect    = document.getElementById('model-select');
+modelSelect.value    = activeModelKey;
+modelSelect.addEventListener('change', () => loadModel(modelSelect.value));
 ```
 
-This design keeps all skills stateless (no server dependency) and works offline, consistent with CloudChat's on-device privacy model.
+### Replace all MediaPipe model initialization
 
----
+Find the existing init block that calls `LlmInference.createFromOptions()` (typically inside
+`initModel()` or `loadApp()`). Replace the **entire** block with:
 
-### 7.6 Skill Configuration & Secrets
-
-Skills requiring API keys use the `require-secret: true` metadata field. In the AI Edge Gallery app, this triggers a native dialog for the user to enter their key, which is passed as the second argument to `ai_edge_gallery_get_result(data, secret)`.
-
-| Skill | Secret Required | Description |
-|-------|----------------|-------------|
-| `web-search` | ✅ | Brave Search or Tavily API key |
-| All others | ❌ | No external credentials needed |
-
-For CloudChat's `index.html` web context, API keys are read from the existing settings panel (`getSearchConfig()`).
-
----
-
-### 7.7 Skill Loader in index.html
-
-`index.html` implements a lightweight skill dispatcher that bridges the existing `TOOL_REGISTRY` with the new skills architecture:
-
-```javascript
-// Skill registry maps tool names to skill paths
-const SKILL_REGISTRY = {
-  'calculate':     'skills/built-in/calculate-math/scripts/index.html',
-  'store_memory':  'skills/built-in/store-memory/scripts/index.html',
-  'search_memory': 'skills/built-in/search-memory/scripts/index.html',
-  'delete_memory': 'skills/built-in/delete-memory/scripts/index.html',
-  'set_reminder':  'skills/built-in/set-reminder/scripts/index.html',
-  'web_search':    'skills/built-in/web-search/scripts/index.html',
-  'fetch_page':    'skills/built-in/fetch-page/scripts/index.html',
-};
-
-// runSkill loads the script in a hidden iframe and calls ai_edge_gallery_get_result
-async function runSkill(scriptPath, data, secret) { ... }
+```js
+loadModel(activeModelKey);
 ```
 
-Text-only skills (`get-current-time`, `list-memories`) are handled by the LLM directly via their SKILL.md instructions appended to the system prompt.
+That single call starts the worker, triggers the HF model download/cache load, and re-enables
+the UI when `'ready'` is received.
 
 ---
 
-### 7.8 Testing Skills Independently
+## Verification Checklist
 
-Each `scripts/index.html` file includes a local test UI at the bottom. To test any skill:
+After completing each phase, verify the following before moving to the next:
 
-1. Open the skill's `scripts/index.html` directly in a browser.
-2. Use the built-in form to input test data.
-3. Click the test button to see the raw JSON output.
-
-This enables isolated, end-to-end testing of each skill without running the full CloudChat app.
+- [ ] **Phase 1** — No `@mediapipe/tasks-genai` references remain in the file (`grep -c mediapipe index.html` returns 0)
+- [ ] **Phase 2** — `MODELS` has 3 entries; all `id` values are HF repo strings (no `.task` URLs); all have `dtype`
+- [ ] **Phase 3** — Worker appears in DevTools → Application → Service Workers / Workers; model download progress shown in status bar; `'ready'` event enables the chat input
+- [ ] **Phase 4** — Text message sends and streams tokens; tool calls execute and loop up to 3 times; `finishGeneration()` saves to history
+- [ ] **Phase 5** — Camera/mic buttons hidden on Gemma 3 1B, visible when Gemma 4 model is ready; camera overlay opens and closes cleanly
+- [ ] **Phase 6** — Attaching an image shows a thumbnail chip; sending the message with the image routes to the multimodal generate path in the worker; image is visible in the user message bubble
+- [ ] **Phase 7** — Opening DevTools → Network during a tool-capable query shows the system prompt contains `<tools>[...]</tools>`; tool calls are parsed and results rendered
+- [ ] **Phase 8** — A thinking-enabled response shows an expanded "Thinking…" block during streaming; it collapses to "Thought process" when streaming completes
+- [ ] **Phase 9** — Switching the model select terminates the old worker (verify via DevTools → Workers), starts download of the new model, and re-enables the UI when ready
 
 ---
 
-*Document updated to include Skills Architecture section (§7) reflecting the refactor of all TOOL_REGISTRY tools into the AI Edge Gallery Skills format.*
+## Common Pitfalls
+
+| Pitfall | Root Cause | Fix |
+|---|---|---|
+| `Gemma4ForConditionalGeneration is not a constructor` | Using `@huggingface/transformers@3` or older | Confirm CDN URL ends with `@4/+esm` |
+| Worker fails silently on load | `modelType` field missing from `postMessage` | Ensure `modelType: m.type` is included when posting `load` |
+| `processor.apply_chat_template` returns undefined | `loadCausal` was called instead of `loadMultimodal` | Check that `m.type === 'multimodal'` routes to `loadMultimodal()` |
+| Audio attachment crashes the processor | Audio not decoded to 16 kHz mono PCM | Use `OfflineAudioContext(1, len, 16000)` and pass `.getChannelData(0).buffer` |
+| Image thumbnails broken after send | `URL.createObjectURL` revoked too early | Only revoke in `clearAttachments()`, never before the message is rendered |
+| Tool calls appear inside thinking blocks | System prompt doesn't forbid it | Add explicit rule to `buildAgentSystemPrompt()`: "NEVER output a tool_call inside a thinking block" |
+| Streaming stops mid-sentence | `stopping_criteria` not reset between calls | `stopping_criteria.reset()` must be the first line of every generate function |
+| Switching models doesn't reload | Old worker not terminated | Call `inferenceWorker.terminate()` before creating the new worker in `loadModel()` |
+| RAG context missing from agent prompts | `buildContextMessages()` only adds history | Inject RAG results into `sysPrompt` before calling `buildContextMessages()` |
+| Thinking toggle visible on Gemma 3 1B | `updateMultimodalUI()` not called after model switch | Call `updateMultimodalUI()` inside `loadModel()` and inside the worker `'ready'` handler |
