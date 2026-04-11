@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body>
+<script>
+window['ai_edge_gallery_get_result'] = async (dataStr) => {
+  try {
+    const params = JSON.parse(dataStr);
+    const location = String(params.location || '').trim();
+    if (!location) return JSON.stringify({ error: 'No location provided.' });
+
+    // Geocode using Open-Meteo geocoder
+    const geoRes = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    const geoData = await geoRes.json();
+    if (!geoData.results || !geoData.results.length) {
+      return JSON.stringify({ error: `Could not find location: "${location}". Try a coastal city name.` });
+    }
+    const place = geoData.results[0];
+    const lat = place.latitude;
+    const lon = place.longitude;
+    const displayName = `${place.name}${place.country ? ', ' + place.country : ''}`;
+
+    // Marine API
+    const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}` +
+      `&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction` +
+      `&daily=wave_height_max,swell_wave_height_max` +
+      `&timezone=auto&forecast_days=7`;
+    const marineRes = await fetch(marineUrl, { signal: AbortSignal.timeout(8000) });
+    if (!marineRes.ok) {
+      // Marine data may not be available for inland locations
+      return JSON.stringify({ error: `Marine data not available for "${displayName}". This API only works for coastal/ocean locations.` });
+    }
+    const data = await marineRes.json();
+
+    const compassDir = (deg) => {
+      if (deg === null || deg === undefined) return 'N/A';
+      const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+      return dirs[Math.round(deg / 45) % 8];
+    };
+
+    const current = data.current || {};
+    const daily = data.daily || {};
+
+    const forecast = (daily.time || []).map((date, i) => ({
+      date,
+      maxWaveHeight: `${daily.wave_height_max?.[i] ?? 'N/A'}m`,
+      maxSwellHeight: `${daily.swell_wave_height_max?.[i] ?? 'N/A'}m`
+    }));
+
+    return JSON.stringify({
+      result: {
+        location: displayName,
+        coordinates: { lat: lat.toFixed(4), lon: lon.toFixed(4) },
+        current: {
+          waveHeight: `${current.wave_height ?? 'N/A'}m`,
+          waveDirection: compassDir(current.wave_direction),
+          wavePeriod: `${current.wave_period ?? 'N/A'}s`,
+          swellHeight: `${current.swell_wave_height ?? 'N/A'}m`,
+          swellDirection: compassDir(current.swell_wave_direction)
+        },
+        forecast
+      }
+    });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+};
+</script>
+</body>
+</html>

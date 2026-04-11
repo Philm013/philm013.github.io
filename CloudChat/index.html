@@ -327,6 +327,22 @@
     /* Drag & Drop Overlay */
     .drag-overlay { display: none; position: fixed; inset: 0; z-index: 900; background: rgba(102,126,234,0.08); border: 3px dashed #667eea; align-items: center; justify-content: center; font-size: 1.1rem; color: #667eea; font-weight: 600; pointer-events: none; }
     .drag-overlay.visible { display: flex; }
+
+    /* Message action bar */
+    .msg-actions { display: flex; align-items: center; gap: 2px; margin-top: 6px; opacity: 0; transition: opacity 0.2s; flex-wrap: wrap; }
+    .message:hover .msg-actions, .message:focus-within .msg-actions { opacity: 1; }
+    .message.user .msg-actions { justify-content: flex-end; }
+    .msg-action-btn { background: none; border: 1px solid transparent; padding: 3px 8px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; color: var(--ollama-stone); transition: background 0.15s, color 0.15s, border-color 0.15s; font-family: inherit; white-space: nowrap; line-height: 1.4; }
+    .msg-action-btn:hover { background: var(--ollama-light-gray); color: var(--ollama-near-black); border-color: var(--ollama-border); }
+    @media (max-width: 768px) { .msg-actions { opacity: 1; } }
+
+    /* Inline edit textarea for user messages */
+    .msg-edit-area { width: 100%; padding: 8px; border: 1px solid #3b82f6; border-radius: 8px; font-family: inherit; font-size: 0.95rem; resize: vertical; outline: none; box-sizing: border-box; background: var(--ollama-white); }
+    .msg-edit-actions { display: flex; gap: 6px; margin-top: 6px; }
+    .msg-edit-save { background: var(--ollama-black); color: #fff; border: none; padding: 6px 16px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .msg-edit-save:hover { background: #333; }
+    .msg-edit-cancel { background: var(--ollama-light-gray); color: var(--ollama-mid-gray); border: none; padding: 6px 16px; border-radius: 6px; font-size: 0.82rem; cursor: pointer; font-family: inherit; }
+    .msg-edit-cancel:hover { background: var(--ollama-border); }
   </style>
 </head>
 <body>
@@ -964,6 +980,12 @@ self.addEventListener('message', async (e) => {
       interactive_map: 'skills/built-in/interactive-map/scripts/index.html',
       query_wikipedia: 'skills/built-in/query-wikipedia/scripts/index.html',
       search_media:  'skills/built-in/search-media/scripts/index.html',
+      weather_forecast:   'skills/featured/weather-forecast/scripts/index.html',
+      historical_weather: 'skills/featured/historical-weather/scripts/index.html',
+      marine_weather:     'skills/featured/marine-weather/scripts/index.html',
+      explore_public_apis:'skills/featured/api-explorer/scripts/index.html',
+      useless_fact:       'skills/featured/useless-facts/scripts/index.html',
+      trivia_question:    'skills/featured/trivia-quest/scripts/index.html',
     };
 
     const SKILL_DOC_REGISTRY = {
@@ -979,6 +1001,12 @@ self.addEventListener('message', async (e) => {
       interactive_map: 'skills/built-in/interactive-map/SKILL.md',
       query_wikipedia: 'skills/built-in/query-wikipedia/SKILL.md',
       search_media: 'skills/built-in/search-media/SKILL.md',
+      weather_forecast: 'skills/featured/weather-forecast/SKILL.md',
+      historical_weather: 'skills/featured/historical-weather/SKILL.md',
+      marine_weather: 'skills/featured/marine-weather/SKILL.md',
+      explore_public_apis: 'skills/featured/api-explorer/SKILL.md',
+      useless_fact: 'skills/featured/useless-facts/SKILL.md',
+      trivia_question: 'skills/featured/trivia-quest/SKILL.md',
     };
 
     let toolSkillDocsLoaded = false;
@@ -1273,6 +1301,82 @@ self.addEventListener('message', async (e) => {
           );
           if (viaSkill && !viaSkill.error) return viaSkill;
           return { error: 'Media search skill not available.' };
+        }
+      },
+      weather_forecast: {
+        description: 'Get current weather conditions and a 7-day forecast for any city or location. Uses the free Open-Meteo API — no API key required.',
+        parameters: { type: 'object', properties: { location: { type: 'string', description: 'City name or location, e.g. "Paris", "New York", "Tokyo"' } }, required: ['location'] },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('weather_forecast', { location: a.location });
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: 'Weather skill not available.' };
+        }
+      },
+      historical_weather: {
+        description: 'Get historical weather data (temperature extremes, precipitation) for a location and date range. Uses the free Open-Meteo archive API — no API key required.',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: 'City name or location' },
+            start_date: { type: 'string', description: 'Start date in YYYY-MM-DD format' },
+            end_date: { type: 'string', description: 'End date in YYYY-MM-DD format' }
+          },
+          required: ['location', 'start_date', 'end_date']
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('historical_weather', { location: a.location, start_date: a.start_date, end_date: a.end_date });
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: 'Historical weather skill not available.' };
+        }
+      },
+      marine_weather: {
+        description: 'Get marine/ocean weather data (wave height, wave period, swell direction) for a coastal or sea location. Uses the free Open-Meteo Marine API — no API key required.',
+        parameters: { type: 'object', properties: { location: { type: 'string', description: 'Coastal city, beach, or sea area name' } }, required: ['location'] },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('marine_weather', { location: a.location });
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: 'Marine weather skill not available.' };
+        }
+      },
+      explore_public_apis: {
+        description: 'Browse and search thousands of free public APIs by category or keyword. Great for developers looking for APIs to use in projects.',
+        parameters: {
+          type: 'object',
+          properties: {
+            category: { type: 'string', description: 'API category (e.g. "Animals", "Finance", "Music", "Sports", "Weather")' },
+            keyword: { type: 'string', description: 'Keyword to search API names and descriptions' }
+          },
+          required: []
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('explore_public_apis', { category: a.category || '', keyword: a.keyword || '' });
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: 'API explorer skill not available.' };
+        }
+      },
+      useless_fact: {
+        description: 'Fetch a random fun and surprising "useless" fact or trivia. No API key required.',
+        parameters: { type: 'object', properties: {}, required: [] },
+        async execute() {
+          const viaSkill = await executeSkillIfAvailable('useless_fact', {});
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: 'Useless facts skill not available.' };
+        }
+      },
+      trivia_question: {
+        description: 'Fetch a trivia question with multiple choice answers from the Open Trivia Database. No API key required.',
+        parameters: {
+          type: 'object',
+          properties: {
+            category: { type: 'number', description: 'Category ID (9=General Knowledge, 17=Science & Nature, 21=Sports, 23=History, 27=Animals). Omit for random.' },
+            difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'], description: 'Difficulty level. Omit for any.' }
+          },
+          required: []
+        },
+        async execute(a) {
+          const viaSkill = await executeSkillIfAvailable('trivia_question', { category: a.category || null, difficulty: a.difficulty || '' });
+          if (viaSkill && !viaSkill.error) return viaSkill;
+          return { error: 'Trivia skill not available.' };
         }
       }
     };
@@ -2148,7 +2252,7 @@ self.addEventListener('message', async (e) => {
       return finalFull;
     }
 
-    async function handleSend(ov = null) {
+    async function handleSend(ov = null, rerunHistFrom = null) {
       if (State.isGenerating) {
         State.stopRequested = true;
         return;
@@ -2160,10 +2264,31 @@ self.addEventListener('message', async (e) => {
       const welcomeMsg = document.getElementById('welcome-msg');
       if (welcomeMsg) welcomeMsg.remove();
 
+      // Determine the "turn start" index in history for this turn.
+      // This is stored on message elements so actions (edit/delete/rerun) know
+      // where to slice history.
+      let turnHistFrom;
+      if (ov === true) {
+        // Continuation or programmatic rerun — use explicit histFrom when supplied,
+        // otherwise derive it from the last rendered user element.
+        if (rerunHistFrom !== null) {
+          turnHistFrom = rerunHistFrom;
+        } else {
+          const container = document.getElementById('chat-container');
+          const userMsgs = container.querySelectorAll('.message.user[data-hist-from]');
+          turnHistFrom = userMsgs.length ? parseInt(userMsgs[userMsgs.length - 1].dataset.histFrom) : 0;
+        }
+      } else {
+        // Normal send — user message will be pushed at this index
+        turnHistFrom = State.history.length;
+      }
+
       if (text && ov !== true) {
         input.value = ''; input.style.height = 'auto';
-        renderMessage(text, 'user');
+        const userEl = renderMessage(text, 'user');
+        userEl.dataset.histFrom = turnHistFrom;
         State.history.push({ role: 'user', text });
+        addMessageActions(userEl, 'user');
       }
 
       State.isGenerating = true;
@@ -2171,6 +2296,7 @@ self.addEventListener('message', async (e) => {
       input.disabled = true;
       updateSendButtons();
       const aiEl = renderMessage('', 'ai');
+      aiEl.dataset.histFrom = turnHistFrom;
 
       try {
         let mentionContext = '';
@@ -2372,6 +2498,16 @@ self.addEventListener('message', async (e) => {
               toolResponsePayload = { result: desc, note: 'The map is already displayed to the user. Summarize the result — do not call this tool again.' };
             }
 
+            // For media search results, they are already visually displayed in the chat UI.
+            // Give the model a concise summary so it does not re-describe each image individually.
+            if (call.name === 'search_media' && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
+              const count = res.results.length;
+              const mediaType = normalizedArgs.type === 'video' ? 'video' : 'image';
+              toolResponsePayload = {
+                result: `${count} ${mediaType}${count !== 1 ? 's' : ''} for "${normalizedArgs.query}" are now displayed in the chat UI. Do NOT list or describe each ${mediaType} individually — they are already visible to the user. Simply acknowledge the results are shown.`
+              };
+            }
+
             // Feed tool result back into history as a synthetic user turn
             State.history.push({ role: 'ai', text: full });
             State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: call.name, result: toolResponsePayload })}\n</tool_response>` });
@@ -2401,10 +2537,163 @@ self.addEventListener('message', async (e) => {
         State.webEnrichedMode = false;
         input.disabled = false;
         updateSendButtons();
+        addMessageActions(aiEl, 'ai');
         saveToSession();
       }
     }
     window.handleSend = handleSend;
+
+    // ── Message Action Helpers ────────────────────────────────
+
+    /**
+     * Append action buttons (Copy/Retry/Delete for AI; Edit/Delete for user) to a
+     * message element.  Called once per element — subsequent calls are no-ops.
+     *
+     * @param {HTMLElement} el   - The .message element.
+     * @param {'ai'|'user'} role - Determines which buttons to add.
+     */
+    function addMessageActions(el, role) {
+      if (!el || el.dataset.actionsAdded) return;
+      el.dataset.actionsAdded = 'true';
+
+      const bar = document.createElement('div');
+      bar.className = 'msg-actions';
+
+      if (role === 'ai') {
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'msg-action-btn';
+        copyBtn.textContent = '📋 Copy';
+        copyBtn.title = 'Copy response to clipboard';
+        copyBtn.addEventListener('click', () => {
+          const bubbles = el.querySelectorAll('.ai-bubble');
+          const txt = [...bubbles].map(b => b.innerText).join('\n\n').trim();
+          navigator.clipboard.writeText(txt)
+            .then(() => showToast('Copied!'))
+            .catch(() => {
+              // Fallback for browsers without clipboard API
+              const ta = document.createElement('textarea');
+              ta.value = txt; document.body.appendChild(ta); ta.select();
+              document.execCommand('copy'); document.body.removeChild(ta);
+              showToast('Copied!');
+            });
+        });
+
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'msg-action-btn';
+        retryBtn.textContent = '🔄 Retry';
+        retryBtn.title = 'Regenerate this response';
+        retryBtn.addEventListener('click', async () => {
+          if (State.isGenerating) { showToast('Please wait for the current response to finish.'); return; }
+          const histFrom = parseInt(el.dataset.histFrom ?? '0');
+          // Keep the user message at histFrom; remove AI response + all later entries
+          State.history.splice(histFrom + 1);
+          // Remove this AI element and everything after it in the DOM
+          removeDomFromElement(el);
+          await handleSend(true, histFrom);
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'msg-action-btn';
+        delBtn.textContent = '🗑️';
+        delBtn.title = 'Delete this response';
+        delBtn.addEventListener('click', () => {
+          if (State.isGenerating) { showToast('Cannot delete while generating.'); return; }
+          const histFrom = parseInt(el.dataset.histFrom ?? '0');
+          State.history.splice(histFrom + 1);
+          removeDomFromElement(el);
+          saveToSession();
+        });
+
+        bar.appendChild(copyBtn);
+        bar.appendChild(retryBtn);
+        bar.appendChild(delBtn);
+      } else {
+        const editBtn = document.createElement('button');
+        editBtn.className = 'msg-action-btn';
+        editBtn.textContent = '✏️ Edit';
+        editBtn.title = 'Edit and resend';
+        editBtn.addEventListener('click', () => {
+          if (State.isGenerating) { showToast('Cannot edit while generating.'); return; }
+          const histFrom = parseInt(el.dataset.histFrom ?? '0');
+          const originalText = State.history[histFrom]?.text || '';
+          // Replace the bubble content with an inline editor
+          const bubble = el.querySelector('.user-bubble');
+          if (!bubble) return;
+          const originalHtml = bubble.innerHTML;
+
+          const ta = document.createElement('textarea');
+          ta.className = 'msg-edit-area';
+          ta.value = originalText;
+          ta.rows = Math.max(2, Math.ceil(originalText.length / 60));
+
+          const editActions = document.createElement('div');
+          editActions.className = 'msg-edit-actions';
+
+          const saveBtn = document.createElement('button');
+          saveBtn.className = 'msg-edit-save';
+          saveBtn.textContent = '▶ Send';
+          saveBtn.addEventListener('click', async () => {
+            const newText = ta.value.trim();
+            if (!newText) { showToast('Message cannot be empty.'); return; }
+            // Revert DOM from this element onwards
+            removeDomFromElement(el);
+            // Splice history to before this user message
+            State.history.splice(histFrom);
+            // Send the edited message
+            const chatInput = document.getElementById('chat-input');
+            chatInput.value = newText;
+            await handleSend();
+          });
+
+          const cancelBtn = document.createElement('button');
+          cancelBtn.className = 'msg-edit-cancel';
+          cancelBtn.textContent = 'Cancel';
+          cancelBtn.addEventListener('click', () => {
+            bubble.innerHTML = originalHtml;
+            editActions.remove();
+            ta.remove();
+          });
+
+          editActions.appendChild(cancelBtn);
+          editActions.appendChild(saveBtn);
+          bubble.innerHTML = '';
+          bubble.appendChild(ta);
+          bubble.appendChild(editActions);
+          ta.focus();
+          ta.selectionStart = ta.selectionEnd = ta.value.length;
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'msg-action-btn';
+        delBtn.textContent = '🗑️';
+        delBtn.title = 'Delete this turn';
+        delBtn.addEventListener('click', () => {
+          if (State.isGenerating) { showToast('Cannot delete while generating.'); return; }
+          const histFrom = parseInt(el.dataset.histFrom ?? '0');
+          State.history.splice(histFrom);
+          removeDomFromElement(el);
+          saveToSession();
+        });
+
+        bar.appendChild(editBtn);
+        bar.appendChild(delBtn);
+      }
+
+      el.appendChild(bar);
+    }
+
+    /**
+     * Remove a DOM element and all its siblings that come after it.
+     * @param {HTMLElement} startEl - The element to start removal from.
+     */
+    function removeDomFromElement(startEl) {
+      const container = document.getElementById('chat-container');
+      const children = [...container.children];
+      const idx = children.indexOf(startEl);
+      if (idx === -1) return;
+      children.slice(idx).forEach(c => container.removeChild(c));
+    }
+
 
     /**
      * Build the full Gemma-format prompt string for the next inference pass.
@@ -2438,7 +2727,8 @@ Rules:
 - You can translate text between 140+ languages directly — no tool needed for translation.
 - When returning images or media results, always include proper attribution and photographer credits.
 - NEVER call the same tool with the same arguments more than once. If you already received a tool result, use it to answer — do not call the tool again.
-- After a tool result is returned, summarize the findings for the user. Do not call additional tools unless the user asks a follow-up question.`;
+- After a tool result is returned, summarize the findings for the user. Do not call additional tools unless the user asks a follow-up question.
+- When image or media search results are shown (search_media tool), they are already displayed visually in the chat UI. DO NOT list or re-describe each individual image. Simply acknowledge the results were found and displayed, then offer to help further.`;
 
     function getSettingsValues() {
       return {
@@ -2877,7 +3167,29 @@ Rules:
 
     function renderRestoredMessages() {
       const c = document.getElementById('chat-container'); c.innerHTML = '';
-      State.history.forEach(m => renderMessage(m.text, m.role === 'model' || m.role === 'ai' ? 'ai' : 'user'));
+      let lastUserHistFrom = 0;
+      State.history.forEach((m, idx) => {
+        const isAi = m.role === 'model' || m.role === 'ai';
+        // Skip internal entries that are injected as user-role messages in history
+        const isInternal = !isAi && (
+          m.text.startsWith('<tool_response>') ||
+          m.text.startsWith('[System:') ||
+          m.text.startsWith('I used the ') ||
+          m.text.startsWith('I clicked ')
+        );
+        if (isInternal) return;
+
+        const role = isAi ? 'ai' : 'user';
+        const el = renderMessage(m.text, role);
+        if (role === 'user') {
+          el.dataset.histFrom = idx;
+          lastUserHistFrom = idx;
+          addMessageActions(el, 'user');
+        } else {
+          el.dataset.histFrom = lastUserHistFrom;
+          addMessageActions(el, 'ai');
+        }
+      });
     }
 
     function newChat() {
