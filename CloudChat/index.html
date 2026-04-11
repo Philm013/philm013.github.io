@@ -395,6 +395,7 @@
     .attachment-chip.video-chip { position: relative; }
     .attachment-chip.video-chip video { width: 100%; height: 100%; object-fit: cover; }
     .attachment-chip.video-chip .chip-badge { position: absolute; bottom: 2px; left: 2px; font-size: 0.5rem; background: rgba(0,0,0,0.6); color: #fff; padding: 1px 4px; border-radius: 3px; }
+    .attachment-chip.doc-chip { width: auto; max-width: 160px; padding: 0 8px; gap: 4px; }
 
     /* User message media attachments */
     .msg-attachments audio { max-width: 260px; height: 36px; border-radius: 8px; }
@@ -404,6 +405,46 @@
     .lightbox-overlay { position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; cursor: zoom-out; animation: lbFadeIn 0.2s ease; }
     @keyframes lbFadeIn { from { opacity: 0; } to { opacity: 1; } }
     .lightbox-overlay img { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+
+    /* File & Memory Viewer */
+    .viewer-overlay { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; padding: 20px; }
+    .viewer-overlay.open { display: flex; }
+    .viewer-panel { background: #fff; width: 100%; max-width: 640px; max-height: 85vh; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.18); border: 1px solid var(--ollama-border); animation: aboutSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .viewer-header { padding: 16px 20px; border-bottom: 1px solid var(--ollama-border); display: flex; justify-content: space-between; align-items: center; }
+    .viewer-header h3 { font-size: 1rem; font-weight: 600; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; }
+    .viewer-body { padding: 20px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .viewer-chunk { background: var(--ollama-snow); border: 1px solid var(--ollama-border); border-radius: 8px; padding: 12px; margin-bottom: 10px; font-size: 0.84rem; line-height: 1.6; color: var(--ollama-near-black); white-space: pre-wrap; word-break: break-word; }
+    .viewer-chunk-meta { font-size: 0.7rem; color: var(--ollama-stone); margin-top: 6px; }
+    .viewer-edit-area { width: 100%; min-height: 120px; padding: 12px; border: 1px solid var(--ollama-border); border-radius: 8px; font-family: inherit; font-size: 0.88rem; line-height: 1.6; resize: vertical; box-sizing: border-box; background: var(--ollama-snow); }
+    .viewer-edit-area:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .viewer-actions { padding: 12px 20px; border-top: 1px solid var(--ollama-border); display: flex; gap: 10px; justify-content: flex-end; }
+    .viewer-actions button { padding: 10px 20px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: background 0.15s; }
+    .viewer-btn-secondary { background: var(--ollama-light-gray); color: var(--ollama-mid-gray); }
+    .viewer-btn-secondary:hover { background: var(--ollama-border); }
+    .viewer-btn-primary { background: var(--ollama-black); color: #fff; }
+    .viewer-btn-primary:hover { opacity: 0.85; }
+    .viewer-btn-danger { background: #fee2e2; color: #dc2626; }
+    .viewer-btn-danger:hover { background: #fecaca; }
+
+    /* Attachment modal */
+    .attach-modal-overlay { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; padding: 20px; }
+    .attach-modal-overlay.open { display: flex; }
+    .attach-modal { background: #fff; width: 100%; max-width: 380px; border-radius: 16px; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.18); border: 1px solid var(--ollama-border); animation: aboutSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .attach-modal-header { padding: 20px 20px 12px; text-align: center; }
+    .attach-modal-header h3 { font-size: 1rem; font-weight: 600; margin: 0 0 4px; }
+    .attach-modal-header p { font-size: 0.82rem; color: var(--ollama-stone); margin: 0; line-height: 1.4; }
+    .attach-modal-filename { font-size: 0.78rem; color: var(--ollama-mid-gray); background: var(--ollama-snow); padding: 6px 12px; margin: 0 20px 16px; border-radius: 6px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .attach-modal-options { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 10px; }
+    .attach-modal-btn { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid var(--ollama-border); background: var(--ollama-white); cursor: pointer; text-align: left; transition: all 0.15s; }
+    .attach-modal-btn:hover { border-color: var(--ollama-black); background: var(--ollama-snow); }
+    .attach-modal-btn strong { display: block; font-size: 0.88rem; margin-bottom: 2px; }
+    .attach-modal-btn span { font-size: 0.78rem; color: var(--ollama-stone); }
+    @media (max-width: 768px) {
+      .viewer-panel { max-height: 90vh; border-radius: 20px 20px 0 0; }
+      .viewer-overlay { padding: 0; align-items: flex-end; }
+      .attach-modal { border-radius: 20px 20px 0 0; max-width: 100%; }
+      .attach-modal-overlay { padding: 0; align-items: flex-end; }
+    }
 
     /* About modal */
     .about-overlay { position: fixed; inset: 0; z-index: 2500; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; padding: 20px; }
@@ -538,6 +579,54 @@
       <div class="tool-arg-actions">
         <button class="tool-arg-cancel" id="tool-arg-cancel-btn">Cancel</button>
         <button class="tool-arg-run" id="tool-arg-run-btn">▶ Run Tool</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Viewer -->
+  <div id="file-viewer-overlay" class="viewer-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="viewer-panel">
+      <div class="viewer-header">
+        <h3 id="file-viewer-title">Document</h3>
+        <button onclick="document.getElementById('file-viewer-overlay').classList.remove('open')" class="icon-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="viewer-body" id="file-viewer-body"></div>
+      <div class="viewer-actions">
+        <button class="viewer-btn-danger" id="file-viewer-delete-btn">Delete from Library</button>
+        <button class="viewer-btn-secondary" onclick="document.getElementById('file-viewer-overlay').classList.remove('open')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Memory Viewer / Editor -->
+  <div id="memory-viewer-overlay" class="viewer-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="viewer-panel">
+      <div class="viewer-header">
+        <h3 id="memory-viewer-title">Memory</h3>
+        <button onclick="document.getElementById('memory-viewer-overlay').classList.remove('open')" class="icon-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="viewer-body" id="memory-viewer-body"></div>
+      <div class="viewer-actions" id="memory-viewer-actions"></div>
+    </div>
+  </div>
+
+  <!-- Attachment Choice Modal -->
+  <div id="attach-modal-overlay" class="attach-modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="attach-modal">
+      <div class="attach-modal-header">
+        <h3>📎 Add Document</h3>
+        <p>How would you like to use this file?</p>
+      </div>
+      <div class="attach-modal-filename" id="attach-modal-filename"></div>
+      <div class="attach-modal-options">
+        <button class="attach-modal-btn" id="attach-modal-session-btn">
+          <strong>💬 Add for Session</strong>
+          <span>Attach as context for this conversation only</span>
+        </button>
+        <button class="attach-modal-btn" id="attach-modal-library-btn">
+          <strong>📚 Add to Library</strong>
+          <span>Store permanently for semantic search (RAG)</span>
+        </button>
       </div>
     </div>
   </div>
@@ -1088,6 +1177,17 @@
           badge.className = 'chip-badge';
           badge.textContent = '▶';
           chip.appendChild(badge);
+        } else if (att.type === 'document') {
+          chip.classList.add('doc-chip');
+          const icon = document.createElement('div');
+          icon.className = 'chip-icon';
+          icon.textContent = '📄';
+          chip.appendChild(icon);
+          const label = document.createElement('div');
+          label.className = 'chip-label';
+          label.textContent = att.name;
+          label.title = att.name;
+          chip.appendChild(label);
         }
         const removeBtn = document.createElement('button');
         removeBtn.className = 'remove-btn';
@@ -2224,13 +2324,15 @@ self.addEventListener('message', async (e) => {
         item.className = 'history-item';
         const textDiv = document.createElement('div');
         textDiv.className = 'history-item-text';
+        textDiv.style.cursor = 'pointer';
+        textDiv.addEventListener('click', () => openFileViewer(src));
         const strong = document.createElement('strong');
         strong.textContent = src;
         textDiv.appendChild(strong);
         const delBtn = document.createElement('button');
         delBtn.className = 'memory-item-del';
         delBtn.textContent = '×';
-        delBtn.addEventListener('click', () => window.deleteSource(src));
+        delBtn.addEventListener('click', (e) => { e.stopPropagation(); window.deleteSource(src); });
         item.appendChild(textDiv);
         item.appendChild(delBtn);
         list.appendChild(item);
@@ -3256,11 +3358,12 @@ self.addEventListener('message', async (e) => {
       if (text && ov !== true) {
         input.value = ''; input.style.height = 'auto';
         // Capture current attachment data before clearing (single pass)
-        const imageThumbs = [], imageNames = [], audioAtts = [], videoAtts = [];
+        const imageThumbs = [], imageNames = [], audioAtts = [], videoAtts = [], docAtts = [];
         for (const a of attachments) {
           if (a.type === 'image') { imageThumbs.push(a.thumb); imageNames.push(a.name); }
           else if (a.type === 'audio') { audioAtts.push({ thumb: a.thumb, name: a.name }); }
           else if (a.type === 'video') { videoAtts.push({ thumb: a.thumb, name: a.name }); }
+          else if (a.type === 'document') { docAtts.push({ name: a.name, text: a.text }); }
         }
         const userEl = renderMessage(text, 'user', null, { images: imageThumbs, audios: audioAtts, videos: videoAtts });
         userEl.dataset.histFrom = turnHistFrom;
@@ -3269,6 +3372,10 @@ self.addEventListener('message', async (e) => {
         if (imageThumbs.length) attachCtx.push(`${imageThumbs.length} image(s) attached: ${imageNames.join(', ')}`);
         if (audioAtts.length) attachCtx.push(`${audioAtts.length} audio file(s) attached: ${audioAtts.map(a => a.name).join(', ')}`);
         if (videoAtts.length) attachCtx.push(`${videoAtts.length} video file(s) attached: ${videoAtts.map(a => a.name).join(', ')}`);
+        if (docAtts.length) {
+          const docContext = docAtts.map(d => `--- ${d.name} ---\n${d.text}`).join('\n\n');
+          attachCtx.push(`${docAtts.length} document(s) attached:\n${docContext}`);
+        }
         const historyText = attachCtx.length ? `${text}\n\n[Attached media: ${attachCtx.join('; ')}]` : text;
         State.history.push({
           role: 'user', text: historyText,
@@ -4401,7 +4508,7 @@ Tool Selection Guidelines:
       const query = (document.getElementById('memory-search')?.value || '').trim().toLowerCase();
       if (!list || !pills) return;
 
-      const detailed = all.filter(c => c.category !== 'document_summary');
+      const detailed = all.filter(c => c.category !== 'document_summary' && c.category !== 'document');
       const counts = detailed.reduce((acc, c) => {
         acc[c.category] = (acc[c.category] || 0) + 1;
         return acc;
@@ -4448,6 +4555,8 @@ Tool Selection Guidelines:
 
         const textDiv = document.createElement('div');
         textDiv.className = 'memory-item-text';
+        textDiv.style.cursor = 'pointer';
+        textDiv.addEventListener('click', () => openMemoryViewer(c.id));
         textDiv.appendChild(document.createTextNode(snippet));
 
         const metaDiv = document.createElement('div');
@@ -4464,7 +4573,8 @@ Tool Selection Guidelines:
         const delBtn = document.createElement('button');
         delBtn.className = 'memory-item-del';
         delBtn.textContent = '×';
-        delBtn.addEventListener('click', () => {
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
           window.deleteChunk(c.id).then(() => refreshMemoryPanel()).then(() => refreshLibraryPanel());
         });
 
@@ -4612,17 +4722,8 @@ Tool Selection Guidelines:
             name: file.name,
           });
         } else {
-          // Document → ingest into RAG library
-          (async () => {
-            // eslint-disable-next-line no-useless-assignment
-            let text = '';
-            try {
-              if (file.name.endsWith('.pdf')) text = await extractPDFText(file);
-              else if (file.name.endsWith('.docx')) text = await extractDOCXText(file);
-              else text = await file.text();
-              await ingestDocument(file.name, text);
-            } catch (err) { console.error('File ingest error', err); showToast(`Failed to ingest ${file.name}`); }
-          })();
+          // Document → show choice modal for session attach vs library ingest
+          showAttachModal(file);
         }
       }
     }
@@ -4870,6 +4971,200 @@ Tool Selection Guidelines:
     document.getElementById('tool-arg-cancel-btn').addEventListener('click', closeToolArgPanel);
     document.getElementById('tool-arg-overlay').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeToolArgPanel();
+    });
+
+    // ── File Viewer ─────────────────────────────────────────
+    async function openFileViewer(sourceName) {
+      const chunks = await getAllChunks();
+      const fileChunks = chunks.filter(c => c.source === sourceName && (c.category === 'document' || c.category === 'document_summary'));
+      const overlay = document.getElementById('file-viewer-overlay');
+      document.getElementById('file-viewer-title').textContent = sourceName;
+      const body = document.getElementById('file-viewer-body');
+      body.innerHTML = '';
+
+      if (!fileChunks.length) {
+        body.innerHTML = '<div style="color:var(--ollama-stone);text-align:center;padding:20px;">No content found.</div>';
+      } else {
+        const summaryChunks = fileChunks.filter(c => c.category === 'document_summary');
+        const contentChunks = fileChunks.filter(c => c.category === 'document');
+
+        if (summaryChunks.length) {
+          const summarySection = document.createElement('div');
+          summarySection.style.cssText = 'margin-bottom: 16px;';
+          const summaryLabel = document.createElement('div');
+          summaryLabel.style.cssText = 'font-size: 0.75rem; font-weight: 600; color: var(--ollama-stone); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;';
+          summaryLabel.textContent = 'Summary';
+          summarySection.appendChild(summaryLabel);
+          summaryChunks.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'viewer-chunk';
+            div.textContent = c.text;
+            summarySection.appendChild(div);
+          });
+          body.appendChild(summarySection);
+        }
+
+        if (contentChunks.length) {
+          const contentLabel = document.createElement('div');
+          contentLabel.style.cssText = 'font-size: 0.75rem; font-weight: 600; color: var(--ollama-stone); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;';
+          contentLabel.textContent = `Content (${contentChunks.length} chunks)`;
+          body.appendChild(contentLabel);
+          contentChunks.forEach((c, i) => {
+            const div = document.createElement('div');
+            div.className = 'viewer-chunk';
+            div.textContent = c.text;
+            const meta = document.createElement('div');
+            meta.className = 'viewer-chunk-meta';
+            meta.textContent = `Chunk ${i + 1} of ${contentChunks.length}`;
+            div.appendChild(meta);
+            body.appendChild(div);
+          });
+        }
+      }
+
+      document.getElementById('file-viewer-delete-btn').onclick = async () => {
+        if (!confirm(`Remove "${sourceName}" from library?`)) return;
+        const allChunks = await getAllChunks();
+        const toDelete = allChunks.filter(c => c.source === sourceName);
+        for (const c of toDelete) await deleteChunk(c.id);
+        overlay.classList.remove('open');
+        refreshLibraryPanel();
+        showToast(`"${sourceName}" removed from library`);
+      };
+
+      overlay.classList.add('open');
+    }
+    window.openFileViewer = openFileViewer;
+
+    // ── Memory Viewer / Editor ──────────────────────────────
+    async function openMemoryViewer(chunkId) {
+      const chunks = await getAllChunks();
+      const chunk = chunks.find(c => c.id === chunkId);
+      if (!chunk) { showToast('Memory not found'); return; }
+
+      const overlay = document.getElementById('memory-viewer-overlay');
+      const ALLOWED_CATEGORIES = ['fact', 'preference', 'finding', 'document', 'document_summary', 'conversation', 'person', 'event', 'note'];
+      const safeCat = ALLOWED_CATEGORIES.includes(chunk.category) ? chunk.category : 'fact';
+      document.getElementById('memory-viewer-title').textContent = `Memory — ${chunk.category}`;
+
+      const body = document.getElementById('memory-viewer-body');
+      body.innerHTML = '';
+
+      const metaInfo = document.createElement('div');
+      metaInfo.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center;';
+      const catBadge = document.createElement('span');
+      catBadge.className = `mem-cat mem-cat-${safeCat}`;
+      catBadge.textContent = chunk.category;
+      metaInfo.appendChild(catBadge);
+      const sourceSpan = document.createElement('span');
+      sourceSpan.style.cssText = 'font-size: 0.75rem; color: var(--ollama-stone);';
+      sourceSpan.textContent = `Source: ${chunk.source || 'unknown'}`;
+      metaInfo.appendChild(sourceSpan);
+      if (chunk.timestamp) {
+        const timeSpan = document.createElement('span');
+        timeSpan.style.cssText = 'font-size: 0.75rem; color: var(--ollama-stone);';
+        timeSpan.textContent = new Date(chunk.timestamp).toLocaleString();
+        metaInfo.appendChild(timeSpan);
+      }
+      body.appendChild(metaInfo);
+
+      const editLabel = document.createElement('div');
+      editLabel.style.cssText = 'font-size: 0.75rem; font-weight: 600; color: var(--ollama-stone); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;';
+      editLabel.textContent = 'Content (editable)';
+      body.appendChild(editLabel);
+
+      const textarea = document.createElement('textarea');
+      textarea.className = 'viewer-edit-area';
+      textarea.value = chunk.text;
+      textarea.id = 'memory-edit-textarea';
+      body.appendChild(textarea);
+
+      const actions = document.getElementById('memory-viewer-actions');
+      actions.innerHTML = '';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'viewer-btn-danger';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.onclick = async () => {
+        if (!confirm('Delete this memory?')) return;
+        await deleteChunk(chunkId);
+        overlay.classList.remove('open');
+        refreshMemoryPanel();
+        showToast('Memory deleted');
+      };
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'viewer-btn-secondary';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.onclick = () => overlay.classList.remove('open');
+
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'viewer-btn-primary';
+      saveBtn.textContent = 'Save Changes';
+      saveBtn.onclick = async () => {
+        const newText = document.getElementById('memory-edit-textarea').value.trim();
+        if (!newText) { showToast('Memory text cannot be empty'); return; }
+        if (newText === chunk.text) { overlay.classList.remove('open'); return; }
+        await saveMemoryEdit(chunkId, newText);
+        overlay.classList.remove('open');
+        refreshMemoryPanel();
+        showToast('Memory updated');
+      };
+
+      actions.appendChild(deleteBtn);
+      actions.appendChild(cancelBtn);
+      actions.appendChild(saveBtn);
+
+      overlay.classList.add('open');
+    }
+    window.openMemoryViewer = openMemoryViewer;
+
+    async function saveMemoryEdit(chunkId, newText) {
+      const chunks = await getAllChunks();
+      const chunk = chunks.find(c => c.id === chunkId);
+      if (!chunk) return;
+      const vectors = await embedTexts([newText]);
+      chunk.text = newText;
+      chunk.embedding = vectors[0];
+      chunk.timestamp = Date.now();
+      await storeChunks([chunk]);
+    }
+
+    // ── Attachment Choice Modal ─────────────────────────────
+    let _pendingAttachFile = null;
+
+    function showAttachModal(file) {
+      _pendingAttachFile = file;
+      document.getElementById('attach-modal-filename').textContent = file.name;
+      document.getElementById('attach-modal-overlay').classList.add('open');
+    }
+
+    document.getElementById('attach-modal-session-btn').addEventListener('click', async () => {
+      document.getElementById('attach-modal-overlay').classList.remove('open');
+      if (!_pendingAttachFile) return;
+      const file = _pendingAttachFile;
+      _pendingAttachFile = null;
+      try {
+        let text = '';
+        if (file.name.endsWith('.pdf')) text = await extractPDFText(file);
+        else if (file.name.endsWith('.docx')) text = await extractDOCXText(file);
+        else text = await file.text();
+        addAttachment({ type: 'document', name: file.name, text: text });
+      } catch (err) { console.error('File read error', err); showToast(`Failed to read ${file.name}`); }
+    });
+
+    document.getElementById('attach-modal-library-btn').addEventListener('click', async () => {
+      document.getElementById('attach-modal-overlay').classList.remove('open');
+      if (!_pendingAttachFile) return;
+      const file = _pendingAttachFile;
+      _pendingAttachFile = null;
+      try {
+        let text = '';
+        if (file.name.endsWith('.pdf')) text = await extractPDFText(file);
+        else if (file.name.endsWith('.docx')) text = await extractDOCXText(file);
+        else text = await file.text();
+        await ingestDocument(file.name, text);
+      } catch (err) { console.error('File ingest error', err); showToast(`Failed to ingest ${file.name}`); }
     });
 
     // Init
