@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#ffffff">
@@ -448,7 +448,7 @@
   <div id="library-panel" class="overlay-panel">
     <div class="panel-window">
       <div class="panel-handle"></div>
-      <div class="panel-header"><strong>Library</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-header"><strong>Library</strong><button onclick="hidePanels()" class="icon-btn" aria-label="Close panel">✕</button></div>
       <div class="panel-content">
         <div id="library-list" style="max-height: 400px; overflow-y: auto; margin-bottom: 12px;"></div>
         <button class="btn-block btn-primary" onclick="document.getElementById('global-file-input').click()">Upload Files</button>
@@ -460,7 +460,7 @@
   <div id="memory-panel" class="overlay-panel">
     <div class="panel-window">
       <div class="panel-handle"></div>
-      <div class="panel-header"><strong>Knowledge Base (Chunks)</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-header"><strong>Knowledge Base (Chunks)</strong><button onclick="hidePanels()" class="icon-btn" aria-label="Close panel">✕</button></div>
       <div class="panel-content">
         <div style="display: flex; gap: 8px; margin-bottom: 12px;">
           <input type="text" id="memory-search" placeholder="Search facts & chunks..." style="flex: 1; padding: 8px; border: 1px solid var(--ollama-border); border-radius: 6px;">
@@ -480,7 +480,7 @@
   <div id="history-panel" class="overlay-panel">
     <div class="panel-window">
       <div class="panel-handle"></div>
-      <div class="panel-header"><strong>History</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-header"><strong>History</strong><button onclick="hidePanels()" class="icon-btn" aria-label="Close panel">✕</button></div>
       <div class="panel-content">
         <div id="history-list" style="max-height: 500px; overflow-y: auto; margin-bottom: 12px;"></div>
         <button class="btn-block btn-primary" onclick="newChat()">New Chat</button>
@@ -491,7 +491,7 @@
   <div id="batch-panel" class="overlay-panel">
     <div class="panel-window">
       <div class="panel-handle"></div>
-      <div class="panel-header"><strong>Batch Prompts</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-header"><strong>Batch Prompts</strong><button onclick="hidePanels()" class="icon-btn" aria-label="Close panel">✕</button></div>
       <div class="panel-content">
         <textarea id="batch-textarea" class="batch-textarea" placeholder="One prompt per line. Use {{previous}} to chain."></textarea>
         <div class="batch-controls">
@@ -507,7 +507,7 @@
   <div id="settings-panel" class="overlay-panel">
     <div class="panel-window">
       <div class="panel-handle"></div>
-      <div class="panel-header"><strong>Settings</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-header"><strong>Settings</strong><button onclick="hidePanels()" class="icon-btn" aria-label="Close panel">✕</button></div>
       <div class="panel-content" style="max-height: 80vh; overflow-y: auto;">
 
         <!-- ── System Prompt ──────────────────────────────── -->
@@ -602,7 +602,7 @@
   <div id="tools-panel" class="overlay-panel">
     <div class="panel-window">
       <div class="panel-handle"></div>
-      <div class="panel-header"><strong>🛠️ Available Tools</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-header"><strong>🛠️ Available Tools</strong><button onclick="hidePanels()" class="icon-btn" aria-label="Close panel">✕</button></div>
       <div class="panel-content">
         <p class="tools-intro-text">The AI can use these tools automatically when answering your questions.</p>
         <div id="tools-list"></div>
@@ -612,7 +612,7 @@
 
   <div id="share-backdrop" class="overlay-panel">
     <div class="panel-window" style="max-width: 400px;">
-      <div class="panel-header"><strong>Share Conversation</strong><button onclick="hidePanels()" class="icon-btn">✕</button></div>
+      <div class="panel-header"><strong>Share Conversation</strong><button onclick="hidePanels()" class="icon-btn" aria-label="Close panel">✕</button></div>
       <div class="panel-content">
         <p id="share-meta" style="font-size: 0.8rem; color: var(--ollama-stone); margin-bottom: 12px;"></p>
         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; margin-bottom: 12px;">
@@ -1429,7 +1429,17 @@ self.addEventListener('message', async (e) => {
       sources.forEach(src => {
         const item = document.createElement('div');
         item.className = 'history-item';
-        item.innerHTML = `<div class="history-item-text"><strong>${escapeHtml(src)}</strong></div><button onclick="window.deleteSource('${src}')" class="memory-item-del">×</button>`;
+        const textDiv = document.createElement('div');
+        textDiv.className = 'history-item-text';
+        const strong = document.createElement('strong');
+        strong.textContent = src;
+        textDiv.appendChild(strong);
+        const delBtn = document.createElement('button');
+        delBtn.className = 'memory-item-del';
+        delBtn.textContent = '×';
+        delBtn.addEventListener('click', () => window.deleteSource(src));
+        item.appendChild(textDiv);
+        item.appendChild(delBtn);
         list.appendChild(item);
       });
     }
@@ -1516,16 +1526,6 @@ self.addEventListener('message', async (e) => {
         if (count >= 4) return true;
       }
       return false;
-    }
-
-    function toToolArgumentTemplate(name) {
-      const tool = TOOL_REGISTRY[name];
-      const required = tool?.parameters?.required || [];
-      const args = {};
-      required.forEach((k) => {
-        args[k] = '';
-      });
-      return `<tool_call>{"name":"${name}","arguments":${JSON.stringify(args)}}</tool_call>`;
     }
 
     function insertTextAtCursor(text, replaceStart = null, replaceEnd = null) {
@@ -3275,7 +3275,29 @@ Rules:
         const item = document.createElement('div');
         item.className = 'memory-item';
         const snippet = c.text.length > 140 ? `${c.text.slice(0, 140)}...` : c.text;
-        item.innerHTML = `<div class="memory-item-text">${escapeHtml(snippet)}<div class="memory-item-meta"><span class="mem-cat mem-cat-${c.category}">${c.category}</span> ${escapeHtml(String(c.source || 'unknown'))}</div></div><button onclick="window.deleteChunk('${c.id}').then(refreshMemoryPanel).then(refreshLibraryPanel)" class="memory-item-del">×</button>`;
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'memory-item-text';
+        textDiv.appendChild(document.createTextNode(snippet));
+
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'memory-item-meta';
+        const catSpan = document.createElement('span');
+        catSpan.className = `mem-cat mem-cat-${c.category}`;
+        catSpan.textContent = c.category;
+        metaDiv.appendChild(catSpan);
+        metaDiv.appendChild(document.createTextNode(' ' + String(c.source || 'unknown')));
+        textDiv.appendChild(metaDiv);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'memory-item-del';
+        delBtn.textContent = '×';
+        delBtn.addEventListener('click', () => {
+          window.deleteChunk(c.id).then(() => refreshMemoryPanel()).then(() => refreshLibraryPanel());
+        });
+
+        item.appendChild(textDiv);
+        item.appendChild(delBtn);
         list.appendChild(item);
       });
     }
@@ -3351,8 +3373,9 @@ Rules:
     };
 
     document.getElementById('share-copy-btn').onclick = () => {
-      navigator.clipboard.writeText(document.getElementById('share-url-input').value);
-      showToast('Link copied!');
+      navigator.clipboard.writeText(document.getElementById('share-url-input').value)
+        .then(() => showToast('Link copied!'))
+        .catch(() => showToast('Failed to copy link.'));
     };
 
     async function checkShareLink() {
@@ -3558,7 +3581,7 @@ Rules:
         const conversations = await new Promise(r => db.transaction('conversations').objectStore('conversations').getAll().onsuccess = e => r(e.target.result));
         const blob = new Blob([JSON.stringify({ chunks, conversations })], { type: 'application/json' });
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'localmind_backup.json'; a.click();
-      });
+      }).catch(() => showToast('Export failed.'));
     }
     window.exportData = exportData;
 
@@ -3573,7 +3596,7 @@ Rules:
             data.conversations.forEach(c => tx.objectStore('conversations').put(c));
           }
           showToast('Import complete'); refreshMemoryPanel(); refreshHistoryPanel(); refreshLibraryPanel();
-        } catch (err) { showToast('Import failed'); }
+        } catch { showToast('Import failed'); }
       });
     };
 
