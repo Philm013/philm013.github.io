@@ -514,6 +514,17 @@
       overflow-x: auto;
     }
 
+    /* Web search interactive result cards */
+    .web-search-cards { display: flex; flex-direction: column; gap: 8px; }
+    .web-result-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 10px 12px; transition: border-color 0.2s; }
+    .web-result-card:hover { border-color: #93c5fd; }
+    .web-result-title { color: #1d4ed8; font-weight: 600; font-size: 0.82rem; text-decoration: none; display: block; margin-bottom: 4px; line-height: 1.3; }
+    .web-result-title:hover { text-decoration: underline; }
+    .web-result-snippet { margin: 0 0 6px; font-size: 0.76rem; color: var(--gray-500); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .web-result-url { display: block; font-size: 0.68rem; color: var(--gray-400); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6px; }
+    .web-result-fetch-btn { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 500; border: 1px solid #93c5fd; background: rgba(59,130,246,0.06); color: #2563eb; cursor: pointer; transition: background 0.15s; }
+    .web-result-fetch-btn:hover { background: rgba(59,130,246,0.15); }
+
     /* Typing indicator */
     .typing-dot {
       display: inline-block;
@@ -4720,12 +4731,77 @@ self.addEventListener('message', async (e) => {
       const resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
       const block = document.createElement('div');
       block.className = 'tool-call-block';
-      block.innerHTML = `
-        <div class="tool-call-toggle" onclick="document.getElementById('${blockId}').classList.toggle('open'); this.querySelector('span').textContent = document.getElementById('${blockId}').classList.contains('open') ? '&#9660;' : '&#9654;'">
-          <span>&#9654;</span> <strong>${escapeHtml(toolName)}</strong>(${escapeHtml(argsStr)})
-        </div>
-        <div class="tool-call-result" id="${blockId}"><pre>${escapeHtml(resultStr)}</pre></div>
-      `;
+
+      // Build toggle header
+      const toggle = document.createElement('div');
+      toggle.className = 'tool-call-toggle';
+      toggle.addEventListener('click', function() {
+        resultDiv.classList.toggle('open');
+        const arrow = this.querySelector('span');
+        if (arrow) arrow.textContent = resultDiv.classList.contains('open') ? '\u25BC' : '\u25B6';
+      });
+
+      const resultDiv = document.createElement('div');
+      resultDiv.className = 'tool-call-result';
+      resultDiv.id = blockId;
+
+      // Render web_search results as interactive cards
+      if (toolName === 'web_search' && result && typeof result === 'object' && Array.isArray(result.results) && result.results.length > 0) {
+        toggle.innerHTML = `<span>&#9660;</span> <strong>${escapeHtml(toolName)}</strong>(${escapeHtml(argsStr)})`;
+        resultDiv.classList.add('open');
+
+        const cardsContainer = document.createElement('div');
+        cardsContainer.className = 'web-search-cards';
+        for (const item of result.results) {
+          const card = document.createElement('div');
+          card.className = 'web-result-card';
+
+          const titleLink = document.createElement('a');
+          titleLink.href = String(item.url || '#');
+          titleLink.target = '_blank';
+          titleLink.rel = 'noopener noreferrer';
+          titleLink.className = 'web-result-title';
+          titleLink.textContent = item.title || item.url || 'Untitled';
+          card.appendChild(titleLink);
+
+          if (item.snippet) {
+            const snippet = document.createElement('p');
+            snippet.className = 'web-result-snippet';
+            snippet.textContent = item.snippet;
+            card.appendChild(snippet);
+          }
+
+          const urlText = document.createElement('span');
+          urlText.className = 'web-result-url';
+          urlText.textContent = item.url || '';
+          card.appendChild(urlText);
+
+          // "Fetch page" button — populates the chat input with a fetch request
+          if (item.url && TOOL_REGISTRY.fetch_page) {
+            const fetchBtn = document.createElement('button');
+            fetchBtn.className = 'web-result-fetch-btn';
+            fetchBtn.textContent = '📄 Fetch & Read';
+            fetchBtn.title = 'Ask the AI to fetch and read this page';
+            fetchBtn.addEventListener('click', () => {
+              if (!chatInput) return;
+              chatInput.value = `Please fetch and summarize this page: ${item.url}`;
+              sendMessage();
+            });
+            card.appendChild(fetchBtn);
+          }
+
+          cardsContainer.appendChild(card);
+        }
+        resultDiv.appendChild(cardsContainer);
+      } else {
+        toggle.innerHTML = `<span>&#9654;</span> <strong>${escapeHtml(toolName)}</strong>(${escapeHtml(argsStr)})`;
+        const pre = document.createElement('pre');
+        pre.textContent = resultStr;
+        resultDiv.appendChild(pre);
+      }
+
+      block.appendChild(toggle);
+      block.appendChild(resultDiv);
       bubble.appendChild(block);
       chatArea.scrollTop = chatArea.scrollHeight;
     }
@@ -4878,6 +4954,25 @@ self.addEventListener('message', async (e) => {
             toolResult = await tool.execute(tc.arguments, { userQuery: text });
           } catch (e) {
             toolResult = { error: e.message };
+          }
+        }
+
+        // Strip pre-tool-call filler text from the visible bubble.
+        // Models often emit speculative text like "Let me search for that..."
+        // before the <tool_call> tag. This text is inaccurate since the tool
+        // hasn't run yet, so we clear it and only keep thinking blocks.
+        if (currentAssistantEl) {
+          const hasThink = /<\|think\|>/.test(response) || /<\|channel>thought/.test(response);
+          if (hasThink) {
+            // Extract all thinking blocks, strip everything else
+            const thinkBlocks = response.match(/<\|think\|>[\s\S]*?<\|\/think\|>/g)
+              || response.match(/<\|channel>thought[\s\S]*?<channel\|>/g)
+              || [];
+            const thinkOnly = thinkBlocks.join('\n');
+            updateAssistantBubble(currentAssistantEl.bubble, thinkOnly);
+          } else {
+            // No thinking block — clear filler text entirely
+            currentAssistantEl.bubble.innerHTML = '';
           }
         }
 
