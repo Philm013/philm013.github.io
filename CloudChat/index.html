@@ -3255,11 +3255,13 @@ self.addEventListener('message', async (e) => {
 
       if (text && ov !== true) {
         input.value = ''; input.style.height = 'auto';
-        // Capture current attachment data before clearing
-        const imageThumbs = attachments.filter(a => a.type === 'image').map(a => a.thumb);
-        const imageNames = attachments.filter(a => a.type === 'image').map(a => a.name);
-        const audioAtts = attachments.filter(a => a.type === 'audio').map(a => ({ thumb: a.thumb, name: a.name }));
-        const videoAtts = attachments.filter(a => a.type === 'video').map(a => ({ thumb: a.thumb, name: a.name }));
+        // Capture current attachment data before clearing (single pass)
+        const imageThumbs = [], imageNames = [], audioAtts = [], videoAtts = [];
+        for (const a of attachments) {
+          if (a.type === 'image') { imageThumbs.push(a.thumb); imageNames.push(a.name); }
+          else if (a.type === 'audio') { audioAtts.push({ thumb: a.thumb, name: a.name }); }
+          else if (a.type === 'video') { videoAtts.push({ thumb: a.thumb, name: a.name }); }
+        }
         const userEl = renderMessage(text, 'user', null, { images: imageThumbs, audios: audioAtts, videos: videoAtts });
         userEl.dataset.histFrom = turnHistFrom;
         // Build attachment context for the model
