@@ -387,6 +387,54 @@
     .msg-edit-save:hover { background: #333; }
     .msg-edit-cancel { background: var(--ollama-light-gray); color: var(--ollama-mid-gray); border: none; padding: 6px 16px; border-radius: 6px; font-size: 0.82rem; cursor: pointer; font-family: inherit; }
     .msg-edit-cancel:hover { background: var(--ollama-border); }
+
+    /* Audio/Video attachment chips */
+    .attachment-chip.audio-chip { background: #f0f4ff; }
+    .attachment-chip.audio-chip .chip-label { font-size: 0.55rem; text-align: center; padding: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 52px; color: var(--ollama-mid-gray); }
+    .attachment-chip.audio-chip .chip-icon { font-size: 1.2rem; }
+    .attachment-chip.video-chip { position: relative; }
+    .attachment-chip.video-chip video { width: 100%; height: 100%; object-fit: cover; }
+    .attachment-chip.video-chip .chip-badge { position: absolute; bottom: 2px; left: 2px; font-size: 0.5rem; background: rgba(0,0,0,0.6); color: #fff; padding: 1px 4px; border-radius: 3px; }
+
+    /* User message media attachments */
+    .msg-attachments audio { max-width: 260px; height: 36px; border-radius: 8px; }
+    .msg-attachments video { max-width: 280px; max-height: 180px; border-radius: 8px; border: 1px solid var(--ollama-border); }
+
+    /* Image lightbox */
+    .lightbox-overlay { position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; cursor: zoom-out; animation: lbFadeIn 0.2s ease; }
+    @keyframes lbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .lightbox-overlay img { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+
+    /* About modal */
+    .about-overlay { position: fixed; inset: 0; z-index: 2500; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; padding: 20px; }
+    .about-overlay.open { display: flex; }
+    .about-window { background: #fff; width: 100%; max-width: 640px; max-height: 82vh; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.18); border: 1px solid var(--ollama-border); animation: aboutSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    @keyframes aboutSlideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .about-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--ollama-border); display: flex; justify-content: space-between; align-items: center; }
+    .about-header h2 { font-size: 1.15rem; font-weight: 600; font-family: var(--font-display); }
+    .about-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--ollama-border); padding: 0 24px; background: var(--ollama-snow); }
+    .about-tab { padding: 10px 16px; font-size: 0.82rem; font-weight: 500; color: var(--ollama-stone); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: inherit; }
+    .about-tab:hover { color: var(--ollama-near-black); }
+    .about-tab.active { color: var(--ollama-near-black); border-bottom-color: var(--ollama-black); }
+    .about-body { padding: 24px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .about-section { display: none; }
+    .about-section.active { display: block; }
+    .about-section h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; color: var(--ollama-near-black); }
+    .about-section h4 { font-size: 0.85rem; font-weight: 600; margin: 16px 0 6px; color: var(--ollama-mid-gray); }
+    .about-section p { font-size: 0.84rem; color: var(--ollama-mid-gray); line-height: 1.65; margin-bottom: 12px; }
+    .about-section ul, .about-section ol { font-size: 0.84rem; color: var(--ollama-mid-gray); line-height: 1.65; margin-bottom: 12px; padding-left: 20px; }
+    .about-section li { margin-bottom: 4px; }
+    .about-section code { font-family: var(--font-mono); background: rgba(0,0,0,0.05); padding: 1px 5px; border-radius: 4px; font-size: 0.82em; }
+    .about-feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin: 12px 0; }
+    .about-feature-card { background: var(--ollama-snow); border: 1px solid var(--ollama-border); border-radius: 10px; padding: 14px; text-align: center; }
+    .about-feature-card .feat-icon { font-size: 1.5rem; margin-bottom: 6px; }
+    .about-feature-card .feat-title { font-size: 0.82rem; font-weight: 600; color: var(--ollama-near-black); }
+    .about-feature-card .feat-desc { font-size: 0.72rem; color: var(--ollama-stone); margin-top: 4px; line-height: 1.4; }
+    .about-kbd { display: inline-block; padding: 2px 6px; border: 1px solid var(--ollama-border); border-radius: 4px; background: var(--ollama-snow); font-family: var(--font-mono); font-size: 0.75rem; margin: 0 2px; }
+    @media (max-width: 768px) {
+      .about-window { max-height: 90vh; border-radius: 20px 20px 0 0; }
+      .about-feature-grid { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
 <body>
@@ -431,7 +479,10 @@
     <header>
       <div class="header-inner">
         <div class="header-title">Native Assistant</div>
-        <div id="status-badge" class="status-badge"><span id="status-text">Disconnected</span></div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div id="status-badge" class="status-badge"><span id="status-text">Disconnected</span></div>
+          <button class="icon-btn" id="about-btn" title="About &amp; Help" style="font-size: 1rem;">❓</button>
+        </div>
       </div>
     </header>
     <main id="chat-container">
@@ -682,6 +733,236 @@
     <button class="dismiss-btn" onclick="dismissImport()">Dismiss</button>
   </div>
 
+  <!-- About / Help Modal -->
+  <div id="about-overlay" class="about-overlay">
+    <div class="about-window">
+      <div class="about-header">
+        <h2>🧠 Gemma 4 — Native Assistant</h2>
+        <button class="icon-btn" id="about-close-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="about-tabs">
+        <button class="about-tab active" data-tab="overview">Overview</button>
+        <button class="about-tab" data-tab="features">Features</button>
+        <button class="about-tab" data-tab="media">Media</button>
+        <button class="about-tab" data-tab="tools">Tools</button>
+        <button class="about-tab" data-tab="tips">Tips</button>
+      </div>
+      <div class="about-body">
+        <div class="about-section active" data-tab="overview">
+          <h3>What is this?</h3>
+          <p>This is a <strong>fully private AI assistant</strong> powered by Google's <strong>Gemma 4</strong> model. Everything runs <em>entirely in your browser</em> using WebGPU — no data ever leaves your device. No accounts, no cloud servers, no tracking.</p>
+
+          <h4>How it works</h4>
+          <p>The Gemma 4 E2B model (~1.5 GB) is downloaded once and cached locally in your browser. All inference runs on your device's GPU via WebGPU, providing fast, private AI that works even offline after the initial setup.</p>
+
+          <h4>Requirements</h4>
+          <ul>
+            <li><strong>Browser:</strong> Chrome 113+, Edge 113+, or any Chromium-based browser with WebGPU support</li>
+            <li><strong>GPU:</strong> A WebGPU-compatible GPU (most modern GPUs from 2018+)</li>
+            <li><strong>Storage:</strong> ~1.5 GB for the model + space for your data</li>
+            <li><strong>RAM:</strong> 4 GB+ recommended for smooth operation</li>
+          </ul>
+
+          <h4>Privacy &amp; Security</h4>
+          <p>Your conversations, documents, and memories are stored locally in your browser's IndexedDB. Nothing is sent to any server. The only network requests are for optional features like web search (which you configure yourself) and the initial model download.</p>
+        </div>
+
+        <div class="about-section" data-tab="features">
+          <h3>Core Features</h3>
+          <div class="about-feature-grid">
+            <div class="about-feature-card">
+              <div class="feat-icon">💬</div>
+              <div class="feat-title">Smart Chat</div>
+              <div class="feat-desc">Multi-turn conversations with thinking mode &amp; streaming responses</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">🛠️</div>
+              <div class="feat-title">30+ Tools</div>
+              <div class="feat-desc">Calculator, web search, weather, maps, timers, QR codes &amp; more</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">🧠</div>
+              <div class="feat-title">Memory (RAG)</div>
+              <div class="feat-desc">Semantic search over your documents, facts, and notes</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">📚</div>
+              <div class="feat-title">Document Library</div>
+              <div class="feat-desc">Upload PDFs, DOCX, TXT, MD, CSV, JSON for context</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">🖼️</div>
+              <div class="feat-title">Image Attach</div>
+              <div class="feat-desc">Attach images via file picker, paste, or drag &amp; drop</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">🎵</div>
+              <div class="feat-title">Audio Attach</div>
+              <div class="feat-desc">Attach audio files for playback in your conversations</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">🎬</div>
+              <div class="feat-title">Video Attach</div>
+              <div class="feat-desc">Attach video files (MP4, WebM) for inline playback</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">🔗</div>
+              <div class="feat-title">Share</div>
+              <div class="feat-desc">Share conversations via encrypted or plain links</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">📋</div>
+              <div class="feat-title">Batch Prompts</div>
+              <div class="feat-desc">Run multiple prompts sequentially with chaining</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">🌐</div>
+              <div class="feat-title">Web Search</div>
+              <div class="feat-desc">Optional Brave, Tavily, or SearXNG integration</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">🗺️</div>
+              <div class="feat-title">Maps</div>
+              <div class="feat-desc">Interactive maps powered by OpenStreetMap</div>
+            </div>
+            <div class="about-feature-card">
+              <div class="feat-icon">💾</div>
+              <div class="feat-title">Offline</div>
+              <div class="feat-desc">Works completely offline after initial model download</div>
+            </div>
+          </div>
+
+          <h4>Agentic AI</h4>
+          <p>The AI uses <strong>Gemma 4's native tool-calling format</strong> to autonomously decide when and how to use tools. It can chain multiple tool calls per message, reason through problems in its thinking channel, and provide comprehensive answers grounded in real data.</p>
+
+          <h4>Conversation Management</h4>
+          <ul>
+            <li><strong>Edit:</strong> Click ✏️ on any user message to edit and resend</li>
+            <li><strong>Retry:</strong> Click 🔄 to regenerate an AI response</li>
+            <li><strong>Delete:</strong> Remove individual messages or entire turns</li>
+            <li><strong>Copy:</strong> Copy AI responses to clipboard with one click</li>
+            <li><strong>History:</strong> All conversations are auto-saved and can be restored</li>
+          </ul>
+        </div>
+
+        <div class="about-section" data-tab="media">
+          <h3>Media Handling</h3>
+          <p>You can attach <strong>images, audio files, and video files</strong> to your messages. These are displayed inline in the conversation for reference and review.</p>
+
+          <h4>🖼️ Images</h4>
+          <ul>
+            <li><strong>Upload:</strong> Click the 📎 button and select image files, or drag &amp; drop images onto the chat</li>
+            <li><strong>Paste:</strong> Paste images directly from your clipboard (Ctrl/Cmd+V)</li>
+            <li><strong>Preview:</strong> Click any image thumbnail in a message to view it full-size in a lightbox</li>
+            <li><strong>Formats:</strong> JPEG, PNG, GIF, WebP, SVG, and all browser-supported image formats</li>
+            <li><strong>Context:</strong> The AI is informed about attached images and can discuss them based on filename and context</li>
+          </ul>
+
+          <h4>🎵 Audio</h4>
+          <ul>
+            <li><strong>Upload:</strong> Attach audio files via the file picker or drag &amp; drop</li>
+            <li><strong>Playback:</strong> Audio files appear as inline players in your messages — play, pause, and scrub directly in the chat</li>
+            <li><strong>Formats:</strong> MP3, WAV, OGG, AAC, FLAC, WebM audio, and all browser-supported audio formats</li>
+            <li><strong>Context:</strong> The AI is informed about attached audio files and can reference them in the conversation</li>
+          </ul>
+
+          <h4>🎬 Video</h4>
+          <ul>
+            <li><strong>Upload:</strong> Attach video files via the file picker or drag &amp; drop</li>
+            <li><strong>Playback:</strong> Videos appear as inline players with full controls (play, pause, volume, fullscreen)</li>
+            <li><strong>Formats:</strong> MP4, WebM, OGG video, and all browser-supported video formats</li>
+            <li><strong>Context:</strong> The AI is informed about attached videos and can discuss them in context</li>
+          </ul>
+
+          <h4>📄 Documents</h4>
+          <ul>
+            <li>Documents (PDF, DOCX, TXT, MD, CSV, JSON) are <strong>ingested into the semantic library</strong> for RAG (Retrieval-Augmented Generation)</li>
+            <li>Once ingested, the AI can search and reference document content to answer your questions</li>
+            <li>Manage your document library from the 📚 Library panel</li>
+          </ul>
+
+          <h4>⚠️ Multimodal Note</h4>
+          <p>The Gemma 4 E2B model used in this app is a <strong>text-focused model</strong>. While you can attach and display media files in the conversation, the AI processes text-based descriptions of attachments rather than analyzing visual/audio content directly. For full multimodal analysis, consider using the <strong>LocalMind</strong> version which supports Gemma 4 multimodal models.</p>
+        </div>
+
+        <div class="about-section" data-tab="tools">
+          <h3>Available Tools</h3>
+          <p>The AI has access to a growing library of tools it can use automatically. You can also manually insert tool calls using the 🛠️ button.</p>
+
+          <h4>Built-in Tools</h4>
+          <ul>
+            <li><strong>calculate</strong> — Evaluate math expressions (basic arithmetic to scientific notation)</li>
+            <li><strong>web_search</strong> — Search the web via Brave, Tavily, or SearXNG (requires configuration)</li>
+            <li><strong>search_media</strong> — Find images &amp; videos from Unsplash or Pexels</li>
+            <li><strong>fetch_page</strong> — Retrieve and read the content of any web page</li>
+            <li><strong>query_wikipedia</strong> — Look up information from Wikipedia in 140+ languages</li>
+            <li><strong>get_weather</strong> — Get current weather and forecasts for any location</li>
+            <li><strong>store_memory</strong> — Save facts, preferences, or notes to persistent memory</li>
+            <li><strong>search_memory</strong> — Recall stored information from your knowledge base</li>
+            <li><strong>delete_memory</strong> — Remove specific memories or clear categories</li>
+            <li><strong>interactive_map</strong> — Display an interactive map of any location</li>
+            <li><strong>set_reminder</strong> — Set timed reminders that pop up in the chat</li>
+            <li><strong>generate_qr</strong> — Generate QR codes for any text or URL</li>
+            <li><strong>restaurant_roulette</strong> — Spin a fun wheel to pick a random restaurant nearby</li>
+            <li><strong>mood_music</strong> — Generate or discover music based on mood or query</li>
+          </ul>
+
+          <h4>Slash Commands</h4>
+          <ul>
+            <li><code>/clear</code> — Clear the current conversation</li>
+            <li><code>/settings</code> — Open the settings panel</li>
+            <li><code>/tools</code> — Show available tools</li>
+            <li><code>/memory</code> — Open the memory panel</li>
+            <li><code>/batch</code> — Open batch prompt mode</li>
+          </ul>
+
+          <h4>@ Mentions</h4>
+          <p>Type <code>@</code> in the chat input to search and reference your stored documents by name. The referenced document's content will be included as context for the AI.</p>
+        </div>
+
+        <div class="about-section" data-tab="tips">
+          <h3>Tips &amp; Tricks</h3>
+
+          <h4>Keyboard Shortcuts</h4>
+          <ul>
+            <li><span class="about-kbd">Enter</span> — Send message</li>
+            <li><span class="about-kbd">Shift</span> + <span class="about-kbd">Enter</span> — New line</li>
+            <li><span class="about-kbd">Esc</span> — Close menus &amp; panels</li>
+            <li><span class="about-kbd">Ctrl/Cmd</span> + <span class="about-kbd">V</span> — Paste images from clipboard</li>
+          </ul>
+
+          <h4>Getting Better Results</h4>
+          <ul>
+            <li><strong>Be specific:</strong> Instead of "tell me about space", try "explain how black holes form, including Hawking radiation"</li>
+            <li><strong>Use thinking mode:</strong> Keep thinking mode enabled (Settings) for complex questions — the AI reasons more carefully</li>
+            <li><strong>Adjust temperature:</strong> Lower temperature (0.2-0.4) for factual/coding tasks, higher (0.8-1.2) for creative writing</li>
+            <li><strong>Upload documents:</strong> Add reference materials to the Library — the AI will search them automatically</li>
+            <li><strong>Chain requests:</strong> The AI can perform multiple tool calls per message, so feel free to ask complex questions</li>
+          </ul>
+
+          <h4>Troubleshooting</h4>
+          <ul>
+            <li><strong>Slow responses?</strong> Reduce Max Tokens in Settings, or close other GPU-intensive tabs</li>
+            <li><strong>Model won't load?</strong> Ensure you have WebGPU support (Chrome 113+) and try purging the cache</li>
+            <li><strong>Repetitive output?</strong> Lower the temperature or clear the conversation history</li>
+            <li><strong>Web search not working?</strong> Make sure you've configured a search provider and API key in Settings</li>
+            <li><strong>Memory full?</strong> Use the Memory panel to audit and clean up duplicate entries</li>
+          </ul>
+
+          <h4>Gemma 4 Model Info</h4>
+          <p>This app uses <strong>Gemma 4 E2B</strong> (E2B = Efficient 2 Billion), a compact yet powerful language model from Google. Key capabilities:</p>
+          <ul>
+            <li>Reasoning and chain-of-thought via native thinking mode</li>
+            <li>Function/tool calling with structured outputs</li>
+            <li>140+ language translation</li>
+            <li>8K context window</li>
+            <li>Runs locally with ~1.5 GB VRAM</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div style="display: none;">
     <input type="file" id="global-file-input" multiple accept=".txt,.md,.json,.csv,.pdf,.docx,text/plain,application/pdf,application/json,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*,audio/*,video/*">
     <input type="file" id="model-upload-input" accept=".task,application/octet-stream">
@@ -784,6 +1065,29 @@
           img.src = att.thumb;
           img.alt = att.name;
           chip.appendChild(img);
+        } else if (att.type === 'audio') {
+          chip.classList.add('audio-chip');
+          const icon = document.createElement('div');
+          icon.className = 'chip-icon';
+          icon.textContent = '🎵';
+          chip.appendChild(icon);
+          const label = document.createElement('div');
+          label.className = 'chip-label';
+          label.textContent = att.name;
+          label.title = att.name;
+          chip.appendChild(label);
+        } else if (att.type === 'video') {
+          chip.classList.add('video-chip');
+          const vid = document.createElement('video');
+          vid.src = att.thumb;
+          vid.muted = true;
+          vid.preload = 'metadata';
+          vid.addEventListener('loadeddata', () => { vid.currentTime = 0.1; });
+          chip.appendChild(vid);
+          const badge = document.createElement('span');
+          badge.className = 'chip-badge';
+          badge.textContent = '▶';
+          chip.appendChild(badge);
         }
         const removeBtn = document.createElement('button');
         removeBtn.className = 'remove-btn';
@@ -2951,11 +3255,25 @@ self.addEventListener('message', async (e) => {
 
       if (text && ov !== true) {
         input.value = ''; input.style.height = 'auto';
-        // Capture current attachment thumbnails before clearing
+        // Capture current attachment data before clearing
         const imageThumbs = attachments.filter(a => a.type === 'image').map(a => a.thumb);
-        const userEl = renderMessage(text, 'user', null, { images: imageThumbs });
+        const imageNames = attachments.filter(a => a.type === 'image').map(a => a.name);
+        const audioAtts = attachments.filter(a => a.type === 'audio').map(a => ({ thumb: a.thumb, name: a.name }));
+        const videoAtts = attachments.filter(a => a.type === 'video').map(a => ({ thumb: a.thumb, name: a.name }));
+        const userEl = renderMessage(text, 'user', null, { images: imageThumbs, audios: audioAtts, videos: videoAtts });
         userEl.dataset.histFrom = turnHistFrom;
-        State.history.push({ role: 'user', text, _images: imageThumbs.length > 0 ? imageThumbs : undefined });
+        // Build attachment context for the model
+        const attachCtx = [];
+        if (imageThumbs.length) attachCtx.push(`${imageThumbs.length} image(s) attached: ${imageNames.join(', ')}`);
+        if (audioAtts.length) attachCtx.push(`${audioAtts.length} audio file(s) attached: ${audioAtts.map(a => a.name).join(', ')}`);
+        if (videoAtts.length) attachCtx.push(`${videoAtts.length} video file(s) attached: ${videoAtts.map(a => a.name).join(', ')}`);
+        const historyText = attachCtx.length ? `${text}\n\n[Attached media: ${attachCtx.join('; ')}]` : text;
+        State.history.push({
+          role: 'user', text: historyText,
+          _images: imageThumbs.length > 0 ? imageThumbs : undefined,
+          _audios: audioAtts.length > 0 ? audioAtts : undefined,
+          _videos: videoAtts.length > 0 ? videoAtts : undefined,
+        });
         addMessageActions(userEl, 'user');
         clearAttachments();
       }
@@ -3577,15 +3895,30 @@ Tool Selection Guidelines:
       if (!el) { el = document.createElement('div'); el.className = `message ${r}`; c.appendChild(el); }
       if (r === 'user') {
         let html = '';
-        // Render image attachments if provided
-        if (options.images && options.images.length > 0) {
+        // Render media attachments if provided
+        const hasMedia = (options.images && options.images.length > 0) || (options.audios && options.audios.length > 0) || (options.videos && options.videos.length > 0);
+        if (hasMedia) {
           html += '<div class="msg-attachments">';
-          for (const src of options.images) {
-            html += `<img src="${escapeHtml(src)}" alt="Attached image" loading="lazy">`;
+          if (options.images) {
+            for (const src of options.images) {
+              html += `<img src="${escapeHtml(src)}" alt="Attached image" loading="lazy" onclick="openLightbox(this.src)">`;
+            }
+          }
+          if (options.audios) {
+            for (const a of options.audios) {
+              html += `<audio controls preload="metadata" src="${escapeHtml(a.thumb)}" title="${escapeHtml(a.name)}"></audio>`;
+            }
+          }
+          if (options.videos) {
+            for (const v of options.videos) {
+              html += `<video controls preload="metadata" src="${escapeHtml(v.thumb)}" title="${escapeHtml(v.name)}"></video>`;
+            }
           }
           html += '</div>';
         }
-        html += `<div class="user-bubble">${escapeHtml(t)}</div>`;
+        // Strip the attachment context metadata from display text
+        const displayText = t.replace(/\n\n\[Attached media: [^\]]+\]$/, '');
+        html += `<div class="user-bubble">${escapeHtml(displayText)}</div>`;
         el.innerHTML = html;
       } else {
         // Use an inner bubble so that tool-call blocks, step labels, and
@@ -4012,7 +4345,7 @@ Tool Selection Guidelines:
         if (isAi && /^\s*<tool_call>[\s\S]*<\/tool_call>\s*$/.test(m.text)) return;
 
         const role = isAi ? 'ai' : 'user';
-        const el = renderMessage(m.text, role, null, { images: m._images });
+        const el = renderMessage(m.text, role, null, { images: m._images, audios: m._audios, videos: m._videos });
         if (role === 'user') {
           el.dataset.histFrom = idx;
           lastUserHistFrom = idx;
@@ -4256,9 +4589,22 @@ Tool Selection Guidelines:
     function handleUploadedFiles(files) {
       for (const file of files) {
         if (file.type.startsWith('image/')) {
-          // Image → add as visual attachment (like LocalMind)
           addAttachment({
             type: 'image',
+            blob: file,
+            thumb: URL.createObjectURL(file),
+            name: file.name,
+          });
+        } else if (file.type.startsWith('audio/')) {
+          addAttachment({
+            type: 'audio',
+            blob: file,
+            thumb: URL.createObjectURL(file),
+            name: file.name,
+          });
+        } else if (file.type.startsWith('video/') || /\.(mp4|webm)$/i.test(file.name)) {
+          addAttachment({
+            type: 'video',
             blob: file,
             thumb: URL.createObjectURL(file),
             name: file.name,
@@ -4676,6 +5022,41 @@ Tool Selection Guidelines:
       if (!menu.contains(e.target) && e.target !== chatInput && e.target !== toolInsertBtn) {
         hideInputMenu();
       }
+    });
+
+    // ── Image Lightbox ──────────────────────────────────────
+    function openLightbox(src) {
+      const overlay = document.createElement('div');
+      overlay.className = 'lightbox-overlay';
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = 'Full-size image';
+      overlay.appendChild(img);
+      overlay.addEventListener('click', () => overlay.remove());
+      document.body.appendChild(overlay);
+    }
+    window.openLightbox = openLightbox;
+
+    // ── About Modal ─────────────────────────────────────────
+    document.getElementById('about-btn').addEventListener('click', () => {
+      document.getElementById('about-overlay').classList.add('open');
+    });
+    document.getElementById('about-close-btn').addEventListener('click', () => {
+      document.getElementById('about-overlay').classList.remove('open');
+    });
+    document.getElementById('about-overlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) {
+        e.currentTarget.classList.remove('open');
+      }
+    });
+    document.querySelectorAll('.about-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.about-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.about-section').forEach(s => s.classList.remove('active'));
+        tab.classList.add('active');
+        const section = document.querySelector(`.about-section[data-tab="${tab.dataset.tab}"]`);
+        if (section) section.classList.add('active');
+      });
     });
   </script>
   <div class="drag-overlay" id="drag-overlay">📁 Drop files to attach images or add to Library</div>
