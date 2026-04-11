@@ -3,7 +3,7 @@ const ASSETS = [
   './',
   './index.html',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap',
-  'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
+  'https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js',
   'https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js',
   'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm/genai_wasm_internal.wasm',
   'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm/genai_wasm_internal.js'

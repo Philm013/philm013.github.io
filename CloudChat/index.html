@@ -16,7 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs" type="module"></script>
+
   <script>window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };</script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   
@@ -323,6 +323,10 @@
     .import-banner input[type="password"] { border: none; border-radius: 4px; padding: 6px 12px; font-size: 0.85rem; width: 180px; }
     .import-banner button { background: white; color: black; border: none; border-radius: 4px; padding: 6px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
     .import-banner .dismiss-btn { background: transparent; color: var(--ollama-stone); }
+
+    /* Drag & Drop Overlay */
+    .drag-overlay { display: none; position: fixed; inset: 0; z-index: 900; background: rgba(102,126,234,0.08); border: 3px dashed #667eea; align-items: center; justify-content: center; font-size: 1.1rem; color: #667eea; font-weight: 600; pointer-events: none; }
+    .drag-overlay.visible { display: flex; }
   </style>
 </head>
 <body>
@@ -569,6 +573,9 @@
           <label class="settings-label">Data &amp; Storage</label>
           <button class="btn-block" onclick="purgeCache()">Purge Model Cache</button>
           <button class="btn-block" id="share-btn" style="margin-top: 8px;">Share Conversation</button>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; margin-top: 8px;">
+            <input type="checkbox" id="auto-backup-toggle"> Auto-download backup on New Chat
+          </label>
           <button class="btn-block" id="reset-all-settings-btn" style="margin-top: 8px; color: #e53e3e;">Reset All Settings</button>
         </div>
 
@@ -624,6 +631,19 @@
     import * as pdfjsLibModule from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs';
     window.pdfjsLib = pdfjsLibModule;
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+
+    // ── WebGPU check ─────────────────────────────────────
+    const hasWebGPU = !!navigator.gpu;
+    if (!hasWebGPU) {
+      document.getElementById('chat-container').innerHTML = `
+        <div style="text-align:center;padding:60px 20px;color:var(--ollama-stone)">
+          <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
+          <h2 style="color:var(--ollama-near-black);margin-bottom:12px">WebGPU Not Available</h2>
+          <p style="max-width:400px;margin:0 auto;line-height:1.6">This app requires WebGPU to run the AI model in your browser. Please use Chrome 113+, Edge 113+, or a WebGPU-compatible browser on a device with a compatible GPU.</p>
+        </div>`;
+      document.getElementById('global-loader').classList.add('hidden');
+      throw new Error('WebGPU not available');
+    }
 
     // ── Configuration & Models ──────────────────────────────
     const REMOTE_MODEL = 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task';
@@ -1334,6 +1354,20 @@ self.addEventListener('message', async (e) => {
 
     function escapeHtml(s) {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function repairAndParseJSON(str) {
+      if (!str || typeof str !== 'string') return null;
+      let s = str.trim();
+      try { return JSON.parse(s); } catch { /* attempt repair */ }
+      // Remove trailing commas before } or ]
+      s = s.replace(/,\s*([}\]])/g, '$1');
+      // Replace single quotes with double quotes (carefully)
+      s = s.replace(/'/g, '"');
+      // Remove trailing garbage after last }
+      const lastBrace = s.lastIndexOf('}');
+      if (lastBrace >= 0) s = s.slice(0, lastBrace + 1);
+      try { return JSON.parse(s); } catch { return null; }
     }
 
     const markdownEngine = window.markdownit({
@@ -2236,7 +2270,24 @@ self.addEventListener('message', async (e) => {
           }
 
           // ── Tool call detection ────────────────────────────
-          const tc = full.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
+          // Try standard <tool_call>...</tool_call> format first
+          let tc = full.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
+
+          // Fallback 1: tool call inside thinking block
+          if (!tc) {
+            const thinkContent = full.match(/<\|channel>thought\n?([\s\S]*?)<channel\|>/)?.[1] || full.match(/<\|think\|>([\s\S]*?)<\|\/think\|>/)?.[1] || '';
+            if (thinkContent) {
+              tc = thinkContent.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
+            }
+          }
+
+          // Fallback 2: bare JSON object with "name" and "arguments" keys
+          if (!tc) {
+            const jsonMatch = full.match(/\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[\s\S]*?\}\s*\}/);
+            if (jsonMatch) {
+              tc = [null, jsonMatch[0]];
+            }
+          }
           if (!tc) {
             // No tool call in this response — the agent is done
             State.history.push({ role: 'ai', text: full });
@@ -2244,7 +2295,7 @@ self.addEventListener('message', async (e) => {
           }
 
           try {
-            const call = JSON.parse(tc[1]);
+            const call = repairAndParseJSON(tc[1]);
             const tool = TOOL_REGISTRY[call.name];
             if (!tool) {
               // Unknown tool name — save and stop rather than looping infinitely
@@ -2347,6 +2398,7 @@ self.addEventListener('message', async (e) => {
         State.webEnrichedMode = false;
         input.disabled = false;
         updateSendButtons();
+        saveToSession();
       }
     }
     window.handleSend = handleSend;
@@ -2427,6 +2479,11 @@ Rules:
         systemPrompt += '\n\nCRITICAL: The <tool_call> block MUST appear in your main response, NEVER inside your thinking/reasoning block. Think first, then output the tool call as your response.';
       }
 
+      // Activate Gemma 4 native thinking mode with the <|think|> token
+      if (State.showThinking && !isFollowUpIteration) {
+        systemPrompt = '<|think|>\n' + systemPrompt;
+      }
+
       // Inject document library summaries so the model knows what's available for RAG
       let docContext = '';
       try {
@@ -2439,7 +2496,7 @@ Rules:
         }
       } catch (e) { console.warn('Failed to load summaries for prompt', e); }
 
-      let p = `<start_of_turn>user\n${systemPrompt}${docContext}${additionalContext}<end_of_turn>\n`;
+      let p = `<start_of_turn>system\n${systemPrompt}${docContext}${additionalContext}<end_of_turn>\n`;
 
       // Append conversation history newest-to-oldest until the history budget is full
       const historyBudget = getSettingsValues().historyBudget;
@@ -2815,8 +2872,39 @@ Rules:
       State.history.forEach(m => renderMessage(m.text, m.role === 'model' || m.role === 'ai' ? 'ai' : 'user'));
     }
 
-    function newChat() { if (State.history.length) saveConversation(State.history); State.history = []; State.activeConversationId = null; document.getElementById('chat-container').innerHTML = ''; hidePanels(); }
+    function newChat() {
+      if (State.history.length) {
+        saveConversation(State.history);
+        if (localStorage.getItem('lm_auto_backup') === 'true') exportData();
+      }
+      State.history = [];
+      State.activeConversationId = null;
+      document.getElementById('chat-container').innerHTML = '';
+      try { sessionStorage.removeItem('cloudchat_session'); } catch { /* storage may be unavailable */ }
+      hidePanels();
+    }
     window.newChat = newChat;
+
+    function saveToSession() {
+      try { sessionStorage.setItem('cloudchat_session', JSON.stringify(State.history)); } catch { /* storage may be unavailable */ }
+    }
+
+    function restoreFromSession() {
+      try {
+        const saved = sessionStorage.getItem('cloudchat_session');
+        if (saved) {
+          const hist = JSON.parse(saved);
+          if (Array.isArray(hist) && hist.length > 0) {
+            State.history = hist;
+            renderRestoredMessages();
+            const welcomeMsg = document.getElementById('welcome-msg');
+            if (welcomeMsg) welcomeMsg.remove();
+            return true;
+          }
+        }
+      } catch { /* ignore parse/storage errors */ }
+      return false;
+    }
 
     // Memory
     async function refreshMemoryPanel() {
@@ -2889,13 +2977,59 @@ Rules:
     }
     window.clearMemories = clearMemories;
 
-    // Share
+    // Share – encrypted link support
+    function b64ToArr(b64) { const bin = atob(b64); const arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i); return arr; }
+    function arrToB64(arr) { return btoa(String.fromCharCode(...arr)); }
+    async function deriveKey(passphrase, salt) {
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+      return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    }
+    async function encryptPayload(json, passphrase) {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const key = await deriveKey(passphrase, salt);
+      const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(json));
+      return `#lme:${arrToB64(salt)}.${arrToB64(iv)}.${arrToB64(new Uint8Array(cipher))}`;
+    }
+    async function decryptPayload(encoded, pass) {
+      const [saltB64, ivB64, cipherB64] = encoded.split('.');
+      const key = await deriveKey(pass, b64ToArr(saltB64));
+      const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToArr(ivB64) }, key, b64ToArr(cipherB64));
+      return new TextDecoder().decode(plain);
+    }
+
+    function buildSharePayload() {
+      const msgs = State.history.map(m => ({ ...m }));
+      return JSON.stringify({ v: 1, history: msgs });
+    }
+
     document.getElementById('share-btn').onclick = async () => {
-      const payload = { v: 1, history: State.history };
-      const json = JSON.stringify(payload);
-      const hash = '#lm:' + btoa(unescape(encodeURIComponent(json)));
-      document.getElementById('share-url-input').value = window.location.origin + window.location.pathname + hash;
+      if (!State.history.length) { showToast('No conversation to share.'); return; }
+      document.getElementById('share-meta').textContent = `${State.history.length} messages`;
+      document.getElementById('share-url-input').value = '';
+      document.getElementById('share-copy-btn').disabled = true;
       document.getElementById('share-backdrop').classList.add('open');
+    };
+
+    document.getElementById('share-use-passphrase').onchange = e => {
+      document.getElementById('share-passphrase').style.display = e.target.checked ? '' : 'none';
+    };
+
+    document.getElementById('share-generate-btn').onclick = async () => {
+      const usePass = document.getElementById('share-use-passphrase').checked;
+      const passphrase = document.getElementById('share-passphrase').value;
+      if (usePass && !passphrase) { showToast('Enter a passphrase first.'); return; }
+      const json = buildSharePayload();
+      let hash;
+      if (usePass) {
+        try { hash = await encryptPayload(json, passphrase); }
+        catch (e) { showToast('Encryption failed: ' + e.message); return; }
+      } else {
+        hash = '#lm:' + btoa(unescape(encodeURIComponent(json)));
+      }
+      const url = window.location.origin + window.location.pathname + hash;
+      document.getElementById('share-url-input').value = url;
       document.getElementById('share-copy-btn').disabled = false;
     };
 
@@ -2903,6 +3037,43 @@ Rules:
       navigator.clipboard.writeText(document.getElementById('share-url-input').value);
       showToast('Link copied!');
     };
+
+    async function checkShareLink() {
+      const hash = window.location.hash;
+      if (!hash) return;
+      if (hash.startsWith('#lm:')) {
+        try {
+          const payload = JSON.parse(decodeURIComponent(escape(atob(hash.slice(4)))));
+          State.history = payload.history; renderRestoredMessages();
+          showToast('Loaded shared conversation');
+          window.location.hash = '';
+          const welcomeMsg = document.getElementById('welcome-msg');
+          if (welcomeMsg) welcomeMsg.remove();
+        } catch (e) { console.error('Share link failed', e); showToast('Failed to load shared conversation.'); }
+      } else if (hash.startsWith('#lme:')) {
+        const encoded = hash.slice(5);
+        document.getElementById('import-banner').classList.add('open');
+        document.getElementById('import-passphrase').style.display = '';
+        document.getElementById('import-banner-msg').textContent = 'Encrypted shared conversation detected';
+        const confirmBtn = document.getElementById('import-confirm-btn');
+        const newBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+        newBtn.addEventListener('click', async () => {
+          const pass = document.getElementById('import-passphrase').value;
+          if (!pass) { showToast('Enter the passphrase.'); return; }
+          try {
+            const json = await decryptPayload(encoded, pass);
+            const payload = JSON.parse(json);
+            State.history = payload.history; renderRestoredMessages();
+            document.getElementById('import-banner').classList.remove('open');
+            window.location.hash = '';
+            showToast('Conversation loaded.');
+            const welcomeMsg = document.getElementById('welcome-msg');
+            if (welcomeMsg) welcomeMsg.remove();
+          } catch { showToast('Decryption failed. Wrong passphrase?'); }
+        });
+      }
+    }
 
     // Files
     document.getElementById('global-file-input').onchange = e => {
@@ -2919,6 +3090,29 @@ Rules:
         })();
       }
     };
+
+    // Drag & Drop
+    let dragCounter = 0;
+    document.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; document.getElementById('drag-overlay').classList.add('visible'); });
+    document.addEventListener('dragleave', () => { dragCounter--; if (dragCounter <= 0) { dragCounter = 0; document.getElementById('drag-overlay').classList.remove('visible'); } });
+    document.addEventListener('dragover', (e) => e.preventDefault());
+    document.addEventListener('drop', (e) => {
+      e.preventDefault(); dragCounter = 0; document.getElementById('drag-overlay').classList.remove('visible');
+      const files = e.dataTransfer?.files;
+      if (!files || !files.length) return;
+      for (const file of files) {
+        (async () => {
+          // eslint-disable-next-line no-useless-assignment
+          let text = '';
+          try {
+            if (file.name.endsWith('.pdf')) text = await extractPDFText(file);
+            else if (file.name.endsWith('.docx')) text = await extractDOCXText(file);
+            else text = await file.text();
+            await ingestDocument(file.name, text);
+          } catch { showToast(`Failed to ingest ${file.name}`); }
+        })();
+      }
+    });
 
     // Settings toggles & persistence
     // ── System Prompt ──
@@ -2996,6 +3190,11 @@ Rules:
     const savedPexelsKey = localStorage.getItem('lm_pexels_key');
     if (savedPexelsKey) document.getElementById('pexels-api-key').value = savedPexelsKey;
     document.getElementById('pexels-api-key').oninput = e => localStorage.setItem('lm_pexels_key', e.target.value);
+
+    // ── Auto-backup Toggle ──
+    const autoBackupToggle = document.getElementById('auto-backup-toggle');
+    autoBackupToggle.checked = localStorage.getItem('lm_auto_backup') === 'true';
+    autoBackupToggle.onchange = e => localStorage.setItem('lm_auto_backup', e.target.checked);
 
     // ── Thinking Toggle ──
     const thinkingToggleEl = document.getElementById('thinking-toggle');
@@ -3146,21 +3345,14 @@ Rules:
 
     // Init
     window.onload = () => {
+      restoreFromSession();
       initGemma();
       ensureToolSkillDocsLoaded().then(() => refreshToolsPanel());
       refreshLibraryPanel();
       refreshHistoryPanel();
       refreshMemoryPanel();
       updateSendButtons();
-      const hash = window.location.hash;
-      if (hash.startsWith('#lm:')) {
-        try {
-          const payload = JSON.parse(decodeURIComponent(escape(atob(hash.slice(4)))));
-          State.history = payload.history; renderRestoredMessages();
-          showToast('Loaded shared conversation');
-          window.location.hash = '';
-        } catch (e) { console.error('Share link failed', e); }
-      }
+      checkShareLink();
     };
 
     document.getElementById('download-btn').onclick = () => {
@@ -3273,5 +3465,6 @@ Rules:
       }
     });
   </script>
+  <div class="drag-overlay" id="drag-overlay">📁 Drop files to add to Library</div>
 </body>
 </html>
