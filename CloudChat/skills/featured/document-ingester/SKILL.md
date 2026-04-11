@@ -27,13 +27,10 @@ This skill extracts text from uploaded documents and stores it in local memory, 
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following fields:
-  - fileName: String. **Required.** The name of the file (used as the source label).
-  - content: String. **Required.** The full text content of the document (pre-extracted by the app before calling this skill).
-  - chunkSize: Number. **Optional.** Target characters per chunk (default: 500).
-  - overlap: Number. **Optional.** Overlap characters between chunks (default: 50).
+Call the `document_ingester` tool with the following parameters:
+- `text`: String. **Required.** The full text content of the document (pre-extracted by the app before calling this skill).
+- `source`: String. **Optional.** The name of the file or source label.
+- `chunk_size`: Number. **Optional.** Target characters per chunk (default: 500).
 
 ### Rules
 - Before calling this skill, extract the document text using the app's built-in file reader.

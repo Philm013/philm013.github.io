@@ -14,8 +14,6 @@ description: Show an interactive map view for the given location, optionally sea
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-
-- data: A JSON string with the following fields
-  - location: The location to show on the map.
-  - search_query: (Optional) A search term for places to find at the location (e.g. "donut shops", "restaurants").
+Call the `interactive_map` tool with the following parameters:
+- `location`: String. **Required.** The location to show on the map.
+- `search_query`: String. **Optional.** A search term for places to find at the location (e.g. "donut shops", "restaurants").

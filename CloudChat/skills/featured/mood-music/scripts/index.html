@@ -71,7 +71,7 @@ limitations under the License.
           return JSON.stringify({
             webview: {
               // Point to webview.html and pass the parsed data via query parameters
-              url: `webview.html?url=${encodeURIComponent(audioUrl)}&duration=${duration}&genre=${encodeURIComponent(genre)}&title=${encodeURIComponent(songTitle)}`,
+              url: `skills/featured/mood-music/assets/webview.html?url=${encodeURIComponent(audioUrl)}&duration=${duration}&genre=${encodeURIComponent(genre)}&title=${encodeURIComponent(songTitle)}`,
             },
           });
         } catch (e) {

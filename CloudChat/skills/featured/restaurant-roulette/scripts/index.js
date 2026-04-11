@@ -90,7 +90,7 @@ window['ai_edge_gallery_get_result'] = async (dataStr, secret) => {
     const compressedData = btoa(unescape(encodeURIComponent(placeString)));
 
     // 3. Build the REAL local URL
-    const baseUrl = 'webview.html';
+    const baseUrl = 'skills/featured/restaurant-roulette/assets/webview.html';
     const fullUrl = `${baseUrl}?c=${encodeURIComponent(cuisine)}&l=${
         encodeURIComponent(location)}&data=${compressedData}&v=${Date.now()}`;
 

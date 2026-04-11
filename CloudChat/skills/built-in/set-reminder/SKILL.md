@@ -22,11 +22,9 @@ This skill schedules a browser notification reminder after a specified number of
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following fields:
-  - message: String. **Required.** The reminder text to display in the notification.
-  - delayMinutes: Number. **Required.** How many minutes from now until the notification fires.
+Call the `set_reminder` tool with the following parameters:
+- `message`: String. **Required.** The reminder text to display in the notification.
+- `delayMinutes`: Number. **Required.** How many minutes from now until the notification fires.
 
 ### Rules
 - Convert relative time expressions to minutes:

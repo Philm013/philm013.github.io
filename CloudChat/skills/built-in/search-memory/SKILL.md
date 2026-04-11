@@ -23,12 +23,8 @@ This skill searches through locally stored memories using keyword matching.
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following fields:
-  - query: String. **Required.** Keywords to search for in stored memories.
-  - limit: Number. **Optional.** Maximum number of results to return (default: 5, max: 20).
-  - category: String. **Optional.** Filter by category (e.g., `"preference"`, `"fact"`, `"event"`).
+Call the `search_memory` tool with the following parameter:
+- `query`: String. **Required.** Keywords to search for in stored memories.
 
 ### Rules
 - Extract the key search terms from the user's question and pass them as the query.
