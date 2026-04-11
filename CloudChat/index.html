@@ -1893,6 +1893,79 @@ self.addEventListener('message', async (e) => {
       try { return JSON.parse(s); } catch { return null; }
     }
 
+    /**
+     * Strip thinking/reasoning blocks from model output text.
+     * Handles both Gemma 4 (<|channel>thought...<channel|>) and
+     * DeepSeek/Qwen (<|think|>...<|/think|>) formats.
+     */
+    function stripThoughts(text) {
+      return text
+        .replace(/<\|channel>thought\n?[\s\S]*?<channel\|>/g, '')
+        .replace(/<\|think\|>[\s\S]*?<\|\/think\|>/g, '')
+        .trim();
+    }
+
+    // ── Gemma 4 Structured Format Helpers ────────────────────
+    // Gemma 4 uses <|"|> as a string delimiter inside structured data blocks
+    // (tool declarations, tool calls, tool responses). Numbers and booleans
+    // are bare values. Objects use key:value pairs inside {}.
+
+    /**
+     * Format a JS value into Gemma 4 structured data format.
+     * Strings are delimited with <|"|>, numbers/booleans are bare.
+     */
+    function formatGemmaValue(val) {
+      if (val === null || val === undefined) return 'null';
+      if (typeof val === 'string') return `<|"|>${val}<|"|>`;
+      if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+      if (Array.isArray(val)) return `[${val.map(formatGemmaValue).join(',')}]`;
+      if (typeof val === 'object') return formatGemmaObject(val);
+      return String(val);
+    }
+
+    /**
+     * Format a JS object into Gemma 4 structured data: {key:value,key:value}
+     */
+    function formatGemmaObject(obj) {
+      const pairs = Object.entries(obj).map(([k, v]) => `${k}:${formatGemmaValue(v)}`);
+      return `{${pairs.join(',')}}`;
+    }
+
+    /**
+     * Parse Gemma 4 structured data format into a JS object.
+     * Replaces <|"|> delimiters with quotes and quotes unquoted keys,
+     * then parses as JSON.
+     */
+    function parseGemmaStructuredData(text) {
+      if (!text || typeof text !== 'string') return null;
+      let s = text.trim();
+      // Replace <|"|> string delimiters with standard quotes
+      s = s.replace(/<\|"\|>/g, '"');
+      // Quote unquoted keys (word chars before a colon, after { or ,)
+      s = s.replace(/([{,])\s*([a-zA-Z_]\w*)\s*:/g, '$1"$2":');
+      try { return JSON.parse(s); } catch { /* fall through */ }
+      // Attempt repair: trailing commas, etc.
+      s = s.replace(/,\s*([}\]])/g, '$1');
+      const lastBrace = s.lastIndexOf('}');
+      if (lastBrace >= 0) s = s.slice(0, lastBrace + 1);
+      try { return JSON.parse(s); } catch { return null; }
+    }
+
+    /**
+     * Parse a Gemma 4 native tool call: <|tool_call>call:name{...}<tool_call|>
+     * Handles tools with no parameters (no braces or empty braces).
+     * Returns { name, arguments } or null if parsing fails.
+     */
+    function parseGemmaToolCall(text) {
+      if (!text) return null;
+      // Match with optional arguments block (tools may have no parameters)
+      const m = text.match(/<\|tool_call>call:([a-zA-Z_]\w*)\s*(\{[\s\S]*\})?\s*<tool_call\|>/);
+      if (!m) return null;
+      if (!m[2] || m[2] === '{}') return { name: m[1], arguments: {} };
+      const args = parseGemmaStructuredData(m[2]);
+      return args !== null ? { name: m[1], arguments: args } : { name: m[1], arguments: {} };
+    }
+
     const markdownEngine = window.markdownit({
       html: false,
       linkify: true,
@@ -2086,8 +2159,9 @@ self.addEventListener('message', async (e) => {
             }
           }
           State.history.push({ role: 'user', text: `I used the ${toolName} tool with these arguments: ${JSON.stringify(normalizedArgs)}` });
-          State.history.push({ role: 'ai', text: `<tool_call>\n${JSON.stringify({ name: toolName, arguments: normalizedArgs })}\n</tool_call>` });
-          State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: toolName, result: toolResponsePayload })}\n</tool_response>\nUse the tool result above to respond to the user.` });
+          const toolCallStr = `<|tool_call>call:${toolName}${formatGemmaObject(normalizedArgs)}<tool_call|>`;
+          const toolRespStr = `<|tool_response>response:${toolName}${formatGemmaObject(toolResponsePayload)}<tool_response|>`;
+          State.history.push({ role: 'ai', text: toolCallStr + toolRespStr, _isToolTurn: true });
           handleSend(true);
         } catch (e) {
           renderToolCallBlock(aiEl, toolName, args, { error: e.message });
@@ -2354,7 +2428,8 @@ self.addEventListener('message', async (e) => {
         const lastLt = main.lastIndexOf('<');
         if (lastLt >= 0) {
           const tail = main.slice(lastLt);
-          const partialTags = ['<|think|>', '<|channel>thought', '<tool_call>', '<tool_response>', '<start_of_turn>', '<end_of_turn>'];
+          // Gemma 4 native tokens + legacy fallback tokens (without |) for backward compatibility
+          const partialTags = ['<|think|>', '<|channel>thought', '<|tool_call>', '<|tool_response>', '<|turn>', '<turn|>', '<tool_call>', '<tool_response>'];
           if (partialTags.some(tag => tag.startsWith(tail) && tag !== tail)) {
             main = main.slice(0, lastLt).trim();
           }
@@ -2383,15 +2458,19 @@ self.addEventListener('message', async (e) => {
       }
 
       // Strip tool_call blocks — they are rendered separately by renderToolCallBlock()
+      // Handle both Gemma 4 native format and legacy XML format
+      main = main.replace(/<\|tool_call>[\s\S]*?<tool_call\|>/g, '').replace(/<\|tool_call>[\s\S]*/g, '').trim();
       main = main.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').replace(/<tool_call>[\s\S]*/g, '').trim();
 
       // Strip tool_response blocks — these are internal context fed back by the
       // agentic loop and should never be displayed to the user.
+      // Handle both Gemma 4 native format and legacy XML format
+      main = main.replace(/<\|tool_response>[\s\S]*?<tool_response\|>/g, '').replace(/<\|tool_response>[\s\S]*/g, '').trim();
       main = main.replace(/<tool_response>[\s\S]*?<\/tool_response>/g, '').replace(/<tool_response>[\s\S]*/g, '').trim();
 
-      // Strip Gemma turn markers that may leak into model output on follow-up iterations.
-      // Use a broad pattern to catch any <start_of_turn> tag regardless of the role text
-      // that follows (bare tags, typos, or roles beyond "model"/"user").
+      // Strip Gemma 4 turn markers that may leak into model output on follow-up iterations.
+      // Handle both Gemma 4 (<|turn>...<turn|>) and legacy (<start_of_turn>...<end_of_turn>) formats.
+      main = main.replace(/<\|turn>[^\n]*\n?/g, '').replace(/<turn\|>/g, '').trim();
       main = main.replace(/<start_of_turn>[^\n]*\n?/g, '').replace(/<end_of_turn>/g, '').trim();
       if (!main) return html || '<span style="color:var(--ollama-stone)">...</span>';
       html += DOMPurify.sanitize(markdownEngine.render(main));
@@ -2713,14 +2792,14 @@ self.addEventListener('message', async (e) => {
      *  1. Render the user message and add it to history.
      *  2. Optionally retrieve relevant RAG context from the vector store.
      *  3. Repeat up to MAX_TOOL_ITERATIONS times:
-     *     a. Build the full Gemma-format prompt (system + history + tools).
+     *     a. Build the full Gemma 4 format prompt (system + tools + history).
      *     b. Stream the model response token by token into the AI bubble.
      *     c. Post-stream: collapse any open thinking blocks.
-     *     d. If the response contains a <tool_call> block:
+     *     d. If the response contains a tool call (<|tool_call>call:name{...}<tool_call|>):
      *        - Parse the tool name and arguments.
      *        - Execute the tool via TOOL_REGISTRY.
      *        - Render the result as a collapsible tool-call block.
-     *        - Append both the assistant response and the tool result to history.
+     *        - Combine tool call + response in one model turn in history.
      *        - Loop for the next iteration so the model can use the result.
      *     e. If no tool call: save response to history and stop.
      *
@@ -2835,8 +2914,8 @@ self.addEventListener('message', async (e) => {
           let repetitionDetected = false;
           const iterShowThinking = State.showThinking && iter === 0;
           // Pass isFollowUpIteration=true on iter > 0 so buildPrompt omits the
-          // "CRITICAL: tool_call not in thinking block" note (the note only matters
-          // on the first pass when the model has a chain-of-thought prefix).
+          // CRITICAL tool placement note (the note only matters on the first pass
+          // when the model has a chain-of-thought prefix).
           const isFollowUpIteration = iter > 0;
           const prompt = await buildPrompt(ragContext, isFollowUpIteration);
 
@@ -2899,37 +2978,43 @@ self.addEventListener('message', async (e) => {
           }
 
           // ── Tool call detection ────────────────────────────
-          // Try standard <tool_call>...</tool_call> format first
-          let tc = full.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
+          // Priority 1: Gemma 4 native format <|tool_call>call:name{...}<tool_call|>
+          let call = parseGemmaToolCall(full);
 
-          // Fallback 1: tool call inside thinking block
-          if (!tc) {
+          // Priority 2: Gemma 4 native format inside thinking block
+          if (!call) {
             const thinkContent = full.match(/<\|channel>thought\n?([\s\S]*?)<channel\|>/)?.[1] || full.match(/<\|think\|>([\s\S]*?)<\|\/think\|>/)?.[1] || '';
             if (thinkContent) {
-              tc = thinkContent.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
+              call = parseGemmaToolCall(thinkContent);
             }
+          }
+
+          // Fallback 1: Legacy <tool_call>JSON</tool_call> format
+          if (!call) {
+            let tc = full.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
+            if (!tc) {
+              const thinkContent = full.match(/<\|channel>thought\n?([\s\S]*?)<channel\|>/)?.[1] || full.match(/<\|think\|>([\s\S]*?)<\|\/think\|>/)?.[1] || '';
+              if (thinkContent) {
+                tc = thinkContent.match(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/);
+              }
+            }
+            if (tc) call = repairAndParseJSON(tc[1]);
           }
 
           // Fallback 2: bare JSON object with "name" and "arguments" keys
-          if (!tc) {
+          if (!call) {
             const jsonMatch = full.match(/\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[\s\S]*?\}\s*\}/);
             if (jsonMatch) {
-              tc = [null, jsonMatch[0]];
+              call = repairAndParseJSON(jsonMatch[0]);
             }
           }
-          if (!tc) {
+          if (!call) {
             // No tool call in this response — the agent is done
             State.history.push({ role: 'ai', text: full });
             break;
           }
 
           try {
-            const call = repairAndParseJSON(tc[1]);
-            if (!call) {
-              // JSON repair failed — save response and stop
-              State.history.push({ role: 'ai', text: full });
-              break;
-            }
             const tool = TOOL_REGISTRY[call.name];
             if (!tool) {
               // Unknown tool name — save and stop rather than looping infinitely
@@ -2956,7 +3041,7 @@ self.addEventListener('message', async (e) => {
 
             // Strip pre-tool-call filler text from the visible bubble.
             // Models often emit speculative text like "Let me search for that..."
-            // before the <tool_call> tag. This text is inaccurate since the tool
+            // before the <|tool_call> tag. This text is inaccurate since the tool
             // hasn't run yet, so we clear the bubble and only keep thinking blocks.
             {
               const bubbles = aiEl.querySelectorAll('.ai-bubble');
@@ -3019,9 +3104,14 @@ self.addEventListener('message', async (e) => {
               };
             }
 
-            // Feed tool result back into history as a synthetic user turn
-            State.history.push({ role: 'ai', text: full });
-            State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: call.name, result: toolResponsePayload })}\n</tool_response>\nUse the tool result above to respond to the user.` });
+            // Feed tool call + response into history as a combined model turn
+            // (Gemma 4 format: tool_call and tool_response are part of the same model turn).
+            // Per the Gemma 4 spec, <|tool_response> acts as a stop sequence — the model
+            // emits it after the tool call to signal the application should execute the tool.
+            // Strip it so we can append the full response:name{...}<tool_response|> block.
+            const cleanFull = full.replace(/<\|tool_response>\s*$/, '');
+            const toolRespFormatted = `<|tool_response>response:${call.name}${formatGemmaObject(toolResponsePayload)}<tool_response|>`;
+            State.history.push({ role: 'ai', text: cleanFull + toolRespFormatted, _isToolTurn: true });
 
             // On the last iteration, force a final answer (matches LocalMind behavior)
             if (iter === maxIters - 1) {
@@ -3207,18 +3297,18 @@ self.addEventListener('message', async (e) => {
 
 
     /**
-     * Build the full Gemma-format prompt string for the next inference pass.
+     * Build the full Gemma 4 format prompt string for the next inference pass.
      *
-     * Structure (Gemma instruct format):
-     *   <start_of_turn>user
-     *   System instructions: {systemPrompt}
+     * Structure (Gemma 4 instruct format):
+     *   <|turn>system
+     *   {thinkToken}   ← <|think|> when thinking mode is on
+     *   {systemPrompt}
+     *   {toolDeclarations} ← <|tool>declaration:name{...}<tool|> for each tool
      *   {docContext}   ← document summaries from the library
      *   {ragContext}   ← vector-retrieved chunks for this query
-     *   Available tools: [{...}]
-     *   {thinkingNote} ← CRITICAL tool_call placement note (first pass only)
-     *   <end_of_turn>
+     *   <turn|>
      *   {conversationHistory}  ← last N turns, budget-capped at 12 000 chars
-     *   <start_of_turn>model
+     *   <|turn>model   ← (or model continues an unclosed tool turn)
      *
      * @param {string}  [additionalContext=""] - RAG or other context to inject.
      * @param {boolean} [isFollowUpIteration=false]
@@ -3234,14 +3324,13 @@ Rules:
 - When citing sources, mention where the information came from.
 - If you don't need tools, just answer directly.
 - Never fabricate tool results.
-- Always use the <tool_call> XML format provided below. Do not invent other formats.
 - You can translate text between 140+ languages directly — no tool needed for translation.
 - When returning images or media results, always include proper attribution and photographer credits.
 - NEVER call the same tool with the same arguments more than once. If you already received a tool result, use it to answer — do not call the tool again.
 - After a tool result is returned, summarize the findings for the user. Do not call additional tools unless the user asks a follow-up question.
 - When image or media search results are shown (search_media tool), they are already displayed visually in the chat UI. DO NOT list or re-describe each individual image. Simply acknowledge the results were found and displayed, then offer to help further.
-- When you see a <tool_response> block, it contains the result of a tool that was executed. This is NOT a user message — it is the output of a tool call. Read the result and use it to provide a helpful response to the user.
-- If the user directly invoked a tool (e.g. "I used the X tool"), the tool has already been executed and the result follows in a <tool_response> block. Acknowledge the result and summarize it for the user.`;
+- When you see a tool_response block, it contains the result of a tool that was executed. This is NOT a user message — it is the output of a tool call. Read the result and use it to provide a helpful response to the user.
+- If the user directly invoked a tool (e.g. "I used the X tool"), the tool has already been executed and the result follows in a tool_response block. Acknowledge the result and summarize it for the user.`;
 
     function getSettingsValues() {
       return {
@@ -3256,43 +3345,49 @@ Rules:
       await ensureToolSkillDocsLoaded();
       const userPrompt = document.getElementById('system-prompt').value.trim();
 
-      // Build structured tool definitions (LocalMind style)
+      // Build Gemma 4 native tool declarations using <|tool>declaration:name{...}<tool|>
       const webConfigured = isSearchConfigured();
       const mediaConfigured = isMediaConfigured();
-      const toolDefs = Object.entries(TOOL_REGISTRY)
+      const toolDeclarations = Object.entries(TOOL_REGISTRY)
         .filter(([name, t]) => {
           if (t.requiresWeb && name === 'web_search' && !webConfigured) return false;
           if (t.requiresWeb && name === 'search_media' && !mediaConfigured) return false;
           return true;
         })
-        .map(([name, t]) => ({
-          type: 'function',
-          function: {
-            name,
-            description: t.skillDescription || t.description,
-            parameters: t.parameters,
-          },
-        }));
+        .map(([name, t]) => {
+          const desc = t.skillDescription || t.description;
+          const decl = { description: desc };
+          if (t.parameters?.properties && Object.keys(t.parameters.properties).length) {
+            const params = {};
+            for (const [pName, pDef] of Object.entries(t.parameters.properties)) {
+              const param = { type: pDef.type };
+              if (pDef.description) param.description = pDef.description;
+              if (pDef.enum) param.enum = pDef.enum;
+              params[pName] = param;
+            }
+            decl.parameters = params;
+          }
+          if (t.parameters?.required?.length) decl.required = t.parameters.required;
+          return `<|tool>declaration:${name}${formatGemmaObject(decl)}<tool|>`;
+        })
+        .join('');
 
-      // Build the system prompt following LocalMind's structured approach
+      // Build the system prompt
       let systemPrompt = userPrompt || DEFAULT_SYSTEM_PROMPT;
 
-      systemPrompt += `\n\n<tools>\n${JSON.stringify(toolDefs, null, 2)}\n</tools>\n\nTo call a function, output EXACTLY this format (not inside thinking):\n<tool_call>\n{"name": "function_name", "arguments": {"arg1": "value1"}}\n</tool_call>`;
-
-      // On the first pass, remind the model that tool_call tags must live in the
-      // main response text, NOT inside a <|think|> reasoning block.
+      // On the first pass, remind the model that tool_call must be in the main
+      // response, NOT inside the thinking/reasoning channel.
       if (!isFollowUpIteration) {
-        systemPrompt += '\n\nCRITICAL: The <tool_call> block MUST appear in your main response, NEVER inside your thinking/reasoning block. Think first, then output the tool call as your response.';
+        systemPrompt += '\n\nCRITICAL: Tool calls MUST appear in your main response after the thought channel, NEVER inside your thinking block.';
       }
 
       // Activate Gemma 4 native thinking mode by prefixing the system content with
       // the <|think|> control token. This token is part of the Gemma 4 tokenizer
       // vocabulary and signals the model to produce a reasoning channel before
-      // responding. Excluded on follow-up iterations (tool-call continuations)
-      // because the model has already reasoned on the first pass and re-adding the
-      // token would waste context budget and can confuse the tool-response format.
-      if (State.showThinking && !isFollowUpIteration) {
-        systemPrompt = '<|think|>\n' + systemPrompt;
+      // responding. Thinking mode is a conversation-level setting so it is always
+      // included in the system turn when enabled.
+      if (State.showThinking) {
+        systemPrompt = '<|think|>' + systemPrompt;
       }
 
       // Inject document library summaries so the model knows what's available for RAG
@@ -3307,20 +3402,70 @@ Rules:
         }
       } catch (e) { console.warn('Failed to load summaries for prompt', e); }
 
-      let p = `<start_of_turn>system\n${systemPrompt}${docContext}${additionalContext}<end_of_turn>\n`;
+      // Gemma 4 system turn: <|turn>system\n{content}{toolDecls}<turn|>
+      let p = `<|turn>system\n${systemPrompt}${toolDeclarations}${docContext}${additionalContext}<turn|>\n`;
 
-      // Append conversation history newest-to-oldest until the history budget is full
+      // Append conversation history.
+      // Gemma 4 rules for thought management:
+      //  - Strip thoughts from regular (completed) model turns
+      //  - Preserve thoughts in tool turns (same model turn with tool_call + tool_response)
+      // Gemma 4 turn structure: consecutive model entries (tool turns followed by
+      // a final response) are merged into ONE <|turn>model\n...<turn|> block.
       const historyBudget = getSettingsValues().historyBudget;
-      let historyText = "";
-      const reversedHistory = [...State.history].reverse();
-      for (const m of reversedHistory) {
+
+      // Group consecutive model entries into single model turns.
+      // Only model entries are merged; user entries always form their own group
+      // (each user group has exactly one entry).
+      const groups = [];
+      for (const m of State.history) {
         const role = m.role === 'ai' || m.role === 'model' ? 'model' : 'user';
-        const entry = `<start_of_turn>${role}\n${m.text}<end_of_turn>\n`;
-        if ((historyText.length + entry.length) > historyBudget) break;
-        historyText = entry + historyText;
+        const prev = groups.length ? groups[groups.length - 1] : null;
+        if (role === 'model' && prev && prev.role === 'model') {
+          prev.entries.push(m);
+        } else {
+          groups.push({ role, entries: [m] });
+        }
       }
 
-      p += historyText + `<start_of_turn>model\n`;
+      // Build history text from groups (newest first for budget trimming)
+      let historyText = "";
+      const reversedGroups = [...groups].reverse();
+      let newestGroupIsOpenTool = false;
+      for (let gi = 0; gi < reversedGroups.length; gi++) {
+        const group = reversedGroups[gi];
+        if (group.role === 'model') {
+          let combinedText = '';
+          let hasNonToolEntry = false;
+          for (const m of group.entries) {
+            let text = m.text;
+            if (!m._isToolTurn) {
+              hasNonToolEntry = true;
+              // Strip thoughts from regular model entries
+              text = stripThoughts(text);
+            }
+            combinedText += text;
+          }
+          // A model group with only tool turns is "open" (model needs to continue)
+          const turnEnd = hasNonToolEntry ? '<turn|>\n' : '';
+          const entry = `<|turn>model\n${combinedText}${turnEnd}`;
+          if ((historyText.length + entry.length) > historyBudget) break;
+          historyText = entry + historyText;
+          if (gi === 0) newestGroupIsOpenTool = !hasNonToolEntry;
+        } else {
+          const m = group.entries[0];
+          const entry = `<|turn>user\n${m.text}<turn|>\n`;
+          if ((historyText.length + entry.length) > historyBudget) break;
+          historyText = entry + historyText;
+        }
+      }
+
+      // If the newest model group is an open tool turn, the model continues that
+      // turn (no new <|turn>model). Otherwise, start a new model turn.
+      if (newestGroupIsOpenTool) {
+        p += historyText;
+      } else {
+        p += historyText + `<|turn>model\n`;
+      }
       return p;
     }
 
@@ -3744,11 +3889,13 @@ Rules:
         const isAi = m.role === 'model' || m.role === 'ai';
         // Skip internal entries that are injected as user-role messages in history
         // (tool responses, system messages, synthetic continuations)
-        const INTERNAL_PREFIXES = ['<tool_response>', '[System:', 'I used the ', 'I clicked '];
+        const INTERNAL_PREFIXES = ['<|tool_response>', '<tool_response>', '[System:', 'I used the ', 'I clicked '];
         const isInternal = !isAi && INTERNAL_PREFIXES.some(p => m.text.startsWith(p));
         if (isInternal) return;
-        // Skip AI entries that are purely synthetic tool_call blocks (e.g. from
-        // direct tool invocations) — they have no visible content to display.
+        // Skip AI entries that are purely tool turn blocks (tool_call + tool_response
+        // combined in one model turn) — they have no visible content to display.
+        if (isAi && m._isToolTurn) return;
+        // Legacy: skip AI entries that are purely synthetic tool_call blocks
         if (isAi && /^\s*<tool_call>[\s\S]*<\/tool_call>\s*$/.test(m.text)) return;
 
         const role = isAi ? 'ai' : 'user';
