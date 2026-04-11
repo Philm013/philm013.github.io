@@ -9,10 +9,6 @@ metadata:
 
 A playable, horizontally-scrolling virtual piano keyboard that uses web audio. 
 
-## Files
-- `index.html`: The local entry point that loads the script.
-- `index.js`: Returns the webview URL pointing to the GitHub-hosted UI.
-
 ## Prompts / Triggers
 - "Open virtual piano"
 - "Play the piano"
@@ -21,4 +17,5 @@ A playable, horizontally-scrolling virtual piano keyboard that uses web audio.
 
 ## Instructions
 
-Call the `run_js` tool
+Call the `virtual_piano` tool with the following parameter:
+- `note`: String. **Optional.** A note to play (e.g., "C4", "A3").

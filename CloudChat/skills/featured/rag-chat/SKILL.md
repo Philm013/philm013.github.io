@@ -22,12 +22,9 @@ This skill retrieves relevant document chunks from local memory and uses them to
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following fields:
-  - query: String. **Required.** The user's question or search terms.
-  - limit: Number. **Optional.** Number of chunks to retrieve (default: 5, max: 15).
-  - source: String. **Optional.** Restrict search to a specific document source name.
+Call the `rag_chat` tool with the following parameters:
+- `query`: String. **Required.** The user's question or search terms.
+- `top_k`: Number. **Optional.** Number of chunks to retrieve (default: 5).
 
 ### Rules
 - After receiving the retrieved chunks, use them as context to answer the user's question.

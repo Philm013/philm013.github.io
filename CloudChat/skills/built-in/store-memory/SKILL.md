@@ -22,18 +22,16 @@ This skill saves information to persistent local storage so it can be retrieved 
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following fields:
-  - content: String. **Required.** The text to store (the fact, preference, or note).
-  - category: String. **Optional.** Category tag for the memory. Use one of:
-    - `"fact"` — general facts about the world or topics
-    - `"preference"` — user preferences and settings
-    - `"person"` — information about a person
-    - `"event"` — calendar events, birthdays, deadlines
-    - `"note"` — general notes and reminders
-    - `"document"` — content extracted from documents
-    - Defaults to `"fact"` if not provided.
+Call the `store_memory` tool with the following parameters:
+- `content`: String. **Required.** The text to store (the fact, preference, or note).
+- `category`: String. **Optional.** Category tag for the memory. Use one of:
+  - `"fact"` — general facts about the world or topics
+  - `"preference"` — user preferences and settings
+  - `"person"` — information about a person
+  - `"event"` — calendar events, birthdays, deadlines
+  - `"note"` — general notes and reminders
+  - `"document"` — content extracted from documents
+  - Defaults to `"fact"` if not provided.
 
 ### Rules
 - Extract the exact information to store from the user's message — do not store the whole message verbatim if it contains conversational filler.

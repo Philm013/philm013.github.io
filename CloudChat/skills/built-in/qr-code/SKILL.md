@@ -3,9 +3,10 @@ name: qr-code
 description: Generates a QR code for the given url.
 ---
 
-# Instructions
+# QR Code Generator
 
-You MUST use the `run_js` tool with the following exact parameters:
+## Instructions
 
-- data: A JSON string with the following fields:
-  - url: String - the url to create QR code for
+Call the `generate_qr_code` tool with the following parameters:
+- `text`: String. **Required.** The text or URL to encode as a QR code.
+- `size`: Number. **Optional.** The size of the QR code in pixels.

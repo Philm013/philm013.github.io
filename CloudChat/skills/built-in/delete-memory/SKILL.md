@@ -23,12 +23,8 @@ This skill removes stored memories that match the given search query.
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following fields:
-  - query: String. **Required.** Keywords identifying which memories to delete. Pass `"*"` to wipe ALL memories.
-  - category: String. **Optional.** Restrict deletion to a specific category.
-  - confirm: Boolean. **Optional.** Must be `true` to actually delete (safety check). Defaults to `true`.
+Call the `delete_memory` tool with the following parameter:
+- `query`: String. **Required.** Keywords identifying which memories to delete. Pass `"*"` to wipe ALL memories.
 
 ### Rules
 - Before deleting, identify from the user's message what they want removed.

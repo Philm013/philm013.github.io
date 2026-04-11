@@ -24,16 +24,12 @@ This skill searches for images and videos using the Unsplash and Pexels APIs.
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following fields:
-  - query: String. **Required.** The search query describing the desired images or videos.
-  - provider: String. **Optional.** One of `"unsplash"` or `"pexels"`. Defaults to whichever has a configured API key.
-  - type: String. **Optional.** One of `"image"` or `"video"`. Defaults to `"image"`. Note: Unsplash only supports images. Video searches automatically use Pexels.
-  - count: Number. **Optional.** Number of results to return (1-10). Defaults to 4.
-  - orientation: String. **Optional.** One of `"landscape"`, `"portrait"`, or `"squarish"`. Defaults to unfiltered.
-
-The secret passed to this skill is a JSON string with `unsplashKey` and/or `pexelsKey` fields.
+Call the `search_media` tool with the following parameters:
+- `query`: String. **Required.** The search query describing the desired images or videos.
+- `type`: String. **Optional.** One of `"image"` or `"video"`. Defaults to `"image"`. Note: Unsplash only supports images. Video searches automatically use Pexels.
+- `provider`: String. **Optional.** One of `"unsplash"` or `"pexels"`. Defaults to whichever has a configured API key.
+- `count`: Number. **Optional.** Number of results to return (1-10). Defaults to 4.
+- `orientation`: String. **Optional.** One of `"landscape"`, `"portrait"`, or `"squarish"`. Defaults to unfiltered.
 
 ### Rules
 - Formulate a concise, descriptive query — use specific keywords for better results.

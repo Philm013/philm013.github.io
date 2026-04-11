@@ -22,10 +22,8 @@ This skill retrieves and extracts the readable text from a web page URL.
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- script name: `index.html`
-- data: A JSON string with the following fields:
-  - url: String. **Required.** The full URL to fetch (must start with `https://` or `http://`).
+Call the `fetch_page` tool with the following parameter:
+- `url`: String. **Required.** The full URL to fetch (must start with `https://` or `http://`).
 
 ### Rules
 - Only pass URLs that the user explicitly provides — never fabricate URLs.

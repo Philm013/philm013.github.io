@@ -20,11 +20,8 @@ This skill searches for up to 10 restaurants matching a specific cuisine and loc
 
 ## Instructions
 
-Call the `run_js` tool with the following exact parameters:
-- data: A JSON string with the following fields
-  - location: the target city or location (e.g., "San Jose", "Sunnyvale", "San Francisco").
-  - cuisine: the style of food or cuisine desired (e.g., "Mexican", "Italian", "Indian", "Sushi").
-
-DO NOT use any other tool, DO NOT call `run_intent`.
+Call the `restaurant_roulette` tool with the following parameters:
+- `location`: String. **Required.** The target city or location (e.g., "San Jose", "Sunnyvale", "San Francisco").
+- `cuisine`: String. **Optional.** The style of food or cuisine desired (e.g., "Mexican", "Italian", "Indian", "Sushi").
 
 IMPORTANT: When the wheel is generated, DO NOT pick a winner for the user or make up a restaurant. Simply return the requested webview and tell the user to tap the preview card to spin the wheel themselves.
