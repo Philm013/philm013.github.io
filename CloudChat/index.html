@@ -180,6 +180,33 @@
     .media-card-info { padding: 6px 8px; font-size: 0.72rem; color: var(--ollama-stone); }
     .media-card-info a { color: var(--ollama-stone); text-decoration: underline; }
 
+    /* Tool argument panel — bottom sheet on mobile, centered modal on desktop */
+    .tool-arg-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 1500; display: none; align-items: flex-end; justify-content: center; }
+    .tool-arg-overlay.open { display: flex; }
+    .tool-arg-panel { background: var(--ollama-white); width: 100%; max-height: 80vh; border-radius: 16px 16px 0 0; padding: 20px 16px 24px; overflow-y: auto; box-shadow: 0 -4px 24px rgba(0,0,0,0.15); animation: slideUp 0.25s ease-out; }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @media (min-width: 640px) {
+      .tool-arg-overlay { align-items: center; }
+      .tool-arg-panel { max-width: 480px; border-radius: 16px; animation: fadeInScale 0.2s ease-out; }
+      @keyframes fadeInScale { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    }
+    .tool-arg-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .tool-arg-title { font-size: 1rem; font-weight: 700; color: var(--ollama-near-black); }
+    .tool-arg-desc { font-size: 0.78rem; color: var(--ollama-stone); margin-bottom: 16px; line-height: 1.4; }
+    .tool-arg-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--ollama-stone); padding: 4px; }
+    .tool-arg-field { margin-bottom: 14px; }
+    .tool-arg-field label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--ollama-mid-gray); margin-bottom: 4px; }
+    .tool-arg-field label .required-star { color: #ef4444; margin-left: 2px; }
+    .tool-arg-field .field-hint { font-size: 0.7rem; color: var(--ollama-stone); margin-bottom: 4px; }
+    .tool-arg-field input, .tool-arg-field select { width: 100%; padding: 10px 12px; border: 1px solid var(--ollama-border); border-radius: 8px; font-size: 0.88rem; background: var(--ollama-snow); box-sizing: border-box; }
+    .tool-arg-field input:focus, .tool-arg-field select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .tool-arg-actions { display: flex; gap: 10px; margin-top: 18px; }
+    .tool-arg-actions button { flex: 1; padding: 12px; border-radius: 10px; font-size: 0.88rem; font-weight: 600; cursor: pointer; border: none; transition: background 0.15s; }
+    .tool-arg-cancel { background: var(--ollama-light-gray); color: var(--ollama-mid-gray); }
+    .tool-arg-cancel:hover { background: var(--ollama-border); }
+    .tool-arg-run { background: var(--ollama-black); color: #fff; }
+    .tool-arg-run:hover { background: #333; }
+
     /* Progress Bar */
     .progress-bar { width: 100%; height: 8px; background: var(--ollama-light-gray); border-radius: 4px; overflow: hidden; margin: 20px 0; }
     #download-fill { height: 100%; background: var(--ollama-black); width: 0%; transition: width 0.3s; }
@@ -379,6 +406,22 @@
         <button class="nav-item" onclick="showPanel('settings')"><span class="nav-icon">⚙️</span>Set</button>
       </nav>
     </footer>
+  </div>
+
+  <!-- Tool Argument Panel/Modal -->
+  <div id="tool-arg-overlay" class="tool-arg-overlay" role="dialog" aria-modal="true" aria-labelledby="tool-arg-title">
+    <div class="tool-arg-panel">
+      <div class="tool-arg-header">
+        <span class="tool-arg-title" id="tool-arg-title"></span>
+        <button class="tool-arg-close" id="tool-arg-close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="tool-arg-desc" id="tool-arg-desc"></div>
+      <div id="tool-arg-fields"></div>
+      <div class="tool-arg-actions">
+        <button class="tool-arg-cancel" id="tool-arg-cancel-btn">Cancel</button>
+        <button class="tool-arg-run" id="tool-arg-run-btn">▶ Run Tool</button>
+      </div>
+    </div>
   </div>
 
   <!-- Panels -->
@@ -1364,11 +1407,151 @@ self.addEventListener('message', async (e) => {
     }
 
     function insertToolCallTemplate(name) {
-      const input = document.getElementById('chat-input');
-      const template = toToolArgumentTemplate(name);
-      const needsNewline = input.value.length > 0 && !input.value.endsWith('\n');
-      insertTextAtCursor(`${needsNewline ? '\n' : ''}${template}`);
       hideInputMenu();
+      openToolArgPanel(name);
+    }
+
+    /**
+     * Open the tool argument panel/modal for the given tool name.
+     * Dynamically creates input fields for each tool parameter.
+     * On "Run Tool", executes the tool directly and renders the result.
+     */
+    function openToolArgPanel(toolName) {
+      const tool = TOOL_REGISTRY[toolName];
+      if (!tool) return;
+      const overlay = document.getElementById('tool-arg-overlay');
+      const titleEl = document.getElementById('tool-arg-title');
+      const descEl = document.getElementById('tool-arg-desc');
+      const fieldsEl = document.getElementById('tool-arg-fields');
+      const runBtn = document.getElementById('tool-arg-run-btn');
+
+      titleEl.textContent = `🔧 ${toolName}`;
+      descEl.textContent = tool.skillDescription || tool.description || '';
+      fieldsEl.innerHTML = '';
+
+      const props = tool.parameters?.properties || {};
+      const required = tool.parameters?.required || [];
+
+      // Build an input field for each parameter
+      Object.entries(props).forEach(([key, schema]) => {
+        const fieldDiv = document.createElement('div');
+        fieldDiv.className = 'tool-arg-field';
+
+        const label = document.createElement('label');
+        label.setAttribute('for', `tool-arg-${key}`);
+        label.textContent = key;
+        if (required.includes(key)) {
+          const star = document.createElement('span');
+          star.className = 'required-star';
+          star.textContent = ' *';
+          label.appendChild(star);
+        }
+        fieldDiv.appendChild(label);
+
+        if (schema.description) {
+          const hint = document.createElement('div');
+          hint.className = 'field-hint';
+          hint.textContent = schema.description;
+          fieldDiv.appendChild(hint);
+        }
+
+        let input;
+        if (schema.enum && schema.enum.length > 0) {
+          input = document.createElement('select');
+          // Add an empty default option for optional fields
+          if (!required.includes(key)) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '— default —';
+            input.appendChild(opt);
+          }
+          schema.enum.forEach(val => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = val;
+            input.appendChild(opt);
+          });
+        } else {
+          input = document.createElement('input');
+          input.type = schema.type === 'number' ? 'number' : 'text';
+          input.placeholder = schema.description ? schema.description.slice(0, 60) : key;
+        }
+        input.id = `tool-arg-${key}`;
+        input.dataset.paramKey = key;
+        input.dataset.paramType = schema.type || 'string';
+        if (required.includes(key)) input.required = true;
+        fieldDiv.appendChild(input);
+
+        fieldsEl.appendChild(fieldDiv);
+      });
+
+      // If the tool has no parameters, show a hint
+      if (Object.keys(props).length === 0) {
+        const hint = document.createElement('p');
+        hint.style.cssText = 'font-size:0.82rem;color:var(--ollama-stone);text-align:center;padding:12px 0;';
+        hint.textContent = 'This tool takes no parameters.';
+        fieldsEl.appendChild(hint);
+      }
+
+      // Wire up run button (replace handler to avoid stacking)
+      const newRunBtn = runBtn.cloneNode(true);
+      runBtn.parentNode.replaceChild(newRunBtn, runBtn);
+      newRunBtn.addEventListener('click', async () => {
+        // Collect argument values
+        const args = {};
+        fieldsEl.querySelectorAll('[data-param-key]').forEach(el => {
+          const key = el.dataset.paramKey;
+          const type = el.dataset.paramType;
+          let val = el.value;
+          if (type === 'number' && val !== '') val = Number(val);
+          if (val !== '' && val !== undefined) args[key] = val;
+        });
+
+        // Validate required fields
+        const missing = required.filter(k => args[k] == null || (typeof args[k] === 'string' && !args[k].trim()));
+        if (missing.length) {
+          showToast(`Please fill in: ${missing.join(', ')}`);
+          return;
+        }
+
+        closeToolArgPanel();
+
+        // Execute the tool directly
+        if (State.isGenerating) { showToast('Please wait for the current response to finish.'); return; }
+
+        const aiEl = renderMessage('', 'ai');
+        try {
+          const normalizedArgs = normalizeToolArguments(toolName, args);
+          const res = await tool.execute(normalizedArgs);
+          renderToolCallBlock(aiEl, toolName, normalizedArgs, res);
+
+          // Feed the result to the model so it can respond naturally
+          let toolResponsePayload = res;
+          if (res && typeof res === 'object' && res.webview) {
+            const loc = normalizedArgs.location || normalizedArgs.query || 'the requested location';
+            const search = normalizedArgs.search_query || '';
+            toolResponsePayload = { result: search ? `Map displayed for "${search}" near "${loc}".` : `Map displayed for "${loc}".` };
+          }
+          State.history.push({ role: 'user', text: `I used the ${toolName} tool with these arguments: ${JSON.stringify(normalizedArgs)}` });
+          State.history.push({ role: 'user', text: `<tool_response>\n${JSON.stringify({ name: toolName, result: toolResponsePayload })}\n</tool_response>` });
+          handleSend(true);
+        } catch (e) {
+          renderToolCallBlock(aiEl, toolName, args, { error: e.message });
+        }
+      });
+
+      overlay.classList.add('open');
+      // Focus the first input after the slide-up / fade-in animation completes (~250ms).
+      // Guard against the panel being closed before the timeout fires.
+      setTimeout(() => {
+        if (!overlay.classList.contains('open')) return;
+        const first = fieldsEl.querySelector('input, select');
+        if (first) first.focus();
+      }, 100);
+    }
+
+    function closeToolArgPanel() {
+      document.getElementById('tool-arg-overlay').classList.remove('open');
     }
 
     async function buildMentionContextFromText(messageText) {
@@ -1617,8 +1800,8 @@ self.addEventListener('message', async (e) => {
         const lastLt = main.lastIndexOf('<');
         if (lastLt >= 0) {
           const tail = main.slice(lastLt);
-          const openers = ['<|think|>', '<|channel>thought', '<tool_call>', '<tool_response>'];
-          if (openers.some(tag => tag.startsWith(tail) && tag !== tail)) {
+          const partialTags = ['<|think|>', '<|channel>thought', '<tool_call>', '<tool_response>', '<start_of_turn>', '<end_of_turn>'];
+          if (partialTags.some(tag => tag.startsWith(tail) && tag !== tail)) {
             main = main.slice(0, lastLt).trim();
           }
         }
@@ -1652,8 +1835,10 @@ self.addEventListener('message', async (e) => {
       // agentic loop and should never be displayed to the user.
       main = main.replace(/<tool_response>[\s\S]*?<\/tool_response>/g, '').replace(/<tool_response>[\s\S]*/g, '').trim();
 
-      // Strip Gemma turn markers that may leak into model output on follow-up iterations
-      main = main.replace(/<start_of_turn>(?:model|user)\n?/g, '').replace(/<end_of_turn>/g, '').trim();
+      // Strip Gemma turn markers that may leak into model output on follow-up iterations.
+      // Use a broad pattern to catch any <start_of_turn> tag regardless of the role text
+      // that follows (bare tags, typos, or roles beyond "model"/"user").
+      main = main.replace(/<start_of_turn>[^\n]*\n?/g, '').replace(/<end_of_turn>/g, '').trim();
       if (!main) return html || '<span style="color:var(--ollama-stone)">...</span>';
       html += DOMPurify.sanitize(markdownEngine.render(main));
       return html;
@@ -2350,17 +2535,33 @@ Rules:
           urlText.textContent = item.url || '';
           card.appendChild(urlText);
 
-          // "Fetch page" button — asks the AI to call fetch_page on this URL
+          // "Fetch page" button — directly fetches the page and summarises it
           if (item.url && TOOL_REGISTRY.fetch_page) {
             const fetchBtn = document.createElement('button');
             fetchBtn.className = 'web-result-fetch-btn';
             fetchBtn.textContent = '📄 Fetch & Read';
-            fetchBtn.title = 'Ask the AI to fetch and read this page';
-            fetchBtn.addEventListener('click', () => {
-              const input = document.getElementById('chat-input');
-              if (!input) return;
-              input.value = `Please fetch and summarize this page: ${item.url}`;
-              handleSend();
+            fetchBtn.title = 'Fetch and read this page';
+            fetchBtn.addEventListener('click', async () => {
+              if (State.isGenerating) { showToast('Please wait for the current response to finish.'); return; }
+              fetchBtn.disabled = true;
+              fetchBtn.textContent = '⏳ Fetching…';
+              try {
+                const fetchRes = await TOOL_REGISTRY.fetch_page.execute({ url: item.url });
+                // Render fetched content as a new tool-call block in a fresh AI message
+                const aiEl = renderMessage('', 'ai');
+                renderToolCallBlock(aiEl, 'fetch_page', { url: item.url }, fetchRes);
+                // Feed content to model for summarization
+                const contentSnippet = (fetchRes && fetchRes.content) ? fetchRes.content.slice(0, 2000) : '';
+                if (contentSnippet) {
+                  State.history.push({ role: 'user', text: `I clicked "Fetch & Read" on this search result. Here is the page content:\n\nURL: ${item.url}\nContent: ${contentSnippet}\n\nPlease summarize this page.` });
+                  handleSend(true);
+                }
+              } catch (e) {
+                showToast('Fetch failed: ' + e.message);
+              } finally {
+                fetchBtn.disabled = false;
+                fetchBtn.textContent = '📄 Fetch & Read';
+              }
             });
             card.appendChild(fetchBtn);
           }
@@ -2368,6 +2569,59 @@ Rules:
           cardsContainer.appendChild(card);
         }
         result.appendChild(cardsContainer);
+      } else if (name === 'search_media' && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
+        // ── Media search results: render image/video grid inline ──
+        const grid = document.createElement('div');
+        grid.className = 'media-grid';
+        for (const item of res.results) {
+          const card = document.createElement('div');
+          card.className = 'media-card';
+
+          if (item.type === 'video' && item.thumbnail) {
+            const video = document.createElement('video');
+            video.controls = true;
+            video.preload = 'metadata';
+            video.poster = item.thumbnail;
+            if (item.url) {
+              const source = document.createElement('source');
+              source.src = item.url;
+              source.type = 'video/mp4';
+              video.appendChild(source);
+            }
+            card.appendChild(video);
+          } else if (item.url || item.thumbnail) {
+            const img = document.createElement('img');
+            img.src = item.thumbnail || item.url;
+            img.alt = item.description || 'Image result';
+            img.loading = 'lazy';
+            img.style.cursor = 'pointer';
+            img.addEventListener('click', () => {
+              window.open(item.link || item.url, '_blank', 'noopener,noreferrer');
+            });
+            card.appendChild(img);
+          }
+
+          const info = document.createElement('div');
+          info.className = 'media-card-info';
+          if (item.description) {
+            const desc = document.createElement('span');
+            desc.textContent = item.description;
+            desc.style.cssText = 'display:block;font-size:0.72rem;margin-bottom:2px;color:var(--ollama-mid-gray)';
+            info.appendChild(desc);
+          }
+          const photoLink = document.createElement('a');
+          photoLink.href = item.photographerUrl || item.link || '#';
+          photoLink.target = '_blank';
+          photoLink.rel = 'noopener noreferrer';
+          photoLink.textContent = item.photographer || 'Unknown';
+          const providerText = document.createTextNode(` via ${item.provider || 'unknown'}`);
+          info.appendChild(photoLink);
+          info.appendChild(providerText);
+          card.appendChild(info);
+
+          grid.appendChild(card);
+        }
+        result.appendChild(grid);
       } else {
         const pre = document.createElement('pre');
         pre.textContent = resultStr; // textContent: no XSS risk, no HTML parsing
@@ -2419,8 +2673,8 @@ Rules:
       block.appendChild(result);
       el.appendChild(block);
 
-      // Auto-expand web search results so interactive cards are immediately visible
-      if (name === 'web_search' && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
+      // Auto-expand web search and media results so interactive content is immediately visible
+      if ((name === 'web_search' || name === 'search_media') && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
         result.classList.add('open');
         const arrow = toggle.querySelector('span');
         if (arrow) arrow.innerHTML = '&#9660;';
@@ -2446,54 +2700,6 @@ Rules:
         } catch (_e) { /* invalid URL — skip iframe embed */ }
       }
 
-      // ── Render media results (images/videos) inline ──────────
-      if (name === 'search_media' && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
-        const grid = document.createElement('div');
-        grid.className = 'media-grid';
-        for (const item of res.results) {
-          const card = document.createElement('div');
-          card.className = 'media-card';
-
-          if (item.type === 'video' && item.thumbnail) {
-            const video = document.createElement('video');
-            video.controls = true;
-            video.preload = 'metadata';
-            video.poster = item.thumbnail;
-            if (item.url) {
-              const source = document.createElement('source');
-              source.src = item.url;
-              source.type = 'video/mp4';
-              video.appendChild(source);
-            }
-            card.appendChild(video);
-          } else if (item.url || item.thumbnail) {
-            const img = document.createElement('img');
-            img.src = item.thumbnail || item.url;
-            img.alt = item.description || 'Image result';
-            img.loading = 'lazy';
-            img.style.cursor = 'pointer';
-            img.addEventListener('click', () => {
-              window.open(item.link || item.url, '_blank', 'noopener,noreferrer');
-            });
-            card.appendChild(img);
-          }
-
-          const info = document.createElement('div');
-          info.className = 'media-card-info';
-          const photoLink = document.createElement('a');
-          photoLink.href = item.photographerUrl || item.link || '#';
-          photoLink.target = '_blank';
-          photoLink.rel = 'noopener noreferrer';
-          photoLink.textContent = item.photographer || 'Unknown';
-          const providerText = document.createTextNode(` via ${item.provider || 'unknown'}`);
-          info.appendChild(photoLink);
-          info.appendChild(providerText);
-          card.appendChild(info);
-
-          grid.appendChild(card);
-        }
-        el.appendChild(grid);
-      }
     }
 
     // ── Panels & Controls ────────────────────────────────────
@@ -2930,6 +3136,13 @@ Rules:
 
     function dismissImport() { document.getElementById('import-banner').classList.remove('open'); }
     window.dismissImport = dismissImport;
+
+    // Tool Argument Panel close handlers
+    document.getElementById('tool-arg-close-btn').addEventListener('click', closeToolArgPanel);
+    document.getElementById('tool-arg-cancel-btn').addEventListener('click', closeToolArgPanel);
+    document.getElementById('tool-arg-overlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeToolArgPanel();
+    });
 
     // Init
     window.onload = () => {
