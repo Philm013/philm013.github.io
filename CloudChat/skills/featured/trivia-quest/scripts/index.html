@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body>
+<script>
+window['ai_edge_gallery_get_result'] = async (dataStr) => {
+  try {
+    const params = JSON.parse(dataStr);
+    const category = params.category ? `&category=${parseInt(params.category)}` : '';
+    const difficulty = ['easy', 'medium', 'hard'].includes(String(params.difficulty || '').toLowerCase())
+      ? `&difficulty=${params.difficulty.toLowerCase()}` : '';
+
+    const url = `https://opentdb.com/api.php?amount=1&type=multiple${category}${difficulty}&encode=url3986`;
+    // url3986 is RFC 3986 percent-encoding, which avoids issues with special chars in question text
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('Open Trivia DB failed: ' + res.status);
+    const data = await res.json();
+
+    if (data.response_code !== 0 || !data.results || !data.results.length) {
+      return JSON.stringify({ error: 'No trivia question available for these parameters. Try different settings.' });
+    }
+
+    const q = data.results[0];
+    const decode = (s) => decodeURIComponent(s);
+
+    const allAnswers = [
+      ...q.incorrect_answers.map(decode),
+      decode(q.correct_answer)
+    ].sort(() => Math.random() - 0.5);
+
+    const letters = ['A', 'B', 'C', 'D'];
+    const choices = allAnswers.map((ans, i) => `${letters[i]}. ${ans}`);
+    const correctLetter = letters[allAnswers.indexOf(decode(q.correct_answer))];
+
+    return JSON.stringify({
+      result: {
+        category: decode(q.category),
+        difficulty: q.difficulty,
+        question: decode(q.question),
+        choices,
+        correct_answer: `${correctLetter}. ${decode(q.correct_answer)}`,
+        instructions: 'Present the question and choices to the user. After they answer (or ask for the answer), reveal the correct answer.'
+      }
+    });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+};
+</script>
+</body>
+</html>

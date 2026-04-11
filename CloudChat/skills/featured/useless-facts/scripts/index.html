@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body>
+<script>
+window['ai_edge_gallery_get_result'] = async () => {
+  try {
+    let data;
+    try {
+      const res = await fetch('https://uselessfacts.jsph.pl/random.json?language=en', {
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!res.ok) throw new Error('Primary failed');
+      data = await res.json();
+    } catch {
+      // Fallback: use a curated static list
+      const facts = [
+        "Honey never spoils. Archaeologists have found 3000-year-old honey in Egyptian tombs that was still edible.",
+        "A group of flamingos is called a 'flamboyance'.",
+        "Bananas are berries, but strawberries are not.",
+        "The Eiffel Tower can grow more than 6 inches in summer due to thermal expansion.",
+        "Octopuses have three hearts and blue blood.",
+        "A day on Venus is longer than a year on Venus.",
+        "Wombat feces are cube-shaped.",
+        "The human nose can detect over 1 trillion different scents.",
+        "Cleopatra lived closer in time to the Moon landing than to the building of the Great Pyramid.",
+        "There are more possible iterations of a game of chess than there are atoms in the observable universe."
+      ];
+      return JSON.stringify({ result: { fact: facts[Math.floor(Math.random() * facts.length)], source: 'curated' } });
+    }
+    return JSON.stringify({ result: { fact: data.text || data.fact || 'No fact available.', source: 'uselessfacts.jsph.pl' } });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+};
+</script>
+</body>
+</html>

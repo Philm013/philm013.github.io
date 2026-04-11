@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body>
+<script>
+window['ai_edge_gallery_get_result'] = async (dataStr) => {
+  try {
+    const params = JSON.parse(dataStr);
+    const category = String(params.category || '').trim();
+    const keyword = String(params.keyword || '').trim().toLowerCase();
+
+    // Use the publicapis.org JSON via allorigins for CORS
+    let apiUrl = 'https://api.publicapis.org/entries';
+    if (category) apiUrl += `?category=${encodeURIComponent(category)}`;
+
+    let data;
+    try {
+      const res = await fetch(apiUrl, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error('Primary endpoint failed');
+      data = await res.json();
+    } catch {
+      // CORS fallback: api.allorigins.win is a public CORS proxy.
+      // Used only as a fallback when the primary endpoint fails from the browser.
+      // NOTE: Third-party proxies can potentially inspect traffic; only use for non-sensitive public API data.
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
+      const res2 = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+      if (!res2.ok) throw new Error('API Explorer fetch failed: ' + res2.status);
+      data = await res2.json();
+    }
+
+    let entries = data.entries || [];
+    if (keyword) {
+      entries = entries.filter(e =>
+        (e.API || '').toLowerCase().includes(keyword) ||
+        (e.Description || '').toLowerCase().includes(keyword) ||
+        (e.Category || '').toLowerCase().includes(keyword)
+      );
+    }
+
+    // Limit to top 10 results
+    const results = entries.slice(0, 10).map(e => ({
+      name: e.API,
+      description: e.Description,
+      category: e.Category,
+      link: e.Link,
+      auth: e.Auth || 'None',
+      https: e.HTTPS
+    }));
+
+    if (!results.length) {
+      return JSON.stringify({ result: { message: 'No APIs found matching your search.', total: 0, results: [] } });
+    }
+
+    return JSON.stringify({
+      result: {
+        total_found: entries.length,
+        showing: results.length,
+        results
+      }
+    });
+  } catch (e) {
+    return JSON.stringify({ error: e.message });
+  }
+};
+</script>
+</body>
+</html>
