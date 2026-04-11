@@ -17,8 +17,8 @@ ONLY use this tool when the user explicitly wants a **random selection** or **ro
 * "Spin a wheel for restaurants in..."
 * "Pick a random restaurant in..."
 * "Show a restaurant roulette for..."
-* "Suggest Mexican food in San Jose." (implies wanting a random pick)
-* "Where should I eat today?" (implies wanting a random decision)
+* "I can't decide where to eat, surprise me!"
+* "Where should I eat today? Pick for me."
 
 ## When NOT to Use
 
