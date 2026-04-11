@@ -186,6 +186,20 @@ from entering cyclical reasoning loops.
 - **Summarizing Thoughts:** A highly recommended inference technique is to extract, summarize, and feed the model's previous thoughts back into the context window as standard text.
 - **Formatting Constraints:** Because Gemma 4 was not explicitly trained with raw thoughts included in the prompt (outside of the specific tool-call scenario mentioned above), there is no strict or specific format expected by the model for these injected thoughts. You have the flexibility to format summarized reasoning in whatever way best suits your specific agentic architecture.
 
+**Disable Thinking on Follow-Up Agentic Iterations**
+
+In agentic tool-calling loops, thinking mode should only be active on the first
+iteration. Follow-up iterations (after a tool call has been executed and the
+result injected) should omit the `<|think|>` token from the system instruction.
+This prevents wasted tokens and avoids the risk of tool calls being placed
+inside thinking blocks on continuation passes.  When thinking is disabled for
+an iteration, pre-fill an empty thinking channel at the start of the model turn
+to stabilize behavior:
+
+    <|turn>model
+    <|channel>thought
+    <channel|>
+
 ## Integration Notes
 
 - **Internal State:** The `<|channel>` and `<channel|>` tokens are typically used for Chain-of-Thought (CoT) processing. In standard user-facing applications, this content is usually hidden from the end-user.
