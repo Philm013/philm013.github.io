@@ -147,7 +147,7 @@ export function stopNeuralNetworkAnimation() {
 export async function initGemma(source = null, isStream = false) {
   // ── WebGPU gate ─────────────────────────────────────────
   // The check result is stored on window by the inline bootstrap script.
-  if (!window._hasWebGPU) {
+  if (!window.webGPUAvailable) {
     document.getElementById('chat-container').innerHTML = `
       <div style="text-align:center;padding:60px 20px;color:var(--ollama-stone)">
         <div style="font-size:2rem;margin-bottom:12px">⚠️</div>

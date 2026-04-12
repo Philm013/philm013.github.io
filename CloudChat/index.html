@@ -1136,7 +1136,7 @@
 
     // ── WebGPU check ─────────────────────────────────────
     // Store the result on window so model.js can read it during boot.
-    window._hasWebGPU = !!navigator.gpu;
+    window.webGPUAvailable = !!navigator.gpu;
 
     // Always load the main application so the UI is functional
     await import('./js/app.js');
