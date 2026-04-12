@@ -1125,24 +1125,20 @@
   </div>
 
   <script type="module">
-    import * as pdfjsLibModule from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs';
-    window.pdfjsLib = pdfjsLibModule;
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
-
-    // ── WebGPU check ─────────────────────────────────────
-    const hasWebGPU = !!navigator.gpu;
-    if (!hasWebGPU) {
-      document.getElementById('chat-container').innerHTML = `
-        <div style="text-align:center;padding:60px 20px;color:var(--ollama-stone)">
-          <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
-          <h2 style="color:var(--ollama-near-black);margin-bottom:12px">WebGPU Not Available</h2>
-          <p style="max-width:400px;margin:0 auto;line-height:1.6">This app requires WebGPU to run the AI model in your browser. Please use Chrome 113+, Edge 113+, or a WebGPU-compatible browser on a device with a compatible GPU.</p>
-        </div>`;
-      document.getElementById('global-loader').classList.add('hidden');
-      throw new Error('WebGPU not available');
+    // Load PDF.js dynamically so a CDN failure doesn't block the entire app
+    try {
+      const pdfjsLibModule = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs');
+      window.pdfjsLib = pdfjsLibModule;
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+    } catch (e) {
+      console.warn('PDF.js failed to load. PDF upload will be unavailable.', e);
     }
 
-    // Load the main application
+    // ── WebGPU check ─────────────────────────────────────
+    // Store the result on window so model.js can read it during boot.
+    window.webGPUAvailable = !!navigator.gpu;
+
+    // Always load the main application so the UI is functional
     await import('./js/app.js');
   </script>
   <div class="drag-overlay" id="drag-overlay">📁 Drop files to attach images or add to Library</div>

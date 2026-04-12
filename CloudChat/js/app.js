@@ -579,13 +579,14 @@ document.querySelectorAll('.about-tab').forEach(tab => {
 });
 
 // ── Init ────────────────────────────────────────────────
-window.onload = () => {
-  restoreFromSession();
-  initGemma();
-  ensureToolSkillDocsLoaded().then(() => refreshToolsPanel());
-  refreshLibraryPanel();
-  refreshHistoryPanel();
-  refreshMemoryPanel();
-  updateSendButtons();
-  checkShareLink();
-};
+// This module is loaded via `await import()` inside a deferred <script type="module">,
+// so the DOM is fully parsed and all synchronous <script> tags in <head> have executed.
+// We can initialise immediately — no need to wait for window.onload.
+restoreFromSession();
+initGemma();
+ensureToolSkillDocsLoaded().then(() => refreshToolsPanel());
+refreshLibraryPanel();
+refreshHistoryPanel();
+refreshMemoryPanel();
+updateSendButtons();
+checkShareLink();

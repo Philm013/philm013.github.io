@@ -145,6 +145,19 @@ export function stopNeuralNetworkAnimation() {
 
 // ── Core Inference Boot ──────────────────────────────────
 export async function initGemma(source = null, isStream = false) {
+  // ── WebGPU gate ─────────────────────────────────────────
+  // The check result is stored on window by the inline bootstrap script.
+  if (!window.webGPUAvailable) {
+    document.getElementById('chat-container').innerHTML = `
+      <div style="text-align:center;padding:60px 20px;color:var(--ollama-stone)">
+        <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
+        <h2 style="color:var(--ollama-near-black);margin-bottom:12px">WebGPU Not Available</h2>
+        <p style="max-width:400px;margin:0 auto;line-height:1.6">This app requires WebGPU to run the AI model in your browser. Please use Chrome 113+, Edge 113+, or a WebGPU-compatible browser on a device with a compatible GPU.</p>
+      </div>`;
+    updateStatus('error', 'No WebGPU');
+    return;
+  }
+
   const logBoot = (msg) => {
     const log = document.getElementById('global-boot-log');
     const line = document.createElement('div'); line.className = 'boot-line'; line.innerText = msg; log.prepend(line);
