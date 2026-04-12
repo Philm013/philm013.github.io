@@ -1149,9 +1149,13 @@
   </div>
 
   <script type="module">
-    // Load PDF.js dynamically so a CDN failure doesn't block the entire app
+    // Load PDF.js dynamically so a CDN failure doesn't block the entire app.
+    // Use a timeout so a slow/hung CDN does not stall the entire boot.
     try {
-      const pdfjsLibModule = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs');
+      const pdfjsLibModule = await Promise.race([
+        import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('PDF.js load timeout')), 8000))
+      ]);
       window.pdfjsLib = pdfjsLibModule;
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
     } catch (e) {
@@ -1160,13 +1164,17 @@
 
     // ── WebGPU check ─────────────────────────────────────
     // Store the result on window so model.js can read it during boot.
-    // Just checking !!navigator.gpu is insufficient — on some platforms the
-    // API object exists but no adapter can be obtained (experimental support).
-    // Actually try to request an adapter to be sure.
+    // Use a timeout because navigator.gpu.requestAdapter() can hang on some
+    // platforms where the API object exists but no usable adapter is present.
+    // If the adapter check times out or fails, webGPUAvailable stays false and
+    // initGemma() shows a clear "No WebGPU" message instead of hanging.
     window.webGPUAvailable = false;
     if (navigator.gpu) {
       try {
-        const adapter = await navigator.gpu.requestAdapter();
+        const adapter = await Promise.race([
+          navigator.gpu.requestAdapter(),
+          new Promise(resolve => setTimeout(() => resolve(null), 3000))
+        ]);
         window.webGPUAvailable = !!adapter;
       } catch (e) {
         console.warn('WebGPU adapter request failed:', e);
