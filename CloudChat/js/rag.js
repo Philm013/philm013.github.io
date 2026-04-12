@@ -165,6 +165,7 @@ export function extractiveSummary(text, maxSentences = 3) {
 }
 
 export async function extractPDFText(blob) {
+  if (!window.pdfjsLib) throw new Error('PDF.js is not loaded. PDF upload is unavailable.');
   const arrayBuffer = await blob.arrayBuffer();
   const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const pages = [];
