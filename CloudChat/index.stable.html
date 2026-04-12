@@ -3270,8 +3270,8 @@ self.addEventListener('message', async (e) => {
               updateStatus('error', 'Model Required');
               return;
             }
-            updateStatus('loading', 'Downloading...');
-            logBoot("⬇️ Downloading from remote repository...");
+            updateStatus('loading', 'Loading from local server...');
+            logBoot("⬇️ Loading from local server...");
             setNeuralProgress(20);
             await wait(300);
             // Download with progress tracking
@@ -3301,7 +3301,7 @@ self.addEventListener('message', async (e) => {
               modelBlob = await dlRes.blob();
             }
             updateStatus('loading', 'Caching...');
-            logBoot("📥 Download complete. Stashing for next time...");
+            logBoot("📥 Transfer complete. Stashing for next time...");
             setNeuralProgress(50);
             await wait(500);
             await ModelCacheDB.save('gemma_task', modelBlob);
