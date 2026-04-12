@@ -582,10 +582,10 @@
     <!-- Rescue section (fades in over neural background when model is missing) -->
     <div class="loader-rescue" id="loader-rescue">
       <div class="rescue-title">Model Required</div>
-      <div class="rescue-desc">Private AI requires 1.2 GB neural weights. Choose an option below to get started.</div>
+      <div class="rescue-desc">Private AI requires 1.2 GB neural weights. Choose an option below, or start the Node server for server-side inference.</div>
       <button class="btn-rescue btn-rescue-primary" id="download-btn">⬇️ Download &amp; Install</button>
       <button class="btn-rescue btn-rescue-secondary" onclick="document.getElementById('model-upload-input').click()">📁 Supply Local File (.task)</button>
-      <button class="btn-rescue btn-rescue-secondary" id="local-server-btn">🖥️ Use Local Server</button>
+      <button class="btn-rescue btn-rescue-secondary" id="local-server-btn">🖥️ Use Server Backend</button>
       <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
       <div class="rescue-status" id="download-status"></div>
     </div>
@@ -1123,21 +1123,29 @@
           <h4>Troubleshooting</h4>
           <ul>
             <li><strong>Slow responses?</strong> Reduce Max Tokens in Settings, or close other GPU-intensive tabs</li>
-            <li><strong>Model won't load?</strong> Ensure you have WebGPU support (Chrome 113+) and try purging the cache</li>
+            <li><strong>Model won't load?</strong> Ensure you have WebGPU support (Chrome 113+) and try purging the cache, or start the Node.js server backend</li>
             <li><strong>Repetitive output?</strong> Lower the temperature or clear the conversation history</li>
             <li><strong>Web search not working?</strong> Make sure you've configured a search provider and API key in Settings</li>
             <li><strong>Memory full?</strong> Use the Memory panel to audit and clean up duplicate entries</li>
           </ul>
 
           <h4>Gemma 4 Model Info</h4>
-          <p>This app uses <strong>Gemma 4 E2B</strong> (E2B = Efficient 2 Billion), a compact yet powerful language model from Google. Key capabilities:</p>
+          <p>This app uses <strong>Gemma 4 E2B</strong> (E2B = Efficient 2 Billion), a compact yet powerful language model from Google (<a href="https://ai.google.dev/gemma/docs/core/model_card_4" target="_blank" rel="noopener">model card</a>). Key capabilities:</p>
           <ul>
             <li>Reasoning and chain-of-thought via native thinking mode</li>
             <li>Function/tool calling with structured outputs</li>
             <li>140+ language translation</li>
             <li>8K context window</li>
-            <li>Runs locally with ~1.5 GB VRAM</li>
+            <li>Runs in-browser with ~1.5 GB VRAM <strong>or</strong> server-side via the Node.js backend</li>
           </ul>
+
+          <h4>Server Mode</h4>
+          <p>To offload inference to the server, run the Node.js backend:</p>
+          <pre style="background:var(--ollama-snow);padding:10px;border-radius:8px;font-size:0.82rem;overflow-x:auto"><code>cd CloudChat/server
+cp .env.template .env   # add your Google AI API key
+npm install
+npm start</code></pre>
+          <p style="margin-top:6px;font-size:0.82rem">When the server is running, the app auto-detects it and routes all inference through <code>/api/chat</code>. No WebGPU required.</p>
         </div>
       </div>
     </div>

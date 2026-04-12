@@ -2,6 +2,11 @@
 export const REMOTE_MODEL = 'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task';
 export const LOCAL_MODEL = './gemma-4-E2B-it-web.task';
 
+// Server-mode API base — when running via the Node server, inference is
+// offloaded to the backend.  See: CloudChat/server/server.js
+// Gemma 4 Model Card: https://ai.google.dev/gemma/docs/core/model_card_4
+export const SERVER_API = '/api';
+
 export const MODELS = {
   'gemma4-e2b': {
     id: REMOTE_MODEL,
@@ -23,6 +28,8 @@ export const State = {
   batchStopRequested: false,
   activeModel: REMOTE_MODEL,
   modelReady: false,
+  serverMode: false,       // true when inference is offloaded to the Node server
+  serverModel: '',         // model name reported by the server
   embeddingWorker: null,
   embeddingReady: false,
   embeddingQueue: Promise.resolve(),

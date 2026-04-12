@@ -13,7 +13,7 @@ import {
   addAttachment, showAttachModal,
   getPendingAttachFile
 } from './ui.js';
-import { initGemma, setNeuralProgress } from './model.js';
+import { initGemma, initServer, setNeuralProgress } from './model.js';
 import { handleSend, DEFAULT_SYSTEM_PROMPT } from './chat.js';
 
 // ── Share – encrypted link support ──────────────────────
@@ -456,7 +456,17 @@ document.getElementById('model-upload-input').onchange = async e => {
 
 document.getElementById('local-server-btn').onclick = async () => {
   const status = document.getElementById('download-status');
-  status.textContent = 'Checking local server...';
+  status.textContent = 'Checking server backend...';
+  try {
+    // First try the Node.js server API
+    const apiCheck = await fetch('/api/status');
+    if (apiCheck.ok) {
+      document.getElementById('loader-rescue').classList.remove('visible');
+      status.textContent = '';
+      initServer();
+      return;
+    }
+  } catch { /* server not running — fall through to local model check */ }
   try {
     const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
     if (check.ok) {
@@ -464,7 +474,7 @@ document.getElementById('local-server-btn').onclick = async () => {
       status.textContent = '';
       initGemma();
     } else {
-      status.textContent = 'Model file not found on local server.';
+      status.textContent = 'Server not running and model file not found locally.';
     }
   } catch (_e) {
     status.textContent = 'Could not reach local server.';
@@ -600,7 +610,24 @@ document.querySelectorAll('.about-tab').forEach(tab => {
 // so the DOM is fully parsed and all synchronous <script> tags in <head> have executed.
 // We can initialise immediately — no need to wait for window.onload.
 restoreFromSession();
-initGemma();
+
+// Try to connect to the Node.js server backend first.  If the server is
+// running (npm start inside CloudChat/server/), inference is offloaded to
+// the server via the Google AI SDK.  Otherwise fall back to in-browser
+// MediaPipe/WebGPU model loading.
+(async () => {
+  try {
+    const res = await fetch('/api/status');
+    if (res.ok) {
+      await initServer();
+    } else {
+      initGemma();
+    }
+  } catch {
+    initGemma();
+  }
+})();
+
 ensureToolSkillDocsLoaded().then(() => refreshToolsPanel());
 refreshLibraryPanel();
 refreshHistoryPanel();

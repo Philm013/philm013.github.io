@@ -34,6 +34,15 @@ module.exports = [
     },
   },
   {
+    // Node.js server files — add node globals
+    files: ['**/server/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
     // Ignore third-party and build directories
     ignores: [
       'node_modules/**',

@@ -1,0 +1,19 @@
+{
+  "name": "cloudchat-server",
+  "version": "1.0.0",
+  "description": "CloudChat Node.js server — offloads Gemma 4 inference to a local backend via Google AI (Gemini API)",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["gemma4", "cloudchat", "ai", "llm"],
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

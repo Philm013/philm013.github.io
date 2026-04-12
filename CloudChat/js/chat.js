@@ -1,5 +1,5 @@
 // ── Sending, Prompt Building & Agentic Loop ──────────────────
-import { State, getSettingsValues } from './config.js';
+import { State, getSettingsValues, SERVER_API } from './config.js';
 import { getAllChunks, searchMemory } from './rag.js';
 import { isSearchConfigured, isMediaConfigured } from './search.js';
 import { TOOL_REGISTRY, ensureToolSkillDocsLoaded } from './tools.js';
@@ -259,15 +259,71 @@ export async function buildPrompt(additionalContext = "", isFollowUpIteration = 
   return p;
 }
 
+// ── Server-mode streaming ────────────────────────────────
+// When State.serverMode is true, send the prompt to the Node.js backend
+// which runs Gemma 4 via the Google AI (Gemini) SDK and streams back via SSE.
+// Gemma 4 Model Card: https://ai.google.dev/gemma/docs/core/model_card_4
+async function serverGenerateResponse(prompt, callback) {
+  const settings = getSettingsValues();
+  const res = await fetch(`${SERVER_API}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+      temperature: settings.temperature,
+      maxTokens: settings.maxTokens,
+    }),
+  });
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const payload = line.slice(6);
+      if (payload === '[DONE]') {
+        callback(full, true);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(payload);
+        if (parsed.error) {
+          callback(full + `\n\n⚠️ Server error: ${parsed.error}`, true);
+          return;
+        }
+        if (parsed.text) {
+          full += parsed.text;
+          callback(full, false);
+        }
+      } catch { /* skip malformed SSE lines */ }
+    }
+  }
+  // If stream ended without [DONE], finalize
+  callback(full, true);
+}
+
 async function streamFinalResponse(aiEl) {
   const finalPrompt = await buildPrompt("", true);
   let finalFull = "";
   const finalBubble = document.createElement('div');
   finalBubble.className = 'ai-bubble';
   aiEl.appendChild(finalBubble);
+  const generate = State.serverMode
+    ? serverGenerateResponse
+    : (p, cb) => State.inference.generateResponse(p, cb);
   await new Promise(res => {
     let resolved = false;
-    State.inference.generateResponse(finalPrompt, (chunk, done) => {
+    generate(finalPrompt, (chunk, done) => {
       if (resolved) return;
       if (State.stopRequested) { resolved = true; res(); return; }
       finalFull = mergeStreamingText(finalFull, chunk);
@@ -379,7 +435,10 @@ export async function handleSend(ov = null, rerunHistFrom = null) {
 
       await new Promise(res => {
         let resolved = false;
-        State.inference.generateResponse(prompt, (chunk, done) => {
+        const generate = State.serverMode
+          ? serverGenerateResponse
+          : (p, cb) => State.inference.generateResponse(p, cb);
+        generate(prompt, (chunk, done) => {
           if (resolved) return;
           if (State.stopRequested) {
             resolved = true;

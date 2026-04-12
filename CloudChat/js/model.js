@@ -1,5 +1,5 @@
 // ── Model Loading & Neural Animation ──────────────────────────
-import { LOCAL_MODEL, State, getSettingsValues } from './config.js';
+import { LOCAL_MODEL, SERVER_API, State, getSettingsValues } from './config.js';
 import { ModelCacheDB, requestPersistentStorage } from './storage.js';
 import { updateStatus, updateSendButtons } from './ui.js';
 
@@ -286,5 +286,60 @@ export async function initGemma(source = null, isStream = false) {
       updateStatus('error', 'Brain Failure');
       document.getElementById('loader-rescue').classList.add('visible');
     }
+  }
+}
+
+// ── Server-Mode Boot ─────────────────────────────────────
+// Connects to the Node.js backend instead of loading the model in-browser.
+// The server runs Gemma 4 inference via the Google AI (Gemini) SDK.
+// Gemma 4 Model Card: https://ai.google.dev/gemma/docs/core/model_card_4
+export async function initServer() {
+  const logBoot = (msg) => {
+    const log = document.getElementById('global-boot-log');
+    const line = document.createElement('div'); line.className = 'boot-line'; line.innerText = msg; log.prepend(line);
+    if (log.children.length > 6) log.removeChild(log.lastChild);
+    document.getElementById('loader-msg').innerText = msg;
+  };
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+  try {
+    document.getElementById('global-loader').classList.remove('hidden');
+    startNeuralNetworkAnimation();
+    setNeuralProgress(0);
+    updateStatus('loading', 'Connecting...');
+    logBoot("🌐 Connecting to server backend...");
+    setNeuralProgress(20);
+    await wait(600);
+
+    const res = await fetch(`${SERVER_API}/status`);
+    if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+    const info = await res.json();
+
+    logBoot(`✅ Server online — model: ${info.model}`);
+    setNeuralProgress(80);
+    await wait(400);
+
+    State.serverMode = true;
+    State.serverModel = info.model || '';
+    State.modelReady = true;
+
+    logBoot("🚀 Server inference ready. Let's go!");
+    setNeuralProgress(100);
+    await wait(300);
+
+    updateStatus('online', 'Server');
+    document.getElementById('chat-input').disabled = false;
+    document.getElementById('chat-input').placeholder = "Ask anything...";
+    updateSendButtons();
+    document.getElementById('loader-rescue').classList.remove('visible');
+    document.getElementById('global-loader').classList.add('hidden');
+    stopNeuralNetworkAnimation();
+  } catch (e) {
+    console.error('Server connection failed:', e);
+    stopNeuralNetworkAnimation();
+    logBoot("⚠️ Could not reach the server backend.");
+    updateStatus('error', 'Server Offline');
+    document.getElementById('loader-rescue').classList.add('visible');
+    document.getElementById('global-loader').classList.add('hidden');
   }
 }
