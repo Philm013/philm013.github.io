@@ -317,6 +317,62 @@
     .web-result-fetch-btn { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 500; border: 1px solid #93c5fd; background: rgba(59,130,246,0.06); color: #2563eb; cursor: pointer; transition: background 0.15s; }
     .web-result-fetch-btn:hover { background: rgba(59,130,246,0.15); }
 
+    /* ── Trivia Session Interactive Widget ── */
+    .trivia-widget { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 0; overflow: hidden; color: #fff; font-family: var(--font-display); max-width: 480px; box-shadow: 0 8px 32px rgba(102,126,234,0.3); }
+    .trivia-header { padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.15); }
+    .trivia-header-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .trivia-score { display: flex; align-items: center; gap: 12px; font-size: 0.82rem; font-weight: 600; }
+    .trivia-score-item { display: flex; align-items: center; gap: 4px; }
+    .trivia-progress { height: 4px; background: rgba(255,255,255,0.2); margin: 0 20px; border-radius: 2px; overflow: hidden; }
+    .trivia-progress-bar { height: 100%; background: #fbbf24; border-radius: 2px; transition: width 0.5s ease; }
+    .trivia-body { padding: 20px; min-height: 200px; position: relative; }
+    .trivia-category { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; margin-bottom: 4px; }
+    .trivia-difficulty { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; margin-bottom: 12px; }
+    .trivia-diff-easy { background: rgba(52,211,153,0.3); color: #a7f3d0; }
+    .trivia-diff-medium { background: rgba(251,191,36,0.3); color: #fde68a; }
+    .trivia-diff-hard { background: rgba(248,113,113,0.3); color: #fecaca; }
+    .trivia-question-text { font-size: 1.05rem; font-weight: 600; line-height: 1.5; margin-bottom: 16px; }
+    .trivia-answers { display: flex; flex-direction: column; gap: 8px; }
+    .trivia-answer-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.25); border-radius: 12px; background: rgba(255,255,255,0.08); color: #fff; font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; text-align: left; font-family: inherit; line-height: 1.4; }
+    .trivia-answer-btn:hover:not(:disabled) { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.5); transform: translateX(4px); }
+    .trivia-answer-btn:disabled { cursor: default; opacity: 0.9; }
+    .trivia-answer-btn .trivia-letter { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.15); font-weight: 700; font-size: 0.82rem; flex-shrink: 0; transition: all 0.3s; }
+    .trivia-answer-btn.correct { border-color: #34d399; background: rgba(52,211,153,0.25); animation: trivia-pop 0.4s ease; }
+    .trivia-answer-btn.correct .trivia-letter { background: #34d399; color: #064e3b; }
+    .trivia-answer-btn.wrong { border-color: #f87171; background: rgba(248,113,113,0.2); animation: trivia-shake 0.5s ease; }
+    .trivia-answer-btn.wrong .trivia-letter { background: #f87171; color: #7f1d1d; }
+    .trivia-answer-btn.reveal-correct { border-color: #34d399; background: rgba(52,211,153,0.15); }
+    .trivia-answer-btn.reveal-correct .trivia-letter { background: #34d399; color: #064e3b; }
+    .trivia-reaction { margin-top: 14px; padding: 10px 14px; border-radius: 12px; background: rgba(0,0,0,0.2); font-size: 0.85rem; line-height: 1.5; animation: trivia-fade-in 0.4s ease; display: none; }
+    .trivia-reaction.visible { display: block; }
+    .trivia-next-btn { display: none; margin-top: 14px; padding: 10px 20px; border: none; border-radius: 12px; background: #fbbf24; color: #78350f; font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: inherit; width: 100%; }
+    .trivia-next-btn:hover { background: #f59e0b; transform: scale(1.02); }
+    .trivia-next-btn.visible { display: block; }
+    .trivia-timer { font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+    .trivia-timer-bar { width: 100%; height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+    .trivia-timer-fill { height: 100%; background: #fbbf24; border-radius: 2px; transition: width 0.1s linear; }
+    .trivia-finale { text-align: center; padding: 24px 20px; animation: trivia-fade-in 0.6s ease; }
+    .trivia-finale-emoji { font-size: 3rem; margin-bottom: 8px; animation: trivia-bounce 1s ease infinite; }
+    .trivia-finale-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+    .trivia-finale-subtitle { font-size: 0.9rem; opacity: 0.85; margin-bottom: 16px; }
+    .trivia-finale-stats { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; }
+    .trivia-finale-stat { text-align: center; }
+    .trivia-finale-stat-value { font-size: 1.6rem; font-weight: 800; }
+    .trivia-finale-stat-label { font-size: 0.72rem; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.05em; }
+    .trivia-replay-btn { padding: 12px 28px; border: 2px solid rgba(255,255,255,0.4); border-radius: 12px; background: rgba(255,255,255,0.1); color: #fff; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .trivia-replay-btn:hover { background: rgba(255,255,255,0.2); border-color: #fff; }
+    .trivia-confetti { position: absolute; pointer-events: none; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 10; }
+    .trivia-confetti-piece { position: absolute; width: 8px; height: 8px; border-radius: 2px; animation: trivia-confetti-fall 1.5s ease-out forwards; }
+    .trivia-streak { font-size: 0.72rem; padding: 3px 10px; border-radius: 10px; background: rgba(251,191,36,0.3); color: #fde68a; font-weight: 600; display: none; animation: trivia-pop 0.3s ease; }
+    .trivia-streak.visible { display: inline-flex; align-items: center; gap: 4px; }
+    @keyframes trivia-pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    @keyframes trivia-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+    @keyframes trivia-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes trivia-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    @keyframes trivia-confetti-fall { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(200px) rotate(720deg); opacity: 0; } }
+    @keyframes trivia-slide-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    .trivia-question-anim { animation: trivia-slide-in 0.4s ease; }
+
     /* Source badges */
     .msg-source-badge { display: inline-block; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; font-weight: 500; background: var(--ollama-light-gray); color: var(--ollama-stone); }
     .msg-source-badge.web-enriched { background: rgba(16, 185, 129, 0.1); color: #059669; }
@@ -2066,42 +2122,51 @@ self.addEventListener('message', async (e) => {
         }
       },
       trivia_question: {
-        description: 'Fetch a trivia question with multiple choice answers from the Open Trivia Database. No API key required.',
+        description: 'Start an interactive trivia session with multiple questions from the Open Trivia Database. Renders a gamified quiz widget with score tracking, live reactions, and celebratory effects. No API key required.',
         parameters: {
           type: 'object',
           properties: {
             category: { type: 'number', description: 'Category ID (9=General Knowledge, 17=Science & Nature, 21=Sports, 23=History, 27=Animals). Omit for random.' },
-            difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'], description: 'Difficulty level. Omit for any.' }
+            difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'], description: 'Difficulty level. Omit for any.' },
+            amount: { type: 'number', description: 'Number of questions (1-15). Default is 5.' }
           },
           required: []
         },
         async execute(a) {
-          const viaSkill = await executeSkillIfAvailable('trivia_question', { category: a.category || null, difficulty: a.difficulty || '' });
+          const viaSkill = await executeSkillIfAvailable('trivia_question', { category: a.category || null, difficulty: a.difficulty || '', amount: a.amount || 5 });
           if (viaSkill && !viaSkill.error) return viaSkill;
           // Inline fallback: Open Trivia Database API
           try {
+            const amount = Math.max(1, Math.min(15, parseInt(a.amount, 10) || 5));
             const category = a.category ? `&category=${parseInt(a.category, 10)}` : '';
             const diffLower = String(a.difficulty || '').toLowerCase();
             const difficulty = ['easy', 'medium', 'hard'].includes(diffLower)
               ? `&difficulty=${diffLower}` : '';
-            const url = `https://opentdb.com/api.php?amount=1&type=multiple${category}${difficulty}&encode=url3986`;
-            const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+            const url = `https://opentdb.com/api.php?amount=${amount}&type=multiple${category}${difficulty}&encode=url3986`;
+            const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
             if (!res.ok) throw new Error('Open Trivia DB failed: ' + res.status);
             const data = await res.json();
             if (data.response_code !== 0 || !data.results || !data.results.length) {
-              return { error: 'No trivia question available for these parameters. Try different settings.' };
+              return { error: 'No trivia questions available for these parameters. Try different settings.' };
             }
-            const q = data.results[0];
             const decode = (s) => decodeURIComponent(s);
-            const allAnswers = [...q.incorrect_answers.map(decode), decode(q.correct_answer)].sort(() => Math.random() - 0.5);
-            const letters = ['A', 'B', 'C', 'D'];
-            const choices = allAnswers.map((ans, i) => `${letters[i]}. ${ans}`);
-            const correctLetter = letters[allAnswers.indexOf(decode(q.correct_answer))];
+            const questions = data.results.map(q => {
+              const allAnswers = [...q.incorrect_answers.map(decode), decode(q.correct_answer)].sort(() => Math.random() - 0.5);
+              const letters = ['A', 'B', 'C', 'D'];
+              return {
+                category: decode(q.category),
+                difficulty: q.difficulty,
+                question: decode(q.question),
+                choices: allAnswers.map((ans, i) => ({ letter: letters[i], text: ans })),
+                correctIndex: allAnswers.indexOf(decode(q.correct_answer))
+              };
+            });
             return {
               result: {
-                category: decode(q.category), difficulty: q.difficulty, question: decode(q.question),
-                choices, correct_answer: `${correctLetter}. ${decode(q.correct_answer)}`,
-                instructions: 'Present the question and choices to the user. After they answer (or ask for the answer), reveal the correct answer.'
+                type: 'trivia_session',
+                totalQuestions: questions.length,
+                questions,
+                instructions: 'An interactive trivia session widget has been rendered in the chat. The user can play directly by clicking answer buttons. React to their performance after they finish!'
               }
             };
           } catch (e) { return { error: viaSkill?.error || e.message }; }
@@ -4190,6 +4255,216 @@ Tool Selection Guidelines:
           grid.appendChild(card);
         }
         result.appendChild(grid);
+      } else if (name === 'trivia_question' && res && typeof res === 'object' && res.result && res.result.type === 'trivia_session') {
+        // ── Interactive Trivia Session Widget ──
+        const session = res.result;
+        const qs = session.questions;
+        const widgetId = 'trivia-' + Math.random().toString(36).slice(2, 8);
+
+        const widget = document.createElement('div');
+        widget.className = 'trivia-widget';
+        widget.id = widgetId;
+
+        // Reactions pools
+        const correctReactions = [
+          "🔥 Nailed it! You're on fire!",
+          "✨ Brilliant! That's the one!",
+          "🎯 Bull's-eye! Absolutely right!",
+          "🧠 Big brain energy right there!",
+          "💪 Crushed it! Keep going!",
+          "🌟 Star performance! Correct!",
+          "🚀 Rocketing through this quiz!",
+          "👏 Perfect pick! Well done!",
+          "🎉 YES! You got it!",
+          "😎 Too easy for you, huh?"
+        ];
+        const wrongReactions = [
+          "😬 Ooh, so close! Not quite.",
+          "💡 Tricky one! The answer was revealed above.",
+          "🤔 Good guess, but not this time!",
+          "😅 Don't worry, next one's yours!",
+          "🫣 Oof! That was a tough one.",
+          "📚 Learn something new every day!",
+          "🎲 Can't win 'em all! Onward!",
+          "🤷 Happens to the best of us!",
+          "😤 So close yet so far!",
+          "🧐 Interesting choice! But nope."
+        ];
+        const finaleMessages = [
+          { min: 100, emoji: '🏆', title: 'PERFECT SCORE!', subtitle: "Absolutely flawless! You're a trivia legend!" },
+          { min: 80, emoji: '🌟', title: 'Amazing!', subtitle: "You really know your stuff!" },
+          { min: 60, emoji: '🎉', title: 'Great Job!', subtitle: "Solid performance! Well played!" },
+          { min: 40, emoji: '👍', title: 'Not Bad!', subtitle: "Room to grow, but you've got potential!" },
+          { min: 0, emoji: '💪', title: 'Keep Trying!', subtitle: "Every quiz makes you smarter!" }
+        ];
+
+        let currentQ = 0, score = 0, streak = 0, bestStreak = 0, answered = false;
+
+        function renderQuestion() {
+          answered = false;
+          const q = qs[currentQ];
+          const pct = ((currentQ) / qs.length) * 100;
+
+          widget.innerHTML = `
+            <div class="trivia-header">
+              <div class="trivia-header-title">🧩 Trivia Quest</div>
+              <div class="trivia-score">
+                <span class="trivia-streak${streak >= 2 ? ' visible' : ''}" id="${widgetId}-streak">🔥 ${streak}</span>
+                <span class="trivia-score-item">⭐ <span id="${widgetId}-score">${score}</span>/${qs.length}</span>
+                <span class="trivia-score-item">📋 ${currentQ + 1}/${qs.length}</span>
+              </div>
+            </div>
+            <div class="trivia-progress"><div class="trivia-progress-bar" style="width:${pct}%"></div></div>
+            <div class="trivia-body trivia-question-anim">
+              <div class="trivia-category">${escapeHtml(q.category)}</div>
+              <span class="trivia-difficulty trivia-diff-${q.difficulty}">${escapeHtml(q.difficulty)}</span>
+              <div class="trivia-question-text">${escapeHtml(q.question)}</div>
+              <div class="trivia-answers" id="${widgetId}-answers"></div>
+              <div class="trivia-reaction" id="${widgetId}-reaction"></div>
+              <button class="trivia-next-btn" id="${widgetId}-next">${currentQ < qs.length - 1 ? 'Next Question ➜' : 'See Results 🏁'}</button>
+            </div>
+          `;
+
+          const answersDiv = widget.querySelector(`#${widgetId}-answers`);
+          q.choices.forEach((choice, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'trivia-answer-btn';
+            btn.innerHTML = `<span class="trivia-letter">${escapeHtml(choice.letter)}</span><span>${escapeHtml(choice.text)}</span>`;
+            btn.addEventListener('click', () => handleAnswer(idx, q.correctIndex, btn, answersDiv));
+            answersDiv.appendChild(btn);
+          });
+
+          const nextBtn = widget.querySelector(`#${widgetId}-next`);
+          nextBtn.addEventListener('click', () => {
+            currentQ++;
+            if (currentQ < qs.length) {
+              renderQuestion();
+            } else {
+              renderFinale();
+            }
+          });
+        }
+
+        function handleAnswer(selectedIdx, correctIdx, clickedBtn, answersDiv) {
+          if (answered) return;
+          answered = true;
+
+          const buttons = answersDiv.querySelectorAll('.trivia-answer-btn');
+          buttons.forEach(b => { b.disabled = true; });
+
+          const isCorrect = selectedIdx === correctIdx;
+
+          if (isCorrect) {
+            score++;
+            streak++;
+            if (streak > bestStreak) bestStreak = streak;
+            clickedBtn.classList.add('correct');
+            // Update score display
+            const scoreEl = widget.querySelector(`#${widgetId}-score`);
+            if (scoreEl) scoreEl.textContent = score;
+            // Show streak
+            const streakEl = widget.querySelector(`#${widgetId}-streak`);
+            if (streakEl) {
+              streakEl.textContent = '🔥 ' + streak;
+              if (streak >= 2) streakEl.classList.add('visible');
+            }
+            // Spawn confetti
+            spawnConfetti(widget.querySelector('.trivia-body'));
+          } else {
+            streak = 0;
+            clickedBtn.classList.add('wrong');
+            // Reveal correct answer
+            buttons[correctIdx].classList.add('reveal-correct');
+            // Hide streak
+            const streakEl = widget.querySelector(`#${widgetId}-streak`);
+            if (streakEl) streakEl.classList.remove('visible');
+          }
+
+          // Show reaction
+          const reactionEl = widget.querySelector(`#${widgetId}-reaction`);
+          const pool = isCorrect ? correctReactions : wrongReactions;
+          reactionEl.textContent = pool[Math.floor(Math.random() * pool.length)];
+          reactionEl.classList.add('visible');
+
+          // Show next button
+          const nextBtn = widget.querySelector(`#${widgetId}-next`);
+          nextBtn.classList.add('visible');
+        }
+
+        function spawnConfetti(container) {
+          const confettiDiv = document.createElement('div');
+          confettiDiv.className = 'trivia-confetti';
+          const colors = ['#fbbf24', '#34d399', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c'];
+          for (let i = 0; i < 24; i++) {
+            const piece = document.createElement('div');
+            piece.className = 'trivia-confetti-piece';
+            piece.style.left = Math.random() * 100 + '%';
+            piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+            piece.style.animationDelay = (Math.random() * 0.5) + 's';
+            piece.style.animationDuration = (1 + Math.random()) + 's';
+            const size = 4 + Math.random() * 6;
+            piece.style.width = size + 'px';
+            piece.style.height = size + 'px';
+            piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+            confettiDiv.appendChild(piece);
+          }
+          container.appendChild(confettiDiv);
+          setTimeout(() => confettiDiv.remove(), 2000);
+        }
+
+        function renderFinale() {
+          const pct = Math.round((score / qs.length) * 100);
+          const msg = finaleMessages.find(m => pct >= m.min) || finaleMessages[finaleMessages.length - 1];
+
+          widget.innerHTML = `
+            <div class="trivia-header">
+              <div class="trivia-header-title">🧩 Trivia Quest</div>
+              <div class="trivia-score">
+                <span class="trivia-score-item">🏁 Complete</span>
+              </div>
+            </div>
+            <div class="trivia-progress"><div class="trivia-progress-bar" style="width:100%"></div></div>
+            <div class="trivia-finale">
+              <div class="trivia-finale-emoji">${msg.emoji}</div>
+              <div class="trivia-finale-title">${escapeHtml(msg.title)}</div>
+              <div class="trivia-finale-subtitle">${escapeHtml(msg.subtitle)}</div>
+              <div class="trivia-finale-stats">
+                <div class="trivia-finale-stat">
+                  <div class="trivia-finale-stat-value">${score}/${qs.length}</div>
+                  <div class="trivia-finale-stat-label">Score</div>
+                </div>
+                <div class="trivia-finale-stat">
+                  <div class="trivia-finale-stat-value">${pct}%</div>
+                  <div class="trivia-finale-stat-label">Accuracy</div>
+                </div>
+                <div class="trivia-finale-stat">
+                  <div class="trivia-finale-stat-value">${bestStreak}🔥</div>
+                  <div class="trivia-finale-stat-label">Best Streak</div>
+                </div>
+              </div>
+              <button class="trivia-replay-btn" id="${widgetId}-replay">🔄 Play Again</button>
+            </div>
+          `;
+
+          // Big celebration confetti for good scores
+          if (pct >= 60) {
+            const finale = widget.querySelector('.trivia-finale');
+            for (let burst = 0; burst < 3; burst++) {
+              setTimeout(() => spawnConfetti(finale), burst * 400);
+            }
+          }
+
+          widget.querySelector(`#${widgetId}-replay`).addEventListener('click', () => {
+            currentQ = 0;
+            score = 0;
+            streak = 0;
+            bestStreak = 0;
+            renderQuestion();
+          });
+        }
+
+        renderQuestion();
+        result.appendChild(widget);
       } else {
         const pre = document.createElement('pre');
         pre.textContent = resultStr; // textContent: no XSS risk, no HTML parsing
@@ -4242,7 +4517,12 @@ Tool Selection Guidelines:
       el.appendChild(block);
 
       // Auto-expand web search and media results so interactive content is immediately visible
-      if ((name === 'web_search' || name === 'search_media') && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
+      if (name === 'trivia_question' && res && typeof res === 'object' && res.result && res.result.type === 'trivia_session') {
+        result.classList.add('open');
+        result.style.whiteSpace = 'normal';
+        const arrow = toggle.querySelector('span');
+        if (arrow) arrow.innerHTML = '&#9660;';
+      } else if ((name === 'web_search' || name === 'search_media') && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
         result.classList.add('open');
         const arrow = toggle.querySelector('span');
         if (arrow) arrow.innerHTML = '&#9660;';
