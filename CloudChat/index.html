@@ -250,6 +250,12 @@
     @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.5; } }
     .loader-title { font-size: 1.4rem; font-weight: 600; margin-bottom: 8px; position: relative; z-index: 1; }
     .loader-sub { font-size: 0.85rem; opacity: 0.8; position: relative; z-index: 1; min-height: 1.2em; }
+    /* Main loader progress bar */
+    .loader-progress { width: 100%; max-width: 320px; position: relative; z-index: 1; margin-top: 16px; }
+    .loader-progress-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+    .loader-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, rgba(100,180,255,0.5), rgba(100,180,255,0.9)); border-radius: 3px; transition: width 0.4s ease; }
+    .loader-progress-fill.milestone { transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+    .loader-progress-text { font-size: 0.68rem; color: rgba(255,255,255,0.45); text-align: center; margin-top: 6px; }
     .boot-log { margin-top: 24px; font-family: var(--font-mono); font-size: 0.7rem; color: rgba(255,255,255,0.5); text-align: left; width: 100%; max-width: 400px; position: relative; z-index: 1; }
     .boot-line { margin-bottom: 4px; animation: fadeInLine 0.4s ease; }
     @keyframes fadeInLine { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
@@ -544,6 +550,10 @@
     </div>
     <div class="loader-title">System Initializing</div>
     <div id="loader-msg" class="loader-sub">Preparing neural environment...</div>
+    <div class="loader-progress" id="loader-progress">
+      <div class="loader-progress-bar"><div class="loader-progress-fill" id="loader-progress-fill"></div></div>
+      <div class="loader-progress-text" id="loader-progress-text"></div>
+    </div>
     <div id="global-boot-log" class="boot-log" style="height: 100px; max-width: 400px; opacity: 1;"></div>
     <!-- Rescue section (fades in over neural background when model is missing) -->
     <div class="loader-rescue" id="loader-rescue">
@@ -3050,13 +3060,36 @@ self.addEventListener('message', async (e) => {
     // ── Neural Network Background Animation ─────────────────
     let neuralAnimId = null;
     let neuralResizeHandler = null;
+    let neuralProgress = 0;        // 0-100, controls connection density & visual intensity
+    let neuralMilestoneFlash = 0;  // countdown for milestone burst effect
+    let neuralNodes = [];
+
+    function setNeuralProgress(pct) {
+      neuralProgress = Math.max(0, Math.min(100, pct));
+      // Update the main progress bar
+      const fill = document.getElementById('loader-progress-fill');
+      const text = document.getElementById('loader-progress-text');
+      if (fill) {
+        // Check if this is a milestone crossing (25, 50, 75, 100)
+        const isMilestone = [25, 50, 75, 100].some(m => pct >= m && pct - 5 < m);
+        if (isMilestone) {
+          fill.classList.add('milestone');
+          neuralMilestoneFlash = 60; // ~1 second of burst at 60fps
+          setTimeout(() => fill.classList.remove('milestone'), 700);
+        }
+        fill.style.width = pct + '%';
+      }
+      if (text) text.textContent = pct > 0 ? `${Math.round(pct)}%` : '';
+    }
+
     function startNeuralNetworkAnimation() {
       const canvas = document.getElementById('neural-net-canvas');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
-      const nodes = [];
-      const NODE_COUNT = 50;
-      const CONNECTION_DIST = 150;
+      neuralNodes = [];
+      const NODE_COUNT = 60;
+      const BASE_CONNECTION_DIST = 80;   // minimum connection radius (low progress)
+      const MAX_CONNECTION_DIST = 200;   // maximum connection radius (full progress)
       let w, h;
 
       function resize() {
@@ -3068,39 +3101,98 @@ self.addEventListener('message', async (e) => {
       window.addEventListener('resize', neuralResizeHandler);
 
       for (let i = 0; i < NODE_COUNT; i++) {
-        nodes.push({
+        neuralNodes.push({
           x: Math.random() * w, y: Math.random() * h,
-          vx: (Math.random() - 0.5) * 0.6, vy: (Math.random() - 0.5) * 0.6,
-          r: 2 + Math.random() * 2
+          vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+          r: 1.5 + Math.random() * 2,
+          baseR: 1.5 + Math.random() * 2,
+          active: false,         // becomes true as progress includes this node
+          activatedAt: 0,        // timestamp when node was activated
+          pulsePhase: Math.random() * Math.PI * 2
         });
       }
 
       function draw() {
         ctx.clearRect(0, 0, w, h);
-        // Draw connections
-        for (let i = 0; i < nodes.length; i++) {
-          for (let j = i + 1; j < nodes.length; j++) {
-            const dx = nodes[i].x - nodes[j].x;
-            const dy = nodes[i].y - nodes[j].y;
+        const t = performance.now() / 1000;
+        const progress = neuralProgress / 100;
+        const connectionDist = BASE_CONNECTION_DIST + (MAX_CONNECTION_DIST - BASE_CONNECTION_DIST) * progress;
+        const activeCount = Math.floor(neuralNodes.length * Math.max(0.15, progress));
+        const isMilestoneBurst = neuralMilestoneFlash > 0;
+        if (neuralMilestoneFlash > 0) neuralMilestoneFlash--;
+
+        // Activate nodes progressively
+        for (let i = 0; i < neuralNodes.length; i++) {
+          if (i < activeCount && !neuralNodes[i].active) {
+            neuralNodes[i].active = true;
+            neuralNodes[i].activatedAt = t;
+          }
+        }
+
+        // Draw connections — only between active nodes
+        for (let i = 0; i < neuralNodes.length; i++) {
+          if (!neuralNodes[i].active) continue;
+          for (let j = i + 1; j < neuralNodes.length; j++) {
+            if (!neuralNodes[j].active) continue;
+            const dx = neuralNodes[i].x - neuralNodes[j].x;
+            const dy = neuralNodes[i].y - neuralNodes[j].y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < CONNECTION_DIST) {
+            if (dist < connectionDist) {
+              const fadeI = Math.min(1, (t - neuralNodes[i].activatedAt) * 2);
+              const fadeJ = Math.min(1, (t - neuralNodes[j].activatedAt) * 2);
+              const connectionFade = Math.min(fadeI, fadeJ);
+              const distAlpha = 1 - dist / connectionDist;
+              let alpha = 0.35 * distAlpha * connectionFade * (0.3 + 0.7 * progress);
+
+              // Milestone burst: connections glow brighter
+              if (isMilestoneBurst) {
+                alpha = Math.min(1, alpha * 2.5);
+              }
+
+              const hue = 210 + progress * 30; // shift from blue to cyan as progress increases
               ctx.beginPath();
-              ctx.moveTo(nodes[i].x, nodes[i].y);
-              ctx.lineTo(nodes[j].x, nodes[j].y);
-              ctx.strokeStyle = `rgba(100,180,255,${0.3 * (1 - dist / CONNECTION_DIST)})`;
-              ctx.lineWidth = 0.5;
+              ctx.moveTo(neuralNodes[i].x, neuralNodes[i].y);
+              ctx.lineTo(neuralNodes[j].x, neuralNodes[j].y);
+              ctx.strokeStyle = `hsla(${hue}, 70%, 65%, ${alpha})`;
+              ctx.lineWidth = isMilestoneBurst ? 1.2 : (0.4 + 0.6 * progress);
               ctx.stroke();
             }
           }
         }
+
         // Draw nodes
-        for (const node of nodes) {
+        for (const node of neuralNodes) {
+          const isActive = node.active;
+          const fadeIn = isActive ? Math.min(1, (t - node.activatedAt) * 2) : 0.15;
+          const pulse = Math.sin(t * 2 + node.pulsePhase) * 0.3 + 0.7;
+          const baseAlpha = isActive ? (0.4 + 0.4 * progress) * fadeIn * pulse : 0.12;
+          let alpha = baseAlpha;
+          let r = node.baseR * (isActive ? (0.8 + 0.4 * progress) : 0.6);
+
+          // Milestone burst: nodes pulse larger and brighter
+          if (isMilestoneBurst && isActive) {
+            alpha = Math.min(1, alpha * 2);
+            r *= 1.5;
+          }
+
+          const hue = 210 + progress * 30;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(100,180,255,0.6)';
+          ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${hue}, 70%, 65%, ${alpha})`;
           ctx.fill();
-          // Move
-          node.x += node.vx; node.y += node.vy;
+
+          // Glow effect for active nodes at higher progress
+          if (isActive && progress > 0.3) {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, r * 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${hue}, 70%, 65%, ${alpha * 0.15})`;
+            ctx.fill();
+          }
+
+          // Move — active nodes move slightly faster as progress increases
+          const speed = isActive ? 1 + progress * 0.5 : 0.5;
+          node.x += node.vx * speed;
+          node.y += node.vy * speed;
           if (node.x < 0 || node.x > w) node.vx *= -1;
           if (node.y < 0 || node.y > h) node.vy *= -1;
         }
@@ -3111,6 +3203,8 @@ self.addEventListener('message', async (e) => {
     function stopNeuralNetworkAnimation() {
       if (neuralAnimId) { cancelAnimationFrame(neuralAnimId); neuralAnimId = null; }
       if (neuralResizeHandler) { window.removeEventListener('resize', neuralResizeHandler); neuralResizeHandler = null; }
+      neuralProgress = 0;
+      neuralNodes = [];
     }
 
     // ── Core Inference Boot ──────────────────────────────────
@@ -3126,34 +3220,42 @@ self.addEventListener('message', async (e) => {
       try {
         document.getElementById('global-loader').classList.remove('hidden');
         startNeuralNetworkAnimation();
+        setNeuralProgress(0);
         await requestPersistentStorage();
         updateStatus('loading', 'Initializing...');
         logBoot("☕ Waking up the brain... coffee first.");
+        setNeuralProgress(5);
         await wait(800);
         logBoot("🔌 Plugging in the neurons...");
+        setNeuralProgress(10);
         await wait(600);
         
         let modelPath;
         if (isStream && source) {
           updateStatus('loading', 'Caching...');
           logBoot("📦 Ingesting manual data stream...");
+          setNeuralProgress(15);
           await wait(400);
           const blob = new Blob([source]); await ModelCacheDB.save('gemma_task', blob);
           logBoot("💾 Neural weights committed to disk. No refunds.");
+          setNeuralProgress(50);
           await wait(500);
           modelPath = URL.createObjectURL(blob);
         } else {
           updateStatus('loading', 'Scanning Cache...');
           logBoot("🔍 Rummaging through local storage...");
+          setNeuralProgress(15);
           await wait(700);
           let modelBlob = await ModelCacheDB.get('gemma_task');
           if (modelBlob instanceof Blob) {
             logBoot("🎉 Gemma core found! Like finding leftovers in the fridge.");
+            setNeuralProgress(50);
             await wait(600);
             modelPath = URL.createObjectURL(modelBlob);
           } else {
             updateStatus('loading', 'Locating...');
             logBoot("🤷 Local cache miss. Asking the internet nicely...");
+            setNeuralProgress(18);
             await wait(500);
             let fetchPath = REMOTE_MODEL;
             try { const check = await fetch(LOCAL_MODEL, { method: 'HEAD' }); if (check.ok) { fetchPath = LOCAL_MODEL; logBoot("📡 Nearby weights detected on host. Score!"); await wait(400); } } catch (_e) { /* local model not available — proceed with remote */ }
@@ -3166,13 +3268,41 @@ self.addEventListener('message', async (e) => {
             }
             updateStatus('loading', 'Downloading...');
             logBoot("⬇️ Downloading from remote repository...");
+            setNeuralProgress(20);
             await wait(300);
-            const res = await fetch(fetchPath); modelBlob = await res.blob();
+            // Download with progress tracking
+            const dlRes = await fetch(fetchPath);
+            const dlTotal = +(dlRes.headers.get('Content-Length') || 0);
+            if (dlTotal && dlRes.body) {
+              const reader = dlRes.body.getReader();
+              let dlLoaded = 0;
+              const dlChunks = [];
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                dlChunks.push(value);
+                dlLoaded += value.length;
+                const dlPct = dlLoaded / dlTotal;
+                // Download maps to progress 20-48% (the bulk of loading)
+                setNeuralProgress(20 + dlPct * 28);
+                const loadedMB = (dlLoaded / (1024 * 1024)).toFixed(1);
+                const totalMB = (dlTotal / (1024 * 1024)).toFixed(1);
+                logBoot(`⬇️ ${loadedMB} / ${totalMB} MB (${(dlPct * 100).toFixed(0)}%)`);
+              }
+              const fullArr = new Uint8Array(dlLoaded);
+              let offset = 0;
+              for (const c of dlChunks) { fullArr.set(c, offset); offset += c.length; }
+              modelBlob = new Blob([fullArr]);
+            } else {
+              modelBlob = await dlRes.blob();
+            }
             updateStatus('loading', 'Caching...');
             logBoot("📥 Download complete. Stashing for next time...");
+            setNeuralProgress(50);
             await wait(500);
             await ModelCacheDB.save('gemma_task', modelBlob);
             logBoot("✅ Persistence verified. We won't forget this time.");
+            setNeuralProgress(55);
             await wait(400);
             modelPath = URL.createObjectURL(modelBlob);
           }
@@ -3180,13 +3310,16 @@ self.addEventListener('message', async (e) => {
 
         updateStatus('loading', 'Linking...');
         logBoot("🧮 Allocating WebGPU buffers... hold tight.");
+        setNeuralProgress(60);
         await wait(800);
         const f = await FilesetResolver.forGenAiTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/wasm");
         
         updateStatus('loading', 'Booting...');
         logBoot("🧬 Inflating neural layers... almost sentient.");
+        setNeuralProgress(75);
         await wait(700);
         logBoot("⚡ Connecting synapses... don't blink.");
+        setNeuralProgress(85);
         await wait(500);
         
         State.inference = await LlmInference.createFromOptions(f, {
@@ -3195,6 +3328,7 @@ self.addEventListener('message', async (e) => {
         });
         
         logBoot("🚀 Inference engine is hot. Let's go!");
+        setNeuralProgress(100);
         await wait(400);
         State.modelReady = true; updateStatus('online', 'Ready');
         document.getElementById('chat-input').disabled = false;
@@ -3678,6 +3812,15 @@ self.addEventListener('message', async (e) => {
               const mediaType = normalizedArgs.type === 'video' ? 'video' : 'image';
               toolResponsePayload = {
                 result: `${count} ${mediaType}${count !== 1 ? 's' : ''} for "${normalizedArgs.query}" are now displayed in the chat UI. Do NOT list or describe each ${mediaType} individually — they are already visible to the user. Simply acknowledge the results are shown.`
+              };
+            }
+
+            // For interactive trivia sessions, the widget is already rendered in the chat.
+            // Give the model a brief summary so it does not reproduce the questions in text.
+            if (call.name === 'trivia_question' && res && typeof res === 'object' && res.result && res.result.type === 'trivia_session') {
+              const qCount = res.result.totalQuestions || res.result.questions?.length || 0;
+              toolResponsePayload = {
+                result: `An interactive trivia quiz with ${qCount} questions is now displayed in the chat. The user can play directly by clicking answer buttons in the widget. Do NOT list or repeat the questions or answers in text — the interactive quiz is already visible and playable. Simply acknowledge the trivia session has started and wish them good luck.`
               };
             }
 
@@ -4464,7 +4607,9 @@ Tool Selection Guidelines:
         }
 
         renderQuestion();
-        result.appendChild(widget);
+        // Render the interactive widget directly in the message (outside the collapsed block)
+        // A reference is stored so it can be appended after the block is assembled
+        block._triviaWidget = widget;
       } else {
         const pre = document.createElement('pre');
         pre.textContent = resultStr; // textContent: no XSS risk, no HTML parsing
@@ -4516,13 +4661,14 @@ Tool Selection Guidelines:
       block.appendChild(result);
       el.appendChild(block);
 
+      // For trivia, append the interactive widget directly to the message (outside collapsed block)
+      if (block._triviaWidget) {
+        el.appendChild(block._triviaWidget);
+        delete block._triviaWidget;
+      }
+
       // Auto-expand web search and media results so interactive content is immediately visible
-      if (name === 'trivia_question' && res && typeof res === 'object' && res.result && res.result.type === 'trivia_session') {
-        result.classList.add('open');
-        result.style.whiteSpace = 'normal';
-        const arrow = toggle.querySelector('span');
-        if (arrow) arrow.innerHTML = '&#9660;';
-      } else if ((name === 'web_search' || name === 'search_media') && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
+      if ((name === 'web_search' || name === 'search_media') && res && typeof res === 'object' && Array.isArray(res.results) && res.results.length > 0) {
         result.classList.add('open');
         const arrow = toggle.querySelector('span');
         if (arrow) arrow.innerHTML = '&#9660;';
@@ -5464,6 +5610,7 @@ Tool Selection Guidelines:
       const status = document.getElementById('download-status');
       document.getElementById('progress-container').classList.remove('hidden');
       status.textContent = 'Starting download...';
+      setNeuralProgress(15);
       fetch(REMOTE_MODEL).then(async res => {
         const reader = res.body.getReader(); const total = +res.headers.get('Content-Length');
         let loaded = 0; const chunks = [];
@@ -5472,11 +5619,14 @@ Tool Selection Guidelines:
           chunks.push(value); loaded += value.length;
           const pct = (loaded/total*100);
           fill.style.width = pct + '%';
+          // Map download progress to neural progress 15-48%
+          setNeuralProgress(15 + (pct / 100) * 33);
           const loadedMB = (loaded / (1024 * 1024)).toFixed(1);
           const totalMB = (total / (1024 * 1024)).toFixed(1);
           status.textContent = `${loadedMB} / ${totalMB} MB (${pct.toFixed(0)}%)`;
         }
         status.textContent = 'Initializing model...';
+        setNeuralProgress(50);
         const full = new Uint8Array(loaded); let offset = 0; for(const c of chunks) { full.set(c, offset); offset += c.length; }
         document.getElementById('loader-rescue').classList.remove('visible');
         initGemma(full, true);
