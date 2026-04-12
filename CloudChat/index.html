@@ -1136,7 +1136,18 @@
 
     // ── WebGPU check ─────────────────────────────────────
     // Store the result on window so model.js can read it during boot.
-    window.webGPUAvailable = !!navigator.gpu;
+    // Just checking !!navigator.gpu is insufficient — on some platforms the
+    // API object exists but no adapter can be obtained (experimental support).
+    // Actually try to request an adapter to be sure.
+    window.webGPUAvailable = false;
+    if (navigator.gpu) {
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        window.webGPUAvailable = !!adapter;
+      } catch (e) {
+        console.warn('WebGPU adapter request failed:', e);
+      }
+    }
 
     // Always load the main application so the UI is functional
     await import('./js/app.js');
