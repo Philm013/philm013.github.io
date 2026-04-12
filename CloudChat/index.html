@@ -1180,7 +1180,7 @@
           try {
             const device = await Promise.race([
               adapter.requestDevice(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('device timeout')), 3000))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('WebGPU device request timeout')), 3000))
             ]);
             if (device) {
               device.destroy();

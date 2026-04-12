@@ -270,7 +270,7 @@ export async function initGemma(source = null, isStream = false) {
   } catch (e) {
     console.error(e);
     stopNeuralNetworkAnimation();
-    const isWebGPUError = /WebGPU|adapter|navigator\.gpu/i.test(e?.message || '');
+    const isWebGPUError = /WebGPU|GPU adapter|navigator\.gpu/i.test(e?.message || '');
     if (isWebGPUError) {
       logBoot("⚠️ WebGPU is not available on this device.");
       updateStatus('error', 'No WebGPU');
