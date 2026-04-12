@@ -19,7 +19,31 @@
 
   <script>window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };</script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-  
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => {
+            console.log('Service Worker registered', reg);
+            reg.onupdatefound = () => {
+              const installingWorker = reg.installing;
+              installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed') {
+                  if (navigator.serviceWorker.controller) {
+                    console.log('New content available; please refresh.');
+                  } else {
+                    console.log('Content is cached for offline use.');
+                  }
+                }
+              };
+            };
+          })
+          .catch(err => console.error('Service Worker registration failed', err));
+      });
+    }
+  </script>
+
   <style>
     :root {
       --ollama-black: #000000; --ollama-near-black: #262626; --ollama-white: #ffffff;

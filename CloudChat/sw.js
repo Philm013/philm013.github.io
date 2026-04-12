@@ -2,6 +2,9 @@ const CACHE_NAME = 'gemma-chat-v1';
 const ASSETS = [
   './',
   './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap',
   'https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js',
   'https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js',
@@ -20,5 +23,17 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
     })
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keyList) => {
+      return Promise.all(keyList.map((key) => {
+        if (key !== CACHE_NAME) {
+          return caches.delete(key);
+        }
+      }));
+    }).then(() => self.clients.claim())
   );
 });
