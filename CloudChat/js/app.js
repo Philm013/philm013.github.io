@@ -1,5 +1,5 @@
 // ── Application Entry Point ───────────────────────────────────
-import { REMOTE_MODEL, State } from './config.js';
+import { REMOTE_MODEL, LOCAL_MODEL, State } from './config.js';
 import { openRAGDB, storeChunks, getAllChunks, cosineSimilarity, deleteChunk, extractPDFText, extractDOCXText } from './rag.js';
 import { isSearchConfigured } from './search.js';
 import { TOOL_REGISTRY, ensureToolSkillDocsLoaded } from './tools.js';
@@ -451,6 +451,23 @@ document.getElementById('model-upload-input').onchange = async e => {
     document.getElementById('loader-rescue').classList.remove('visible');
     const r = await e.target.files[0].arrayBuffer();
     initGemma(new Uint8Array(r), true);
+  }
+};
+
+document.getElementById('local-server-btn').onclick = async () => {
+  const status = document.getElementById('download-status');
+  status.textContent = 'Checking local server...';
+  try {
+    const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
+    if (check.ok) {
+      document.getElementById('loader-rescue').classList.remove('visible');
+      status.textContent = '';
+      initGemma();
+    } else {
+      status.textContent = 'Model file not found on local server.';
+    }
+  } catch (_e) {
+    status.textContent = 'Could not reach local server.';
   }
 };
 
