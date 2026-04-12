@@ -21,6 +21,7 @@ TEMP/
 # Security & Local Environment
 .env
 .env.*
+!.env.template
 *.key
 *.cert
 *.pem

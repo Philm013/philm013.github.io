@@ -13,7 +13,7 @@ import {
   addAttachment, showAttachModal,
   getPendingAttachFile
 } from './ui.js';
-import { initGemma, setNeuralProgress } from './model.js';
+import { initGemma, initServer, setNeuralProgress } from './model.js';
 import { handleSend, DEFAULT_SYSTEM_PROMPT } from './chat.js';
 
 // ── Share – encrypted link support ──────────────────────
@@ -456,7 +456,13 @@ document.getElementById('model-upload-input').onchange = async e => {
 
 document.getElementById('local-server-btn').onclick = async () => {
   const status = document.getElementById('download-status');
-  status.textContent = 'Checking local server...';
+  status.textContent = 'Checking server backend...';
+  if (await isServerAvailable()) {
+    document.getElementById('loader-rescue').classList.remove('visible');
+    status.textContent = '';
+    initServer();
+    return;
+  }
   try {
     const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
     if (check.ok) {
@@ -464,7 +470,7 @@ document.getElementById('local-server-btn').onclick = async () => {
       status.textContent = '';
       initGemma();
     } else {
-      status.textContent = 'Model file not found on local server.';
+      status.textContent = 'Server not running and model file not found locally.';
     }
   } catch (_e) {
     status.textContent = 'Could not reach local server.';
@@ -595,12 +601,35 @@ document.querySelectorAll('.about-tab').forEach(tab => {
   });
 });
 
+// ── Server Detection Helper ─────────────────────────────
+// Returns true if the Node.js server backend is available.
+async function isServerAvailable() {
+  try {
+    const res = await fetch('/api/status');
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // ── Init ────────────────────────────────────────────────
 // This module is loaded via `await import()` inside a deferred <script type="module">,
 // so the DOM is fully parsed and all synchronous <script> tags in <head> have executed.
 // We can initialise immediately — no need to wait for window.onload.
 restoreFromSession();
-initGemma();
+
+// Try to connect to the Node.js server backend first.  If the server is
+// running (npm start inside CloudChat/server/), inference is offloaded to
+// the server via the Google AI SDK.  Otherwise fall back to in-browser
+// MediaPipe/WebGPU model loading.
+(async () => {
+  if (await isServerAvailable()) {
+    await initServer();
+  } else {
+    initGemma();
+  }
+})();
+
 ensureToolSkillDocsLoaded().then(() => refreshToolsPanel());
 refreshLibraryPanel();
 refreshHistoryPanel();
