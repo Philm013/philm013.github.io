@@ -457,16 +457,12 @@ document.getElementById('model-upload-input').onchange = async e => {
 document.getElementById('local-server-btn').onclick = async () => {
   const status = document.getElementById('download-status');
   status.textContent = 'Checking server backend...';
-  try {
-    // First try the Node.js server API
-    const apiCheck = await fetch('/api/status');
-    if (apiCheck.ok) {
-      document.getElementById('loader-rescue').classList.remove('visible');
-      status.textContent = '';
-      initServer();
-      return;
-    }
-  } catch { /* server not running — fall through to local model check */ }
+  if (await isServerAvailable()) {
+    document.getElementById('loader-rescue').classList.remove('visible');
+    status.textContent = '';
+    initServer();
+    return;
+  }
   try {
     const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
     if (check.ok) {
@@ -605,6 +601,17 @@ document.querySelectorAll('.about-tab').forEach(tab => {
   });
 });
 
+// ── Server Detection Helper ─────────────────────────────
+// Returns true if the Node.js server backend is available.
+async function isServerAvailable() {
+  try {
+    const res = await fetch('/api/status');
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // ── Init ────────────────────────────────────────────────
 // This module is loaded via `await import()` inside a deferred <script type="module">,
 // so the DOM is fully parsed and all synchronous <script> tags in <head> have executed.
@@ -616,14 +623,9 @@ restoreFromSession();
 // the server via the Google AI SDK.  Otherwise fall back to in-browser
 // MediaPipe/WebGPU model loading.
 (async () => {
-  try {
-    const res = await fetch('/api/status');
-    if (res.ok) {
-      await initServer();
-    } else {
-      initGemma();
-    }
-  } catch {
+  if (await isServerAvailable()) {
+    await initServer();
+  } else {
     initGemma();
   }
 })();

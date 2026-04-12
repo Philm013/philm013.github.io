@@ -305,7 +305,7 @@ async function serverGenerateResponse(prompt, callback) {
           full += parsed.text;
           callback(full, false);
         }
-      } catch { /* skip malformed SSE lines */ }
+      } catch (e) { console.warn('Malformed SSE payload:', payload, e); }
     }
   }
   // If stream ended without [DONE], finalize
