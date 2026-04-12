@@ -269,8 +269,22 @@ export async function initGemma(source = null, isStream = false) {
     stopNeuralNetworkAnimation();
   } catch (e) {
     console.error(e);
-    logBoot("💀 CRITICAL FAILURE: BRAIN NOT FOUND");
-    updateStatus('error', 'Brain Failure');
-    document.getElementById('loader-rescue').classList.add('visible');
+    stopNeuralNetworkAnimation();
+    const isWebGPUError = /WebGPU|adapter|navigator\.gpu/i.test(e?.message || '');
+    if (isWebGPUError) {
+      logBoot("⚠️ WebGPU is not available on this device.");
+      updateStatus('error', 'No WebGPU');
+      document.getElementById('global-loader').classList.add('hidden');
+      document.getElementById('chat-container').innerHTML = `
+        <div style="text-align:center;padding:60px 20px;color:var(--ollama-stone)">
+          <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
+          <h2 style="color:var(--ollama-near-black);margin-bottom:12px">WebGPU Not Available</h2>
+          <p style="max-width:400px;margin:0 auto;line-height:1.6">This app requires WebGPU to run the AI model in your browser. Please use Chrome 113+, Edge 113+, or a WebGPU-compatible browser on a device with a compatible GPU.</p>
+        </div>`;
+    } else {
+      logBoot("💀 CRITICAL FAILURE: BRAIN NOT FOUND");
+      updateStatus('error', 'Brain Failure');
+      document.getElementById('loader-rescue').classList.add('visible');
+    }
   }
 }
