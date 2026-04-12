@@ -3063,23 +3063,26 @@ self.addEventListener('message', async (e) => {
     let neuralProgress = 0;        // 0-100, controls connection density & visual intensity
     let neuralMilestoneFlash = 0;  // countdown for milestone burst effect
     let neuralNodes = [];
+    let _prevNeuralProgress = 0;   // tracks previous value for milestone crossing detection
 
     function setNeuralProgress(pct) {
+      const prev = _prevNeuralProgress;
       neuralProgress = Math.max(0, Math.min(100, pct));
+      _prevNeuralProgress = neuralProgress;
       // Update the main progress bar
       const fill = document.getElementById('loader-progress-fill');
       const text = document.getElementById('loader-progress-text');
       if (fill) {
-        // Check if this is a milestone crossing (25, 50, 75, 100)
-        const isMilestone = [25, 50, 75, 100].some(m => pct >= m && pct - 5 < m);
+        // Detect milestone crossing: previous was below, current is at or above
+        const isMilestone = [25, 50, 75, 100].some(m => prev < m && neuralProgress >= m);
         if (isMilestone) {
           fill.classList.add('milestone');
           neuralMilestoneFlash = 60; // ~1 second of burst at 60fps
           setTimeout(() => fill.classList.remove('milestone'), 700);
         }
-        fill.style.width = pct + '%';
+        fill.style.width = neuralProgress + '%';
       }
-      if (text) text.textContent = pct > 0 ? `${Math.round(pct)}%` : '';
+      if (text) text.textContent = neuralProgress > 0 ? `${Math.round(neuralProgress)}%` : '';
     }
 
     function startNeuralNetworkAnimation() {
@@ -3204,6 +3207,7 @@ self.addEventListener('message', async (e) => {
       if (neuralAnimId) { cancelAnimationFrame(neuralAnimId); neuralAnimId = null; }
       if (neuralResizeHandler) { window.removeEventListener('resize', neuralResizeHandler); neuralResizeHandler = null; }
       neuralProgress = 0;
+      _prevNeuralProgress = 0;
       neuralNodes = [];
     }
 
@@ -3284,7 +3288,7 @@ self.addEventListener('message', async (e) => {
                 dlLoaded += value.length;
                 const dlPct = dlLoaded / dlTotal;
                 // Download maps to progress 20-48% (the bulk of loading)
-                setNeuralProgress(20 + dlPct * 28);
+                setNeuralProgress(20 + dlPct * (48 - 20));
                 const loadedMB = (dlLoaded / (1024 * 1024)).toFixed(1);
                 const totalMB = (dlTotal / (1024 * 1024)).toFixed(1);
                 logBoot(`⬇️ ${loadedMB} / ${totalMB} MB (${(dlPct * 100).toFixed(0)}%)`);
@@ -5610,7 +5614,7 @@ Tool Selection Guidelines:
       const status = document.getElementById('download-status');
       document.getElementById('progress-container').classList.remove('hidden');
       status.textContent = 'Starting download...';
-      setNeuralProgress(15);
+      setNeuralProgress(20);
       fetch(REMOTE_MODEL).then(async res => {
         const reader = res.body.getReader(); const total = +res.headers.get('Content-Length');
         let loaded = 0; const chunks = [];
@@ -5619,8 +5623,8 @@ Tool Selection Guidelines:
           chunks.push(value); loaded += value.length;
           const pct = (loaded/total*100);
           fill.style.width = pct + '%';
-          // Map download progress to neural progress 15-48%
-          setNeuralProgress(15 + (pct / 100) * 33);
+          // Map download progress to neural progress 20-48% (matches initGemma boot flow)
+          setNeuralProgress(20 + (pct / 100) * (48 - 20));
           const loadedMB = (loaded / (1024 * 1024)).toFixed(1);
           const totalMB = (total / (1024 * 1024)).toFixed(1);
           status.textContent = `${loadedMB} / ${totalMB} MB (${pct.toFixed(0)}%)`;
