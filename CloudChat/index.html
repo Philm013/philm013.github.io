@@ -585,6 +585,7 @@
       <div class="rescue-desc">Private AI requires 1.2 GB neural weights. Choose an option below to get started.</div>
       <button class="btn-rescue btn-rescue-primary" id="download-btn">⬇️ Download &amp; Install</button>
       <button class="btn-rescue btn-rescue-secondary" onclick="document.getElementById('model-upload-input').click()">📁 Supply Local File (.task)</button>
+      <button class="btn-rescue btn-rescue-secondary" id="local-server-btn">🖥️ Use Local Server</button>
       <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
       <div class="rescue-status" id="download-status"></div>
     </div>
@@ -1166,8 +1167,8 @@
     // Store the result on window so model.js can read it during boot.
     // Use a timeout because navigator.gpu.requestAdapter() can hang on some
     // platforms where the API object exists but no usable adapter is present.
-    // If the adapter check times out or fails, webGPUAvailable stays false and
-    // initGemma() shows a clear "No WebGPU" message instead of hanging.
+    // Also validate device creation — on some platforms the adapter exists
+    // but creating a device hangs or fails, which would later hang model init.
     window.webGPUAvailable = false;
     if (navigator.gpu) {
       try {
@@ -1175,7 +1176,20 @@
           navigator.gpu.requestAdapter(),
           new Promise(resolve => setTimeout(() => resolve(null), 3000))
         ]);
-        window.webGPUAvailable = !!adapter;
+        if (adapter) {
+          try {
+            const device = await Promise.race([
+              adapter.requestDevice(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('device timeout')), 3000))
+            ]);
+            if (device) {
+              device.destroy();
+              window.webGPUAvailable = true;
+            }
+          } catch (_devErr) {
+            console.warn('WebGPU device creation failed:', _devErr);
+          }
+        }
       } catch (e) {
         console.warn('WebGPU adapter request failed:', e);
       }

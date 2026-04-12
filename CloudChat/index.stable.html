@@ -561,6 +561,7 @@
       <div class="rescue-desc">Private AI requires 1.2 GB neural weights. Choose an option below to get started.</div>
       <button class="btn-rescue btn-rescue-primary" id="download-btn">⬇️ Download &amp; Install</button>
       <button class="btn-rescue btn-rescue-secondary" onclick="document.getElementById('model-upload-input').click()">📁 Supply Local File (.task)</button>
+      <button class="btn-rescue btn-rescue-secondary" id="local-server-btn">🖥️ Use Local Server</button>
       <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
       <div class="rescue-status" id="download-status"></div>
     </div>
@@ -3261,54 +3262,34 @@ self.addEventListener('message', async (e) => {
             logBoot("🤷 Local cache miss. Asking the internet nicely...");
             setNeuralProgress(18);
             await wait(500);
-            let fetchPath = REMOTE_MODEL;
-            try { const check = await fetch(LOCAL_MODEL, { method: 'HEAD' }); if (check.ok) { fetchPath = LOCAL_MODEL; logBoot("📡 Nearby weights detected on host. Score!"); await wait(400); } } catch (_e) { /* local model not available — proceed with remote */ }
-            if (fetchPath === REMOTE_MODEL) {
-              // Show rescue options within the neural loader (no separate overlay)
+            // Check if the model file is co-hosted on the same server
+            let localAvailable = false;
+            try {
+              const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
+              if (check.ok) {
+                localAvailable = true;
+                logBoot("📡 Nearby weights detected on host. Score!");
+                await wait(400);
+              }
+            } catch (_e) { /* local model not available — proceed with rescue */ }
+
+            if (localAvailable) {
+              // BUG FIX: When the model file is on the same server, pass the
+              // path directly to MediaPipe instead of downloading the entire
+              // file into JS memory, caching it in IndexedDB, and creating a
+              // blob URL.  MediaPipe can fetch same-origin URLs natively and
+              // the browser's own HTTP cache handles caching automatically.
+              logBoot("✅ Using local model file directly — no download needed.");
+              setNeuralProgress(50);
+              await wait(400);
+              modelPath = LOCAL_MODEL;
+            } else {
+              // Model is not available locally — show rescue options
               logBoot("📦 Model not found locally. Manual action required.");
               document.getElementById('loader-rescue').classList.add('visible');
               updateStatus('error', 'Model Required');
               return;
             }
-            updateStatus('loading', 'Loading from local server...');
-            logBoot("⬇️ Loading from local server...");
-            setNeuralProgress(20);
-            await wait(300);
-            // Download with progress tracking
-            const dlRes = await fetch(fetchPath);
-            const dlTotal = +(dlRes.headers.get('Content-Length') || 0);
-            if (dlTotal && dlRes.body) {
-              const reader = dlRes.body.getReader();
-              let dlLoaded = 0;
-              const dlChunks = [];
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                dlChunks.push(value);
-                dlLoaded += value.length;
-                const dlPct = dlLoaded / dlTotal;
-                // Download maps to progress 20-48% (the bulk of loading)
-                setNeuralProgress(20 + dlPct * (48 - 20));
-                const loadedMB = (dlLoaded / (1024 * 1024)).toFixed(1);
-                const totalMB = (dlTotal / (1024 * 1024)).toFixed(1);
-                logBoot(`⬇️ ${loadedMB} / ${totalMB} MB (${(dlPct * 100).toFixed(0)}%)`);
-              }
-              const fullArr = new Uint8Array(dlLoaded);
-              let offset = 0;
-              for (const c of dlChunks) { fullArr.set(c, offset); offset += c.length; }
-              modelBlob = new Blob([fullArr]);
-            } else {
-              modelBlob = await dlRes.blob();
-            }
-            updateStatus('loading', 'Caching...');
-            logBoot("📥 Transfer complete. Stashing for next time...");
-            setNeuralProgress(50);
-            await wait(500);
-            await ModelCacheDB.save('gemma_task', modelBlob);
-            logBoot("✅ Persistence verified. We won't forget this time.");
-            setNeuralProgress(55);
-            await wait(400);
-            modelPath = URL.createObjectURL(modelBlob);
           }
         }
 
@@ -3343,10 +3324,24 @@ self.addEventListener('message', async (e) => {
         stopNeuralNetworkAnimation();
       } catch (e) {
         console.error(e);
-        logBoot("💀 CRITICAL FAILURE: BRAIN NOT FOUND");
-        updateStatus('error', 'Brain Failure');
-        // Show rescue options within the loader instead of a separate overlay
-        document.getElementById('loader-rescue').classList.add('visible');
+        stopNeuralNetworkAnimation();
+        const isWebGPUError = /WebGPU|adapter|navigator\.gpu/i.test(e?.message || '');
+        if (isWebGPUError) {
+          logBoot("⚠️ WebGPU is not available on this device.");
+          updateStatus('error', 'No WebGPU');
+          document.getElementById('global-loader').classList.add('hidden');
+          document.getElementById('chat-container').innerHTML = `
+            <div style="text-align:center;padding:60px 20px;color:var(--ollama-stone)">
+              <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
+              <h2 style="color:var(--ollama-near-black);margin-bottom:12px">WebGPU Not Available</h2>
+              <p style="max-width:400px;margin:0 auto;line-height:1.6">This app requires WebGPU to run the AI model in your browser. Please use Chrome 113+, Edge 113+, or a WebGPU-compatible browser on a device with a compatible GPU.</p>
+            </div>`;
+        } else {
+          logBoot("💀 CRITICAL FAILURE: BRAIN NOT FOUND");
+          updateStatus('error', 'Brain Failure');
+          // Show rescue options within the loader instead of a separate overlay
+          document.getElementById('loader-rescue').classList.add('visible');
+        }
       }
     }
 
@@ -5644,6 +5639,23 @@ Tool Selection Guidelines:
         document.getElementById('loader-rescue').classList.remove('visible');
         const r = await e.target.files[0].arrayBuffer();
         initGemma(new Uint8Array(r), true);
+      }
+    };
+
+    document.getElementById('local-server-btn').onclick = async () => {
+      const status = document.getElementById('download-status');
+      status.textContent = 'Checking local server...';
+      try {
+        const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
+        if (check.ok) {
+          document.getElementById('loader-rescue').classList.remove('visible');
+          status.textContent = '';
+          initGemma();
+        } else {
+          status.textContent = 'Model file not found on local server.';
+        }
+      } catch (_e) {
+        status.textContent = 'Could not reach local server.';
       }
     };
 
