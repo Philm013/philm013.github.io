@@ -1407,8 +1407,13 @@
     });
 
     // ── WebGPU check ─────────────────────────────────────
-    const hasWebGPU = !!navigator.gpu;
-    if (!hasWebGPU) {
+    // Check for WebGPU availability AND shader-f16 support.
+    // Some devices expose WebGPU but lack the shader-f16 feature needed
+    // for q4f16 quantised models.  When f16 is missing we fall back to
+    // the q4 dtype (f32 activations), which is slower but universally
+    // supported on WebGPU-capable hardware.
+    let _gpuF16 = false;
+    if (!navigator.gpu) {
       document.getElementById('chat-container').innerHTML = `
         <div style="text-align:center;padding:60px 20px;color:var(--ollama-stone)">
           <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
@@ -1418,13 +1423,22 @@
       document.getElementById('global-loader').classList.add('hidden');
       throw new Error('WebGPU not available');
     }
+    try {
+      const adapter = await Promise.race([
+        navigator.gpu.requestAdapter(),
+        new Promise(resolve => setTimeout(() => resolve(null), 3000))
+      ]);
+      if (adapter) {
+        _gpuF16 = adapter.features.has('shader-f16');
+      }
+    } catch (_e) { /* adapter probe failed – leave _gpuF16 false */ }
 
     // ── Configuration & Models ──────────────────────────────
     const MODELS = {
       'gemma4-e2b': {
         id: 'onnx-community/gemma-4-E2B-it-ONNX',
         label: 'Gemma 4 E2B',
-        dtype: 'q4',
+        dtype: _gpuF16 ? 'q4f16' : 'q4',
         size: '~1.5 GB',
         type: 'onnx',
         agentCapable: true,
@@ -1432,6 +1446,7 @@
         genConfig: { temperature: 1, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
       },
     };
+    if (!_gpuF16) console.warn('WebGPU shader-f16 not supported — using q4 (f32) dtype instead of q4f16.');
     window.MODELS = MODELS;
 
     // ── State ───────────────────────────────────────────────────
