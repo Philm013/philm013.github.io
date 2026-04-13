@@ -15,6 +15,36 @@ import {
 } from './ui.js';
 import { initGemma, setNeuralProgress } from './model.js';
 import { handleSend, DEFAULT_SYSTEM_PROMPT } from './chat.js';
+import { ModelCacheDB } from './storage.js';
+
+const MODEL_DOWNLOAD_KEY = 'gemma_task_remote';
+const DOWNLOAD_FLUSH_CHUNKS = 12;
+
+async function refreshDownloadResumeUI() {
+  const btn = document.getElementById('download-btn');
+  const status = document.getElementById('download-status');
+  if (!btn || !status) return;
+
+  let resumeState = await ModelCacheDB.getDownloadState(MODEL_DOWNLOAD_KEY);
+  if (resumeState && resumeState.url !== REMOTE_MODEL) {
+    await ModelCacheDB.clearDownload(MODEL_DOWNLOAD_KEY);
+    resumeState = null;
+  }
+
+  if (resumeState?.loadedBytes > 0) {
+    const loadedMB = (resumeState.loadedBytes / (1024 * 1024)).toFixed(1);
+    const totalMB = resumeState.totalBytes > 0
+      ? (resumeState.totalBytes / (1024 * 1024)).toFixed(1)
+      : '?';
+    btn.textContent = '⏯ Resume Download';
+    status.textContent = `Resume available: ${loadedMB} / ${totalMB} MB`;
+  } else {
+    btn.textContent = '⬇️ Download & Install';
+    if (!status.textContent.startsWith('Download failed')) {
+      status.textContent = '';
+    }
+  }
+}
 
 // ── Share – encrypted link support ──────────────────────
 function b64ToArr(b64) { const bin = atob(b64); const arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i); return arr; }
@@ -417,33 +447,102 @@ document.getElementById('attach-modal-library-btn').addEventListener('click', as
 });
 
 // ── Download / Upload Model ─────────────────────────────
-document.getElementById('download-btn').onclick = () => {
+document.getElementById('download-btn').onclick = async () => {
   const fill = document.getElementById('download-fill');
   const status = document.getElementById('download-status');
+  const btn = document.getElementById('download-btn');
   document.getElementById('progress-container').classList.remove('hidden');
-  status.textContent = 'Starting download...';
   setNeuralProgress(20);
-  fetch(REMOTE_MODEL).then(async res => {
-    const reader = res.body.getReader(); const total = +res.headers.get('Content-Length');
-    let loaded = 0; const chunks = [];
-    while(true) {
-      const {done, value} = await reader.read(); if (done) break;
-      chunks.push(value); loaded += value.length;
-      const pct = (loaded/total*100);
-      fill.style.width = pct + '%';
-      setNeuralProgress(20 + (pct / 100) * (48 - 20));
+  if (btn) btn.textContent = '⏳ Downloading...';
+
+  try {
+    let resumeState = await ModelCacheDB.getDownloadState(MODEL_DOWNLOAD_KEY);
+    if (resumeState && resumeState.url !== REMOTE_MODEL) {
+      await ModelCacheDB.clearDownload(MODEL_DOWNLOAD_KEY);
+      resumeState = null;
+    }
+
+    let loaded = resumeState?.loadedBytes || 0;
+    let total = resumeState?.totalBytes || 0;
+    let nextChunkIndex = resumeState?.nextChunkIndex || 0;
+
+    status.textContent = loaded > 0
+      ? `Resuming download at ${(loaded / (1024 * 1024)).toFixed(1)} MB...`
+      : 'Starting download...';
+
+    const headers = loaded > 0 ? { Range: `bytes=${loaded}-` } : undefined;
+    let res = await fetch(REMOTE_MODEL, headers ? { headers } : undefined);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    if (loaded > 0 && res.status !== 206) {
+      await ModelCacheDB.clearDownload(MODEL_DOWNLOAD_KEY);
+      loaded = 0;
+      total = 0;
+      nextChunkIndex = 0;
+      status.textContent = 'Server does not support resume. Restarting download...';
+      res = await fetch(REMOTE_MODEL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    }
+
+    const contentRange = res.headers.get('Content-Range');
+    const contentLen = Number(res.headers.get('Content-Length') || 0);
+    if (contentRange) {
+      const m = contentRange.match(/\/(\d+)$/);
+      total = m ? Number(m[1]) : (total || loaded + contentLen);
+    } else if (contentLen > 0) {
+      total = loaded + contentLen;
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error('Download stream unavailable.');
+
+    let pendingChunks = [];
+    const flushPending = async () => {
+      if (!pendingChunks.length) return;
+      await ModelCacheDB.saveDownloadChunkBatch(MODEL_DOWNLOAD_KEY, nextChunkIndex, pendingChunks, {
+        url: REMOTE_MODEL,
+        totalBytes: total,
+        loadedBytes: loaded,
+        nextChunkIndex: nextChunkIndex + pendingChunks.length,
+        updatedAt: Date.now()
+      });
+      nextChunkIndex += pendingChunks.length;
+      pendingChunks = [];
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      pendingChunks.push(value.slice());
+      loaded += value.length;
+
+      if (pendingChunks.length >= DOWNLOAD_FLUSH_CHUNKS) {
+        await flushPending();
+      }
+
+      const pct = total > 0 ? (loaded / total) * 100 : 0;
+      fill.style.width = `${Math.min(100, pct)}%`;
+      setNeuralProgress(20 + (Math.min(100, pct) / 100) * (48 - 20));
       const loadedMB = (loaded / (1024 * 1024)).toFixed(1);
-      const totalMB = (total / (1024 * 1024)).toFixed(1);
+      const totalMB = total > 0 ? (total / (1024 * 1024)).toFixed(1) : '?';
       status.textContent = `${loadedMB} / ${totalMB} MB (${pct.toFixed(0)}%)`;
     }
-    status.textContent = 'Initializing model...';
+
+    await flushPending();
+
+    status.textContent = 'Finalizing model...';
     setNeuralProgress(50);
-    const full = new Uint8Array(loaded); let offset = 0; for(const c of chunks) { full.set(c, offset); offset += c.length; }
+    const savedChunks = await ModelCacheDB.getDownloadChunks(MODEL_DOWNLOAD_KEY, nextChunkIndex);
+    const modelBlob = new Blob(savedChunks, { type: 'application/octet-stream' });
+    await ModelCacheDB.clearDownload(MODEL_DOWNLOAD_KEY);
+
     document.getElementById('loader-rescue').classList.remove('visible');
-    initGemma(full, true);
-  }).catch(err => {
+    initGemma(new Uint8Array(await modelBlob.arrayBuffer()), true);
+  } catch (err) {
     status.textContent = 'Download failed: ' + err.message;
-  });
+  } finally {
+    await refreshDownloadResumeUI();
+  }
 };
 
 document.getElementById('model-upload-input').onchange = async e => {
@@ -592,3 +691,4 @@ refreshHistoryPanel();
 refreshMemoryPanel();
 updateSendButtons();
 checkShareLink();
+refreshDownloadResumeUI().catch(() => {});

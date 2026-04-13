@@ -40,35 +40,67 @@ export function startNeuralNetworkAnimation() {
   const canvas = document.getElementById('neural-net-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const coreEl = document.querySelector('#global-loader .neural-core');
+
   neuralNodes = [];
-  const NODE_COUNT = 60;
-  const BASE_CONNECTION_DIST = 52;
-  const MAX_CONNECTION_DIST = 212;
+  const NODE_COUNT = 72;
+  const BASE_CONNECTION_DIST = 48;
+  const MAX_CONNECTION_DIST = 238;
   let core = { x: 0, y: 0 };
-  let w, h;
+  let w = 0;
+  let h = 0;
+
+  const updateCore = () => {
+    if (!coreEl) {
+      core = { x: w * 0.5, y: h * 0.36 };
+      return;
+    }
+    const canvasRect = canvas.getBoundingClientRect();
+    const coreRect = coreEl.getBoundingClientRect();
+    const coreX = (coreRect.left + coreRect.width * 0.5) - canvasRect.left;
+    const coreY = (coreRect.top + coreRect.height * 0.5) - canvasRect.top;
+    core = {
+      x: Math.max(0, Math.min(w, coreX)),
+      y: Math.max(0, Math.min(h, coreY))
+    };
+  };
 
   function resize() {
-    w = canvas.width = canvas.offsetWidth;
-    h = canvas.height = canvas.offsetHeight;
-    core = { x: w * 0.5, y: h * 0.42 };
+    w = canvas.clientWidth;
+    h = canvas.clientHeight;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    updateCore();
   }
   resize();
   neuralResizeHandler = resize;
   window.addEventListener('resize', neuralResizeHandler);
 
+  const spawnRadius = Math.max(120, Math.min(w, h) * 0.42);
   for (let i = 0; i < NODE_COUNT; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = spawnRadius * (0.2 + Math.random() * 0.8);
+    const nx = core.x + Math.cos(angle) * radius;
+    const ny = core.y + Math.sin(angle) * radius;
     neuralNodes.push({
-      x: Math.random() * w, y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.32, vy: (Math.random() - 0.5) * 0.32,
-      r: 1.5 + Math.random() * 2,
+      x: Math.max(0, Math.min(w, nx)),
+      y: Math.max(0, Math.min(h, ny)),
+      vx: (Math.random() - 0.5) * 0.24,
+      vy: (Math.random() - 0.5) * 0.24,
       baseR: 1.5 + Math.random() * 2,
       active: false,
       activatedAt: 0,
-      phaseOffset: (i / NODE_COUNT) * Math.PI * 2
+      phaseOffset: (i / NODE_COUNT) * Math.PI * 2,
+      anchorAngle: angle,
+      anchorRadius: radius
     });
   }
 
   function draw() {
+    updateCore();
     ctx.clearRect(0, 0, w, h);
     const t = performance.now() / 1000;
     const progress = Math.max(0, Math.min(1, neuralProgress / 100));
@@ -161,7 +193,11 @@ export function startNeuralNetworkAnimation() {
         ctx.fill();
       }
 
-      const speed = isActive ? (0.55 + activity * 1.35 + launchSurge * 0.6) : 0.36;
+      const speed = isActive ? (0.5 + activity * 1.1 + launchSurge * 0.42) : 0.28;
+      const anchorX = core.x + Math.cos(node.anchorAngle + t * 0.09) * node.anchorRadius;
+      const anchorY = core.y + Math.sin(node.anchorAngle + t * 0.09) * node.anchorRadius;
+      node.vx += (anchorX - node.x) * 0.000035;
+      node.vy += (anchorY - node.y) * 0.000035;
       node.x += node.vx * speed;
       node.y += node.vy * speed;
       if (isActive) {
@@ -170,8 +206,10 @@ export function startNeuralNetworkAnimation() {
       }
       node.vx *= 0.996;
       node.vy *= 0.996;
-      if (node.x < 0 || node.x > w) node.vx *= -1;
-      if (node.y < 0 || node.y > h) node.vy *= -1;
+      if (node.x < 0) { node.x = 0; node.vx = Math.abs(node.vx); }
+      if (node.x > w) { node.x = w; node.vx = -Math.abs(node.vx); }
+      if (node.y < 0) { node.y = 0; node.vy = Math.abs(node.vy); }
+      if (node.y > h) { node.y = h; node.vy = -Math.abs(node.vy); }
     }
 
     const coreHue = 208 + progress * 24;

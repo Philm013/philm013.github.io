@@ -243,11 +243,36 @@
     .loader-rescue .rescue-status { font-size: 0.72rem; color: rgba(255,255,255,0.5); }
 
     /* Loader */
-    #global-loader { position: fixed; inset: 0; background: var(--ollama-black); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; overflow: hidden; }
+    #global-loader { --neural-energy: 0; position: fixed; inset: 0; background: var(--ollama-black); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; overflow: hidden; }
     #global-loader.hidden { display: none; }
-    #neural-net-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.4; }
-    .neural-core { width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; animation: pulse 2s infinite; position: relative; z-index: 1; }
-    @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.5; } }
+    #neural-net-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.24; transition: opacity 0.35s ease; }
+    .neural-core {
+      width: 136px;
+      height: 136px;
+      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.34), rgba(146, 196, 255, 0.1) 45%, rgba(120, 170, 235, 0.04) 70%, rgba(80,130,200,0.02) 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      animation: pulse 2.1s ease-in-out infinite;
+      position: relative;
+      z-index: 1;
+      box-shadow:
+        0 0 calc(16px + 26px * var(--neural-energy)) rgba(145, 203, 255, calc(0.12 + 0.28 * var(--neural-energy))),
+        0 0 calc(44px + 80px * var(--neural-energy)) rgba(115, 181, 255, calc(0.05 + 0.2 * var(--neural-energy)));
+      border: 1px solid rgba(196, 225, 255, calc(0.2 + 0.25 * var(--neural-energy)));
+    }
+    .neural-core::before {
+      content: '';
+      position: absolute;
+      inset: -14px;
+      border-radius: 50%;
+      border: 1px solid rgba(175, 218, 255, calc(0.07 + 0.2 * var(--neural-energy)));
+      transform: scale(calc(0.98 + 0.08 * var(--neural-energy)));
+    }
+    .neural-core-brain { font-size: 3rem; color: #fff; position: relative; z-index: 1; filter: drop-shadow(0 0 8px rgba(170, 220, 255, 0.5)); }
+    @keyframes pulse { 0% { transform: scale(0.985); opacity: 0.82; } 50% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(0.985); opacity: 0.82; } }
     .loader-title { font-size: 1.4rem; font-weight: 600; margin-bottom: 8px; position: relative; z-index: 1; }
     .loader-sub { font-size: 0.85rem; opacity: 0.8; position: relative; z-index: 1; min-height: 1.2em; }
     /* Main loader progress bar */
@@ -546,7 +571,7 @@
   <div id="global-loader" class="hidden">
     <canvas id="neural-net-canvas"></canvas>
     <div class="neural-core">
-      <div style="font-size: 2rem; color: #fff; position: relative; z-index: 1;">🧠</div>
+      <div class="neural-core-brain">🧠</div>
     </div>
     <div class="loader-title">System Initializing</div>
     <div id="loader-msg" class="loader-sub">Preparing neural environment...</div>
@@ -1276,10 +1301,12 @@
       name: 'LocalMind_Model_Cache_v1',
       async open() {
         return new Promise((res, rej) => {
-          const req = indexedDB.open(this.name, 1);
+          const req = indexedDB.open(this.name, 2);
           req.onupgradeneeded = e => {
             const db = e.target.result;
-            if(!db.objectStoreNames.contains('model_cache')) db.createObjectStore('model_cache');
+            if (!db.objectStoreNames.contains('model_cache')) db.createObjectStore('model_cache');
+            if (!db.objectStoreNames.contains('model_download_chunks')) db.createObjectStore('model_download_chunks');
+            if (!db.objectStoreNames.contains('model_download_meta')) db.createObjectStore('model_download_meta');
           };
           req.onsuccess = () => res(req.result);
           req.onerror = () => rej(req.error);
@@ -1299,6 +1326,69 @@
         const tx = db.transaction('model_cache', 'readonly');
         const req = tx.objectStore('model_cache').get(key);
         return new Promise(r => req.onsuccess = () => r(req.result));
+      },
+      async saveDownloadChunkBatch(downloadKey, startIndex, chunks, state) {
+        if (!Array.isArray(chunks) || chunks.length === 0) return;
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(['model_download_chunks', 'model_download_meta'], 'readwrite');
+          const chunkStore = tx.objectStore('model_download_chunks');
+          const metaStore = tx.objectStore('model_download_meta');
+
+          for (let i = 0; i < chunks.length; i++) {
+            chunkStore.put(chunks[i], `${downloadKey}:${startIndex + i}`);
+          }
+
+          metaStore.put({ key: downloadKey, ...state });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      },
+      async getDownloadState(downloadKey) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('model_download_meta', 'readonly');
+          const req = tx.objectStore('model_download_meta').get(downloadKey);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => reject(req.error);
+        });
+      },
+      async getDownloadChunks(downloadKey, count) {
+        if (!count) return [];
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('model_download_chunks', 'readonly');
+          const store = tx.objectStore('model_download_chunks');
+          const out = new Array(count);
+          let remaining = count;
+
+          for (let i = 0; i < count; i++) {
+            const req = store.get(`${downloadKey}:${i}`);
+            req.onsuccess = () => {
+              out[i] = req.result;
+              remaining -= 1;
+              if (remaining === 0) resolve(out.filter(Boolean));
+            };
+            req.onerror = () => reject(req.error);
+          }
+        });
+      },
+      async clearDownload(downloadKey) {
+        const state = await this.getDownloadState(downloadKey);
+        const count = state?.nextChunkIndex || 0;
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(['model_download_chunks', 'model_download_meta'], 'readwrite');
+          const chunkStore = tx.objectStore('model_download_chunks');
+          const metaStore = tx.objectStore('model_download_meta');
+
+          for (let i = 0; i < count; i++) {
+            chunkStore.delete(`${downloadKey}:${i}`);
+          }
+          metaStore.delete(downloadKey);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
       }
     };
 
@@ -3069,15 +3159,21 @@ self.addEventListener('message', async (e) => {
       const prev = _prevNeuralProgress;
       neuralProgress = Math.max(0, Math.min(100, pct));
       _prevNeuralProgress = neuralProgress;
-      // Update the main progress bar
+      const loader = document.getElementById('global-loader');
+      const canvas = document.getElementById('neural-net-canvas');
+      const progress01 = neuralProgress / 100;
+      const launchSurge = progress01 > 0.8 ? Math.pow((progress01 - 0.8) / 0.2, 1.65) : 0;
+      const energy = Math.max(progress01, Math.min(1, progress01 * 0.74 + launchSurge * 0.56));
+      if (loader) loader.style.setProperty('--neural-energy', energy.toFixed(3));
+      if (canvas) canvas.style.opacity = String(0.22 + energy * 0.62);
+
       const fill = document.getElementById('loader-progress-fill');
       const text = document.getElementById('loader-progress-text');
       if (fill) {
-        // Detect milestone crossing: previous was below, current is at or above
         const isMilestone = [25, 50, 75, 100].some(m => prev < m && neuralProgress >= m);
         if (isMilestone) {
           fill.classList.add('milestone');
-          neuralMilestoneFlash = 60; // ~1 second of burst at 60fps
+          neuralMilestoneFlash = 60;
           setTimeout(() => fill.classList.remove('milestone'), 700);
         }
         fill.style.width = neuralProgress + '%';
@@ -3089,42 +3185,82 @@ self.addEventListener('message', async (e) => {
       const canvas = document.getElementById('neural-net-canvas');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const coreEl = document.querySelector('#global-loader .neural-core');
+
       neuralNodes = [];
-      const NODE_COUNT = 60;
-      const BASE_CONNECTION_DIST = 80;   // minimum connection radius (low progress)
-      const MAX_CONNECTION_DIST = 200;   // maximum connection radius (full progress)
-      let w, h;
+      const NODE_COUNT = 72;
+      const BASE_CONNECTION_DIST = 48;
+      const MAX_CONNECTION_DIST = 238;
+      let core = { x: 0, y: 0 };
+      let w = 0;
+      let h = 0;
+
+      const updateCore = () => {
+        if (!coreEl) {
+          core = { x: w * 0.5, y: h * 0.36 };
+          return;
+        }
+        const canvasRect = canvas.getBoundingClientRect();
+        const coreRect = coreEl.getBoundingClientRect();
+        const coreX = (coreRect.left + coreRect.width * 0.5) - canvasRect.left;
+        const coreY = (coreRect.top + coreRect.height * 0.5) - canvasRect.top;
+        core = {
+          x: Math.max(0, Math.min(w, coreX)),
+          y: Math.max(0, Math.min(h, coreY))
+        };
+      };
 
       function resize() {
-        w = canvas.width = canvas.offsetWidth;
-        h = canvas.height = canvas.offsetHeight;
+        w = canvas.clientWidth;
+        h = canvas.clientHeight;
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        updateCore();
       }
       resize();
       neuralResizeHandler = resize;
       window.addEventListener('resize', neuralResizeHandler);
 
+      const spawnRadius = Math.max(120, Math.min(w, h) * 0.42);
       for (let i = 0; i < NODE_COUNT; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = spawnRadius * (0.2 + Math.random() * 0.8);
+        const nx = core.x + Math.cos(angle) * radius;
+        const ny = core.y + Math.sin(angle) * radius;
         neuralNodes.push({
-          x: Math.random() * w, y: Math.random() * h,
-          vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
-          r: 1.5 + Math.random() * 2,
+          x: Math.max(0, Math.min(w, nx)),
+          y: Math.max(0, Math.min(h, ny)),
+          vx: (Math.random() - 0.5) * 0.24,
+          vy: (Math.random() - 0.5) * 0.24,
           baseR: 1.5 + Math.random() * 2,
-          active: false,         // becomes true as progress includes this node
-          activatedAt: 0,        // timestamp when node was activated
-          pulsePhase: Math.random() * Math.PI * 2
+          active: false,
+          activatedAt: 0,
+          phaseOffset: (i / NODE_COUNT) * Math.PI * 2,
+          anchorAngle: angle,
+          anchorRadius: radius
         });
       }
 
       function draw() {
+        updateCore();
         ctx.clearRect(0, 0, w, h);
         const t = performance.now() / 1000;
-        const progress = neuralProgress / 100;
-        const connectionDist = BASE_CONNECTION_DIST + (MAX_CONNECTION_DIST - BASE_CONNECTION_DIST) * progress;
-        const activeCount = Math.floor(neuralNodes.length * Math.max(0.15, progress));
+        const progress = Math.max(0, Math.min(1, neuralProgress / 100));
+        const launchSurge = progress > 0.8 ? Math.pow((progress - 0.8) / 0.2, 1.6) : 0;
+        const growth = Math.pow(progress, 1.25);
+        const activity = 0.18 + Math.pow(progress, 1.7) * 0.82 + launchSurge * 0.55;
+        const connectionDist = BASE_CONNECTION_DIST + (MAX_CONNECTION_DIST - BASE_CONNECTION_DIST) * growth + launchSurge * 44;
+        const activeRatio = Math.min(1, 0.1 + growth * 0.9 + launchSurge * 0.08);
+        const activeCount = Math.max(1, Math.floor(neuralNodes.length * activeRatio));
         const isMilestoneBurst = neuralMilestoneFlash > 0;
         if (neuralMilestoneFlash > 0) neuralMilestoneFlash--;
 
-        // Activate nodes progressively
+        const coreConnectionDist = 120 + 210 * growth + launchSurge * 56;
+        const coreBeat = 0.82 + 0.18 * Math.sin(t * (1.25 + activity * 5.2));
+
         for (let i = 0; i < neuralNodes.length; i++) {
           if (i < activeCount && !neuralNodes[i].active) {
             neuralNodes[i].active = true;
@@ -3132,7 +3268,24 @@ self.addEventListener('message', async (e) => {
           }
         }
 
-        // Draw connections — only between active nodes
+        for (const node of neuralNodes) {
+          if (!node.active) continue;
+          const dxCore = node.x - core.x;
+          const dyCore = node.y - core.y;
+          const distCore = Math.sqrt(dxCore * dxCore + dyCore * dyCore);
+          if (distCore < coreConnectionDist) {
+            const distAlpha = 1 - distCore / coreConnectionDist;
+            const alpha = Math.min(0.95, (0.09 + 0.45 * growth + launchSurge * 0.2) * distAlpha * coreBeat);
+            const hue = 204 + progress * 32;
+            ctx.beginPath();
+            ctx.moveTo(core.x, core.y);
+            ctx.lineTo(node.x, node.y);
+            ctx.strokeStyle = `hsla(${hue}, 82%, 70%, ${alpha})`;
+            ctx.lineWidth = 0.5 + progress * 1.15 + launchSurge * 1.15;
+            ctx.stroke();
+          }
+        }
+
         for (let i = 0; i < neuralNodes.length; i++) {
           if (!neuralNodes[i].active) continue;
           for (let j = i + 1; j < neuralNodes.length; j++) {
@@ -3145,60 +3298,87 @@ self.addEventListener('message', async (e) => {
               const fadeJ = Math.min(1, (t - neuralNodes[j].activatedAt) * 2);
               const connectionFade = Math.min(fadeI, fadeJ);
               const distAlpha = 1 - dist / connectionDist;
-              let alpha = 0.35 * distAlpha * connectionFade * (0.3 + 0.7 * progress);
-
-              // Milestone burst: connections glow brighter
+              const wave = 0.78 + 0.22 * Math.sin(t * (1.2 + activity * 6.5) + dist * 0.03);
+              let alpha = (0.08 + 0.42 * growth) * distAlpha * connectionFade * wave;
               if (isMilestoneBurst) {
-                alpha = Math.min(1, alpha * 2.5);
+                alpha = Math.min(1, alpha * 1.9);
               }
-
-              const hue = 210 + progress * 30; // shift from blue to cyan as progress increases
+              const hue = 205 + progress * 34;
               ctx.beginPath();
               ctx.moveTo(neuralNodes[i].x, neuralNodes[i].y);
               ctx.lineTo(neuralNodes[j].x, neuralNodes[j].y);
-              ctx.strokeStyle = `hsla(${hue}, 70%, 65%, ${alpha})`;
-              ctx.lineWidth = isMilestoneBurst ? 1.2 : (0.4 + 0.6 * progress);
+              ctx.strokeStyle = `hsla(${hue}, 80%, 68%, ${alpha})`;
+              ctx.lineWidth = isMilestoneBurst ? (1.2 + progress * 0.8 + launchSurge * 0.9) : (0.3 + progress * 1.05 + launchSurge * 0.6);
               ctx.stroke();
             }
           }
         }
 
-        // Draw nodes
-        for (const node of neuralNodes) {
+        for (let idx = 0; idx < neuralNodes.length; idx++) {
+          const node = neuralNodes[idx];
           const isActive = node.active;
           const fadeIn = isActive ? Math.min(1, (t - node.activatedAt) * 2) : 0.15;
-          const pulse = Math.sin(t * 2 + node.pulsePhase) * 0.3 + 0.7;
-          const baseAlpha = isActive ? (0.4 + 0.4 * progress) * fadeIn * pulse : 0.12;
+          const pulse = 0.84 + 0.16 * Math.sin(t * (1.1 + activity * 5) + node.phaseOffset + idx * 0.04);
+          const baseAlpha = isActive ? (0.28 + 0.54 * growth) * fadeIn * pulse : 0.08;
           let alpha = baseAlpha;
-          let r = node.baseR * (isActive ? (0.8 + 0.4 * progress) : 0.6);
-
-          // Milestone burst: nodes pulse larger and brighter
+          let r = node.baseR * (isActive ? (0.84 + 0.72 * growth) : 0.52);
           if (isMilestoneBurst && isActive) {
-            alpha = Math.min(1, alpha * 2);
-            r *= 1.5;
+            alpha = Math.min(1, alpha * 1.5);
+            r *= 1.32;
           }
-
-          const hue = 210 + progress * 30;
+          const hue = 206 + progress * 30;
           ctx.beginPath();
           ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
-          ctx.fillStyle = `hsla(${hue}, 70%, 65%, ${alpha})`;
+          ctx.fillStyle = `hsla(${hue}, 82%, 69%, ${alpha})`;
           ctx.fill();
-
-          // Glow effect for active nodes at higher progress
-          if (isActive && progress > 0.3) {
+          if (isActive && progress > 0.24) {
             ctx.beginPath();
-            ctx.arc(node.x, node.y, r * 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${hue}, 70%, 65%, ${alpha * 0.15})`;
+            ctx.arc(node.x, node.y, r * (2.0 + growth * 1.35), 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${hue}, 82%, 69%, ${alpha * (0.08 + growth * 0.12)})`;
             ctx.fill();
           }
 
-          // Move — active nodes move slightly faster as progress increases
-          const speed = isActive ? 1 + progress * 0.5 : 0.5;
+          const speed = isActive ? (0.5 + activity * 1.1 + launchSurge * 0.42) : 0.28;
+          const anchorX = core.x + Math.cos(node.anchorAngle + t * 0.09) * node.anchorRadius;
+          const anchorY = core.y + Math.sin(node.anchorAngle + t * 0.09) * node.anchorRadius;
+          node.vx += (anchorX - node.x) * 0.000035;
+          node.vy += (anchorY - node.y) * 0.000035;
           node.x += node.vx * speed;
           node.y += node.vy * speed;
-          if (node.x < 0 || node.x > w) node.vx *= -1;
-          if (node.y < 0 || node.y > h) node.vy *= -1;
+          if (isActive) {
+            node.vx += (core.x - node.x) * (0.000018 + growth * 0.000052 + launchSurge * 0.00003);
+            node.vy += (core.y - node.y) * (0.000018 + growth * 0.000052 + launchSurge * 0.00003);
+          }
+          node.vx *= 0.996;
+          node.vy *= 0.996;
+          if (node.x < 0) { node.x = 0; node.vx = Math.abs(node.vx); }
+          if (node.x > w) { node.x = w; node.vx = -Math.abs(node.vx); }
+          if (node.y < 0) { node.y = 0; node.vy = Math.abs(node.vy); }
+          if (node.y > h) { node.y = h; node.vy = -Math.abs(node.vy); }
         }
+
+        const coreHue = 208 + progress * 24;
+        const coreGlowR = 24 + growth * 26;
+        const coreGlowAlpha = 0.12 + growth * 0.34;
+        ctx.beginPath();
+        ctx.arc(core.x, core.y, coreGlowR * 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${coreHue}, 85%, 72%, ${coreGlowAlpha * 0.32})`;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(core.x, core.y, coreGlowR, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${coreHue}, 90%, 76%, ${coreGlowAlpha})`;
+        ctx.fill();
+
+        if (launchSurge > 0) {
+          const ringAlpha = 0.22 * launchSurge;
+          const ringRadius = coreGlowR * (1.5 + launchSurge * 1.7);
+          ctx.beginPath();
+          ctx.arc(core.x, core.y, ringRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `hsla(${coreHue + 8}, 90%, 75%, ${ringAlpha})`;
+          ctx.lineWidth = 1.4 + launchSurge * 2;
+          ctx.stroke();
+        }
+
         neuralAnimId = requestAnimationFrame(draw);
       }
       draw();
@@ -5601,36 +5781,133 @@ Tool Selection Guidelines:
       refreshMemoryPanel();
       updateSendButtons();
       checkShareLink();
+      refreshDownloadResumeUI().catch(() => {});
     };
 
-    document.getElementById('download-btn').onclick = () => {
+    const MODEL_DOWNLOAD_KEY = 'gemma_task_remote';
+    const DOWNLOAD_FLUSH_CHUNKS = 12;
+
+    async function refreshDownloadResumeUI() {
+      const btn = document.getElementById('download-btn');
+      const status = document.getElementById('download-status');
+      if (!btn || !status) return;
+
+      let resumeState = await ModelCacheDB.getDownloadState(MODEL_DOWNLOAD_KEY);
+      if (resumeState && resumeState.url !== REMOTE_MODEL) {
+        await ModelCacheDB.clearDownload(MODEL_DOWNLOAD_KEY);
+        resumeState = null;
+      }
+
+      if (resumeState?.loadedBytes > 0) {
+        const loadedMB = (resumeState.loadedBytes / (1024 * 1024)).toFixed(1);
+        const totalMB = resumeState.totalBytes > 0
+          ? (resumeState.totalBytes / (1024 * 1024)).toFixed(1)
+          : '?';
+        btn.textContent = '⏯ Resume Download';
+        status.textContent = `Resume available: ${loadedMB} / ${totalMB} MB`;
+      } else {
+        btn.textContent = '⬇️ Download & Install';
+        if (!status.textContent.startsWith('Download failed')) {
+          status.textContent = '';
+        }
+      }
+    }
+
+    document.getElementById('download-btn').onclick = async () => {
       const fill = document.getElementById('download-fill');
       const status = document.getElementById('download-status');
+      const btn = document.getElementById('download-btn');
       document.getElementById('progress-container').classList.remove('hidden');
-      status.textContent = 'Starting download...';
       setNeuralProgress(20);
-      fetch(REMOTE_MODEL).then(async res => {
-        const reader = res.body.getReader(); const total = +res.headers.get('Content-Length');
-        let loaded = 0; const chunks = [];
-        while(true) {
-          const {done, value} = await reader.read(); if (done) break;
-          chunks.push(value); loaded += value.length;
-          const pct = (loaded/total*100);
-          fill.style.width = pct + '%';
-          // Map download progress to neural progress 20-48% (matches initGemma boot flow)
-          setNeuralProgress(20 + (pct / 100) * (48 - 20));
+      if (btn) btn.textContent = '⏳ Downloading...';
+
+      try {
+        let resumeState = await ModelCacheDB.getDownloadState(MODEL_DOWNLOAD_KEY);
+        if (resumeState && resumeState.url !== REMOTE_MODEL) {
+          await ModelCacheDB.clearDownload(MODEL_DOWNLOAD_KEY);
+          resumeState = null;
+        }
+
+        let loaded = resumeState?.loadedBytes || 0;
+        let total = resumeState?.totalBytes || 0;
+        let nextChunkIndex = resumeState?.nextChunkIndex || 0;
+
+        status.textContent = loaded > 0
+          ? `Resuming download at ${(loaded / (1024 * 1024)).toFixed(1)} MB...`
+          : 'Starting download...';
+
+        const headers = loaded > 0 ? { Range: `bytes=${loaded}-` } : undefined;
+        let res = await fetch(REMOTE_MODEL, headers ? { headers } : undefined);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        if (loaded > 0 && res.status !== 206) {
+          await ModelCacheDB.clearDownload(MODEL_DOWNLOAD_KEY);
+          loaded = 0;
+          total = 0;
+          nextChunkIndex = 0;
+          status.textContent = 'Server does not support resume. Restarting download...';
+          res = await fetch(REMOTE_MODEL);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        }
+
+        const contentRange = res.headers.get('Content-Range');
+        const contentLen = Number(res.headers.get('Content-Length') || 0);
+        if (contentRange) {
+          const m = contentRange.match(/\/(\d+)$/);
+          total = m ? Number(m[1]) : (total || loaded + contentLen);
+        } else if (contentLen > 0) {
+          total = loaded + contentLen;
+        }
+
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error('Download stream unavailable.');
+
+        let pendingChunks = [];
+        const flushPending = async () => {
+          if (!pendingChunks.length) return;
+          await ModelCacheDB.saveDownloadChunkBatch(MODEL_DOWNLOAD_KEY, nextChunkIndex, pendingChunks, {
+            url: REMOTE_MODEL,
+            totalBytes: total,
+            loadedBytes: loaded,
+            nextChunkIndex: nextChunkIndex + pendingChunks.length,
+            updatedAt: Date.now()
+          });
+          nextChunkIndex += pendingChunks.length;
+          pendingChunks = [];
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          pendingChunks.push(value.slice());
+          loaded += value.length;
+
+          if (pendingChunks.length >= DOWNLOAD_FLUSH_CHUNKS) {
+            await flushPending();
+          }
+
+          const pct = total > 0 ? (loaded / total) * 100 : 0;
+          fill.style.width = `${Math.min(100, pct)}%`;
+          setNeuralProgress(20 + (Math.min(100, pct) / 100) * (48 - 20));
           const loadedMB = (loaded / (1024 * 1024)).toFixed(1);
-          const totalMB = (total / (1024 * 1024)).toFixed(1);
+          const totalMB = total > 0 ? (total / (1024 * 1024)).toFixed(1) : '?';
           status.textContent = `${loadedMB} / ${totalMB} MB (${pct.toFixed(0)}%)`;
         }
-        status.textContent = 'Initializing model...';
+
+        await flushPending();
+
+        status.textContent = 'Finalizing model...';
         setNeuralProgress(50);
-        const full = new Uint8Array(loaded); let offset = 0; for(const c of chunks) { full.set(c, offset); offset += c.length; }
+        const savedChunks = await ModelCacheDB.getDownloadChunks(MODEL_DOWNLOAD_KEY, nextChunkIndex);
+        const modelBlob = new Blob(savedChunks, { type: 'application/octet-stream' });
+        await ModelCacheDB.clearDownload(MODEL_DOWNLOAD_KEY);
         document.getElementById('loader-rescue').classList.remove('visible');
-        initGemma(full, true);
-      }).catch(err => {
+        initGemma(new Uint8Array(await modelBlob.arrayBuffer()), true);
+      } catch (err) {
         status.textContent = 'Download failed: ' + err.message;
-      });
+      } finally {
+        await refreshDownloadResumeUI();
+      }
     };
 
     document.getElementById('model-upload-input').onchange = async e => {
