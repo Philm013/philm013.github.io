@@ -152,19 +152,38 @@ export function collapseThinkingBlocks(el) {
   });
 }
 
+function getEnabledTools() {
+  const webConfigured = isSearchConfigured();
+  const mediaConfigured = isMediaConfigured();
+  return Object.entries(TOOL_REGISTRY).filter(([name, t]) => {
+    if (t.requiresWeb && name === 'web_search' && !webConfigured) return false;
+    if (t.requiresWeb && name === 'search_media' && !mediaConfigured) return false;
+    return true;
+  });
+}
+
+async function getPromptDocumentContext() {
+  let docContext = '';
+  try {
+    const chunks = await getAllChunks();
+    const summaries = chunks.filter(c => c.category === 'document_summary');
+    if (summaries.length) {
+      const budget = summaries.sort((a, b) => b.timestamp - a.timestamp).slice(0, 15);
+      docContext = "\n\nDocuments in your library:\n" +
+        budget.map(sm => `- ${sm.source}: ${sm.text}`).join('\n');
+    }
+  } catch (e) {
+    console.warn('Failed to load summaries for prompt', e);
+  }
+  return docContext;
+}
+
 export async function buildPrompt(additionalContext = "", isFollowUpIteration = false) {
   await ensureToolSkillDocsLoaded();
   const userPrompt = document.getElementById('system-prompt').value.trim();
 
-  const webConfigured = isSearchConfigured();
-  const mediaConfigured = isMediaConfigured();
   const { formatGemmaObject: fgo } = await import('./ui.js');
-  const toolDeclarations = Object.entries(TOOL_REGISTRY)
-    .filter(([name, t]) => {
-      if (t.requiresWeb && name === 'web_search' && !webConfigured) return false;
-      if (t.requiresWeb && name === 'search_media' && !mediaConfigured) return false;
-      return true;
-    })
+  const toolDeclarations = getEnabledTools()
     .map(([name, t]) => {
       const desc = t.skillDescription || t.description;
       const decl = { description: desc };
@@ -194,16 +213,7 @@ export async function buildPrompt(additionalContext = "", isFollowUpIteration = 
     systemPrompt = '<|think|>' + systemPrompt;
   }
 
-  let docContext = '';
-  try {
-    const chunks = await getAllChunks();
-    const summaries = chunks.filter(c => c.category === 'document_summary');
-    if (summaries.length) {
-      const budget = summaries.sort((a, b) => b.timestamp - a.timestamp).slice(0, 15);
-      docContext = "\n\nDocuments in your library:\n" +
-        budget.map(sm => `- ${sm.source}: ${sm.text}`).join('\n');
-    }
-  } catch (e) { console.warn('Failed to load summaries for prompt', e); }
+  const docContext = await getPromptDocumentContext();
 
   let p = `<|turn>system\n${systemPrompt}${toolDeclarations}${docContext}${additionalContext}<turn|>\n`;
 
@@ -260,9 +270,9 @@ export async function buildPrompt(additionalContext = "", isFollowUpIteration = 
 }
 
 // ── Server-mode streaming ────────────────────────────────
-// When State.serverMode is true, send the prompt to the Node.js backend
-// which runs Gemma 4 via the Google AI (Gemini) SDK and streams back via SSE.
-// Gemma 4 Model Card: https://ai.google.dev/gemma/docs/core/model_card_4
+// When State.serverMode is true, send the prompt transcript to the local
+// Node.js backend, which completes it with an embedded GGUF model and streams
+// back the generated text via SSE.
 async function serverGenerateResponse(prompt, callback) {
   const settings = getSettingsValues();
   const res = await fetch(`${SERVER_API}/chat`, {
@@ -272,8 +282,27 @@ async function serverGenerateResponse(prompt, callback) {
       prompt,
       temperature: settings.temperature,
       maxTokens: settings.maxTokens,
+      topK: 40,
+      topP: 0.95,
     }),
   });
+
+  if (!res.ok) {
+    let detail = `Server responded with ${res.status}`;
+    try {
+      const payload = await res.json();
+      if (payload?.error) detail = payload.error;
+    } catch {
+      // Ignore JSON parsing failures and fall back to the status text.
+    }
+    callback(`\n\n⚠️ Server error: ${detail}`, true);
+    return;
+  }
+
+  if (!res.body) {
+    callback('\n\n⚠️ Server error: empty response body', true);
+    return;
+  }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

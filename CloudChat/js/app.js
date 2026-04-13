@@ -456,7 +456,7 @@ document.getElementById('model-upload-input').onchange = async e => {
 
 document.getElementById('local-server-btn').onclick = async () => {
   const status = document.getElementById('download-status');
-  status.textContent = 'Checking server backend...';
+  status.textContent = 'Checking local server backend...';
   if (await isServerAvailable()) {
     document.getElementById('loader-rescue').classList.remove('visible');
     status.textContent = '';
@@ -470,10 +470,10 @@ document.getElementById('local-server-btn').onclick = async () => {
       status.textContent = '';
       initGemma();
     } else {
-      status.textContent = 'Server not running and model file not found locally.';
+      status.textContent = 'Local server backend not running and model file not found locally.';
     }
-  } catch (_e) {
-    status.textContent = 'Could not reach local server.';
+  } catch {
+    status.textContent = 'Could not reach the local server backend.';
   }
 };
 
@@ -602,7 +602,7 @@ document.querySelectorAll('.about-tab').forEach(tab => {
 });
 
 // ── Server Detection Helper ─────────────────────────────
-// Returns true if the Node.js server backend is available.
+// Returns true if the local Node.js/Ollama server backend is available.
 async function isServerAvailable() {
   try {
     const res = await fetch('/api/status');
@@ -618,10 +618,9 @@ async function isServerAvailable() {
 // We can initialise immediately — no need to wait for window.onload.
 restoreFromSession();
 
-// Try to connect to the Node.js server backend first.  If the server is
-// running (npm start inside CloudChat/server/), inference is offloaded to
-// the server via the Google AI SDK.  Otherwise fall back to in-browser
-// MediaPipe/WebGPU model loading.
+// Try to connect to the local Node.js server backend first. If the server is
+// running and its configured Ollama model is available, inference stays on
+// the same machine. Otherwise fall back to in-browser MediaPipe/WebGPU model loading.
 (async () => {
   if (await isServerAvailable()) {
     await initServer();

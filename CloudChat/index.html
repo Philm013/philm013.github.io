@@ -582,10 +582,10 @@
     <!-- Rescue section (fades in over neural background when model is missing) -->
     <div class="loader-rescue" id="loader-rescue">
       <div class="rescue-title">Model Required</div>
-      <div class="rescue-desc">Private AI requires 1.2 GB neural weights. Choose an option below, or start the Node server for server-side inference.</div>
+      <div class="rescue-desc">Private AI requires local model weights. Choose an option below, or start the local Node server for same-machine GGUF inference.</div>
       <button class="btn-rescue btn-rescue-primary" id="download-btn">⬇️ Download &amp; Install</button>
       <button class="btn-rescue btn-rescue-secondary" onclick="document.getElementById('model-upload-input').click()">📁 Supply Local File (.task)</button>
-      <button class="btn-rescue btn-rescue-secondary" id="local-server-btn">🖥️ Use Server Backend</button>
+      <button class="btn-rescue btn-rescue-secondary" id="local-server-btn">🖥️ Use Local Server Backend</button>
       <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
       <div class="rescue-status" id="download-status"></div>
     </div>
@@ -1136,16 +1136,17 @@
             <li>Function/tool calling with structured outputs</li>
             <li>140+ language translation</li>
             <li>8K context window</li>
-            <li>Runs in-browser with ~1.5 GB VRAM <strong>or</strong> server-side via the Node.js backend</li>
+            <li>Runs in-browser with ~1.5 GB VRAM <strong>or</strong> server-side through a same-machine GGUF backend</li>
           </ul>
 
           <h4>Server Mode</h4>
-          <p>To offload inference to the server, run the Node.js backend:</p>
-          <pre style="background:var(--ollama-snow);padding:10px;border-radius:8px;font-size:0.82rem;overflow-x:auto"><code>cd CloudChat/server
-cp .env.template .env   # add your Google AI API key
+          <p>To keep inference inside one local Node process, point the server at your GGUF model and then start the backend:</p>
+          <pre style="background:var(--ollama-snow);padding:10px;border-radius:8px;font-size:0.82rem;overflow-x:auto"><code># default MODEL_PATH points at ../Models/gemma-4-E2B-it-Q4_0.gguf
+cd CloudChat/server
+cp .env.template .env   # set MODEL_PATH if needed
 npm install
 npm start</code></pre>
-          <p style="margin-top:6px;font-size:0.82rem">When the server is running, the app auto-detects it and routes all inference through <code>/api/chat</code>. No WebGPU required.</p>
+          <p style="margin-top:6px;font-size:0.82rem">When the local server is running, the app auto-detects it and routes inference through <code>/api/chat</code> to an embedded Gemma GGUF runtime inside the Node process. No cloud API key or separate daemon is required.</p>
         </div>
       </div>
     </div>

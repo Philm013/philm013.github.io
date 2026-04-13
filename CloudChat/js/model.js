@@ -215,7 +215,7 @@ export async function initGemma(source = null, isStream = false) {
             logBoot("📡 Nearby weights detected on host. Score!");
             await wait(400);
           }
-        } catch (_e) { /* local model not available — proceed with remote */ }
+        } catch { /* local model not available — proceed with remote */ }
 
         if (localAvailable) {
           // BUG FIX: When the model file is on the same server, pass the
@@ -290,9 +290,9 @@ export async function initGemma(source = null, isStream = false) {
 }
 
 // ── Server-Mode Boot ─────────────────────────────────────
-// Connects to the Node.js backend instead of loading the model in-browser.
-// The server runs Gemma 4 inference via the Google AI (Gemini) SDK.
-// Gemma 4 Model Card: https://ai.google.dev/gemma/docs/core/model_card_4
+// Connects to the local Node.js backend instead of loading the model
+// in-browser. The server keeps inference on the same machine with an
+// embedded GGUF runtime.
 export async function initServer() {
   const logBoot = (msg) => {
     const log = document.getElementById('global-boot-log');
@@ -307,7 +307,7 @@ export async function initServer() {
     startNeuralNetworkAnimation();
     setNeuralProgress(0);
     updateStatus('loading', 'Connecting...');
-    logBoot("🌐 Connecting to server backend...");
+    logBoot("🌐 Connecting to local server backend...");
     setNeuralProgress(20);
     await wait(600);
 
@@ -315,7 +315,8 @@ export async function initServer() {
     if (!res.ok) throw new Error(`Server responded with ${res.status}`);
     const info = await res.json();
 
-    logBoot(`✅ Server online — model: ${info.model}`);
+    const providerLabel = info.provider ? `${info.provider}: ` : '';
+    logBoot(`✅ Local server online — ${providerLabel}${info.model}`);
     setNeuralProgress(80);
     await wait(400);
 
@@ -323,11 +324,11 @@ export async function initServer() {
     State.serverModel = info.model || '';
     State.modelReady = true;
 
-    logBoot("🚀 Server inference ready. Let's go!");
+    logBoot("🚀 Local server inference ready. Let's go!");
     setNeuralProgress(100);
     await wait(300);
 
-    updateStatus('online', 'Server');
+    updateStatus('online', 'Local Server');
     document.getElementById('chat-input').disabled = false;
     document.getElementById('chat-input').placeholder = "Ask anything...";
     updateSendButtons();
@@ -335,9 +336,9 @@ export async function initServer() {
     document.getElementById('global-loader').classList.add('hidden');
     stopNeuralNetworkAnimation();
   } catch (e) {
-    console.error('Server connection failed:', e);
+    console.error('Local server connection failed:', e);
     stopNeuralNetworkAnimation();
-    logBoot("⚠️ Could not reach the server backend.");
+    logBoot("⚠️ Could not reach the local server backend.");
     updateStatus('error', 'Server Offline');
     document.getElementById('loader-rescue').classList.add('visible');
     document.getElementById('global-loader').classList.add('hidden');

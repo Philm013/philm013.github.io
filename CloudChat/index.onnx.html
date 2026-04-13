@@ -256,9 +256,68 @@
     .loader-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, rgba(100,180,255,0.5), rgba(100,180,255,0.9)); border-radius: 3px; transition: width 0.4s ease; }
     .loader-progress-fill.milestone { transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
     .loader-progress-text { font-size: 0.68rem; color: rgba(255,255,255,0.45); text-align: center; margin-top: 6px; }
+    .loader-fetch-progress { width: 100%; max-width: 320px; position: relative; z-index: 1; margin-top: 12px; }
+    .loader-fetch-progress.hidden { display: none; }
+    .loader-fetch-header { display: flex; justify-content: space-between; gap: 12px; font-size: 0.68rem; color: rgba(255,255,255,0.62); margin-bottom: 6px; }
+    .loader-fetch-file { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .loader-fetch-value { flex-shrink: 0; color: rgba(255,255,255,0.78); }
+    .loader-fetch-bar { width: 100%; height: 5px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; }
+    .loader-fetch-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(148,163,184,0.5), rgba(255,255,255,0.9));
+      border-radius: inherit;
+      transition: width 0.25s ease;
+    }
+    .loader-fetch-fill.indeterminate {
+      width: 35%;
+      animation: loaderFetchIndeterminate 1.25s ease-in-out infinite;
+    }
+    .loader-fetch-meta { font-size: 0.66rem; color: rgba(255,255,255,0.42); margin-top: 6px; min-height: 1.1em; }
+    @keyframes loaderFetchIndeterminate {
+      0% { transform: translateX(-110%); }
+      100% { transform: translateX(320%); }
+    }
     .boot-log { margin-top: 24px; font-family: var(--font-mono); font-size: 0.7rem; color: rgba(255,255,255,0.5); text-align: left; width: 100%; max-width: 400px; position: relative; z-index: 1; }
     .boot-line { margin-bottom: 4px; animation: fadeInLine 0.4s ease; }
     @keyframes fadeInLine { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    .loader-rescue-actions { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .crash-diagnostics {
+      width: 100%;
+      max-width: 420px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      text-align: left;
+    }
+    .crash-diagnostics.hidden { display: none; }
+    .crash-diagnostics-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .crash-diagnostics-title { font-size: 0.8rem; font-weight: 600; color: rgba(255,255,255,0.92); }
+    .crash-diagnostics-summary { font-size: 0.72rem; color: rgba(255,255,255,0.62); margin-top: 3px; line-height: 1.4; }
+    .crash-diagnostics-copy {
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.9);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .crash-diagnostics-copy:hover { background: rgba(255,255,255,0.15); }
+    .crash-diagnostics-log {
+      margin: 0;
+      max-height: 220px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--font-mono);
+      font-size: 0.69rem;
+      line-height: 1.45;
+      color: rgba(255,255,255,0.85);
+    }
 
     /* Inline webview embed (tool results) */
     .tool-webview-container { position: relative; margin-top: 8px; border-radius: 10px; overflow: hidden; border: 1px solid var(--ollama-border); background: var(--ollama-snow); }
@@ -554,14 +613,34 @@
       <div class="loader-progress-bar"><div class="loader-progress-fill" id="loader-progress-fill"></div></div>
       <div class="loader-progress-text" id="loader-progress-text"></div>
     </div>
+    <div class="loader-fetch-progress hidden" id="loader-fetch-progress">
+      <div class="loader-fetch-header">
+        <div class="loader-fetch-file" id="loader-fetch-file">Waiting for model files...</div>
+        <div class="loader-fetch-value" id="loader-fetch-value"></div>
+      </div>
+      <div class="loader-fetch-bar"><div class="loader-fetch-fill" id="loader-fetch-fill"></div></div>
+      <div class="loader-fetch-meta" id="loader-fetch-meta"></div>
+    </div>
     <div id="global-boot-log" class="boot-log" style="height: 100px; max-width: 400px; opacity: 1;"></div>
     <!-- Rescue section (fades in over neural background when model fails to load) -->
     <div class="loader-rescue" id="loader-rescue">
       <div class="rescue-title">Model Load Failed</div>
       <div class="rescue-desc">The ONNX model could not be loaded. Check your connection and WebGPU support, then retry.</div>
-      <button class="btn-rescue btn-rescue-primary" id="download-btn">🔄 Retry Download &amp; Load</button>
-      <button class="btn-rescue btn-rescue-secondary" id="local-server-btn">🔄 Retry</button>
-      <div class="rescue-status" id="download-status"></div>
+      <div class="loader-rescue-actions">
+        <button class="btn-rescue btn-rescue-primary" id="download-btn">🔄 Retry Download &amp; Load</button>
+        <button class="btn-rescue btn-rescue-secondary" id="local-server-btn">🔄 Retry</button>
+        <div class="rescue-status" id="download-status"></div>
+        <div class="crash-diagnostics hidden" id="crash-diagnostics">
+          <div class="crash-diagnostics-header">
+            <div>
+              <div class="crash-diagnostics-title">Crash Diagnostics</div>
+              <div class="crash-diagnostics-summary" id="crash-summary">Waiting for crash details...</div>
+            </div>
+            <button class="crash-diagnostics-copy" id="copy-crash-log-btn" type="button">Copy log</button>
+          </div>
+          <pre class="crash-diagnostics-log" id="crash-log">No diagnostics captured yet.</pre>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1128,6 +1207,205 @@
     window.pdfjsLib = pdfjsLibModule;
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
 
+    const DIAGNOSTICS_STORAGE_KEY = 'localmind_onnx_diagnostics_v1';
+    const DIAGNOSTICS_LIMIT = 80;
+    const BOOT_LOG_LIMIT = 10;
+    const DiagnosticsState = {
+      entries: [],
+      lastFatalId: null,
+      bootAttempt: 0,
+    };
+
+    function serializeDiagnosticValue(value, depth = 0, seen = new WeakSet()) {
+      if (value == null || typeof value === 'number' || typeof value === 'boolean') return value;
+      if (typeof value === 'string') return value;
+      if (typeof value === 'function') return `[function ${value.name || 'anonymous'}]`;
+      if (value instanceof Error) {
+        return {
+          name: value.name,
+          message: value.message,
+          stack: value.stack || '',
+        };
+      }
+      if (depth >= 3) return '[max-depth]';
+      if (typeof value === 'object') {
+        if (seen.has(value)) return '[circular]';
+        seen.add(value);
+        if (Array.isArray(value)) {
+          return value.slice(0, 12).map((item) => serializeDiagnosticValue(item, depth + 1, seen));
+        }
+        const out = {};
+        Object.keys(value).slice(0, 20).forEach((key) => {
+          try {
+            out[key] = serializeDiagnosticValue(value[key], depth + 1, seen);
+          } catch (err) {
+            out[key] = `[unserializable: ${err.message}]`;
+          }
+        });
+        return out;
+      }
+      return String(value);
+    }
+
+    function persistDiagnostics() {
+      try {
+        localStorage.setItem(DIAGNOSTICS_STORAGE_KEY, JSON.stringify({
+          entries: DiagnosticsState.entries,
+          lastFatalId: DiagnosticsState.lastFatalId,
+          bootAttempt: DiagnosticsState.bootAttempt,
+        }));
+      } catch (err) {
+        console.warn('Failed to persist diagnostics log', err);
+      }
+    }
+
+    function loadPersistedDiagnostics() {
+      try {
+        const raw = localStorage.getItem(DIAGNOSTICS_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        DiagnosticsState.entries = Array.isArray(parsed.entries) ? parsed.entries.slice(-DIAGNOSTICS_LIMIT) : [];
+        DiagnosticsState.lastFatalId = typeof parsed.lastFatalId === 'string' ? parsed.lastFatalId : null;
+        DiagnosticsState.bootAttempt = Number.isFinite(parsed.bootAttempt) ? parsed.bootAttempt : 0;
+      } catch (err) {
+        console.warn('Failed to restore diagnostics log', err);
+      }
+    }
+
+    function formatDiagnosticEntry(entry) {
+      const prefix = `${entry.time || 'unknown-time'} [${String(entry.level || 'info').toUpperCase()}] ${entry.message || 'No message'}`;
+      if (!entry.details || (typeof entry.details === 'object' && Object.keys(entry.details).length === 0)) {
+        return prefix;
+      }
+      return `${prefix}\n${JSON.stringify(entry.details, null, 2)}`;
+    }
+
+    function renderDiagnostics() {
+      const panel = document.getElementById('crash-diagnostics');
+      const summary = document.getElementById('crash-summary');
+      const log = document.getElementById('crash-log');
+      if (!panel || !summary || !log) return;
+      if (!DiagnosticsState.entries.length) {
+        panel.classList.add('hidden');
+        summary.textContent = 'Waiting for crash details...';
+        log.textContent = 'No diagnostics captured yet.';
+        return;
+      }
+      const lastFatal = DiagnosticsState.lastFatalId
+        ? DiagnosticsState.entries.find((entry) => entry.id === DiagnosticsState.lastFatalId)
+        : null;
+      summary.textContent = lastFatal
+        ? `${lastFatal.message} (${lastFatal.time})`
+        : `Latest boot activity (${DiagnosticsState.entries.length} entries)`;
+      log.textContent = DiagnosticsState.entries.slice(-18).map(formatDiagnosticEntry).join('\n\n');
+      panel.classList.toggle('hidden', !lastFatal);
+    }
+
+    function addDiagnosticEntry(level, message, details = {}) {
+      const normalizedLevel = level === 'error' || level === 'warn' ? level : 'info';
+      const entry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        time: new Date().toISOString(),
+        level: normalizedLevel,
+        message,
+        details: serializeDiagnosticValue(details),
+      };
+      DiagnosticsState.entries.push(entry);
+      if (DiagnosticsState.entries.length > DIAGNOSTICS_LIMIT) {
+        DiagnosticsState.entries = DiagnosticsState.entries.slice(-DIAGNOSTICS_LIMIT);
+      }
+      if (normalizedLevel === 'error') {
+        DiagnosticsState.lastFatalId = entry.id;
+      }
+      const consoleMethod = normalizedLevel === 'error' ? 'error' : (normalizedLevel === 'warn' ? 'warn' : 'log');
+      console[consoleMethod](`[LocalMind diagnostics] ${message}`, details);
+      persistDiagnostics();
+      renderDiagnostics();
+      return entry;
+    }
+
+    function setLoaderMessage(message) {
+      const loader = document.getElementById('loader-msg');
+      if (loader) loader.innerText = message;
+    }
+
+    function setRescueStatus(message) {
+      const status = document.getElementById('download-status');
+      if (status) status.textContent = message || '';
+    }
+
+    function appendBootLine(message) {
+      const log = document.getElementById('global-boot-log');
+      if (log) {
+        const line = document.createElement('div');
+        line.className = 'boot-line';
+        line.innerText = message;
+        log.prepend(line);
+        if (log.children.length > BOOT_LOG_LIMIT) log.removeChild(log.lastChild);
+      }
+      setLoaderMessage(message);
+    }
+
+    function logBoot(message, details = {}) {
+      appendBootLine(message);
+      addDiagnosticEntry('info', message, details);
+    }
+
+    function showLoaderRescue(message, details = {}) {
+      const loader = document.getElementById('global-loader');
+      const rescue = document.getElementById('loader-rescue');
+      if (loader) loader.classList.remove('hidden');
+      setLoaderMessage(message);
+      setRescueStatus(message);
+      if (rescue) rescue.classList.add('visible');
+      appendBootLine(`💥 ${message}`);
+      addDiagnosticEntry('error', message, details);
+    }
+
+    async function copyCrashDiagnosticsToClipboard() {
+      const button = document.getElementById('copy-crash-log-btn');
+      const payload = DiagnosticsState.entries.length
+        ? DiagnosticsState.entries.map(formatDiagnosticEntry).join('\n\n')
+        : 'No diagnostics captured yet.';
+      try {
+        await navigator.clipboard.writeText(payload);
+        if (button) {
+          const previous = button.textContent;
+          button.textContent = 'Copied';
+          setTimeout(() => { button.textContent = previous; }, 1600);
+        }
+      } catch (err) {
+        addDiagnosticEntry('warn', 'Failed to copy diagnostics log', { message: err.message });
+      }
+    }
+
+    function resetDiagnosticsForBoot() {
+      DiagnosticsState.bootAttempt += 1;
+      DiagnosticsState.lastFatalId = null;
+      persistDiagnostics();
+      renderDiagnostics();
+    }
+
+    loadPersistedDiagnostics();
+    renderDiagnostics();
+    document.getElementById('copy-crash-log-btn')?.addEventListener('click', copyCrashDiagnosticsToClipboard);
+    window.addEventListener('error', (event) => {
+      const summary = event.error?.message || event.message || 'Unhandled window error';
+      const details = {
+        source: event.filename || '',
+        line: event.lineno || 0,
+        column: event.colno || 0,
+        error: serializeDiagnosticValue(event.error || null),
+      };
+      showLoaderRescue(`Unhandled error: ${summary}`, details);
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      const reason = event.reason instanceof Error ? event.reason.message : String(event.reason || 'Unknown promise rejection');
+      showLoaderRescue(`Unhandled promise rejection: ${reason}`, {
+        reason: serializeDiagnosticValue(event.reason),
+      });
+    });
+
     // ── WebGPU check ─────────────────────────────────────
     const hasWebGPU = !!navigator.gpu;
     if (!hasWebGPU) {
@@ -1146,12 +1424,12 @@
       'gemma4-e2b': {
         id: 'onnx-community/gemma-4-E2B-it-ONNX',
         label: 'Gemma 4 E2B',
-        dtype: 'q4f16',
+        dtype: 'q4',
         size: '~1.5 GB',
         type: 'onnx',
         agentCapable: true,
         contextSize: 8192,
-        genConfig: { temperature: 0.7, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
+        genConfig: { temperature: 1, top_k: 40, top_p: 0.95, max_new_tokens: 2048, repetition_penalty: 1.1 },
       },
     };
     window.MODELS = MODELS;
@@ -1165,6 +1443,7 @@
       batchStopRequested: false,
       activeModelKey: 'gemma4-e2b',
       modelReady: false,
+      lastWorkerProgressKey: '',
       embeddingWorker: null,
       embeddingReady: false,
       embeddingQueue: Promise.resolve(),
@@ -1421,10 +1700,18 @@ self.addEventListener('message', async (e) => {
 
     function attachWorkerHandlers(w) {
       w.addEventListener('error', (e) => {
-        console.error('Worker error event:', e.message, e);
+        const details = {
+          message: e.message || 'Unknown worker error event',
+          filename: e.filename || '',
+          line: e.lineno || 0,
+          column: e.colno || 0,
+        };
         updateStatus('error', 'Worker Error');
         stopNeuralNetworkAnimation();
-        document.getElementById('global-loader').classList.add('hidden');
+        showLoaderRescue(
+          State.modelReady ? 'Inference worker crashed during generation.' : 'Inference worker crashed during model startup.',
+          details
+        );
       });
 
       w.addEventListener('message', (e) => {
@@ -1432,32 +1719,50 @@ self.addEventListener('message', async (e) => {
 
         if (data.type === 'progress') {
           const p = data.data;
+          const fileName = p.file ? p.file.split('/').pop() : 'model files';
+          const progressKey = `${p.status || 'unknown'}:${fileName}`;
+          if (progressKey !== State.lastWorkerProgressKey) {
+            State.lastWorkerProgressKey = progressKey;
+            addDiagnosticEntry('info', `Worker ${p.status || 'progress'}: ${fileName}`, {
+              fileName,
+              status: p.status || 'unknown',
+              loaded: p.loaded || 0,
+              total: p.total || 0,
+            });
+          }
           if (p.status === 'downloading' || p.status === 'loading') {
             const pct = p.total ? Math.round((p.loaded / p.total) * 100) : 0;
             setNeuralProgress(20 + (pct / 100) * 55);
-            const fileName = p.file ? p.file.split('/').pop() : 'files';
             if (p.status === 'downloading' && p.loaded && p.total) {
               const loadedMB = (p.loaded / 1024 / 1024).toFixed(0);
               const totalMB = (p.total / 1024 / 1024).toFixed(0);
               const msg = `Downloading ${fileName} — ${loadedMB} / ${totalMB} MB (${pct}%)`;
               document.getElementById('loader-msg').innerText = msg;
+              updateFetchProgress({ fileName, loaded: p.loaded, total: p.total, status: p.status, phase: 'Downloading' });
             } else {
               document.getElementById('loader-msg').innerText = `Loading ${fileName}...`;
+              updateFetchProgress({ fileName, loaded: p.loaded || 0, total: p.total || 0, status: p.status, phase: 'Loading' });
             }
           } else if (p.status === 'initiate') {
-            const fileName = p.file ? p.file.split('/').pop() : '';
             document.getElementById('loader-msg').innerText = `Fetching ${fileName}...`;
+            updateFetchProgress({ fileName, status: p.status, phase: 'Fetching' });
           }
         }
 
         else if (data.type === 'warmup') {
           document.getElementById('loader-msg').innerText = 'Compiling shaders and warming up...';
+          updateFetchProgress({ fileName: 'Model files loaded', loaded: 1, total: 1, status: 'warmup', phase: 'Complete' });
           setNeuralProgress(85);
         }
 
         else if (data.type === 'ready') {
+          resetFetchProgress();
           setNeuralProgress(100);
           State.modelReady = true;
+          State.lastWorkerProgressKey = '';
+          addDiagnosticEntry('info', 'ONNX model is ready for inference', {
+            modelKey: State.activeModelKey,
+          });
           updateStatus('online', 'Ready');
           document.getElementById('chat-input').disabled = false;
           document.getElementById('chat-input').placeholder = 'Ask anything...';
@@ -1498,13 +1803,20 @@ self.addEventListener('message', async (e) => {
         }
 
         else if (data.type === 'error') {
+          const summary = `Worker error: ${data.message}`;
           if (!State.modelReady) {
             updateStatus('error', 'Error');
             stopNeuralNetworkAnimation();
-            document.getElementById('global-loader').classList.add('hidden');
-            document.getElementById('loader-rescue').classList.add('visible');
+            showLoaderRescue(summary, {
+              modelKey: State.activeModelKey,
+              phase: 'load',
+            });
+          } else {
+            addDiagnosticEntry('error', summary, {
+              modelKey: State.activeModelKey,
+              phase: 'runtime',
+            });
           }
-          console.error('Worker error:', data.message);
         }
       });
     }
@@ -3311,6 +3623,50 @@ self.addEventListener('message', async (e) => {
       if (text) text.textContent = neuralProgress > 0 ? `${Math.round(neuralProgress)}%` : '';
     }
 
+    function resetFetchProgress() {
+      const wrap = document.getElementById('loader-fetch-progress');
+      const fill = document.getElementById('loader-fetch-fill');
+      const file = document.getElementById('loader-fetch-file');
+      const value = document.getElementById('loader-fetch-value');
+      const meta = document.getElementById('loader-fetch-meta');
+      if (wrap) wrap.classList.add('hidden');
+      if (fill) {
+        fill.classList.remove('indeterminate');
+        fill.style.width = '0%';
+      }
+      if (file) file.textContent = 'Waiting for model files...';
+      if (value) value.textContent = '';
+      if (meta) meta.textContent = '';
+    }
+
+    function updateFetchProgress({ fileName = 'model files', loaded = 0, total = 0, status = '', phase = '' } = {}) {
+      const wrap = document.getElementById('loader-fetch-progress');
+      const fill = document.getElementById('loader-fetch-fill');
+      const file = document.getElementById('loader-fetch-file');
+      const value = document.getElementById('loader-fetch-value');
+      const meta = document.getElementById('loader-fetch-meta');
+      if (!wrap || !fill || !file || !value || !meta) return;
+
+      wrap.classList.remove('hidden');
+      file.textContent = fileName;
+
+      if (total > 0) {
+        const pct = Math.max(0, Math.min(100, Math.round((loaded / total) * 100)));
+        fill.classList.remove('indeterminate');
+        fill.style.width = `${pct}%`;
+        value.textContent = `${pct}%`;
+        const loadedMB = (loaded / 1024 / 1024).toFixed(1);
+        const totalMB = (total / 1024 / 1024).toFixed(1);
+        meta.textContent = `${phase || 'Downloading'} ${loadedMB} / ${totalMB} MB`;
+        return;
+      }
+
+      fill.classList.add('indeterminate');
+      fill.style.width = '';
+      value.textContent = phase || '';
+      meta.textContent = status === 'initiate' ? 'Request started' : 'Waiting for byte counts...';
+    }
+
     function startNeuralNetworkAnimation() {
       const canvas = document.getElementById('neural-net-canvas');
       if (!canvas) return;
@@ -3439,41 +3795,47 @@ self.addEventListener('message', async (e) => {
 
     // ── Core Inference Boot ──────────────────────────────────
     async function initGemma() {
-      const logBoot = (msg) => {
-        const log = document.getElementById('global-boot-log');
-        const line = document.createElement('div'); line.className = 'boot-line'; line.innerText = msg; log.prepend(line);
-        if (log.children.length > 6) log.removeChild(log.lastChild);
-        document.getElementById('loader-msg').innerText = msg;
-      };
       const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
       try {
+        resetDiagnosticsForBoot();
         document.getElementById('global-loader').classList.remove('hidden');
+        document.getElementById('loader-rescue').classList.remove('visible');
+        setRescueStatus('');
+        resetFetchProgress();
         startNeuralNetworkAnimation();
         setNeuralProgress(0);
         await requestPersistentStorage();
         updateStatus('loading', 'Initializing...');
-        logBoot("☕ Waking up the brain... coffee first.");
+        logBoot('☕ Waking up the brain... coffee first.', { attempt: DiagnosticsState.bootAttempt });
         setNeuralProgress(5);
         await wait(800);
-        logBoot("🔌 Plugging in the neurons...");
+        logBoot('🔌 Plugging in the neurons...');
         setNeuralProgress(10);
         await wait(600);
 
         const m = MODELS[State.activeModelKey];
         updateStatus('loading', 'Loading ONNX model...');
-        logBoot(`📦 Preparing ${m.label} (${m.size}) via transformers.js...`);
+        logBoot(`📦 Preparing ${m.label} (${m.size}) via transformers.js...`, {
+          modelId: m.id,
+          dtype: m.dtype,
+        });
         setNeuralProgress(15);
         await wait(400);
-        logBoot("🧮 Launching inference worker...");
+        logBoot('🧮 Launching inference worker...');
         setNeuralProgress(18);
 
         // Terminate any previous worker
         if (State.worker) { State.worker.terminate(); State.worker = null; }
+        State.lastWorkerProgressKey = '';
 
         // Create fresh worker — it downloads, caches, and loads the ONNX model
         State.worker = createInferenceWorker();
         attachWorkerHandlers(State.worker);
+        addDiagnosticEntry('info', 'Posting model load request to inference worker', {
+          modelId: m.id,
+          dtype: m.dtype,
+        });
         State.worker.postMessage({
           type: 'load',
           modelId: m.id,
@@ -3486,11 +3848,13 @@ self.addEventListener('message', async (e) => {
         //  - Mark State.modelReady and hide the loader via 'ready' event
         //  - Handle errors via 'error' event
       } catch (e) {
-        console.error(e);
         stopNeuralNetworkAnimation();
         const isWebGPUError = /WebGPU|GPU adapter|navigator\.gpu/i.test(e?.message || '');
         if (isWebGPUError) {
-          logBoot("⚠️ WebGPU is not available on this device.");
+          addDiagnosticEntry('error', 'WebGPU is not available on this device.', {
+            message: e?.message || 'WebGPU unavailable',
+          });
+          logBoot('⚠️ WebGPU is not available on this device.');
           updateStatus('error', 'No WebGPU');
           document.getElementById('global-loader').classList.add('hidden');
           document.getElementById('chat-container').innerHTML = `
@@ -3500,9 +3864,11 @@ self.addEventListener('message', async (e) => {
               <p style="max-width:400px;margin:0 auto;line-height:1.6">This app requires WebGPU to run the AI model in your browser. Please use Chrome 113+, Edge 113+, or a WebGPU-compatible browser on a device with a compatible GPU.</p>
             </div>`;
         } else {
-          logBoot("💀 CRITICAL FAILURE: BRAIN NOT FOUND");
           updateStatus('error', 'Brain Failure');
-          document.getElementById('loader-rescue').classList.add('visible');
+          showLoaderRescue('Critical startup failure before the ONNX worker finished loading.', {
+            message: e?.message || String(e),
+            stack: e?.stack || '',
+          });
         }
       }
     }
@@ -5735,11 +6101,13 @@ Tool Selection Guidelines:
     // transformers.js handles model downloading automatically via Cache API.
     // The download button simply retries initialization.
     document.getElementById('download-btn').onclick = () => {
+      addDiagnosticEntry('info', 'User requested model retry from rescue panel', { source: 'download-btn' });
       document.getElementById('loader-rescue').classList.remove('visible');
       initGemma();
     };
 
     document.getElementById('local-server-btn').onclick = () => {
+      addDiagnosticEntry('info', 'User requested retry from rescue panel', { source: 'local-server-btn' });
       document.getElementById('loader-rescue').classList.remove('visible');
       initGemma();
     };

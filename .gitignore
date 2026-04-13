@@ -63,6 +63,9 @@ yarn-error.log*
 *.dmg
 *.bin
 
+# Local model assets
+CloudChat/models/
+
 # Project Scratchpads & Temporary Versions
 *_new.js
 *_final.js
