@@ -22,9 +22,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ── Process-level error handlers ────────────────────────────
-// Prevent the server from crashing on unexpected errors.
+// Log unexpected errors instead of crashing the process.
+// This server is a lightweight static-file host with an optional API
+// endpoint, so keeping it alive on transient errors (e.g. a broken
+// socket during a large model-file 404) is preferable to an abrupt exit
+// that kills the ONNX loader mid-download.
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception:', err);
+  console.error('Uncaught exception (server will continue):', err);
 });
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled rejection:', reason);
@@ -51,6 +55,7 @@ if (API_KEY) {
 
 // ── Google AI Client ────────────────────────────────────────
 function createModel(opts = {}) {
+  if (!genAI) throw new Error('Google AI client is not initialised (missing API key)');
   return genAI.getGenerativeModel({
     model: MODEL_NAME,
     // Gemma 4 recommended sampling — see model card:
