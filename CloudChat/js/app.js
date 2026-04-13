@@ -23,6 +23,8 @@ const DOWNLOAD_FLUSH_CHUNKS = 12;
 async function refreshDownloadResumeUI() {
   const btn = document.getElementById('download-btn');
   const status = document.getElementById('download-status');
+  const progress = document.getElementById('progress-container');
+  const fill = document.getElementById('download-fill');
   if (!btn || !status) return;
 
   let resumeState = await ModelCacheDB.getDownloadState(MODEL_DOWNLOAD_KEY);
@@ -36,13 +38,18 @@ async function refreshDownloadResumeUI() {
     const totalMB = resumeState.totalBytes > 0
       ? (resumeState.totalBytes / (1024 * 1024)).toFixed(1)
       : '?';
-    btn.textContent = '⏯ Resume Download';
+    const pct = resumeState.totalBytes > 0 ? Math.min(100, (resumeState.loadedBytes / resumeState.totalBytes) * 100) : 0;
+    btn.textContent = 'Resume download';
     status.textContent = `Resume available: ${loadedMB} / ${totalMB} MB`;
+    if (progress) progress.classList.remove('hidden');
+    if (fill) fill.style.width = `${pct}%`;
   } else {
-    btn.textContent = '⬇️ Download & Install';
+    btn.textContent = 'Download model';
     if (!status.textContent.startsWith('Download failed')) {
       status.textContent = '';
     }
+    if (progress) progress.classList.add('hidden');
+    if (fill) fill.style.width = '0%';
   }
 }
 
@@ -453,7 +460,7 @@ document.getElementById('download-btn').onclick = async () => {
   const btn = document.getElementById('download-btn');
   document.getElementById('progress-container').classList.remove('hidden');
   setNeuralProgress(20);
-  if (btn) btn.textContent = '⏳ Downloading...';
+  if (btn) btn.textContent = 'Downloading model...';
 
   try {
     let resumeState = await ModelCacheDB.getDownloadState(MODEL_DOWNLOAD_KEY);

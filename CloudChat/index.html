@@ -245,69 +245,381 @@
     .tool-arg-run:hover { background: #333; }
 
     /* Progress Bar */
-    .progress-bar { width: 100%; height: 8px; background: var(--ollama-light-gray); border-radius: 4px; overflow: hidden; margin: 20px 0; }
-    #download-fill { height: 100%; background: var(--ollama-black); width: 0%; transition: width 0.3s; }
+    .progress-bar { width: 100%; height: 8px; background: rgba(134, 163, 222, 0.18); border-radius: 999px; overflow: hidden; margin: 12px 0 0; }
+    #download-fill { height: 100%; background: linear-gradient(90deg, #7aa7ff, #53c6dd); width: 0%; transition: width 0.3s ease; }
 
     /* Rescue Overlay — hidden, content moved into #global-loader */
     #model-rescue { display: none; }
 
-    /* Rescue section inside the neural loader */
-    .loader-rescue { display: none; flex-direction: column; align-items: center; gap: 14px; margin-top: 28px; position: relative; z-index: 1; animation: rescueFadeIn 0.8s ease-out both; }
-    .loader-rescue.visible { display: flex; }
-    @keyframes rescueFadeIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-    .loader-rescue .rescue-title { font-size: 1.2rem; font-weight: 600; color: #fff; margin-bottom: 2px; }
-    .loader-rescue .rescue-desc { font-size: 0.82rem; color: rgba(255,255,255,0.65); max-width: 360px; text-align: center; margin-bottom: 8px; }
-    .loader-rescue .btn-rescue { width: 100%; max-width: 280px; padding: 12px 20px; border-radius: 10px; font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; border: 1px solid rgba(100,180,255,0.3); }
-    .loader-rescue .btn-rescue-primary { background: rgba(100,180,255,0.2); color: #fff; }
-    .loader-rescue .btn-rescue-primary:hover { background: rgba(100,180,255,0.35); }
-    .loader-rescue .btn-rescue-secondary { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.15); }
-    .loader-rescue .btn-rescue-secondary:hover { background: rgba(255,255,255,0.15); }
-    .loader-rescue .progress-bar { width: 100%; max-width: 280px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin: 0; }
-    .loader-rescue .progress-bar #download-fill { background: rgba(100,180,255,0.7); }
-    .loader-rescue .rescue-status { font-size: 0.72rem; color: rgba(255,255,255,0.5); }
-
     /* Loader */
-    #global-loader { --neural-energy: 0; position: fixed; inset: 0; background: var(--ollama-black); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; overflow: hidden; }
-    #global-loader.hidden { display: none; }
-    #neural-net-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.24; transition: opacity 0.35s ease; }
-    .neural-core {
-      width: 136px;
-      height: 136px;
-      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.34), rgba(146, 196, 255, 0.1) 45%, rgba(120, 170, 235, 0.04) 70%, rgba(80,130,200,0.02) 100%);
-      border-radius: 50%;
+    #global-loader {
+      --neural-energy: 0;
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at top left, rgba(149, 188, 255, 0.26), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(127, 223, 210, 0.24), transparent 28%),
+        linear-gradient(180deg, #f6faff 0%, #eef4ff 48%, #f9fbff 100%);
+      z-index: 3000;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 20px;
-      animation: pulse 2.1s ease-in-out infinite;
-      position: relative;
-      z-index: 1;
-      box-shadow:
-        0 0 calc(16px + 26px * var(--neural-energy)) rgba(145, 203, 255, calc(0.12 + 0.28 * var(--neural-energy))),
-        0 0 calc(44px + 80px * var(--neural-energy)) rgba(115, 181, 255, calc(0.05 + 0.2 * var(--neural-energy)));
-      border: 1px solid rgba(196, 225, 255, calc(0.2 + 0.25 * var(--neural-energy)));
+      padding: clamp(18px, 4vw, 40px);
+      color: #10213d;
+      overflow: hidden;
     }
-    .neural-core::before {
+    #global-loader.hidden { display: none; }
+    #global-loader::before,
+    #global-loader::after {
       content: '';
       position: absolute;
-      inset: -14px;
       border-radius: 50%;
-      border: 1px solid rgba(175, 218, 255, calc(0.07 + 0.2 * var(--neural-energy)));
-      transform: scale(calc(0.98 + 0.08 * var(--neural-energy)));
+      pointer-events: none;
+      filter: blur(12px);
+      opacity: 0.55;
     }
-    .neural-core-brain { font-size: 3rem; color: #fff; position: relative; z-index: 1; filter: drop-shadow(0 0 8px rgba(170, 220, 255, 0.5)); }
-    @keyframes pulse { 0% { transform: scale(0.985); opacity: 0.82; } 50% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(0.985); opacity: 0.82; } }
-    .loader-title { font-size: 1.4rem; font-weight: 600; margin-bottom: 8px; position: relative; z-index: 1; }
-    .loader-sub { font-size: 0.85rem; opacity: 0.8; position: relative; z-index: 1; min-height: 1.2em; }
-    /* Main loader progress bar */
-    .loader-progress { width: 100%; max-width: 320px; position: relative; z-index: 1; margin-top: 16px; }
-    .loader-progress-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
-    .loader-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, rgba(100,180,255,0.5), rgba(100,180,255,0.9)); border-radius: 3px; transition: width 0.4s ease; }
+    #global-loader::before {
+      width: 38vw;
+      height: 38vw;
+      min-width: 240px;
+      min-height: 240px;
+      top: -12vw;
+      left: -10vw;
+      background: radial-gradient(circle, rgba(145, 186, 255, 0.28), rgba(145, 186, 255, 0));
+    }
+    #global-loader::after {
+      width: 30vw;
+      height: 30vw;
+      min-width: 220px;
+      min-height: 220px;
+      bottom: -10vw;
+      right: -8vw;
+      background: radial-gradient(circle, rgba(110, 218, 212, 0.25), rgba(110, 218, 212, 0));
+    }
+    .loader-shell {
+      position: relative;
+      width: min(100%, 760px);
+      z-index: 1;
+    }
+    .loader-panel {
+      position: relative;
+      overflow: hidden;
+      border-radius: 30px;
+      border: 1px solid rgba(143, 169, 219, 0.26);
+      background: rgba(255,255,255,0.74);
+      backdrop-filter: blur(16px);
+      box-shadow:
+        0 24px 80px rgba(69, 102, 160, 0.14),
+        0 8px 24px rgba(102, 127, 173, 0.08);
+      padding: clamp(20px, 4vw, 34px);
+    }
+    .loader-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(140deg, rgba(255,255,255,0.5), rgba(255,255,255,0));
+      pointer-events: none;
+    }
+    .loader-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+      position: relative;
+      z-index: 1;
+    }
+    .loader-phase {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(122, 167, 255, 0.12);
+      border: 1px solid rgba(122, 167, 255, 0.18);
+      color: #345693;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .loader-phase::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #67d4d6, #6f96ff);
+      box-shadow: 0 0 0 5px rgba(111, 150, 255, 0.12);
+    }
+    .loader-progress-text {
+      font-size: 0.8rem;
+      color: #5571a6;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .loader-title {
+      font-size: clamp(1.7rem, 2vw + 1rem, 2.35rem);
+      line-height: 1.05;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: #13264a;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+      max-width: 11ch;
+    }
+    .loader-sub {
+      font-size: 0.96rem;
+      line-height: 1.6;
+      color: #536888;
+      position: relative;
+      z-index: 1;
+      max-width: 560px;
+      min-height: 1.6em;
+    }
+    .loader-visual {
+      position: relative;
+      min-height: 300px;
+      border-radius: 24px;
+      margin-top: 22px;
+      overflow: hidden;
+      border: 1px solid rgba(143, 169, 219, 0.18);
+      background:
+        radial-gradient(circle at center, rgba(142, 188, 255, 0.24), rgba(142, 188, 255, 0.03) 34%, rgba(255,255,255,0) 64%),
+        linear-gradient(180deg, rgba(255,255,255,0.82), rgba(237,243,255,0.74));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .loader-visual::before {
+      content: '';
+      position: absolute;
+      inset: 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.46);
+      pointer-events: none;
+    }
+    #neural-net-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0.45;
+      transition: opacity 0.35s ease;
+    }
+    .neural-core {
+      width: 126px;
+      height: 126px;
+      border-radius: 50%;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.96), rgba(189, 214, 255, 0.72) 42%, rgba(150, 188, 255, 0.24) 70%, rgba(150, 188, 255, 0.06) 100%);
+      border: 1px solid rgba(142, 188, 255, calc(0.24 + 0.24 * var(--neural-energy)));
+      box-shadow:
+        0 0 calc(24px + 26px * var(--neural-energy)) rgba(126, 169, 255, calc(0.16 + 0.22 * var(--neural-energy))),
+        0 0 calc(72px + 84px * var(--neural-energy)) rgba(126, 169, 255, calc(0.08 + 0.12 * var(--neural-energy)));
+      animation: corePulse 2.9s ease-in-out infinite;
+    }
+    .neural-core::before,
+    .neural-core::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      inset: -14px;
+      border: 1px solid rgba(124, 170, 255, calc(0.08 + 0.18 * var(--neural-energy)));
+      transform: scale(calc(0.98 + 0.05 * var(--neural-energy)));
+    }
+    .neural-core::after {
+      inset: -34px;
+      border-color: rgba(109, 205, 213, calc(0.05 + 0.12 * var(--neural-energy)));
+      transform: scale(calc(0.94 + 0.1 * var(--neural-energy)));
+    }
+    .neural-core-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #73cbde, #6d91ff);
+      box-shadow:
+        0 0 18px rgba(111, 145, 255, 0.38),
+        0 0 34px rgba(115, 203, 222, 0.24);
+    }
+    @keyframes corePulse {
+      0%, 100% { transform: scale(0.985); opacity: 0.92; }
+      50% { transform: scale(1.03); opacity: 1; }
+    }
+    .loader-stat-strip {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .loader-stat {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.56);
+      border: 1px solid rgba(143, 169, 219, 0.18);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 20px rgba(121, 150, 197, 0.08);
+    }
+    .loader-stat-value {
+      display: block;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #17315e;
+      letter-spacing: -0.02em;
+    }
+    .loader-stat-label {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.72rem;
+      color: #6780a8;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .loader-progress {
+      width: 100%;
+      position: relative;
+      z-index: 1;
+      margin-top: 18px;
+    }
+    .loader-progress-bar {
+      width: 100%;
+      height: 10px;
+      background: rgba(126, 154, 213, 0.14);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .loader-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #7baeff, #65d3d7 85%);
+      border-radius: 999px;
+      box-shadow: 0 0 22px rgba(101, 211, 215, 0.28);
+      transition: width 0.4s ease;
+    }
     .loader-progress-fill.milestone { transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
-    .loader-progress-text { font-size: 0.68rem; color: rgba(255,255,255,0.45); text-align: center; margin-top: 6px; }
-    .boot-log { margin-top: 24px; font-family: var(--font-mono); font-size: 0.7rem; color: rgba(255,255,255,0.5); text-align: left; width: 100%; max-width: 400px; position: relative; z-index: 1; }
-    .boot-line { margin-bottom: 4px; animation: fadeInLine 0.4s ease; }
-    @keyframes fadeInLine { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    .boot-log {
+      margin-top: 18px;
+      display: grid;
+      gap: 8px;
+      position: relative;
+      z-index: 1;
+      max-width: 100%;
+    }
+    .boot-line {
+      display: grid;
+      gap: 3px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.56);
+      border: 1px solid rgba(143, 169, 219, 0.14);
+      box-shadow: 0 6px 18px rgba(126, 154, 213, 0.06);
+      animation: fadeInLine 0.35s ease;
+    }
+    .boot-line-phase {
+      font-family: var(--font-display);
+      font-size: 0.73rem;
+      font-weight: 600;
+      color: #28467d;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .boot-line-detail {
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      color: #5b6f8f;
+      line-height: 1.5;
+    }
+    @keyframes fadeInLine {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Rescue section inside the neural loader */
+    .loader-rescue {
+      display: none;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 20px;
+      position: relative;
+      z-index: 1;
+      background: rgba(244, 248, 255, 0.88);
+      border: 1px solid rgba(143, 169, 219, 0.2);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.65);
+      animation: rescueFadeIn 0.45s ease-out both;
+    }
+    .loader-rescue.visible { display: grid; }
+    @keyframes rescueFadeIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .loader-rescue .rescue-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #16315f;
+    }
+    .loader-rescue .rescue-desc {
+      font-size: 0.86rem;
+      color: #5b6f8f;
+      line-height: 1.6;
+      max-width: 500px;
+    }
+    .loader-rescue-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .loader-rescue .btn-rescue {
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(121, 154, 216, 0.22);
+    }
+    .loader-rescue .btn-rescue-primary {
+      background: linear-gradient(135deg, rgba(122, 167, 255, 0.16), rgba(101, 211, 215, 0.12));
+      color: #1d427e;
+    }
+    .loader-rescue .btn-rescue-primary:hover {
+      background: linear-gradient(135deg, rgba(122, 167, 255, 0.22), rgba(101, 211, 215, 0.18));
+      transform: translateY(-1px);
+    }
+    .loader-rescue .btn-rescue-secondary {
+      background: rgba(255,255,255,0.74);
+      color: #35538c;
+    }
+    .loader-rescue .btn-rescue-secondary:hover {
+      background: rgba(255,255,255,0.94);
+      transform: translateY(-1px);
+    }
+    .loader-rescue .progress-bar { max-width: 360px; margin-top: 2px; }
+    .loader-rescue .rescue-status { font-size: 0.76rem; color: #5b6f8f; min-height: 1.2em; }
+    @media (max-width: 640px) {
+      .loader-panel { border-radius: 24px; padding: 18px; }
+      .loader-topline { align-items: flex-start; flex-direction: column; gap: 10px; }
+      .loader-title { max-width: none; font-size: 1.75rem; }
+      .loader-sub { font-size: 0.9rem; }
+      .loader-visual { min-height: 280px; padding: 18px; }
+      .neural-core { width: 108px; height: 108px; }
+      .loader-stat-strip { grid-template-columns: 1fr; left: 14px; right: 14px; bottom: 14px; }
+      .loader-stat { padding: 10px 12px; }
+      .loader-rescue-actions { flex-direction: column; }
+      .loader-rescue .btn-rescue { width: 100%; }
+    }
 
     /* Inline webview embed (tool results) */
     .tool-webview-container { position: relative; margin-top: 8px; border-radius: 10px; overflow: hidden; border: 1px solid var(--ollama-border); background: var(--ollama-snow); }
@@ -593,25 +905,49 @@
 
   <!-- Global Loader Overlay -->
   <div id="global-loader" class="hidden">
-    <canvas id="neural-net-canvas"></canvas>
-    <div class="neural-core">
-      <div class="neural-core-brain">🧠</div>
-    </div>
-    <div class="loader-title">System Initializing</div>
-    <div id="loader-msg" class="loader-sub">Preparing neural environment...</div>
-    <div class="loader-progress" id="loader-progress">
-      <div class="loader-progress-bar"><div class="loader-progress-fill" id="loader-progress-fill"></div></div>
-      <div class="loader-progress-text" id="loader-progress-text"></div>
-    </div>
-    <div id="global-boot-log" class="boot-log" style="height: 100px; max-width: 400px; opacity: 1;"></div>
-    <!-- Rescue section (fades in over neural background when model is missing) -->
-    <div class="loader-rescue" id="loader-rescue">
-      <div class="rescue-title">Model Required</div>
-      <div class="rescue-desc">Private AI requires 1.2 GB neural weights. Choose an option below to get started.</div>
-      <button class="btn-rescue btn-rescue-primary" id="download-btn">⬇️ Download &amp; Install</button>
-      <button class="btn-rescue btn-rescue-secondary" onclick="document.getElementById('model-upload-input').click()">📁 Supply Local File (.task)</button>
-      <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
-      <div class="rescue-status" id="download-status"></div>
+    <div class="loader-shell">
+      <div class="loader-panel">
+        <div class="loader-topline">
+          <div id="loader-phase" class="loader-phase">Neural handshake</div>
+          <div class="loader-progress-text" id="loader-progress-text">0%</div>
+        </div>
+        <div class="loader-title">Growing local pathways</div>
+        <div id="loader-msg" class="loader-sub">Preparing the local inference network.</div>
+        <div class="loader-visual">
+          <canvas id="neural-net-canvas"></canvas>
+          <div class="neural-core">
+            <div class="neural-core-dot"></div>
+          </div>
+          <div class="loader-stat-strip" aria-hidden="true">
+            <div class="loader-stat">
+              <span class="loader-stat-value" id="loader-nodes-value">0</span>
+              <span class="loader-stat-label">neurons online</span>
+            </div>
+            <div class="loader-stat">
+              <span class="loader-stat-value" id="loader-links-value">0</span>
+              <span class="loader-stat-label">synapses formed</span>
+            </div>
+            <div class="loader-stat">
+              <span class="loader-stat-value" id="loader-activity-value">0%</span>
+              <span class="loader-stat-label">signal activity</span>
+            </div>
+          </div>
+        </div>
+        <div class="loader-progress" id="loader-progress">
+          <div class="loader-progress-bar"><div class="loader-progress-fill" id="loader-progress-fill"></div></div>
+        </div>
+        <div id="global-boot-log" class="boot-log" aria-live="polite"></div>
+        <div class="loader-rescue" id="loader-rescue">
+          <div class="rescue-title" id="loader-rescue-title">Model required</div>
+          <div class="rescue-desc" id="loader-rescue-desc">Local inference needs the Gemma task file before the network can finish connecting.</div>
+          <div class="loader-rescue-actions">
+            <button class="btn-rescue btn-rescue-primary" id="download-btn">Download model</button>
+            <button class="btn-rescue btn-rescue-secondary" onclick="document.getElementById('model-upload-input').click()">Use local .task file</button>
+          </div>
+          <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
+          <div class="rescue-status" id="download-status"></div>
+        </div>
+      </div>
     </div>
   </div>
 
