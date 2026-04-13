@@ -267,11 +267,36 @@
     .loader-rescue .rescue-status { font-size: 0.72rem; color: rgba(255,255,255,0.5); }
 
     /* Loader */
-    #global-loader { position: fixed; inset: 0; background: var(--ollama-black); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; overflow: hidden; }
+    #global-loader { --neural-energy: 0; position: fixed; inset: 0; background: var(--ollama-black); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; overflow: hidden; }
     #global-loader.hidden { display: none; }
-    #neural-net-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.4; }
-    .neural-core { width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; animation: pulse 2s infinite; position: relative; z-index: 1; }
-    @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.5; } }
+    #neural-net-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.24; transition: opacity 0.35s ease; }
+    .neural-core {
+      width: 136px;
+      height: 136px;
+      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.34), rgba(146, 196, 255, 0.1) 45%, rgba(120, 170, 235, 0.04) 70%, rgba(80,130,200,0.02) 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      animation: pulse 2.1s ease-in-out infinite;
+      position: relative;
+      z-index: 1;
+      box-shadow:
+        0 0 calc(16px + 26px * var(--neural-energy)) rgba(145, 203, 255, calc(0.12 + 0.28 * var(--neural-energy))),
+        0 0 calc(44px + 80px * var(--neural-energy)) rgba(115, 181, 255, calc(0.05 + 0.2 * var(--neural-energy)));
+      border: 1px solid rgba(196, 225, 255, calc(0.2 + 0.25 * var(--neural-energy)));
+    }
+    .neural-core::before {
+      content: '';
+      position: absolute;
+      inset: -14px;
+      border-radius: 50%;
+      border: 1px solid rgba(175, 218, 255, calc(0.07 + 0.2 * var(--neural-energy)));
+      transform: scale(calc(0.98 + 0.08 * var(--neural-energy)));
+    }
+    .neural-core-brain { font-size: 3rem; color: #fff; position: relative; z-index: 1; filter: drop-shadow(0 0 8px rgba(170, 220, 255, 0.5)); }
+    @keyframes pulse { 0% { transform: scale(0.985); opacity: 0.82; } 50% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(0.985); opacity: 0.82; } }
     .loader-title { font-size: 1.4rem; font-weight: 600; margin-bottom: 8px; position: relative; z-index: 1; }
     .loader-sub { font-size: 0.85rem; opacity: 0.8; position: relative; z-index: 1; min-height: 1.2em; }
     /* Main loader progress bar */
@@ -570,7 +595,7 @@
   <div id="global-loader" class="hidden">
     <canvas id="neural-net-canvas"></canvas>
     <div class="neural-core">
-      <div style="font-size: 2rem; color: #fff; position: relative; z-index: 1;">🧠</div>
+      <div class="neural-core-brain">🧠</div>
     </div>
     <div class="loader-title">System Initializing</div>
     <div id="loader-msg" class="loader-sub">Preparing neural environment...</div>

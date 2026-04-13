@@ -15,6 +15,13 @@ export function setNeuralProgress(pct) {
   const prev = _prevNeuralProgress;
   neuralProgress = Math.max(0, Math.min(100, pct));
   _prevNeuralProgress = neuralProgress;
+  const loader = document.getElementById('global-loader');
+  const canvas = document.getElementById('neural-net-canvas');
+  const progress01 = neuralProgress / 100;
+  const launchSurge = progress01 > 0.8 ? Math.pow((progress01 - 0.8) / 0.2, 1.65) : 0;
+  const energy = Math.max(progress01, Math.min(1, progress01 * 0.74 + launchSurge * 0.56));
+  if (loader) loader.style.setProperty('--neural-energy', energy.toFixed(3));
+  if (canvas) canvas.style.opacity = String(0.22 + energy * 0.62);
   const fill = document.getElementById('loader-progress-fill');
   const text = document.getElementById('loader-progress-text');
   if (fill) {
@@ -35,13 +42,15 @@ export function startNeuralNetworkAnimation() {
   const ctx = canvas.getContext('2d');
   neuralNodes = [];
   const NODE_COUNT = 60;
-  const BASE_CONNECTION_DIST = 80;
-  const MAX_CONNECTION_DIST = 200;
+  const BASE_CONNECTION_DIST = 52;
+  const MAX_CONNECTION_DIST = 212;
+  let core = { x: 0, y: 0 };
   let w, h;
 
   function resize() {
     w = canvas.width = canvas.offsetWidth;
     h = canvas.height = canvas.offsetHeight;
+    core = { x: w * 0.5, y: h * 0.42 };
   }
   resize();
   neuralResizeHandler = resize;
@@ -50,28 +59,53 @@ export function startNeuralNetworkAnimation() {
   for (let i = 0; i < NODE_COUNT; i++) {
     neuralNodes.push({
       x: Math.random() * w, y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+      vx: (Math.random() - 0.5) * 0.32, vy: (Math.random() - 0.5) * 0.32,
       r: 1.5 + Math.random() * 2,
       baseR: 1.5 + Math.random() * 2,
       active: false,
       activatedAt: 0,
-      pulsePhase: Math.random() * Math.PI * 2
+      phaseOffset: (i / NODE_COUNT) * Math.PI * 2
     });
   }
 
   function draw() {
     ctx.clearRect(0, 0, w, h);
     const t = performance.now() / 1000;
-    const progress = neuralProgress / 100;
-    const connectionDist = BASE_CONNECTION_DIST + (MAX_CONNECTION_DIST - BASE_CONNECTION_DIST) * progress;
-    const activeCount = Math.floor(neuralNodes.length * Math.max(0.15, progress));
+    const progress = Math.max(0, Math.min(1, neuralProgress / 100));
+    const launchSurge = progress > 0.8 ? Math.pow((progress - 0.8) / 0.2, 1.6) : 0;
+    const growth = Math.pow(progress, 1.25);
+    const activity = 0.18 + Math.pow(progress, 1.7) * 0.82 + launchSurge * 0.55;
+    const connectionDist = BASE_CONNECTION_DIST + (MAX_CONNECTION_DIST - BASE_CONNECTION_DIST) * growth + launchSurge * 44;
+    const activeRatio = Math.min(1, 0.1 + growth * 0.9 + launchSurge * 0.08);
+    const activeCount = Math.max(1, Math.floor(neuralNodes.length * activeRatio));
     const isMilestoneBurst = neuralMilestoneFlash > 0;
     if (neuralMilestoneFlash > 0) neuralMilestoneFlash--;
+
+    const coreConnectionDist = 120 + 210 * growth + launchSurge * 56;
+    const coreBeat = 0.82 + 0.18 * Math.sin(t * (1.25 + activity * 5.2));
 
     for (let i = 0; i < neuralNodes.length; i++) {
       if (i < activeCount && !neuralNodes[i].active) {
         neuralNodes[i].active = true;
         neuralNodes[i].activatedAt = t;
+      }
+    }
+
+    for (const node of neuralNodes) {
+      if (!node.active) continue;
+      const dxCore = node.x - core.x;
+      const dyCore = node.y - core.y;
+      const distCore = Math.sqrt(dxCore * dxCore + dyCore * dyCore);
+      if (distCore < coreConnectionDist) {
+        const distAlpha = 1 - distCore / coreConnectionDist;
+        const alpha = Math.min(0.95, (0.09 + 0.45 * growth + launchSurge * 0.2) * distAlpha * coreBeat);
+        const hue = 204 + progress * 32;
+        ctx.beginPath();
+        ctx.moveTo(core.x, core.y);
+        ctx.lineTo(node.x, node.y);
+        ctx.strokeStyle = `hsla(${hue}, 82%, 70%, ${alpha})`;
+        ctx.lineWidth = 0.5 + progress * 1.15 + launchSurge * 1.15;
+        ctx.stroke();
       }
     }
 
@@ -87,49 +121,81 @@ export function startNeuralNetworkAnimation() {
           const fadeJ = Math.min(1, (t - neuralNodes[j].activatedAt) * 2);
           const connectionFade = Math.min(fadeI, fadeJ);
           const distAlpha = 1 - dist / connectionDist;
-          let alpha = 0.35 * distAlpha * connectionFade * (0.3 + 0.7 * progress);
+          const wave = 0.78 + 0.22 * Math.sin(t * (1.2 + activity * 6.5) + dist * 0.03);
+          let alpha = (0.08 + 0.42 * growth) * distAlpha * connectionFade * wave;
           if (isMilestoneBurst) {
-            alpha = Math.min(1, alpha * 2.5);
+            alpha = Math.min(1, alpha * 1.9);
           }
-          const hue = 210 + progress * 30;
+          const hue = 205 + progress * 34;
           ctx.beginPath();
           ctx.moveTo(neuralNodes[i].x, neuralNodes[i].y);
           ctx.lineTo(neuralNodes[j].x, neuralNodes[j].y);
-          ctx.strokeStyle = `hsla(${hue}, 70%, 65%, ${alpha})`;
-          ctx.lineWidth = isMilestoneBurst ? 1.2 : (0.4 + 0.6 * progress);
+          ctx.strokeStyle = `hsla(${hue}, 80%, 68%, ${alpha})`;
+          ctx.lineWidth = isMilestoneBurst ? (1.2 + progress * 0.8 + launchSurge * 0.9) : (0.3 + progress * 1.05 + launchSurge * 0.6);
           ctx.stroke();
         }
       }
     }
 
-    for (const node of neuralNodes) {
+    for (let idx = 0; idx < neuralNodes.length; idx++) {
+      const node = neuralNodes[idx];
       const isActive = node.active;
       const fadeIn = isActive ? Math.min(1, (t - node.activatedAt) * 2) : 0.15;
-      const pulse = Math.sin(t * 2 + node.pulsePhase) * 0.3 + 0.7;
-      const baseAlpha = isActive ? (0.4 + 0.4 * progress) * fadeIn * pulse : 0.12;
+      const pulse = 0.84 + 0.16 * Math.sin(t * (1.1 + activity * 5) + node.phaseOffset + idx * 0.04);
+      const baseAlpha = isActive ? (0.28 + 0.54 * growth) * fadeIn * pulse : 0.08;
       let alpha = baseAlpha;
-      let r = node.baseR * (isActive ? (0.8 + 0.4 * progress) : 0.6);
+      let r = node.baseR * (isActive ? (0.84 + 0.72 * growth) : 0.52);
       if (isMilestoneBurst && isActive) {
-        alpha = Math.min(1, alpha * 2);
-        r *= 1.5;
+        alpha = Math.min(1, alpha * 1.5);
+        r *= 1.32;
       }
-      const hue = 210 + progress * 30;
+      const hue = 206 + progress * 30;
       ctx.beginPath();
       ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = `hsla(${hue}, 70%, 65%, ${alpha})`;
+      ctx.fillStyle = `hsla(${hue}, 82%, 69%, ${alpha})`;
       ctx.fill();
-      if (isActive && progress > 0.3) {
+      if (isActive && progress > 0.24) {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, r * 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${hue}, 70%, 65%, ${alpha * 0.15})`;
+        ctx.arc(node.x, node.y, r * (2.0 + growth * 1.35), 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${hue}, 82%, 69%, ${alpha * (0.08 + growth * 0.12)})`;
         ctx.fill();
       }
-      const speed = isActive ? 1 + progress * 0.5 : 0.5;
+
+      const speed = isActive ? (0.55 + activity * 1.35 + launchSurge * 0.6) : 0.36;
       node.x += node.vx * speed;
       node.y += node.vy * speed;
+      if (isActive) {
+        node.vx += (core.x - node.x) * (0.000018 + growth * 0.000052 + launchSurge * 0.00003);
+        node.vy += (core.y - node.y) * (0.000018 + growth * 0.000052 + launchSurge * 0.00003);
+      }
+      node.vx *= 0.996;
+      node.vy *= 0.996;
       if (node.x < 0 || node.x > w) node.vx *= -1;
       if (node.y < 0 || node.y > h) node.vy *= -1;
     }
+
+    const coreHue = 208 + progress * 24;
+    const coreGlowR = 24 + growth * 26;
+    const coreGlowAlpha = 0.12 + growth * 0.34;
+    ctx.beginPath();
+    ctx.arc(core.x, core.y, coreGlowR * 2.6, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${coreHue}, 85%, 72%, ${coreGlowAlpha * 0.32})`;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(core.x, core.y, coreGlowR, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${coreHue}, 90%, 76%, ${coreGlowAlpha})`;
+    ctx.fill();
+
+    if (launchSurge > 0) {
+      const ringAlpha = 0.22 * launchSurge;
+      const ringRadius = coreGlowR * (1.5 + launchSurge * 1.7);
+      ctx.beginPath();
+      ctx.arc(core.x, core.y, ringRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = `hsla(${coreHue + 8}, 90%, 75%, ${ringAlpha})`;
+      ctx.lineWidth = 1.4 + launchSurge * 2;
+      ctx.stroke();
+    }
+
     neuralAnimId = requestAnimationFrame(draw);
   }
   draw();
