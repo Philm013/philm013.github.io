@@ -1745,15 +1745,17 @@ self.addEventListener('message', async (e) => {
               total: p.total || 0,
             });
           }
-          if (p.status === 'downloading' || p.status === 'loading') {
-            const pct = p.total ? Math.round((p.loaded / p.total) * 100) : 0;
+          const hasByteProgress = Number.isFinite(p.loaded) && Number.isFinite(p.total) && p.total > 0;
+          if (p.status === 'downloading' || p.status === 'loading' || hasByteProgress) {
+            const pct = hasByteProgress ? Math.round((p.loaded / p.total) * 100) : 0;
             setNeuralProgress(20 + (pct / 100) * 55);
-            if (p.status === 'downloading' && p.loaded && p.total) {
+            if (hasByteProgress) {
               const loadedMB = (p.loaded / 1024 / 1024).toFixed(0);
               const totalMB = (p.total / 1024 / 1024).toFixed(0);
               const msg = `Downloading ${fileName} — ${loadedMB} / ${totalMB} MB (${pct}%)`;
               document.getElementById('loader-msg').innerText = msg;
-              updateFetchProgress({ fileName, loaded: p.loaded, total: p.total, status: p.status, phase: 'Downloading' });
+              const phase = p.status === 'loading' ? 'Loading' : 'Downloading';
+              updateFetchProgress({ fileName, loaded: p.loaded, total: p.total, status: p.status, phase });
             } else {
               document.getElementById('loader-msg').innerText = `Loading ${fileName}...`;
               updateFetchProgress({ fileName, loaded: p.loaded || 0, total: p.total || 0, status: p.status, phase: 'Loading' });
