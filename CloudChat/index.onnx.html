@@ -127,8 +127,49 @@
     .message.user { align-self: flex-end; }
     .message.ai { align-self: flex-start; }
     .user-bubble { background: var(--ollama-snow); border: 1px solid var(--ollama-border); padding: 12px 16px; border-radius: 12px; font-size: 0.95rem; }
-    .message.ai p { margin-bottom: 12px; }
+    .ai-bubble {
+      background: linear-gradient(180deg, #ffffff, #fbfdff);
+      border: 1px solid #dde7f7;
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 3px 14px rgba(33, 74, 140, 0.06);
+      min-width: 220px;
+    }
+    .message.ai p { margin: 0 0 12px; }
     .message.ai p:last-child { margin-bottom: 0; }
+    .message.ai h1, .message.ai h2, .message.ai h3, .message.ai h4 {
+      font-family: var(--font-display);
+      color: #0f2746;
+      line-height: 1.25;
+      margin: 16px 0 10px;
+      letter-spacing: -0.01em;
+    }
+    .message.ai h1 { font-size: 1.35rem; }
+    .message.ai h2 { font-size: 1.18rem; }
+    .message.ai h3 { font-size: 1.04rem; }
+    .message.ai h4 { font-size: 0.95rem; }
+    .message.ai ul, .message.ai ol { margin: 8px 0 14px 20px; padding-left: 8px; }
+    .message.ai li { margin: 4px 0; }
+    .message.ai blockquote {
+      margin: 12px 0;
+      padding: 8px 12px;
+      border-left: 3px solid #8fb8f2;
+      background: #f3f8ff;
+      border-radius: 0 8px 8px 0;
+      color: #27466f;
+    }
+    .message.ai table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      border: 1px solid #dce5f3;
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 0.88rem;
+    }
+    .message.ai th, .message.ai td { border: 1px solid #dce5f3; padding: 8px 10px; text-align: left; }
+    .message.ai th { background: #edf4ff; color: #1c365a; font-weight: 600; }
+    .message.ai hr { border: none; border-top: 1px solid #dbe4f2; margin: 14px 0; }
     .message.ai pre { background: var(--ollama-snow); border: 1px solid var(--ollama-border); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 12px 0; font-family: var(--font-mono); font-size: 0.85rem; position: relative; }
     .message.ai code { font-family: var(--font-mono); background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; font-size: 0.9em; }
     .message.ai pre code { background: none; padding: 0; }
@@ -245,9 +286,35 @@
     /* Loader */
     #global-loader { position: fixed; inset: 0; background: var(--ollama-black); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; overflow: hidden; }
     #global-loader.hidden { display: none; }
-    #neural-net-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.4; }
-    .neural-core { width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; animation: pulse 2s infinite; position: relative; z-index: 1; }
-    @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.5; } }
+    #global-loader { --neural-energy: 0; }
+    #neural-net-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.24; transition: opacity 0.35s ease; }
+    .neural-core {
+      width: 136px;
+      height: 136px;
+      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.34), rgba(146, 196, 255, 0.1) 45%, rgba(120, 170, 235, 0.04) 70%, rgba(80,130,200,0.02) 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      animation: pulse 2.1s ease-in-out infinite;
+      position: relative;
+      z-index: 1;
+      box-shadow:
+        0 0 calc(16px + 26px * var(--neural-energy)) rgba(145, 203, 255, calc(0.12 + 0.28 * var(--neural-energy))),
+        0 0 calc(44px + 80px * var(--neural-energy)) rgba(115, 181, 255, calc(0.05 + 0.2 * var(--neural-energy)));
+      border: 1px solid rgba(196, 225, 255, calc(0.2 + 0.25 * var(--neural-energy)));
+    }
+    .neural-core::before {
+      content: '';
+      position: absolute;
+      inset: -14px;
+      border-radius: 50%;
+      border: 1px solid rgba(175, 218, 255, calc(0.07 + 0.2 * var(--neural-energy)));
+      transform: scale(calc(0.98 + 0.08 * var(--neural-energy)));
+    }
+    .neural-core-brain { font-size: 3rem; color: #fff; position: relative; z-index: 1; filter: drop-shadow(0 0 8px rgba(170, 220, 255, 0.5)); }
+    @keyframes pulse { 0% { transform: scale(0.985); opacity: 0.82; } 50% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(0.985); opacity: 0.82; } }
     .loader-title { font-size: 1.4rem; font-weight: 600; margin-bottom: 8px; position: relative; z-index: 1; }
     .loader-sub { font-size: 0.85rem; opacity: 0.8; position: relative; z-index: 1; min-height: 1.2em; }
     /* Main loader progress bar */
@@ -359,10 +426,50 @@
     .hidden { display: none !important; }
 
     /* Thinking block */
-    .thinking-block { background: rgba(102,126,234,0.06); border-left: 3px solid #667eea; padding: 8px 12px; border-radius: 0 8px 8px 0; margin-bottom: 8px; font-size: 0.82rem; color: var(--ollama-mid-gray); }
-    .thinking-toggle { cursor: pointer; font-size: 0.75rem; color: #667eea; font-weight: 500; display: flex; align-items: center; gap: 4px; margin-bottom: 4px; font-style: normal; user-select: none; }
-    .thinking-content { display: none; white-space: pre-wrap; font-style: italic; }
+    .thinking-block {
+      background: linear-gradient(90deg, rgba(140,182,244,0.14), rgba(166,205,255,0.08));
+      border: 1px solid rgba(103, 154, 230, 0.3);
+      border-left: 3px solid #3d84e6;
+      padding: 9px 12px;
+      border-radius: 0 10px 10px 0;
+      margin-bottom: 10px;
+      font-size: 0.82rem;
+      color: #264a78;
+    }
+    .thinking-toggle { cursor: pointer; font-size: 0.75rem; color: #2f6fc5; font-weight: 600; display: flex; align-items: center; gap: 4px; margin-bottom: 5px; font-style: normal; user-select: none; }
+    .thinking-content { display: none; white-space: pre-wrap; font-style: italic; color: #2f4f76; }
     .thinking-content.open { display: block; }
+    .thinking-chunks { display: flex; flex-direction: column; gap: 4px; margin-top: 5px; }
+    .thinking-chunk {
+      font-size: 0.73rem;
+      color: #355e92;
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(117, 167, 237, 0.28);
+      border-radius: 999px;
+      padding: 3px 10px;
+      width: fit-content;
+      max-width: 100%;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      animation: thoughtSlideIn 0.28s ease;
+    }
+    .thinking-pending {
+      margin-top: 6px;
+      font-size: 0.72rem;
+      color: #4d6f98;
+      letter-spacing: 0.02em;
+      animation: thoughtPulse 1.1s ease-in-out infinite;
+    }
+    .stream-pending {
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: #5a7292;
+      font-style: italic;
+      animation: thoughtPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes thoughtSlideIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes thoughtPulse { 0% { opacity: 0.35; } 50% { opacity: 0.9; } 100% { opacity: 0.35; } }
 
     /* Tool call block */
     .tool-call-block { background: rgba(245,158,11,0.06); border-left: 3px solid #f59e0b; padding: 8px 12px; border-radius: 0 8px 8px 0; margin: 8px 0; font-size: 0.82rem; color: var(--ollama-mid-gray); }
@@ -605,7 +712,7 @@
   <div id="global-loader" class="hidden">
     <canvas id="neural-net-canvas"></canvas>
     <div class="neural-core">
-      <div style="font-size: 2rem; color: #fff; position: relative; z-index: 1;">🧠</div>
+      <div class="neural-core-brain">🧠</div>
     </div>
     <div class="loader-title">System Initializing</div>
     <div id="loader-msg" class="loader-sub">Preparing neural environment...</div>
@@ -1454,6 +1561,7 @@
       worker: null,
       history: [],
       isGenerating: false,
+      runtimeRecoveryInFlight: false,
       stopRequested: false,
       batchStopRequested: false,
       activeModelKey: 'gemma4-e2b',
@@ -1713,6 +1821,47 @@ self.addEventListener('message', async (e) => {
       return new Worker(url, { type: 'module' });
     }
 
+    function isRecoverableWebGPURuntimeError(message = '') {
+      const msg = String(message || '');
+      return /(valid external Instance reference no longer exists|Failed to create a WebGPU compute pipeline|failed to call OrtRun\(\)|GPUDevice lost|device lost)/i.test(msg);
+    }
+
+    function recoverInferenceWorker(reason = '') {
+      if (State.runtimeRecoveryInFlight) return;
+      State.runtimeRecoveryInFlight = true;
+      State.modelReady = false;
+      State.lastWorkerProgressKey = '';
+      updateSendButtons();
+
+      const m = MODELS[State.activeModelKey];
+      addDiagnosticEntry('warn', 'Recovering inference worker after WebGPU runtime failure', {
+        modelKey: State.activeModelKey,
+        reason,
+      });
+
+      document.getElementById('global-loader').classList.remove('hidden');
+      document.getElementById('loader-rescue').classList.remove('visible');
+      setRescueStatus('');
+      resetFetchProgress();
+      startNeuralNetworkAnimation();
+      setNeuralProgress(15);
+      updateStatus('loading', 'Recovering GPU...');
+      document.getElementById('loader-msg').innerText = 'WebGPU context reset detected. Reinitializing model worker...';
+
+      if (State.worker) {
+        try { State.worker.terminate(); } catch (_err) { /* ignore */ }
+        State.worker = null;
+      }
+
+      State.worker = createInferenceWorker();
+      attachWorkerHandlers(State.worker);
+      State.worker.postMessage({
+        type: 'load',
+        modelId: m.id,
+        dtype: m.dtype,
+      });
+    }
+
     function attachWorkerHandlers(w) {
       w.addEventListener('error', (e) => {
         const details = {
@@ -1776,6 +1925,7 @@ self.addEventListener('message', async (e) => {
           resetFetchProgress();
           setNeuralProgress(100);
           State.modelReady = true;
+          State.runtimeRecoveryInFlight = false;
           State.lastWorkerProgressKey = '';
           addDiagnosticEntry('info', 'ONNX model is ready for inference', {
             modelKey: State.activeModelKey,
@@ -1822,6 +1972,7 @@ self.addEventListener('message', async (e) => {
         else if (data.type === 'error') {
           const summary = `Worker error: ${data.message}`;
           if (!State.modelReady) {
+            State.runtimeRecoveryInFlight = false;
             updateStatus('error', 'Error');
             stopNeuralNetworkAnimation();
             showLoaderRescue(summary, {
@@ -1833,6 +1984,9 @@ self.addEventListener('message', async (e) => {
               modelKey: State.activeModelKey,
               phase: 'runtime',
             });
+            if (isRecoverableWebGPURuntimeError(data.message)) {
+              recoverInferenceWorker(data.message);
+            }
           }
         }
       });
@@ -3517,6 +3671,18 @@ self.addEventListener('message', async (e) => {
       let think = ''; let main = text;
       let thinkingComplete = false;
 
+      const thoughtChunks = (value) => {
+        const src = String(value || '').replace(/\s+/g, ' ').trim();
+        if (!src) return [];
+        const pieces = src
+          .split(/(?<=[.!?;])\s+|\n+/)
+          .map(s => s.trim())
+          .filter(Boolean);
+        return pieces.slice(-4).map((piece) => {
+          return piece.length > 120 ? `${piece.slice(0, 117)}...` : piece;
+        });
+      };
+
       // Priority 1: <|think|>...</|/think|> (DeepSeek-R1, Qwen3, etc.)
       const thinkMatch = text.match(/<\|think\|>([\s\S]*?)(<\|\/think\|>|$)/);
       if (thinkMatch) {
@@ -3551,15 +3717,20 @@ self.addEventListener('message', async (e) => {
       }
 
       let html = '';
-      if (think && showThinking) {
+      if (showThinking && (think || (isStreaming && /<\|think\|>|<\|channel>thought/i.test(text)))) {
+        const chunks = thoughtChunks(think);
         if (isStreaming && !thinkingComplete) {
-          // Thinking is still in progress — show indicator only, buffer content
+          // Thinking is still in progress — reveal incremental thought chunks.
           html += `<div class="thinking-block">` +
             `<div class="thinking-toggle">` +
             `<span>&#9660;</span> Thinking...` +
             `</div>` +
+            (chunks.length
+              ? `<div class="thinking-chunks">${chunks.map(chunk => `<div class="thinking-chunk">${escapeHtml(chunk)}</div>`).join('')}</div>`
+              : '') +
+            `<div class="thinking-pending">Neural pathways are firing...</div>` +
             `</div>`;
-        } else {
+        } else if (think) {
           // Thinking is complete — show full block collapsed
           const id = 'th-' + Math.random().toString(36).slice(2, 8);
           html += `<div class="thinking-block">` +
@@ -3586,7 +3757,15 @@ self.addEventListener('message', async (e) => {
       // Handle both Gemma 4 (<|turn>...<turn|>) and legacy (<start_of_turn>...<end_of_turn>) formats.
       main = main.replace(/<\|turn>[^\n]*\n?/g, '').replace(/<turn\|>/g, '').trim();
       main = main.replace(/<start_of_turn>[^\n]*\n?/g, '').replace(/<end_of_turn>/g, '').trim();
-      if (!main) return html || '<span style="color:var(--ollama-stone)">...</span>';
+      if (!main) {
+        if (html) {
+          if (isStreaming) html += '<div class="stream-pending">Synthesizing response...</div>';
+          return html;
+        }
+        return isStreaming
+          ? '<div class="stream-pending">Synthesizing response...</div>'
+          : '<span style="color:var(--ollama-stone)">No response generated.</span>';
+      }
       html += DOMPurify.sanitize(markdownEngine.render(main));
       return html;
     }
@@ -3624,6 +3803,13 @@ self.addEventListener('message', async (e) => {
       const prev = _prevNeuralProgress;
       neuralProgress = Math.max(0, Math.min(100, pct));
       _prevNeuralProgress = neuralProgress;
+      const loader = document.getElementById('global-loader');
+      const canvas = document.getElementById('neural-net-canvas');
+      const progress01 = neuralProgress / 100;
+      const launchSurge = progress01 > 0.8 ? Math.pow((progress01 - 0.8) / 0.2, 1.65) : 0;
+      const energy = Math.max(progress01, Math.min(1, progress01 * 0.74 + launchSurge * 0.56));
+      if (loader) loader.style.setProperty('--neural-energy', energy.toFixed(3));
+      if (canvas) canvas.style.opacity = String(0.22 + energy * 0.62);
       // Update the main progress bar
       const fill = document.getElementById('loader-progress-fill');
       const text = document.getElementById('loader-progress-text');
@@ -3690,13 +3876,15 @@ self.addEventListener('message', async (e) => {
       const ctx = canvas.getContext('2d');
       neuralNodes = [];
       const NODE_COUNT = 60;
-      const BASE_CONNECTION_DIST = 80;   // minimum connection radius (low progress)
-      const MAX_CONNECTION_DIST = 200;   // maximum connection radius (full progress)
+      const BASE_CONNECTION_DIST = 52;
+      const MAX_CONNECTION_DIST = 212;
+      let core = { x: 0, y: 0 };
       let w, h;
 
       function resize() {
         w = canvas.width = canvas.offsetWidth;
         h = canvas.height = canvas.offsetHeight;
+        core = { x: w * 0.5, y: h * 0.42 };
       }
       resize();
       neuralResizeHandler = resize;
@@ -3705,25 +3893,32 @@ self.addEventListener('message', async (e) => {
       for (let i = 0; i < NODE_COUNT; i++) {
         neuralNodes.push({
           x: Math.random() * w, y: Math.random() * h,
-          vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+          vx: (Math.random() - 0.5) * 0.32, vy: (Math.random() - 0.5) * 0.32,
           r: 1.5 + Math.random() * 2,
           baseR: 1.5 + Math.random() * 2,
-          active: false,         // becomes true as progress includes this node
-          activatedAt: 0,        // timestamp when node was activated
-          pulsePhase: Math.random() * Math.PI * 2
+          active: false,
+          activatedAt: 0,
+          phaseOffset: (i / NODE_COUNT) * Math.PI * 2
         });
       }
 
       function draw() {
         ctx.clearRect(0, 0, w, h);
         const t = performance.now() / 1000;
-        const progress = neuralProgress / 100;
-        const connectionDist = BASE_CONNECTION_DIST + (MAX_CONNECTION_DIST - BASE_CONNECTION_DIST) * progress;
-        const activeCount = Math.floor(neuralNodes.length * Math.max(0.15, progress));
+        const progress = Math.max(0, Math.min(1, neuralProgress / 100));
+        const launchSurge = progress > 0.8 ? Math.pow((progress - 0.8) / 0.2, 1.6) : 0;
+        const growth = Math.pow(progress, 1.25);
+        const activity = 0.18 + Math.pow(progress, 1.7) * 0.82 + launchSurge * 0.55;
+        const connectionDist = BASE_CONNECTION_DIST + (MAX_CONNECTION_DIST - BASE_CONNECTION_DIST) * growth + launchSurge * 44;
+        const activeRatio = Math.min(1, 0.1 + growth * 0.9 + launchSurge * 0.08);
+        const activeCount = Math.max(1, Math.floor(neuralNodes.length * activeRatio));
         const isMilestoneBurst = neuralMilestoneFlash > 0;
         if (neuralMilestoneFlash > 0) neuralMilestoneFlash--;
 
-        // Activate nodes progressively
+        const coreConnectionDist = 120 + 210 * growth + launchSurge * 56;
+        const coreBeat = 0.82 + 0.18 * Math.sin(t * (1.25 + activity * 5.2));
+
+        // Activate nodes progressively as progress grows.
         for (let i = 0; i < neuralNodes.length; i++) {
           if (i < activeCount && !neuralNodes[i].active) {
             neuralNodes[i].active = true;
@@ -3731,7 +3926,26 @@ self.addEventListener('message', async (e) => {
           }
         }
 
-        // Draw connections — only between active nodes
+        // Draw links from active nodes to the core to emphasize the brain as the hub.
+        for (const node of neuralNodes) {
+          if (!node.active) continue;
+          const dxCore = node.x - core.x;
+          const dyCore = node.y - core.y;
+          const distCore = Math.sqrt(dxCore * dxCore + dyCore * dyCore);
+          if (distCore < coreConnectionDist) {
+            const distAlpha = 1 - distCore / coreConnectionDist;
+            const alpha = Math.min(0.95, (0.09 + 0.45 * growth + launchSurge * 0.2) * distAlpha * coreBeat);
+            const hue = 204 + progress * 32;
+            ctx.beginPath();
+            ctx.moveTo(core.x, core.y);
+            ctx.lineTo(node.x, node.y);
+            ctx.strokeStyle = `hsla(${hue}, 82%, 70%, ${alpha})`;
+            ctx.lineWidth = 0.5 + progress * 1.15 + launchSurge * 1.15;
+            ctx.stroke();
+          }
+        }
+
+        // Draw links among active nodes.
         for (let i = 0; i < neuralNodes.length; i++) {
           if (!neuralNodes[i].active) continue;
           for (let j = i + 1; j < neuralNodes.length; j++) {
@@ -3744,60 +3958,94 @@ self.addEventListener('message', async (e) => {
               const fadeJ = Math.min(1, (t - neuralNodes[j].activatedAt) * 2);
               const connectionFade = Math.min(fadeI, fadeJ);
               const distAlpha = 1 - dist / connectionDist;
-              let alpha = 0.35 * distAlpha * connectionFade * (0.3 + 0.7 * progress);
+              const wave = 0.78 + 0.22 * Math.sin(t * (1.2 + activity * 6.5) + dist * 0.03);
+              let alpha = (0.08 + 0.42 * growth) * distAlpha * connectionFade * wave;
 
-              // Milestone burst: connections glow brighter
+              // Milestone burst: brief excitement spike on progress thresholds.
               if (isMilestoneBurst) {
-                alpha = Math.min(1, alpha * 2.5);
+                alpha = Math.min(1, alpha * 1.9);
               }
 
-              const hue = 210 + progress * 30; // shift from blue to cyan as progress increases
+              const hue = 205 + progress * 34;
               ctx.beginPath();
               ctx.moveTo(neuralNodes[i].x, neuralNodes[i].y);
               ctx.lineTo(neuralNodes[j].x, neuralNodes[j].y);
-              ctx.strokeStyle = `hsla(${hue}, 70%, 65%, ${alpha})`;
-              ctx.lineWidth = isMilestoneBurst ? 1.2 : (0.4 + 0.6 * progress);
+              ctx.strokeStyle = `hsla(${hue}, 80%, 68%, ${alpha})`;
+              ctx.lineWidth = isMilestoneBurst ? (1.2 + progress * 0.8 + launchSurge * 0.9) : (0.3 + progress * 1.05 + launchSurge * 0.6);
               ctx.stroke();
             }
           }
         }
 
-        // Draw nodes
-        for (const node of neuralNodes) {
+        // Draw active and inactive nodes.
+        for (let idx = 0; idx < neuralNodes.length; idx++) {
+          const node = neuralNodes[idx];
           const isActive = node.active;
           const fadeIn = isActive ? Math.min(1, (t - node.activatedAt) * 2) : 0.15;
-          const pulse = Math.sin(t * 2 + node.pulsePhase) * 0.3 + 0.7;
-          const baseAlpha = isActive ? (0.4 + 0.4 * progress) * fadeIn * pulse : 0.12;
+          const pulse = 0.84 + 0.16 * Math.sin(t * (1.1 + activity * 5) + node.phaseOffset + idx * 0.04);
+          const baseAlpha = isActive ? (0.28 + 0.54 * growth) * fadeIn * pulse : 0.08;
           let alpha = baseAlpha;
-          let r = node.baseR * (isActive ? (0.8 + 0.4 * progress) : 0.6);
+          let r = node.baseR * (isActive ? (0.84 + 0.72 * growth) : 0.52);
 
-          // Milestone burst: nodes pulse larger and brighter
+          // Milestone burst: nodes pulse larger and brighter.
           if (isMilestoneBurst && isActive) {
-            alpha = Math.min(1, alpha * 2);
-            r *= 1.5;
+            alpha = Math.min(1, alpha * 1.5);
+            r *= 1.32;
           }
 
-          const hue = 210 + progress * 30;
+          const hue = 206 + progress * 30;
           ctx.beginPath();
           ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
-          ctx.fillStyle = `hsla(${hue}, 70%, 65%, ${alpha})`;
+          ctx.fillStyle = `hsla(${hue}, 82%, 69%, ${alpha})`;
           ctx.fill();
 
-          // Glow effect for active nodes at higher progress
-          if (isActive && progress > 0.3) {
+          if (isActive && progress > 0.24) {
             ctx.beginPath();
-            ctx.arc(node.x, node.y, r * 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${hue}, 70%, 65%, ${alpha * 0.15})`;
+            ctx.arc(node.x, node.y, r * (2.0 + growth * 1.35), 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${hue}, 82%, 69%, ${alpha * (0.08 + growth * 0.12)})`;
             ctx.fill();
           }
 
-          // Move — active nodes move slightly faster as progress increases
-          const speed = isActive ? 1 + progress * 0.5 : 0.5;
+          // Synaptic activity ramps up as launch nears.
+          const speed = isActive ? (0.55 + activity * 1.35 + launchSurge * 0.6) : 0.36;
           node.x += node.vx * speed;
           node.y += node.vy * speed;
+
+          // Mild attraction toward the core strengthens with progress.
+          if (isActive) {
+            node.vx += (core.x - node.x) * (0.000018 + growth * 0.000052 + launchSurge * 0.00003);
+            node.vy += (core.y - node.y) * (0.000018 + growth * 0.000052 + launchSurge * 0.00003);
+          }
+          node.vx *= 0.996;
+          node.vy *= 0.996;
+
           if (node.x < 0 || node.x > w) node.vx *= -1;
           if (node.y < 0 || node.y > h) node.vy *= -1;
         }
+
+        // Render core glow as the central activity source.
+        const coreHue = 208 + progress * 24;
+        const coreGlowR = 24 + growth * 26;
+        const coreGlowAlpha = 0.12 + growth * 0.34;
+        ctx.beginPath();
+        ctx.arc(core.x, core.y, coreGlowR * 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${coreHue}, 85%, 72%, ${coreGlowAlpha * 0.32})`;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(core.x, core.y, coreGlowR, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${coreHue}, 90%, 76%, ${coreGlowAlpha})`;
+        ctx.fill();
+
+        if (launchSurge > 0) {
+          const ringAlpha = 0.22 * launchSurge;
+          const ringRadius = coreGlowR * (1.5 + launchSurge * 1.7);
+          ctx.beginPath();
+          ctx.arc(core.x, core.y, ringRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `hsla(${coreHue + 8}, 90%, 75%, ${ringAlpha})`;
+          ctx.lineWidth = 1.4 + launchSurge * 2;
+          ctx.stroke();
+        }
+
         neuralAnimId = requestAnimationFrame(draw);
       }
       draw();
@@ -4092,9 +4340,16 @@ self.addEventListener('message', async (e) => {
         // Capture current attachment data before clearing (single pass)
         const imageThumbs = [], imageNames = [], audioAtts = [], videoAtts = [], docAtts = [];
         for (const a of attachments) {
-          if (a.type === 'image') { imageThumbs.push(a.thumb); imageNames.push(a.name); }
-          else if (a.type === 'audio') { audioAtts.push({ thumb: a.thumb, name: a.name }); }
-          else if (a.type === 'video') { videoAtts.push({ thumb: a.thumb, name: a.name }); }
+          if (a.type === 'image') {
+            imageThumbs.push(URL.createObjectURL(a.blob));
+            imageNames.push(a.name);
+          }
+          else if (a.type === 'audio') {
+            audioAtts.push({ thumb: URL.createObjectURL(a.blob), name: a.name });
+          }
+          else if (a.type === 'video') {
+            videoAtts.push({ thumb: URL.createObjectURL(a.blob), name: a.name });
+          }
           else if (a.type === 'document') { docAtts.push({ name: a.name, text: a.text }); }
         }
         const userEl = renderMessage(text, 'user', null, { images: imageThumbs, audios: audioAtts, videos: videoAtts });
