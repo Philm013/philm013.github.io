@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gemma-chat-v1';
+const CACHE_NAME = 'gemma-chat-v2';
 const ASSETS = [
   './',
   './index.html',

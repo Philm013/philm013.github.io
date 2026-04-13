@@ -1,5 +1,5 @@
 // ── Application Entry Point ───────────────────────────────────
-import { REMOTE_MODEL, LOCAL_MODEL, State } from './config.js';
+import { REMOTE_MODEL, State } from './config.js';
 import { openRAGDB, storeChunks, getAllChunks, cosineSimilarity, deleteChunk, extractPDFText, extractDOCXText } from './rag.js';
 import { isSearchConfigured } from './search.js';
 import { TOOL_REGISTRY, ensureToolSkillDocsLoaded } from './tools.js';
@@ -13,7 +13,7 @@ import {
   addAttachment, showAttachModal,
   getPendingAttachFile
 } from './ui.js';
-import { initGemma, initServer, setNeuralProgress } from './model.js';
+import { initGemma, setNeuralProgress } from './model.js';
 import { handleSend, DEFAULT_SYSTEM_PROMPT } from './chat.js';
 
 // ── Share – encrypted link support ──────────────────────
@@ -454,29 +454,6 @@ document.getElementById('model-upload-input').onchange = async e => {
   }
 };
 
-document.getElementById('local-server-btn').onclick = async () => {
-  const status = document.getElementById('download-status');
-  status.textContent = 'Checking local server backend...';
-  if (await isServerAvailable()) {
-    document.getElementById('loader-rescue').classList.remove('visible');
-    status.textContent = '';
-    initServer();
-    return;
-  }
-  try {
-    const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
-    if (check.ok) {
-      document.getElementById('loader-rescue').classList.remove('visible');
-      status.textContent = '';
-      initGemma();
-    } else {
-      status.textContent = 'Local server backend not running and model file not found locally.';
-    }
-  } catch {
-    status.textContent = 'Could not reach the local server backend.';
-  }
-};
-
 // ── Chat Input ──────────────────────────────────────────
 const chatInput = document.getElementById('chat-input');
 const toolInsertBtn = document.getElementById('tool-insert-btn');
@@ -601,33 +578,13 @@ document.querySelectorAll('.about-tab').forEach(tab => {
   });
 });
 
-// ── Server Detection Helper ─────────────────────────────
-// Returns true if the local Node.js/Ollama server backend is available.
-async function isServerAvailable() {
-  try {
-    const res = await fetch('/api/status');
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 // ── Init ────────────────────────────────────────────────
 // This module is loaded via `await import()` inside a deferred <script type="module">,
 // so the DOM is fully parsed and all synchronous <script> tags in <head> have executed.
 // We can initialise immediately — no need to wait for window.onload.
 restoreFromSession();
 
-// Try to connect to the local Node.js server backend first. If the server is
-// running and its configured Ollama model is available, inference stays on
-// the same machine. Otherwise fall back to in-browser MediaPipe/WebGPU model loading.
-(async () => {
-  if (await isServerAvailable()) {
-    await initServer();
-  } else {
-    initGemma();
-  }
-})();
+initGemma();
 
 ensureToolSkillDocsLoaded().then(() => refreshToolsPanel());
 refreshLibraryPanel();

@@ -561,7 +561,6 @@
       <div class="rescue-desc">Private AI requires 1.2 GB neural weights. Choose an option below to get started.</div>
       <button class="btn-rescue btn-rescue-primary" id="download-btn">⬇️ Download &amp; Install</button>
       <button class="btn-rescue btn-rescue-secondary" onclick="document.getElementById('model-upload-input').click()">📁 Supply Local File (.task)</button>
-      <button class="btn-rescue btn-rescue-secondary" id="local-server-btn">🖥️ Use Local Server</button>
       <div class="progress-bar hidden" id="progress-container"><div id="download-fill"></div></div>
       <div class="rescue-status" id="download-status"></div>
     </div>
@@ -5639,23 +5638,6 @@ Tool Selection Guidelines:
         document.getElementById('loader-rescue').classList.remove('visible');
         const r = await e.target.files[0].arrayBuffer();
         initGemma(new Uint8Array(r), true);
-      }
-    };
-
-    document.getElementById('local-server-btn').onclick = async () => {
-      const status = document.getElementById('download-status');
-      status.textContent = 'Checking local server...';
-      try {
-        const check = await fetch(LOCAL_MODEL, { method: 'HEAD' });
-        if (check.ok) {
-          document.getElementById('loader-rescue').classList.remove('visible');
-          status.textContent = '';
-          initGemma();
-        } else {
-          status.textContent = 'Model file not found on local server.';
-        }
-      } catch (_e) {
-        status.textContent = 'Could not reach local server.';
       }
     };
 
