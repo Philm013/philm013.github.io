@@ -2015,8 +2015,10 @@
 
   <script type="module">
     // ── WebGPU check ────────────────────────────────────────────
-    const hasWebGPU = !!navigator.gpu;
-    if (!hasWebGPU) {
+    // Also probe for shader-f16 support.  Devices without it cannot
+    // run q4f16 models; we fall back to q4 (f32 activations).
+    let _gpuF16 = false;
+    if (!navigator.gpu) {
       document.getElementById('chatArea').innerHTML = `
         <div class="webgpu-error">
           <div style="font-size:2rem;margin-bottom:12px">&#9888;</div>
@@ -2029,13 +2031,24 @@
       document.getElementById('statusText').textContent = 'Not supported';
       throw new Error('WebGPU not available');
     }
+    try {
+      const adapter = await Promise.race([
+        navigator.gpu.requestAdapter(),
+        new Promise(resolve => setTimeout(() => resolve(null), 3000))
+      ]);
+      if (adapter) {
+        _gpuF16 = adapter.features.has('shader-f16');
+      }
+    } catch (_e) { /* adapter probe failed – leave _gpuF16 false */ }
 
     // ── Model registry ──────────────────────────────────────────
+    const _dtype = _gpuF16 ? 'q4f16' : 'q4';
+    if (!_gpuF16) console.warn('WebGPU shader-f16 not supported — using q4 (f32) dtype instead of q4f16.');
     const MODELS = {
       'gemma3-1b': {
         id: 'onnx-community/gemma-3-1b-it-ONNX-GQA',
         label: 'Gemma 3 1B',
-        dtype: 'q4f16',
+        dtype: _dtype,
         size: '~760 MB',
         type: 'causal',       // uses AutoModelForCausalLM
         multimodal: false,
@@ -2046,7 +2059,7 @@
       'gemma4-e2b': {
         id: 'onnx-community/gemma-4-E2B-it-ONNX',
         label: 'Gemma 4 E2B',
-        dtype: 'q4f16',
+        dtype: _dtype,
         size: '~1.5 GB',
         type: 'multimodal',   // uses Gemma4ForConditionalGeneration
         multimodal: true,
@@ -2057,7 +2070,7 @@
       'gemma4-e4b': {
         id: 'onnx-community/gemma-4-E4B-it-ONNX',
         label: 'Gemma 4 E4B',
-        dtype: 'q4f16',
+        dtype: _dtype,
         size: '~4.9 GB',
         type: 'multimodal',   // uses Gemma4ForConditionalGeneration
         multimodal: true,
