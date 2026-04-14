@@ -4,8 +4,7 @@
   "description": "",
   "main": "sw.js",
   "scripts": {
-    "start:super-smartsheet": "node SuperSmartSheet/server.js",
-    "start:cloudchat": "node CloudChat/server/server.js",
+    "split:project": "node scripts/split-project-repo.mjs",
     "lint:js": "node node_modules/eslint/bin/eslint.js \"**/*.{html,js}\"",
     "lint:css": "node node_modules/stylelint/bin/stylelint.mjs \"**/*.{html,css}\"",
     "lint:html": "node node_modules/htmlhint/bin/htmlhint index.html",

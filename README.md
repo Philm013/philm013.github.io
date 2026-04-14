@@ -1,55 +1,54 @@
-# Phil's Web App Portfolio
+# PhilM013 Portfolio Control Plane
 
-This repository is a collection of various web applications and projects, showcasing a range of technologies and functionalities. From developer tools to educational resources and games, each project is a standalone application.
+This repository is being reduced from a giant multi-project GitHub Pages repo into a lightweight portfolio shell. Its long-term job is to host the landing page at `philm013.github.io`, keep the shared project inventory accurate, and provide tooling for splitting each app into its own repository.
 
-## Projects
+## Current state
 
-Below is a list of the projects hosted in this repository.
+- Standalone repositories have been created for the project inventory.
+- Static projects now publish from a dedicated `pages` branch in their own repositories.
+- `MarkedUp` and `KnowledgeMapper` also have standalone repositories, but they still launch from this monorepo because they require custom hosting beyond plain GitHub Pages.
 
-| Project                                               | Description                                                                                                                              | Docs                                          |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| [AI-Editor](./AI-Editor/index.html)                   | A web-based code editor with AI-powered features for code analysis, linting, and generation. Supports multiple files and project rules.          | [ReadMe](./AI-Editor/README.md)               |
-| [ArchieIDE](./ArchieIDE/index.html)                   | A full-featured, browser-based IDE with an AI assistant ("Archie"), a virtual file system, live preview, and collaborative capabilities. | [ReadMe](./ArchieIDE/README.md)               |
-| [Assessment Analyzer](./AssesmentAnalyzer/index.html) | A tool for reviewing and analyzing educational assessment materials against a rubric, with a version for K-12 Science and one for EQuIP. | [ReadMe](./AssesmentAnalyzer/README.md)       |
-| [Bank Explorer](./BankExplorer/index.html)            | An application for parsing and analyzing personal bank statements. It includes data visualization, transaction tagging, and AI-driven insights. | [ReadMe](./BankExplorer/README.md)            |
-| [CardVault](./CardVault/index.html)                   | A powerful sports card cataloging tool with AI-powered scanning and computer vision capabilities. | [ReadMe](./CardVault/README.md)               |
-| [CoinVault](./CoinVault/index.html)                   | A sophisticated coin and currency cataloging tool with AI-powered scanning and computer vision capabilities. | [ReadMe](./CoinVault/README.md)               |
-| [Digital Synapse](./DigitalSynapse/ScienceNewsV2.html) | A modern, responsive science news aggregator and research hub with dark/light mode support.                                              | [ReadMe](./DigitalSynapse/README.md)          |
-| [EdReporter](./EdReporter/index.html)                 | A tool for reviewing educational materials against a defined set of criteria, with AI-powered analysis of source materials.                    | [ReadMe](./EdReporter/README.md)              |
-| [FlipbookAI](./FlipbookAI/index.html)                 | A web application that displays PDF files in a "flipbook" style, with AI-related features.                                                   | [ReadMe](./FlipbookAI/README.md)              |
-| [InquiryOS](./InquiryOS/index.html)                   | A comprehensive NGSS-aligned platform for scientific inquiry, modeling, data analysis, and argumentation.                                   | [ReadMe](./InquiryOS/README.md)               |
-| [IPTV Player](./IPTV/index.html)                      | A simple, clean player for IPTV (Internet Protocol Television) playlists in M3U format.                                                      | [ReadMe](./IPTV/README.md)                    |
-| [KnowledgeMapper](./KnowledgeMapper/index.html)| A visual knowledge tool using D3.js and the Gemini API for exploring complex topics and generating interactive maps.                          | [ReadMe](./KnowledgeMapper/README.md)         |
-| [LetsDraw](./LetsDraw/index.html)                     | A real-time collaborative drawing application.                                                                                             | [ReadMe](./LetsDraw/README.md)                |
-| [LiveDeck](./LiveDeck/index.html)                     | A high-performance, Markdown-backed presentation tool with interactive components and real-time collaboration.                               | [ReadMe](./LiveDeck/README.md)                |
-| [MarkedUp](./MarkedUp/index.html)                     | A powerful web annotation tool for capturing websites and adding rich annotations directly in the browser.                                  | [ReadMe](./MarkedUp/README.md)                |
-| [MixTape](./MixTape/index.html)                       | A retro-styled music player reminiscent of a Walkman, designed to play YouTube tracks.                                                         | [ReadMe](./MixTape/README.md)                 |
-| [NatureQuest](./GoOutside/www/index.html)             | A location-based mobile application for exploring nature, fetching species data from iNaturalist, and earning XP.                           | [ReadMe](./GoOutside/README.md)               |
-| [NexusIDE](./NexusIDE/index.html)                     | A lightweight development environment for managing projects, journals, or blogs with interactive elements and CRUD support.                  | [ReadMe](./NexusIDE/README.md)                |
-| [NGSS Explorer](./NGSS-Explorer/index.html)           | An interactive tool for exploring the Next Generation Science Standards (NGSS), with features for bundling standards and AI-powered analysis.      | [ReadMe](./NGSS-Explorer/README.md)           |
-| [NGSS Tracker](./NGSS-Tracker/index.html)             | A tool for tracking student progress against NGSS standards, allowing educators to create and manage curriculum planners.                        | [ReadMe](./NGSS-Tracker/README.md)            |
-| [ProximaNova](./ProximaNova/index.html)               | A futuristic, canvas-based strategic expansion game with real-time management and dynamic environmental hazards.                             | [ReadMe](./ProximaNova/README.md)             |
-| [SnapHunt](./SnapHunt/index.html)                     | A real-world scavenger hunt game where players use their device's location to find checkpoints and complete photo challenges.                | [ReadMe](./SnapHunt/README.md)                |
-| [SnapMeet](./SnapMeet/index.html)                     | A real-time, peer-to-peer location sharing and communication application for small groups.     | [ReadMe](./SnapMeet/README.md)                |
-| [StudioPro](./StudioPro/StudioPro.html)               | A high-performance AI template studio with an integrated CodeMirror editor and reactive UI for streamlining AI workflows.                    | [ReadMe](./StudioPro/README.md)               |
-| [SuperSmartSheet](./SuperSmartSheet/index.html)       | A powerful, collaborative spreadsheet-like application with features for data manipulation, synchronization, and advanced setup options.         | [ReadMe](./SuperSmartSheet/README.md)         |
-| [ThinkTank](./ThinkTank/index.html)                   | An AI-powered study tool aligned with NGSS standards, offering interactive study sessions and progress tracking.                             | [ReadMe](./ThinkTank/README.md)               |
-| [WorkPlanner](./WorkPlanner/index.html)               | A collaborative project management tool inspired by Jira, featuring sprint planning, a task board, and a Gantt chart view.                     | [ReadMe](./WorkPlanner/README.md)             |
+## Source of truth
 
-## Data
+- `projects/registry.json` is the canonical inventory for portfolio projects, repo names, branch strategy, and launch/docs links.
+- `AGENTS.md` is the canonical repo-wide agent instruction file.
+- `.github/copilot-instructions.md` and `GEMINI.md` now stay intentionally thin to avoid drift.
 
-This repository also contains structured data used by some of the applications.
+## Repo layout
 
-| Data Collection                               | Description                                                     | Docs                             |
-| --------------------------------------------- | --------------------------------------------------------------- | -------------------------------- |
-| [NGSS JSON Data](./JSON/README.md)            | A collection of JSON files containing the Next Generation Science Standards data, used by the NGSS Explorer and Tracker applications. | [ReadMe](./JSON/README.md)       |
+| Path | Purpose |
+| --- | --- |
+| `index.html` | Portfolio landing page |
+| `projects/registry.json` | Shared project inventory used by the site and migration tooling |
+| `scripts/split-project-repo.mjs` | Helper for subtree-based repo extraction |
+| `templates/pages-branch-deploy.yml` | Reusable workflow for static split repos that publish to `pages` |
+| `skills/repo-split-pages/SKILL.md` | Reusable migration procedure |
 
-## Documentation
+## Commands
 
-For more in-depth information on specific projects or technologies used, please refer to the `docs` directory and our implementation guide.
+| Command | Purpose |
+| --- | --- |
+| `npm run lint` | Run the current repo-wide lint baseline |
+| `npm run split:project -- --list` | List project ids from the registry |
+| `npm run split:project -- <project-id>` | Dry-run the split command for one project |
+| `npm run split:project -- <project-id> --execute --remote <git-url>` | Create a subtree split branch and push it to a new repo |
 
-- [View Documentation](./docs/)
-- [JavaScript Library & Implementation Guide](./JS_LIBRARIES_DOCUMENTATION.md)
+## Migration workflow
 
----
-*This README was updated to ensure all projects are represented and documented.*
+1. Keep the project listed in `projects/registry.json` with its folder, target repo name, and `pages` branch metadata.
+2. Dry-run the split with `npm run split:project -- <project-id>`.
+3. Create the target GitHub repository.
+4. Push the project history into the new repo with `npm run split:project -- <project-id> --execute --remote <git-url>`.
+5. Copy `templates/pages-branch-deploy.yml` into the new repo as `.github/workflows/deploy-pages.yml`.
+6. Configure GitHub Pages in the new repo to serve from the `pages` branch.
+7. Update the project's `stage` in `projects/registry.json` from `monorepo` to `split`.
+8. Remove the old folder from this repo only after the standalone repo is live and linked from the portfolio.
+
+The registry has already been updated so the landing page launches split projects from their standalone Pages sites and sends source links to the new repositories.
+
+## Notes
+
+- The standard split-repo convention is `main` for source and `pages` for the published branch.
+- Most projects here are static browser apps and fit the Pages-branch template well.
+- `MarkedUp`, `KnowledgeMapper`, and similar projects with server/runtime requirements need custom deployment choices before they leave the monorepo.
+- Project-local `README.md` files still matter; read them before editing an app.

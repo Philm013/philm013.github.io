@@ -9,7 +9,8 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-tailwind.config = {
+window.tailwind = window.tailwind || {};
+window.tailwind.config = {
     darkMode: 'class',
     theme: {
         extend: {
@@ -161,7 +162,7 @@ tailwind.config = {
             <div class="mb-6">
                 <div>
                     <h2 class="text-3xl font-medium">Projects</h2>
-                    <p class="text-ollama-stone mt-2">Auto-generated from repo folders and available docs</p>
+                    <p class="text-ollama-stone mt-2">Driven by the shared project registry and ready for split-repo Pages hosting</p>
                 </div>
             </div>
 
@@ -232,7 +233,7 @@ tailwind.config = {
                 <a href="#" class="hover:text-ollama-black transition-colors"><span class="iconify text-xl" data-icon="simple-icons:linkedin"></span></a>
             </div>
             <div class="text-ollama-stone text-sm font-medium">
-                <p>Ã‚Â© 2026 PhilM013. Minimalism as a Service.</p>
+                <p>&copy; 2026 PhilM013. Minimalism as a Service.</p>
             </div>
         </div>
     </footer>
@@ -248,6 +249,7 @@ const searchInput = document.getElementById('search-input');
 const sortSelect = document.getElementById('sort-select');
 const viewSelect = document.getElementById('view-select');
 const resultsCount = document.getElementById('results-count');
+const registryUrl = './projects/registry.json';
 
 const state = {
     projects: [],
@@ -266,220 +268,6 @@ const ICON_BY_CATEGORY = {
     entertainment: 'lucide:gamepad-2'
 };
 
-const PROJECT_OVERRIDES = {
-    'AI-Editor': {
-        title: 'AI-Editor',
-        category: 'ai',
-        description: 'Web-based code editor with AI-powered analysis, linting, and code generation.',
-        tags: ['AI', 'Developer Tools', 'Productivity'],
-        techStack: ['Gemini AI', 'JavaScript', 'IndexedDB'],
-        icon: 'lucide:code-2'
-    },
-    ArchieIDE: {
-        title: 'ArchieIDE',
-        category: 'ai',
-        description: 'Browser IDE with AI assistance and project workspace tooling.',
-        tags: ['AI', 'Developer Tools', 'Workspace'],
-        techStack: ['Gemini AI', 'JavaScript', 'PWA'],
-        icon: 'lucide:cpu'
-    },
-    InquiryOS: {
-        title: 'InquiryOS',
-        category: 'education',
-        description: 'NGSS-aligned platform for scientific inquiry and classroom workflows.',
-        tags: ['Education', 'NGSS', 'Science'],
-        techStack: ['JavaScript', 'IndexedDB', 'Charts'],
-        icon: 'lucide:microscope'
-    },
-    MarkedUp: {
-        title: 'MarkedUp',
-        category: 'productivity',
-        description: 'Web annotation and evidence-capture tool for research workflows.',
-        tags: ['Productivity', 'Research', 'Annotation'],
-        techStack: ['JavaScript', 'Canvas API', 'jsPDF'],
-        icon: 'lucide:pen-tool'
-    },
-    FlipbookAI: {
-        title: 'FlipbookAI',
-        category: 'ai',
-        description: 'Flipbook-style PDF reader with AI-assisted document exploration.',
-        tags: ['AI', 'Documents', 'Education'],
-        techStack: ['pdf.js', 'Gemini AI', 'IndexedDB'],
-        icon: 'lucide:book-open'
-    },
-    BankExplorer: {
-        title: 'Bank Explorer',
-        category: 'productivity',
-        description: 'Statement parsing and analytics tool with finance-focused insights.',
-        tags: ['Finance', 'Analytics', 'AI'],
-        techStack: ['SheetJS', 'Chart.js', 'JavaScript'],
-        icon: 'lucide:landmark'
-    },
-    CardVault: {
-        title: 'CardVault',
-        category: 'productivity',
-        description: 'Sports card catalog with AI-assisted recognition and organization.',
-        tags: ['Catalog', 'Computer Vision', 'AI'],
-        techStack: ['Gemini Vision', 'IndexedDB', 'JavaScript'],
-        icon: 'lucide:clover'
-    },
-    CoinVault: {
-        title: 'CoinVault',
-        category: 'productivity',
-        description: 'Numismatic inventory and grading helper with AI support.',
-        tags: ['Catalog', 'Computer Vision', 'AI'],
-        techStack: ['Gemini Vision', 'IndexedDB', 'JavaScript'],
-        icon: 'lucide:coins'
-    },
-    KnowledgeMapper: {
-        title: 'KnowledgeMapper',
-        category: 'ai',
-        description: 'Visual knowledge mapping workspace for exploring connected ideas.',
-        tags: ['Knowledge Graph', 'AI', 'Education'],
-        techStack: ['D3.js', 'JavaScript', 'SVG'],
-        icon: 'lucide:network'
-    },
-    LiveDeck: {
-        title: 'LiveDeck',
-        category: 'collab',
-        description: 'Presentation builder with collaborative and interactive delivery features.',
-        tags: ['Collaboration', 'Presentations', 'Real-Time'],
-        techStack: ['Markdown', 'WebRTC', 'PeerJS'],
-        icon: 'lucide:presentation'
-    },
-    WorkPlanner: {
-        title: 'WorkPlanner',
-        category: 'productivity',
-        description: 'Project planning environment with scheduling and task tracking views.',
-        tags: ['Planning', 'Tasks', 'Productivity'],
-        techStack: ['JavaScript', 'IndexedDB', 'UI Components'],
-        icon: 'lucide:kanban'
-    },
-    SnapMeet: {
-        title: 'SnapMeet',
-        category: 'collab',
-        description: 'Peer-to-peer location and communication tool for teams and events.',
-        tags: ['Collaboration', 'Maps', 'Real-Time'],
-        techStack: ['Leaflet', 'PeerJS', 'WebRTC'],
-        icon: 'lucide:map-pin'
-    },
-    SnapHunt: {
-        title: 'SnapHunt',
-        category: 'entertainment',
-        description: 'Geolocation scavenger hunt app with real-world challenges.',
-        tags: ['Game', 'Geolocation', 'Camera'],
-        techStack: ['Geolocation API', 'PWA', 'JavaScript'],
-        icon: 'lucide:camera'
-    },
-    ProximaNova: {
-        title: 'ProximaNova',
-        category: 'entertainment',
-        description: 'Strategic expansion game with dynamic canvas rendering.',
-        tags: ['Game', 'Strategy', 'Canvas'],
-        techStack: ['Canvas API', 'JavaScript', 'Game Loop'],
-        icon: 'lucide:rocket'
-    },
-    MixTape: {
-        title: 'MixTape',
-        category: 'entertainment',
-        description: 'Retro-inspired music player experience for curated listening.',
-        tags: ['Media', 'Audio', 'UX'],
-        techStack: ['Web Audio', 'JavaScript', 'CSS'],
-        icon: 'lucide:music'
-    },
-    DigitalSynapse: {
-        title: 'Digital Synapse',
-        category: 'entertainment',
-        description: 'Science news and content dashboard with modern reading views.',
-        tags: ['News', 'Science', 'Reading'],
-        techStack: ['JavaScript', 'LocalStorage', 'CSS'],
-        icon: 'lucide:newspaper'
-    },
-    IPTV: {
-        title: 'IPTV Player',
-        category: 'entertainment',
-        description: 'Playlist-driven streaming player with lightweight controls.',
-        tags: ['Streaming', 'Media', 'Player'],
-        techStack: ['HLS', 'Video', 'JavaScript'],
-        icon: 'lucide:tv'
-    },
-    StudioPro: {
-        title: 'StudioPro',
-        category: 'ai',
-        description: 'Template studio for AI workflows and prompt-centered editing.',
-        tags: ['AI', 'Templates', 'Productivity'],
-        techStack: ['CodeMirror', 'JavaScript', 'UI Components'],
-        icon: 'lucide:wand-2'
-    },
-    LetsDraw: {
-        title: 'LetsDraw',
-        category: 'collab',
-        description: 'Collaborative drawing canvas for real-time shared sketching.',
-        tags: ['Collaboration', 'Drawing', 'Real-Time'],
-        techStack: ['Canvas API', 'WebRTC', 'PeerJS'],
-        icon: 'lucide:palette'
-    },
-    'NGSS-Explorer': {
-        title: 'NGSS Explorer',
-        category: 'education',
-        description: 'Exploration tool for NGSS standards and aligned instructional planning.',
-        tags: ['Education', 'NGSS', 'Standards'],
-        techStack: ['JavaScript', 'JSON', 'UI Components'],
-        icon: 'lucide:compass'
-    },
-    'NGSS-Tracker': {
-        title: 'NGSS Tracker',
-        category: 'education',
-        description: 'Track standards alignment and monitor progress over time.',
-        tags: ['Education', 'Tracking', 'Assessment'],
-        techStack: ['IndexedDB', 'JavaScript', 'Charts'],
-        icon: 'lucide:check-circle'
-    },
-    ThinkTank: {
-        title: 'ThinkTank',
-        category: 'education',
-        description: 'Study and inquiry support experience for standards-focused learning.',
-        tags: ['Education', 'AI', 'Learning'],
-        techStack: ['JavaScript', 'IndexedDB', 'Speech API'],
-        icon: 'lucide:brain'
-    },
-    EdReporter: {
-        title: 'EdReporter',
-        category: 'education',
-        description: 'Evaluate educational content using structured rubric workflows.',
-        tags: ['Education', 'Rubrics', 'Analysis'],
-        techStack: ['JavaScript', 'PDF', 'OCR'],
-        icon: 'lucide:clipboard-list'
-    },
-    AssesmentAnalyzer: {
-        title: 'Assessment Analyzer',
-        category: 'education',
-        description: 'Assessment review tool for K-12 rubric-aligned analysis.',
-        tags: ['Education', 'Assessment', 'Review'],
-        techStack: ['JavaScript', 'JSON', 'Rubrics'],
-        icon: 'lucide:bar-chart-3'
-    },
-    NexusIDE: {
-        title: 'NexusIDE',
-        category: 'productivity',
-        description: 'Lightweight development workspace for writing and organizing projects.',
-        tags: ['Developer Tools', 'Productivity', 'Workspace'],
-        techStack: ['JavaScript', 'Markdown', 'Storage'],
-        icon: 'lucide:layers'
-    }
-};
-
-const NON_PROJECT_FOLDERS = new Set([
-    '.git',
-    '.github',
-    'docs',
-    'js',
-    'json',
-    'node_modules',
-    'plans',
-    'references'
-]);
-
 function toTitleCase(value) {
     return value
         .replace(/[-_]/g, ' ')
@@ -489,113 +277,36 @@ function toTitleCase(value) {
         .replace(/\b\w/g, match => match.toUpperCase());
 }
 
-function slugify(value) {
-    return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-}
-
-function inferCategory(folderName) {
-    const name = folderName.toLowerCase();
-    if (/ai|chat|smart|editor|ide/.test(name)) return 'ai';
-    if (/ngss|inquiry|report|assessment|explorer|tracker|think/.test(name)) return 'education';
-    if (/snap|deck|draw|meet|planner/.test(name)) return 'collab';
-    if (/mix|game|hunt|gooutside|proxima|iptv|synapse/.test(name)) return 'entertainment';
-    return 'productivity';
-}
-
-function buildProjectDescription(project) {
-    const hasLaunch = Boolean(project.launchPath);
-    const hasDocs = Boolean(project.readmePath);
-    if (hasLaunch && hasDocs) return 'Auto-discovered app with launch page and project documentation.';
-    if (hasLaunch) return 'Auto-discovered app with a launch page.';
-    return 'Auto-discovered documentation-focused project.';
-}
-
-function extractTopLevelProjectFolders(tree) {
-    const folders = new Map();
-    for (const item of tree) {
-        if (!item.path || item.type !== 'blob') continue;
-        const parts = item.path.split('/');
-        if (parts.length < 2) continue;
-        const folder = parts[0];
-        const folderKey = folder.toLowerCase();
-        if (NON_PROJECT_FOLDERS.has(folderKey)) continue;
-        if (!folders.has(folder)) {
-            folders.set(folder, { folder, paths: new Set() });
-        }
-        folders.get(folder).paths.add(item.path);
-    }
-
-    return Array.from(folders.values()).filter(entry => {
-        const paths = Array.from(entry.paths);
-        const hasIndex = paths.some(p => p.toLowerCase() === `${entry.folder.toLowerCase()}/index.html` || p.toLowerCase() === `${entry.folder.toLowerCase()}/www/index.html` || p.toLowerCase().endsWith('/index.html'));
-        const hasReadme = paths.some(p => {
-            const lower = p.toLowerCase();
-            return lower === `${entry.folder.toLowerCase()}/readme.html` || lower === `${entry.folder.toLowerCase()}/readme.md` || lower === `${entry.folder.toLowerCase()}/readme.txt`;
-        });
-        return hasIndex || hasReadme;
-    });
-}
-
-function pickPath(paths, matcher) {
-    const found = paths.find(matcher);
-    return found ? `./${found}` : null;
-}
-
-function pickReadmePath(paths) {
-    const html = pickPath(paths, p => p.toLowerCase().endsWith('/readme.html'));
-    if (html) return html;
-
-    const markdown = pickPath(paths, p => {
-        const lower = p.toLowerCase();
-        return lower.endsWith('/readme.md') || lower.endsWith('/readme.txt');
-    });
-    return markdown;
-}
-
-function projectFromFolder(entry) {
-    const paths = Array.from(entry.paths).sort((a, b) => a.length - b.length);
-    const lowerPaths = paths.map(p => p.toLowerCase());
-
-    const readmePath = pickReadmePath(paths);
-
-    const launchPath = pickPath(paths, p => {
-        const lower = p.toLowerCase();
-        return lower.endsWith('/index.html') && !lower.includes('/alt/');
-    }) || pickPath(paths, p => p.toLowerCase().endsWith('.html'));
-
-    const override = PROJECT_OVERRIDES[entry.folder] || null;
-    const category = override?.category || inferCategory(entry.folder);
-    const title = override?.title || toTitleCase(entry.folder);
-    const tags = override?.tags || [toTitleCase(category), launchPath ? 'Launch' : 'Docs', readmePath ? 'Documentation' : 'No Docs'];
-    const techStack = override?.techStack || (lowerPaths.some(p => p.endsWith('.js'))
-        ? ['HTML', 'JavaScript']
-        : ['HTML']);
+function normalizeProject(project, defaults) {
+    const owner = project.owner || defaults.owner || 'philm013';
+    const repoName = project.repoName || project.folder;
+    const sourceBranch = project.sourceBranch || defaults.sourceBranch || 'main';
+    const pagesBranch = project.pagesBranch || defaults.pagesBranch || 'pages';
+    const stage = project.stage || defaults.stage || 'monorepo';
+    const futureSourceUrl = `https://github.com/${owner}/${repoName}`;
+    const liveUrl = project.liveUrl || `https://${owner}.github.io/${repoName}/`;
+    const sourceUrl = stage === 'split' ? futureSourceUrl : (project.legacySourceUrl || futureSourceUrl);
+    const launchHref = stage === 'split' ? liveUrl : (project.launchPath || liveUrl);
+    const detailsHref = project.docsPath || sourceUrl;
 
     return {
-        id: slugify(entry.folder),
-        title,
-        description: override?.description || buildProjectDescription({ launchPath, readmePath }),
-        readmePath,
-        launchPath,
-        category,
-        tags,
-        techStack,
-        icon: override?.icon || ICON_BY_CATEGORY[category] || 'lucide:folder'
+        ...project,
+        owner,
+        repoName,
+        sourceBranch,
+        pagesBranch,
+        stage,
+        sourceUrl,
+        liveUrl,
+        launchHref,
+        detailsHref,
+        icon: project.icon || ICON_BY_CATEGORY[project.category] || 'lucide:folder',
+        tags: [...new Set([
+            ...(project.tags || []),
+            stage === 'split' ? 'Split Repo' : 'Monorepo',
+            `${pagesBranch} Branch`
+        ])]
     };
-}
-
-function referencesFromTree(tree) {
-    return tree
-        .filter(item => item.type === 'blob' && /^References\/[^/]+\.html$/i.test(item.path))
-        .map(item => {
-            const filename = item.path.split('/').pop();
-            const name = filename.replace(/\.html$/i, '');
-            return {
-                title: toTitleCase(name),
-                path: `./${item.path}`
-            };
-        })
-        .sort((a, b) => a.title.localeCompare(b.title));
 }
 
 function sortProjects(projects) {
@@ -605,10 +316,10 @@ function sortProjects(projects) {
             sorted.sort((a, b) => b.title.localeCompare(a.title));
             break;
         case 'docs-first':
-            sorted.sort((a, b) => Number(Boolean(b.readmePath)) - Number(Boolean(a.readmePath)) || a.title.localeCompare(b.title));
+            sorted.sort((a, b) => Number(Boolean(b.detailsHref)) - Number(Boolean(a.detailsHref)) || a.title.localeCompare(b.title));
             break;
         case 'launch-first':
-            sorted.sort((a, b) => Number(Boolean(b.launchPath)) - Number(Boolean(a.launchPath)) || a.title.localeCompare(b.title));
+            sorted.sort((a, b) => Number(Boolean(b.launchHref)) - Number(Boolean(a.launchHref)) || a.title.localeCompare(b.title));
             break;
         default:
             sorted.sort((a, b) => a.title.localeCompare(b.title));
@@ -626,6 +337,7 @@ function filterProjects() {
         const haystack = [
             project.title,
             project.description,
+            project.repoName,
             ...(project.tags || []),
             ...(project.techStack || [])
         ].join(' ').toLowerCase();
@@ -657,6 +369,7 @@ function renderProjectCard(project) {
                 </div>
             </div>
             <p class="text-ollama-stone leading-relaxed">${project.description}</p>
+            <p class="text-xs text-ollama-stone">Repo ${project.repoName} · ${project.sourceBranch} -> ${project.pagesBranch}</p>
             <div class="flex flex-wrap gap-1.5">
                 ${(project.techStack || []).map(tech => `<span class="tech-pill">${tech}</span>`).join('')}
             </div>
@@ -664,9 +377,10 @@ function renderProjectCard(project) {
                 ${(project.tags || []).map(tag => `<span class="tag-pill">${tag}</span>`).join('')}
             </div>
         </div>
-        <div class="pt-5 border-t border-ollama-gray flex gap-3">
-            ${project.readmePath ? `<a href="${project.readmePath}" class="btn-pill-white text-xs px-4 py-2">Details</a>` : ''}
-            ${project.launchPath ? `<a href="${project.launchPath}" target="_blank" class="btn-pill-black text-xs px-4 py-2">Launch</a>` : ''}
+        <div class="pt-5 border-t border-ollama-gray flex flex-wrap gap-3">
+            ${project.detailsHref ? `<a href="${project.detailsHref}" class="btn-pill-white text-xs px-4 py-2">Details</a>` : ''}
+            <a href="${project.sourceUrl}" target="_blank" rel="noreferrer" class="btn-pill-white text-xs px-4 py-2">Source</a>
+            ${project.launchHref ? `<a href="${project.launchHref}" target="_blank" rel="noreferrer" class="btn-pill-black text-xs px-4 py-2">Launch</a>` : ''}
         </div>
     `;
 
@@ -679,7 +393,7 @@ function renderProjectListHeader() {
     header.innerHTML = `
         <div class="col-span-4">Project</div>
         <div class="col-span-2">Category</div>
-        <div class="col-span-3">Tech</div>
+        <div class="col-span-3">Repo</div>
         <div class="col-span-3 text-right">Actions</div>
     `;
     return header;
@@ -688,7 +402,6 @@ function renderProjectListHeader() {
 function renderProjectListRow(project) {
     const row = document.createElement('article');
     row.className = 'grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 px-4 py-3 border-b border-ollama-gray last:border-b-0';
-    const techPreview = (project.techStack || []).slice(0, 3).join(' • ');
 
     row.innerHTML = `
         <div class="md:col-span-4 flex items-center gap-2 min-w-0">
@@ -699,10 +412,11 @@ function renderProjectListRow(project) {
             </div>
         </div>
         <div class="md:col-span-2 text-xs text-ollama-mid uppercase tracking-wider flex items-center">${toTitleCase(project.category)}</div>
-        <div class="md:col-span-3 text-xs text-ollama-stone flex items-center truncate">${techPreview || 'n/a'}</div>
-        <div class="md:col-span-3 flex md:justify-end gap-2 items-center">
-            ${project.readmePath ? `<a href="${project.readmePath}" class="btn-pill-white text-[11px] px-3 py-1.5">Details</a>` : ''}
-            ${project.launchPath ? `<a href="${project.launchPath}" target="_blank" class="btn-pill-black text-[11px] px-3 py-1.5">Launch</a>` : ''}
+        <div class="md:col-span-3 text-xs text-ollama-stone flex items-center truncate">${project.repoName} · ${project.pagesBranch}</div>
+        <div class="md:col-span-3 flex md:justify-end gap-2 items-center flex-wrap">
+            ${project.detailsHref ? `<a href="${project.detailsHref}" class="btn-pill-white text-[11px] px-3 py-1.5">Details</a>` : ''}
+            <a href="${project.sourceUrl}" target="_blank" rel="noreferrer" class="btn-pill-white text-[11px] px-3 py-1.5">Source</a>
+            ${project.launchHref ? `<a href="${project.launchHref}" target="_blank" rel="noreferrer" class="btn-pill-black text-[11px] px-3 py-1.5">Launch</a>` : ''}
         </div>
     `;
 
@@ -750,7 +464,7 @@ function renderReferences() {
                         <p class="text-sm text-ollama-stone">Reference page</p>
                     </div>
                 </div>
-                <a href="${ref.path}" target="_blank" class="btn-pill-black text-xs px-4 py-2">Open</a>
+                <a href="${ref.path}" target="_blank" rel="noreferrer" class="btn-pill-black text-xs px-4 py-2">Open</a>
             </div>
         `;
         referencesGrid.appendChild(card);
@@ -758,7 +472,7 @@ function renderReferences() {
 }
 
 function renderFilterButtons() {
-    const categories = [...new Set(state.projects.map(p => p.category))].sort();
+    const categories = [...new Set(state.projects.map(project => project.category))].sort();
     filterContainer.innerHTML = '<button class="filter-pill active" data-filter="all">All</button>';
 
     categories.forEach(category => {
@@ -779,43 +493,32 @@ function renderFilterButtons() {
     });
 }
 
-async function fetchRepoTree() {
-    const endpoints = [
-        'https://api.github.com/repos/philm013/philm013.github.io/git/trees/main?recursive=1',
-        'https://api.github.com/repos/philm013/philm013.github.io/git/trees/master?recursive=1'
-    ];
-
-    for (const endpoint of endpoints) {
-        try {
-            const response = await fetch(endpoint, {
-                headers: {
-                    Accept: 'application/vnd.github+json'
-                }
-            });
-            if (!response.ok) continue;
-            const payload = await response.json();
-            if (Array.isArray(payload.tree)) return payload.tree;
-        } catch (error) {
-            continue;
-        }
+async function fetchRegistry() {
+    try {
+        const response = await fetch(registryUrl, { cache: 'no-store' });
+        if (!response.ok) return null;
+        return response.json();
+    } catch {
+        return null;
     }
-
-    return null;
 }
 
 function loadFallbackData() {
-    // Fallback for offline/dev mode: keep the page usable.
     state.projects = [
         {
-            id: 'portfolio',
-            title: 'Portfolio Source',
-            description: 'Fallback mode active: unable to query GitHub API for auto-discovery.',
-            readmePath: './README.md',
-            launchPath: './index.html',
+            id: 'portfolio-control-plane',
+            title: 'Portfolio Control Plane',
+            description: 'Unable to load projects/registry.json. Serve the repo over HTTP or use the published site to load the portfolio registry.',
             category: 'productivity',
-            tags: ['Fallback', 'Portfolio'],
-            techStack: ['HTML'],
-            icon: 'lucide:triangle-alert'
+            tags: ['Fallback', 'Registry'],
+            techStack: ['HTML', 'JSON'],
+            icon: 'lucide:triangle-alert',
+            repoName: 'philm013.github.io',
+            sourceBranch: 'main',
+            pagesBranch: 'pages',
+            sourceUrl: 'https://github.com/philm013/philm013.github.io',
+            launchHref: './index.html',
+            detailsHref: './README.md'
         }
     ];
 
@@ -854,15 +557,18 @@ async function initPortfolio() {
     bindControls();
     syncToolbarOffset();
     window.addEventListener('resize', syncToolbarOffset);
-    const tree = await fetchRepoTree();
 
-    if (!tree) {
+    const registry = await fetchRegistry();
+
+    if (!registry) {
         loadFallbackData();
     } else {
-        state.projects = extractTopLevelProjectFolders(tree)
-            .map(projectFromFolder)
+        const defaults = registry.defaults || {};
+        state.projects = (registry.projects || [])
+            .map(project => normalizeProject(project, defaults))
             .sort((a, b) => a.title.localeCompare(b.title));
-        state.references = referencesFromTree(tree);
+        state.references = (registry.references || [])
+            .sort((a, b) => a.title.localeCompare(b.title));
     }
 
     renderFilterButtons();

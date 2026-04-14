@@ -1,0 +1,668 @@
+{
+  "defaults": {
+    "owner": "philm013",
+    "sourceBranch": "main",
+    "pagesBranch": "pages",
+    "stage": "monorepo"
+  },
+  "references": [
+    {
+      "title": "Repo References",
+      "path": "./References/RepoReferences.html"
+    },
+    {
+      "title": "JS Libraries",
+      "path": "./References/JS-Libraries.html"
+    }
+  ],
+  "projects": [
+    {
+      "id": "ai-editor",
+      "folder": "AI-Editor",
+      "repoName": "AI-Editor",
+      "title": "AI-Editor",
+      "category": "ai",
+      "description": "Web-based code editor with AI-powered analysis, linting, and code generation.",
+      "tags": [
+        "AI",
+        "Developer Tools",
+        "Productivity"
+      ],
+      "techStack": [
+        "Gemini AI",
+        "JavaScript",
+        "IndexedDB"
+      ],
+      "icon": "lucide:code-2",
+      "launchPath": "./AI-Editor/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/AI-Editor",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/AI-Editor/"
+    },
+    {
+      "id": "archieide",
+      "folder": "ArchieIDE",
+      "repoName": "ArchieIDE",
+      "title": "ArchieIDE",
+      "category": "ai",
+      "description": "Browser IDE with AI assistance and project workspace tooling.",
+      "tags": [
+        "AI",
+        "Developer Tools",
+        "Workspace"
+      ],
+      "techStack": [
+        "Gemini AI",
+        "JavaScript",
+        "PWA"
+      ],
+      "icon": "lucide:cpu",
+      "launchPath": "./ArchieIDE/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/ArchieIDE",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/ArchieIDE/"
+    },
+    {
+      "id": "assessment-analyzer",
+      "folder": "AssesmentAnalyzer",
+      "repoName": "AssesmentAnalyzer",
+      "title": "Assessment Analyzer",
+      "category": "education",
+      "description": "Assessment review tool for K-12 rubric-aligned analysis.",
+      "tags": [
+        "Education",
+        "Assessment",
+        "Review"
+      ],
+      "techStack": [
+        "JavaScript",
+        "JSON",
+        "Rubrics"
+      ],
+      "icon": "lucide:bar-chart-3",
+      "launchPath": "./AssesmentAnalyzer/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/AssesmentAnalyzer",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/AssesmentAnalyzer/"
+    },
+    {
+      "id": "bank-explorer",
+      "folder": "BankExplorer",
+      "repoName": "BankExplorer",
+      "title": "Bank Explorer",
+      "category": "productivity",
+      "description": "Statement parsing and analytics tool with finance-focused insights.",
+      "tags": [
+        "Finance",
+        "Analytics",
+        "AI"
+      ],
+      "techStack": [
+        "SheetJS",
+        "Chart.js",
+        "JavaScript"
+      ],
+      "icon": "lucide:landmark",
+      "launchPath": "./BankExplorer/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/BankExplorer",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/BankExplorer/"
+    },
+    {
+      "id": "cardvault",
+      "folder": "CardVault",
+      "repoName": "CardVault",
+      "title": "CardVault",
+      "category": "productivity",
+      "description": "Sports card catalog with AI-assisted recognition and organization.",
+      "tags": [
+        "Catalog",
+        "Computer Vision",
+        "AI"
+      ],
+      "techStack": [
+        "Gemini Vision",
+        "IndexedDB",
+        "JavaScript"
+      ],
+      "icon": "lucide:clover",
+      "launchPath": "./CardVault/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/CardVault",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/CardVault/"
+    },
+    {
+      "id": "cloudchat",
+      "folder": "CloudChat",
+      "repoName": "CloudChat",
+      "title": "CloudChat",
+      "category": "ai",
+      "description": "Browser chat workspace with reusable skills and tool integrations.",
+      "tags": [
+        "AI",
+        "Chat",
+        "Skills"
+      ],
+      "techStack": [
+        "Gemini AI",
+        "JavaScript",
+        "Prompt Tools"
+      ],
+      "icon": "lucide:messages-square",
+      "launchPath": "./CloudChat/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/CloudChat",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/CloudChat/"
+    },
+    {
+      "id": "coinvault",
+      "folder": "CoinVault",
+      "repoName": "CoinVault",
+      "title": "CoinVault",
+      "category": "productivity",
+      "description": "Numismatic inventory and grading helper with AI support.",
+      "tags": [
+        "Catalog",
+        "Computer Vision",
+        "AI"
+      ],
+      "techStack": [
+        "Gemini Vision",
+        "IndexedDB",
+        "JavaScript"
+      ],
+      "icon": "lucide:coins",
+      "launchPath": "./CoinVault/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/CoinVault",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/CoinVault/"
+    },
+    {
+      "id": "digital-synapse",
+      "folder": "DigitalSynapse",
+      "repoName": "DigitalSynapse",
+      "title": "Digital Synapse",
+      "category": "entertainment",
+      "description": "Science news and content dashboard with modern reading views.",
+      "tags": [
+        "News",
+        "Science",
+        "Reading"
+      ],
+      "techStack": [
+        "JavaScript",
+        "LocalStorage",
+        "CSS"
+      ],
+      "icon": "lucide:newspaper",
+      "launchPath": "./DigitalSynapse/ScienceNewsV2.html",
+      "legacySourceUrl": "https://github.com/Philm013/DigitalSynapse",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/DigitalSynapse/"
+    },
+    {
+      "id": "edreporter",
+      "folder": "EdReporter",
+      "repoName": "EdReporter",
+      "title": "EdReporter",
+      "category": "education",
+      "description": "Evaluate educational content using structured rubric workflows.",
+      "tags": [
+        "Education",
+        "Rubrics",
+        "Analysis"
+      ],
+      "techStack": [
+        "JavaScript",
+        "PDF",
+        "OCR"
+      ],
+      "icon": "lucide:clipboard-list",
+      "launchPath": "./EdReporter/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/EdReporter",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/EdReporter/"
+    },
+    {
+      "id": "flipbookai",
+      "folder": "FlipbookAI",
+      "repoName": "FlipbookAI",
+      "title": "FlipbookAI",
+      "category": "ai",
+      "description": "Flipbook-style PDF reader with AI-assisted document exploration.",
+      "tags": [
+        "AI",
+        "Documents",
+        "Education"
+      ],
+      "techStack": [
+        "pdf.js",
+        "Gemini AI",
+        "IndexedDB"
+      ],
+      "icon": "lucide:book-open",
+      "launchPath": "./FlipbookAI/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/FlipbookAI",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/FlipbookAI/"
+    },
+    {
+      "id": "gooutside",
+      "folder": "GoOutside",
+      "repoName": "GoOutside",
+      "title": "NatureQuest",
+      "category": "entertainment",
+      "description": "Location-based mobile nature app for species discovery and outdoor exploration.",
+      "tags": [
+        "Nature",
+        "Geolocation",
+        "Mobile"
+      ],
+      "techStack": [
+        "Capacitor",
+        "Geolocation API",
+        "JavaScript"
+      ],
+      "icon": "lucide:trees",
+      "launchPath": "./GoOutside/www/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/GoOutside",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/GoOutside/"
+    },
+    {
+      "id": "iptv-player",
+      "folder": "IPTV",
+      "repoName": "IPTV",
+      "title": "IPTV Player",
+      "category": "entertainment",
+      "description": "Playlist-driven streaming player with lightweight controls.",
+      "tags": [
+        "Streaming",
+        "Media",
+        "Player"
+      ],
+      "techStack": [
+        "HLS",
+        "Video",
+        "JavaScript"
+      ],
+      "icon": "lucide:tv",
+      "launchPath": "./IPTV/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/IPTV",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/IPTV/"
+    },
+    {
+      "id": "inquiryos",
+      "folder": "InquiryOS",
+      "repoName": "InquiryOS",
+      "title": "InquiryOS",
+      "category": "education",
+      "description": "NGSS-aligned platform for scientific inquiry and classroom workflows.",
+      "tags": [
+        "Education",
+        "NGSS",
+        "Science"
+      ],
+      "techStack": [
+        "JavaScript",
+        "IndexedDB",
+        "Charts"
+      ],
+      "icon": "lucide:microscope",
+      "launchPath": "./InquiryOS/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/InquiryOS",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/InquiryOS/"
+    },
+    {
+      "id": "knowledgemapper",
+      "folder": "KnowledgeMapper",
+      "repoName": "KnowledgeMapper",
+      "title": "KnowledgeMapper",
+      "category": "ai",
+      "description": "Visual knowledge mapping workspace for exploring connected ideas.",
+      "tags": [
+        "Knowledge Graph",
+        "AI",
+        "Education"
+      ],
+      "techStack": [
+        "D3.js",
+        "JavaScript",
+        "SVG"
+      ],
+      "icon": "lucide:network",
+      "launchPath": "./KnowledgeMapper/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/KnowledgeMapper",
+      "stage": "monorepo",
+      "hosting": "custom",
+      "notes": "Standalone repo created; keep monorepo launch until custom hosting is configured."
+    },
+    {
+      "id": "letsdraw",
+      "folder": "LetsDraw",
+      "repoName": "LetsDraw",
+      "title": "LetsDraw",
+      "category": "collab",
+      "description": "Collaborative drawing canvas for real-time shared sketching.",
+      "tags": [
+        "Collaboration",
+        "Drawing",
+        "Real-Time"
+      ],
+      "techStack": [
+        "Canvas API",
+        "WebRTC",
+        "PeerJS"
+      ],
+      "icon": "lucide:palette",
+      "launchPath": "./LetsDraw/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/LetsDraw",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/LetsDraw/"
+    },
+    {
+      "id": "livedeck",
+      "folder": "LiveDeck",
+      "repoName": "LiveDeck",
+      "title": "LiveDeck",
+      "category": "collab",
+      "description": "Presentation builder with collaborative and interactive delivery features.",
+      "tags": [
+        "Collaboration",
+        "Presentations",
+        "Real-Time"
+      ],
+      "techStack": [
+        "Markdown",
+        "WebRTC",
+        "PeerJS"
+      ],
+      "icon": "lucide:presentation",
+      "launchPath": "./LiveDeck/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/LiveDeck",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/LiveDeck/"
+    },
+    {
+      "id": "markedup",
+      "folder": "MarkedUp",
+      "repoName": "MarkedUp",
+      "title": "MarkedUp",
+      "category": "productivity",
+      "description": "Web annotation and evidence-capture tool for research workflows.",
+      "tags": [
+        "Productivity",
+        "Research",
+        "Annotation"
+      ],
+      "techStack": [
+        "JavaScript",
+        "Canvas API",
+        "jsPDF"
+      ],
+      "icon": "lucide:pen-tool",
+      "launchPath": "./MarkedUp/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/MarkedUp",
+      "stage": "monorepo",
+      "hosting": "custom",
+      "notes": "Standalone repo created; keep monorepo launch until custom hosting is configured."
+    },
+    {
+      "id": "mixtape",
+      "folder": "MixTape",
+      "repoName": "MixTape",
+      "title": "MixTape",
+      "category": "entertainment",
+      "description": "Retro-inspired music player experience for curated listening.",
+      "tags": [
+        "Media",
+        "Audio",
+        "UX"
+      ],
+      "techStack": [
+        "Web Audio",
+        "JavaScript",
+        "CSS"
+      ],
+      "icon": "lucide:music",
+      "launchPath": "./MixTape/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/MixTape",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/MixTape/"
+    },
+    {
+      "id": "ngss-explorer",
+      "folder": "NGSS-Explorer",
+      "repoName": "NGSS-Explorer",
+      "title": "NGSS Explorer",
+      "category": "education",
+      "description": "Exploration tool for NGSS standards and aligned instructional planning.",
+      "tags": [
+        "Education",
+        "NGSS",
+        "Standards"
+      ],
+      "techStack": [
+        "JavaScript",
+        "JSON",
+        "UI Components"
+      ],
+      "icon": "lucide:compass",
+      "launchPath": "./NGSS-Explorer/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/NGSS-Explorer",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/NGSS-Explorer/"
+    },
+    {
+      "id": "ngss-tracker",
+      "folder": "NGSS-Tracker",
+      "repoName": "NGSS-Tracker",
+      "title": "NGSS Tracker",
+      "category": "education",
+      "description": "Track standards alignment and monitor progress over time.",
+      "tags": [
+        "Education",
+        "Tracking",
+        "Assessment"
+      ],
+      "techStack": [
+        "IndexedDB",
+        "JavaScript",
+        "Charts"
+      ],
+      "icon": "lucide:check-circle",
+      "launchPath": "./NGSS-Tracker/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/NGSS-Tracker",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/NGSS-Tracker/"
+    },
+    {
+      "id": "nexuside",
+      "folder": "NexusIDE",
+      "repoName": "NexusIDE",
+      "title": "NexusIDE",
+      "category": "productivity",
+      "description": "Lightweight development workspace for writing and organizing projects.",
+      "tags": [
+        "Developer Tools",
+        "Productivity",
+        "Workspace"
+      ],
+      "techStack": [
+        "JavaScript",
+        "Markdown",
+        "Storage"
+      ],
+      "icon": "lucide:layers",
+      "launchPath": "./NexusIDE/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/NexusIDE",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/NexusIDE/"
+    },
+    {
+      "id": "proximanova",
+      "folder": "ProximaNova",
+      "repoName": "ProximaNova",
+      "title": "ProximaNova",
+      "category": "entertainment",
+      "description": "Strategic expansion game with dynamic canvas rendering.",
+      "tags": [
+        "Game",
+        "Strategy",
+        "Canvas"
+      ],
+      "techStack": [
+        "Canvas API",
+        "JavaScript",
+        "Game Loop"
+      ],
+      "icon": "lucide:rocket",
+      "launchPath": "./ProximaNova/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/ProximaNova",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/ProximaNova/"
+    },
+    {
+      "id": "snaphunt",
+      "folder": "SnapHunt",
+      "repoName": "SnapHunt",
+      "title": "SnapHunt",
+      "category": "entertainment",
+      "description": "Geolocation scavenger hunt app with real-world challenges.",
+      "tags": [
+        "Game",
+        "Geolocation",
+        "Camera"
+      ],
+      "techStack": [
+        "Geolocation API",
+        "PWA",
+        "JavaScript"
+      ],
+      "icon": "lucide:camera",
+      "launchPath": "./SnapHunt/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/SnapHunt",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/SnapHunt/"
+    },
+    {
+      "id": "snapmeet",
+      "folder": "SnapMeet",
+      "repoName": "SnapMeet",
+      "title": "SnapMeet",
+      "category": "collab",
+      "description": "Peer-to-peer location and communication tool for teams and events.",
+      "tags": [
+        "Collaboration",
+        "Maps",
+        "Real-Time"
+      ],
+      "techStack": [
+        "Leaflet",
+        "PeerJS",
+        "WebRTC"
+      ],
+      "icon": "lucide:map-pin",
+      "launchPath": "./SnapMeet/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/SnapMeet",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/SnapMeet/"
+    },
+    {
+      "id": "studiopro",
+      "folder": "StudioPro",
+      "repoName": "StudioPro",
+      "title": "StudioPro",
+      "category": "ai",
+      "description": "Template studio for AI workflows and prompt-centered editing.",
+      "tags": [
+        "AI",
+        "Templates",
+        "Productivity"
+      ],
+      "techStack": [
+        "CodeMirror",
+        "JavaScript",
+        "UI Components"
+      ],
+      "icon": "lucide:wand-2",
+      "launchPath": "./StudioPro/StudioPro.html",
+      "legacySourceUrl": "https://github.com/Philm013/StudioPro",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/StudioPro/"
+    },
+    {
+      "id": "thinktank",
+      "folder": "ThinkTank",
+      "repoName": "ThinkTank",
+      "title": "ThinkTank",
+      "category": "education",
+      "description": "Study and inquiry support experience for standards-focused learning.",
+      "tags": [
+        "Education",
+        "AI",
+        "Learning"
+      ],
+      "techStack": [
+        "JavaScript",
+        "IndexedDB",
+        "Speech API"
+      ],
+      "icon": "lucide:brain",
+      "launchPath": "./ThinkTank/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/ThinkTank",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/ThinkTank/"
+    },
+    {
+      "id": "workplanner",
+      "folder": "WorkPlanner",
+      "repoName": "WorkPlanner",
+      "title": "WorkPlanner",
+      "category": "productivity",
+      "description": "Project planning environment with scheduling and task tracking views.",
+      "tags": [
+        "Planning",
+        "Tasks",
+        "Productivity"
+      ],
+      "techStack": [
+        "JavaScript",
+        "IndexedDB",
+        "UI Components"
+      ],
+      "icon": "lucide:kanban",
+      "launchPath": "./WorkPlanner/index.html",
+      "legacySourceUrl": "https://github.com/Philm013/WorkPlanner",
+      "stage": "split",
+      "hosting": "pages",
+      "liveUrl": "https://philm013.github.io/WorkPlanner/"
+    }
+  ]
+}
