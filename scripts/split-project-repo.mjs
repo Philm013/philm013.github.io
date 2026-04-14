@@ -133,7 +133,7 @@ function main() {
   console.log(`Folder:       ${project.folder}`);
   console.log(`Target repo:  ${project.repoName}`);
   console.log(`Stage:        ${project.stage || defaults.stage || 'monorepo'}`);
-  console.log(`Source repo:  ${project.legacySourceUrl || `https://github.com/${defaults.owner}/${project.repoName}`}`);
+  console.log(`Source repo:  ${project.sourceUrl || project.legacySourceUrl || `https://github.com/${defaults.owner}/${project.repoName}`}`);
   console.log(`Future Pages: ${project.liveUrl || `https://${defaults.owner}.github.io/${project.repoName}/`}`);
   console.log('');
 

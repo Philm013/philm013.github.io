@@ -285,9 +285,10 @@ function normalizeProject(project, defaults) {
     const stage = project.stage || defaults.stage || 'monorepo';
     const futureSourceUrl = `https://github.com/${owner}/${repoName}`;
     const liveUrl = project.liveUrl || `https://${owner}.github.io/${repoName}/`;
-    const sourceUrl = stage === 'split' ? futureSourceUrl : (project.legacySourceUrl || futureSourceUrl);
+    const explicitSourceUrl = project.sourceUrl || project.legacySourceUrl || futureSourceUrl;
+    const sourceUrl = stage === 'split' ? explicitSourceUrl : explicitSourceUrl;
     const launchHref = stage === 'split' ? liveUrl : (project.launchPath || liveUrl);
-    const detailsHref = project.docsPath || sourceUrl;
+    const detailsHref = project.detailsUrl || project.docsPath || sourceUrl;
 
     return {
         ...project,
@@ -369,7 +370,7 @@ function renderProjectCard(project) {
                 </div>
             </div>
             <p class="text-ollama-stone leading-relaxed">${project.description}</p>
-            <p class="text-xs text-ollama-stone">Repo ${project.repoName} · ${project.sourceBranch} -> ${project.pagesBranch}</p>
+            <p class="text-xs text-ollama-stone">Repo ${project.repoName} · ${project.hosting || 'pages'} · ${project.sourceBranch} -> ${project.pagesBranch}</p>
             <div class="flex flex-wrap gap-1.5">
                 ${(project.techStack || []).map(tech => `<span class="tech-pill">${tech}</span>`).join('')}
             </div>

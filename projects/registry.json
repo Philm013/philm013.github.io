@@ -35,10 +35,10 @@
       ],
       "icon": "lucide:code-2",
       "launchPath": "./AI-Editor/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/AI-Editor",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/AI-Editor/"
+      "liveUrl": "https://philm013.github.io/AI-Editor/",
+      "sourceUrl": "https://github.com/Philm013/AI-Editor"
     },
     {
       "id": "archieide",
@@ -59,10 +59,10 @@
       ],
       "icon": "lucide:cpu",
       "launchPath": "./ArchieIDE/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/ArchieIDE",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/ArchieIDE/"
+      "liveUrl": "https://philm013.github.io/ArchieIDE/",
+      "sourceUrl": "https://github.com/Philm013/ArchieIDE"
     },
     {
       "id": "assessment-analyzer",
@@ -83,10 +83,10 @@
       ],
       "icon": "lucide:bar-chart-3",
       "launchPath": "./AssesmentAnalyzer/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/AssesmentAnalyzer",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/AssesmentAnalyzer/"
+      "liveUrl": "https://philm013.github.io/AssesmentAnalyzer/",
+      "sourceUrl": "https://github.com/Philm013/AssesmentAnalyzer"
     },
     {
       "id": "bank-explorer",
@@ -107,10 +107,10 @@
       ],
       "icon": "lucide:landmark",
       "launchPath": "./BankExplorer/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/BankExplorer",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/BankExplorer/"
+      "liveUrl": "https://philm013.github.io/BankExplorer/",
+      "sourceUrl": "https://github.com/Philm013/BankExplorer"
     },
     {
       "id": "cardvault",
@@ -131,10 +131,10 @@
       ],
       "icon": "lucide:clover",
       "launchPath": "./CardVault/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/CardVault",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/CardVault/"
+      "liveUrl": "https://philm013.github.io/CardVault/",
+      "sourceUrl": "https://github.com/Philm013/CardVault"
     },
     {
       "id": "cloudchat",
@@ -155,10 +155,10 @@
       ],
       "icon": "lucide:messages-square",
       "launchPath": "./CloudChat/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/CloudChat",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/CloudChat/"
+      "liveUrl": "https://philm013.github.io/CloudChat/",
+      "sourceUrl": "https://github.com/Philm013/CloudChat"
     },
     {
       "id": "coinvault",
@@ -179,10 +179,10 @@
       ],
       "icon": "lucide:coins",
       "launchPath": "./CoinVault/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/CoinVault",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/CoinVault/"
+      "liveUrl": "https://philm013.github.io/CoinVault/",
+      "sourceUrl": "https://github.com/Philm013/CoinVault"
     },
     {
       "id": "digital-synapse",
@@ -203,10 +203,10 @@
       ],
       "icon": "lucide:newspaper",
       "launchPath": "./DigitalSynapse/ScienceNewsV2.html",
-      "legacySourceUrl": "https://github.com/Philm013/DigitalSynapse",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/DigitalSynapse/"
+      "liveUrl": "https://philm013.github.io/DigitalSynapse/",
+      "sourceUrl": "https://github.com/Philm013/DigitalSynapse"
     },
     {
       "id": "edreporter",
@@ -227,10 +227,10 @@
       ],
       "icon": "lucide:clipboard-list",
       "launchPath": "./EdReporter/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/EdReporter",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/EdReporter/"
+      "liveUrl": "https://philm013.github.io/EdReporter/",
+      "sourceUrl": "https://github.com/Philm013/EdReporter"
     },
     {
       "id": "flipbookai",
@@ -251,10 +251,10 @@
       ],
       "icon": "lucide:book-open",
       "launchPath": "./FlipbookAI/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/FlipbookAI",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/FlipbookAI/"
+      "liveUrl": "https://philm013.github.io/FlipbookAI/",
+      "sourceUrl": "https://github.com/Philm013/FlipbookAI"
     },
     {
       "id": "gooutside",
@@ -275,10 +275,10 @@
       ],
       "icon": "lucide:trees",
       "launchPath": "./GoOutside/www/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/GoOutside",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/GoOutside/"
+      "liveUrl": "https://philm013.github.io/GoOutside/",
+      "sourceUrl": "https://github.com/Philm013/GoOutside"
     },
     {
       "id": "iptv-player",
@@ -299,10 +299,10 @@
       ],
       "icon": "lucide:tv",
       "launchPath": "./IPTV/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/IPTV",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/IPTV/"
+      "liveUrl": "https://philm013.github.io/IPTV/",
+      "sourceUrl": "https://github.com/Philm013/IPTV"
     },
     {
       "id": "inquiryos",
@@ -323,10 +323,10 @@
       ],
       "icon": "lucide:microscope",
       "launchPath": "./InquiryOS/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/InquiryOS",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/InquiryOS/"
+      "liveUrl": "https://philm013.github.io/InquiryOS/",
+      "sourceUrl": "https://github.com/Philm013/InquiryOS"
     },
     {
       "id": "knowledgemapper",
@@ -347,10 +347,10 @@
       ],
       "icon": "lucide:network",
       "launchPath": "./KnowledgeMapper/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/KnowledgeMapper",
       "stage": "monorepo",
       "hosting": "custom",
-      "notes": "Standalone repo created; keep monorepo launch until custom hosting is configured."
+      "notes": "Standalone repo created; keep monorepo launch until custom hosting is configured.",
+      "sourceUrl": "https://github.com/Philm013/KnowledgeMapper"
     },
     {
       "id": "letsdraw",
@@ -371,10 +371,10 @@
       ],
       "icon": "lucide:palette",
       "launchPath": "./LetsDraw/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/LetsDraw",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/LetsDraw/"
+      "liveUrl": "https://philm013.github.io/LetsDraw/",
+      "sourceUrl": "https://github.com/Philm013/LetsDraw"
     },
     {
       "id": "livedeck",
@@ -395,10 +395,10 @@
       ],
       "icon": "lucide:presentation",
       "launchPath": "./LiveDeck/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/LiveDeck",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/LiveDeck/"
+      "liveUrl": "https://philm013.github.io/LiveDeck/",
+      "sourceUrl": "https://github.com/Philm013/LiveDeck"
     },
     {
       "id": "markedup",
@@ -419,10 +419,10 @@
       ],
       "icon": "lucide:pen-tool",
       "launchPath": "./MarkedUp/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/MarkedUp",
       "stage": "monorepo",
       "hosting": "custom",
-      "notes": "Standalone repo created; keep monorepo launch until custom hosting is configured."
+      "notes": "Standalone repo created; keep monorepo launch until custom hosting is configured.",
+      "sourceUrl": "https://github.com/Philm013/MarkedUp"
     },
     {
       "id": "mixtape",
@@ -443,10 +443,10 @@
       ],
       "icon": "lucide:music",
       "launchPath": "./MixTape/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/MixTape",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/MixTape/"
+      "liveUrl": "https://philm013.github.io/MixTape/",
+      "sourceUrl": "https://github.com/Philm013/MixTape"
     },
     {
       "id": "ngss-explorer",
@@ -467,10 +467,10 @@
       ],
       "icon": "lucide:compass",
       "launchPath": "./NGSS-Explorer/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/NGSS-Explorer",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/NGSS-Explorer/"
+      "liveUrl": "https://philm013.github.io/NGSS-Explorer/",
+      "sourceUrl": "https://github.com/Philm013/NGSS-Explorer"
     },
     {
       "id": "ngss-tracker",
@@ -491,10 +491,10 @@
       ],
       "icon": "lucide:check-circle",
       "launchPath": "./NGSS-Tracker/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/NGSS-Tracker",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/NGSS-Tracker/"
+      "liveUrl": "https://philm013.github.io/NGSS-Tracker/",
+      "sourceUrl": "https://github.com/Philm013/NGSS-Tracker"
     },
     {
       "id": "nexuside",
@@ -515,10 +515,10 @@
       ],
       "icon": "lucide:layers",
       "launchPath": "./NexusIDE/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/NexusIDE",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/NexusIDE/"
+      "liveUrl": "https://philm013.github.io/NexusIDE/",
+      "sourceUrl": "https://github.com/Philm013/NexusIDE"
     },
     {
       "id": "proximanova",
@@ -539,10 +539,10 @@
       ],
       "icon": "lucide:rocket",
       "launchPath": "./ProximaNova/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/ProximaNova",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/ProximaNova/"
+      "liveUrl": "https://philm013.github.io/ProximaNova/",
+      "sourceUrl": "https://github.com/Philm013/ProximaNova"
     },
     {
       "id": "snaphunt",
@@ -563,10 +563,10 @@
       ],
       "icon": "lucide:camera",
       "launchPath": "./SnapHunt/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/SnapHunt",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/SnapHunt/"
+      "liveUrl": "https://philm013.github.io/SnapHunt/",
+      "sourceUrl": "https://github.com/Philm013/SnapHunt"
     },
     {
       "id": "snapmeet",
@@ -587,10 +587,10 @@
       ],
       "icon": "lucide:map-pin",
       "launchPath": "./SnapMeet/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/SnapMeet",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/SnapMeet/"
+      "liveUrl": "https://philm013.github.io/SnapMeet/",
+      "sourceUrl": "https://github.com/Philm013/SnapMeet"
     },
     {
       "id": "studiopro",
@@ -611,10 +611,10 @@
       ],
       "icon": "lucide:wand-2",
       "launchPath": "./StudioPro/StudioPro.html",
-      "legacySourceUrl": "https://github.com/Philm013/StudioPro",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/StudioPro/"
+      "liveUrl": "https://philm013.github.io/StudioPro/",
+      "sourceUrl": "https://github.com/Philm013/StudioPro"
     },
     {
       "id": "thinktank",
@@ -635,10 +635,10 @@
       ],
       "icon": "lucide:brain",
       "launchPath": "./ThinkTank/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/ThinkTank",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/ThinkTank/"
+      "liveUrl": "https://philm013.github.io/ThinkTank/",
+      "sourceUrl": "https://github.com/Philm013/ThinkTank"
     },
     {
       "id": "workplanner",
@@ -659,10 +659,10 @@
       ],
       "icon": "lucide:kanban",
       "launchPath": "./WorkPlanner/index.html",
-      "legacySourceUrl": "https://github.com/Philm013/WorkPlanner",
       "stage": "split",
       "hosting": "pages",
-      "liveUrl": "https://philm013.github.io/WorkPlanner/"
+      "liveUrl": "https://philm013.github.io/WorkPlanner/",
+      "sourceUrl": "https://github.com/Philm013/WorkPlanner"
     }
   ]
 }
