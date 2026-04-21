@@ -342,8 +342,8 @@
       ],
       "techStack": [
         "JavaScript",
-        "Education",
-        "Web"
+        "HTML",
+        "CSS"
       ],
       "icon": "lucide:microscope",
       "stage": "split",
@@ -677,9 +677,9 @@
         "Resources"
       ],
       "techStack": [
-        "Web",
-        "Education",
-        "Content"
+        "HTML",
+        "CSS",
+        "JavaScript"
       ],
       "icon": "lucide:graduation-cap",
       "stage": "split",
