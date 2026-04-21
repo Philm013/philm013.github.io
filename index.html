@@ -312,18 +312,19 @@ function normalizeProject(project, defaults) {
 
 function sortProjects(projects) {
     const sorted = [...projects];
+    const compareFeatured = (a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured));
     switch (state.sort) {
         case 'title-desc':
-            sorted.sort((a, b) => b.title.localeCompare(a.title));
+            sorted.sort((a, b) => compareFeatured(a, b) || b.title.localeCompare(a.title));
             break;
         case 'docs-first':
-            sorted.sort((a, b) => Number(Boolean(b.detailsHref)) - Number(Boolean(a.detailsHref)) || a.title.localeCompare(b.title));
+            sorted.sort((a, b) => compareFeatured(a, b) || Number(Boolean(b.detailsHref)) - Number(Boolean(a.detailsHref)) || a.title.localeCompare(b.title));
             break;
         case 'launch-first':
-            sorted.sort((a, b) => Number(Boolean(b.launchHref)) - Number(Boolean(a.launchHref)) || a.title.localeCompare(b.title));
+            sorted.sort((a, b) => compareFeatured(a, b) || Number(Boolean(b.launchHref)) - Number(Boolean(a.launchHref)) || a.title.localeCompare(b.title));
             break;
         default:
-            sorted.sort((a, b) => a.title.localeCompare(b.title));
+            sorted.sort((a, b) => compareFeatured(a, b) || a.title.localeCompare(b.title));
             break;
     }
     return sorted;
