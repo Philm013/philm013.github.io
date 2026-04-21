@@ -329,6 +329,30 @@
       "sourceUrl": "https://github.com/Philm013/InquiryOS"
     },
     {
+      "id": "inquirydqb",
+      "folder": "InquiryDQB",
+      "repoName": "InquiryDQB",
+      "title": "InquiryDQB",
+      "category": "education",
+      "description": "Inquiry toolkit for developing and refining high-quality science questions.",
+      "tags": [
+        "Education",
+        "Inquiry",
+        "Science"
+      ],
+      "techStack": [
+        "JavaScript",
+        "Education",
+        "Web"
+      ],
+      "icon": "lucide:microscope",
+      "stage": "split",
+      "hosting": "custom",
+      "liveUrl": "https://inquirydqb.io/",
+      "sourceUrl": "https://github.com/Philm013/InquiryDQB",
+      "featured": true
+    },
+    {
       "id": "knowledgemapper",
       "folder": "KnowledgeMapper",
       "repoName": "KnowledgeMapper",
@@ -639,6 +663,30 @@
       "hosting": "pages",
       "liveUrl": "https://philm013.github.io/ThinkTank/",
       "sourceUrl": "https://github.com/Philm013/ThinkTank"
+    },
+    {
+      "id": "techieteaching",
+      "folder": "techieteaching",
+      "repoName": "techieteaching",
+      "title": "Techie Teaching",
+      "category": "education",
+      "description": "Teaching resources and practical tools for technology-rich classroom instruction.",
+      "tags": [
+        "Education",
+        "Teaching",
+        "Resources"
+      ],
+      "techStack": [
+        "Web",
+        "Education",
+        "Content"
+      ],
+      "icon": "lucide:graduation-cap",
+      "stage": "split",
+      "hosting": "custom",
+      "liveUrl": "https://techieteaching.com/",
+      "sourceUrl": "https://github.com/Philm013/techieteaching",
+      "featured": true
     },
     {
       "id": "workplanner",
