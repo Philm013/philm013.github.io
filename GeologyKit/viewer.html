@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mineral Investigation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <style>
+    :root {
+      --bg-color: #030305;
+      --panel-bg: rgba(20, 20, 24, 0.85);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --border: rgba(255, 255, 255, 0.1);
+      --sheet-height: 65dvh;
+    }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      /* Native app feel */
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
+    }
+    
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100dvh;
+      z-index: 1;
+    }
+
+    /* TOP HEADER: Info Overlay */
+    #top-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: env(safe-area-inset-top, 24px) 24px 32px 24px;
+      box-sizing: border-box;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #info-name { 
+      font-size: 2.2rem; 
+      font-weight: 800; 
+      color: #fff; 
+      margin: 0; 
+      letter-spacing: -0.5px; 
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8); 
+    }
+    #info-formula { 
+      font-size: 1rem; 
+      font-weight: 600;
+      font-family: 'ui-monospace', monospace; 
+      color: var(--accent); 
+      margin: 0; 
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    }
+    #info-desc { 
+      font-size: 0.95rem; 
+      color: rgba(255,255,255,0.9); 
+      line-height: 1.5; 
+      margin: 8px 0 0 0; 
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 24px;
+      margin-top: 12px;
+    }
+    .stat { display: flex; flex-direction: column; gap: 2px; }
+    .stat-lbl { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.6); text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    .stat-val { font-size: 0.95rem; font-weight: 600; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
+
+    /* BOTTOM SHEET */
+    #sheet-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100dvh;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 15;
+    }
+    #sheet-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #bottom-sheet {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: var(--sheet-height);
+      background: var(--panel-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-top: 1px solid rgba(255,255,255,0.15);
+      border-radius: 32px 32px 0 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(calc(var(--sheet-height) - 80px - env(safe-area-inset-bottom, 0px))); /* Peek state */
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
+    }
+    #bottom-sheet.expanded {
+      transform: translateY(0);
+    }
+
+    #sheet-header {
+      width: 100%;
+      height: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    #bottom-sheet.expanded #sheet-header {
+      padding-bottom: 0; /* adjust padding when open */
+    }
+    
+    .drag-handle {
+      width: 48px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 3px;
+      position: absolute;
+      top: 16px;
+    }
+    #sheet-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.5px;
+      margin-top: 12px;
+    }
+    #sheet-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    #controls-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 24px calc(30px + env(safe-area-inset-bottom, 0px)) 24px;
+      scrollbar-width: none;
+    }
+    #controls-scroll::-webkit-scrollbar { display: none; }
+
+    .control-group {
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .control-group label.heading { 
+      font-size: 0.75rem; 
+      font-weight: 700; 
+      text-transform: uppercase; 
+      letter-spacing: 1px; 
+      color: var(--text-muted); 
+      margin-left: 4px;
+    }
+    
+    /* Touch-friendly inputs */
+    select {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff;
+      padding: 16px 20px;
+      border-radius: 16px;
+      outline: none;
+      font-family: inherit;
+      font-size: 1.05rem;
+      font-weight: 500;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+      background-repeat: no-repeat;
+      background-position: right 20px top 50%;
+      background-size: 14px auto;
+    }
+    select:focus { border-color: var(--accent); }
+    
+    input[type="range"] {
+      width: 100%;
+      padding: 16px 0;
+      background: transparent;
+      appearance: none;
+      -webkit-appearance: none;
+      border: none;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      margin-top: -10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    
+    .checkbox-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 16px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .checkbox-wrap span { font-size: 1.05rem; font-weight: 500; color: #fff; }
+    
+    /* Native style toggle */
+    .toggle-switch {
+      position: relative;
+      width: 52px;
+      height: 32px;
+      background-color: rgba(255,255,255,0.2);
+      border-radius: 16px;
+      transition: background-color 0.3s;
+    }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 28px;
+      height: 28px;
+      background-color: #fff;
+      border-radius: 50%;
+      transition: transform 0.3s cubic-bezier(0.3, 1.5, 0.7, 1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    input[type="checkbox"] { display: none; }
+    input[type="checkbox"]:checked + .toggle-switch {
+      background-color: var(--accent);
+    }
+    input[type="checkbox"]:checked + .toggle-switch::after {
+      transform: translateX(20px);
+    }
+
+    #loader {
+      position: absolute; inset: 0; background: #000;
+      display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 24px;
+      z-index: 100; transition: opacity 0.6s ease; color: #fff;
+    }
+    .spinner {
+      width: 56px; height: 56px;
+      border: 4px solid rgba(255,255,255,0.1);
+      border-radius: 50%;
+      border-top-color: var(--accent);
+      animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Desktop Dashboard Fallback */
+    @media (min-width: 1024px) {
+      #bottom-sheet {
+        width: 400px;
+        height: auto;
+        max-height: calc(100dvh - 40px);
+        top: 20px;
+        right: 20px;
+        bottom: auto;
+        left: auto;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        transform: translateY(0);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      }
+      #sheet-header { display: none; }
+      #sheet-overlay { display: none !important; }
+      #controls-scroll { padding-top: 24px; }
+      
+      #top-header {
+        width: 450px;
+        padding: 40px;
+        background: none;
+      }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="loader">
+    <div class="spinner"></div>
+    <div style="font-weight: 600; letter-spacing: 1.5px; font-size: 0.9rem;">GENERATING LAB...</div>
+  </div>
+  
+  <div id="canvas-container"></div>
+  
+  <div id="top-header">
+    <h1 id="info-name">Mineral</h1>
+    <div id="info-formula">Formula</div>
+    <div class="stats">
+      <div class="stat"><span class="stat-lbl">System</span><span class="stat-val" id="info-sys"></span></div>
+      <div class="stat"><span class="stat-lbl">Hardness</span><span class="stat-val" id="info-hard"></span></div>
+    </div>
+    <p id="info-desc">Description</p>
+  </div>
+  
+  <div id="sheet-overlay"></div>
+
+  <div id="bottom-sheet">
+    <div id="sheet-header">
+      <div class="drag-handle"></div>
+      <div id="sheet-title">Adjust Properties</div>
+      <div id="sheet-subtitle">Swipe up or tap to explore</div>
+    </div>
+    <div id="controls-scroll">
+      <!-- Generated controls injected here -->
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import createAsset, { params, catalog } from './minerals.mjs';
+
+    // UI Logic
+    const sheet = document.getElementById('bottom-sheet');
+    const header = document.getElementById('sheet-header');
+    const overlay = document.getElementById('sheet-overlay');
+    let isSheetExpanded = false;
+
+    function toggleSheet() {
+      isSheetExpanded = !isSheetExpanded;
+      if (isSheetExpanded) {
+        sheet.classList.add('expanded');
+        overlay.classList.add('active');
+        document.getElementById('sheet-subtitle').style.display = 'none';
+      } else {
+        sheet.classList.remove('expanded');
+        overlay.classList.remove('active');
+        setTimeout(() => { document.getElementById('sheet-subtitle').style.display = 'block'; }, 300);
+      }
+    }
+
+    header.addEventListener('click', toggleSheet);
+    overlay.addEventListener('click', toggleSheet);
+    
+    // Swipe down to close on header
+    let startY = 0;
+    header.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, {passive: true});
+    header.addEventListener('touchend', (e) => {
+      const endY = e.changedTouches[0].clientY;
+      if (endY > startY + 20 && isSheetExpanded) toggleSheet();
+      else if (endY < startY - 20 && !isSheetExpanded) toggleSheet();
+    }, {passive: true});
+
+    // 3D Logic
+    let scene, camera, renderer, controls, pmremGenerator;
+    let currentModel = null;
+    let currentParams = {};
+    
+    // Get default params
+    for (const [key, def] of Object.entries(params)) {
+      currentParams[key] = def.default;
+    }
+    
+    const uiConfig = Object.keys(params)
+      .filter(key => key !== 'mergeForProduction')
+      .map(key => ({ key }));
+
+    function init() {
+      const container = document.getElementById('canvas-container');
+      
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color('#030305');
+      scene.fog = new THREE.FogExp2('#030305', 0.04);
+
+      camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(1.4, 0.9, 1.8);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 0.2, 0);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 0.3;
+      controls.maxDistance = 6;
+      controls.maxPolarAngle = Math.PI / 2 + 0.1;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.5;
+      controls.enablePan = false; // Prevents getting lost on mobile
+
+      pmremGenerator = new THREE.PMREMGenerator(renderer);
+      pmremGenerator.compileEquirectangularShader();
+      scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+      scene.add(ambientLight);
+
+      const mainLight = new THREE.DirectionalLight(0xffffff, 2.5);
+      mainLight.position.set(3, 5, 2);
+      mainLight.castShadow = true;
+      mainLight.shadow.mapSize.width = 1024; // optimized for mobile
+      mainLight.shadow.mapSize.height = 1024;
+      mainLight.shadow.camera.near = 0.1;
+      mainLight.shadow.camera.far = 10;
+      mainLight.shadow.bias = -0.001;
+      scene.add(mainLight);
+      
+      const rimLight = new THREE.DirectionalLight(0xaaccff, 1.5);
+      rimLight.position.set(-3, 2, -3);
+      scene.add(rimLight);
+      
+      const fillLight = new THREE.DirectionalLight(0xffeedd, 0.7);
+      fillLight.position.set(0, -1, 2);
+      scene.add(fillLight);
+
+      buildUI();
+      rebuildModel();
+
+      window.addEventListener('resize', onWindowResize);
+      controls.addEventListener('start', () => { controls.autoRotate = false; });
+      
+      setTimeout(() => {
+        const loader = document.getElementById('loader');
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 600);
+      }, 500);
+      
+      renderer.setAnimationLoop(animate);
+    }
+
+    function buildUI() {
+      const container = document.getElementById('controls-scroll');
+      
+      uiConfig.forEach(cfg => {
+        const def = params[cfg.key];
+        if (!def) return;
+        
+        const group = document.createElement('div');
+        group.className = 'control-group';
+        
+        if (def.type === 'toggle') {
+          const label = document.createElement('label');
+          label.className = 'checkbox-wrap';
+          
+          const span = document.createElement('span');
+          span.textContent = def.label;
+          
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.checked = currentParams[cfg.key] ?? def.default;
+          input.onchange = (e) => {
+            currentParams[cfg.key] = e.target.checked;
+            rebuildModel();
+          };
+          
+          const toggle = document.createElement('div');
+          toggle.className = 'toggle-switch';
+          
+          label.appendChild(span);
+          label.appendChild(input);
+          label.appendChild(toggle);
+          group.appendChild(label);
+        } else if (def.type === 'choice') {
+          const label = document.createElement('label');
+          label.className = 'heading';
+          label.textContent = def.label;
+          group.appendChild(label);
+          
+          const select = document.createElement('select');
+          def.options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = (def.optionLabels && def.optionLabels[opt]) ? def.optionLabels[opt] : opt;
+            if (opt === (currentParams[cfg.key] ?? def.default)) option.selected = true;
+            select.appendChild(option);
+          });
+          select.onchange = (e) => {
+            currentParams[cfg.key] = e.target.value;
+            rebuildModel();
+          };
+          group.appendChild(select);
+        } else if (def.type === 'range') {
+          const label = document.createElement('label');
+          label.className = 'heading';
+          label.textContent = def.label;
+          group.appendChild(label);
+          
+          const input = document.createElement('input');
+          input.type = 'range';
+          input.min = def.min;
+          input.max = def.max;
+          input.step = def.step;
+          input.value = currentParams[cfg.key] ?? def.default;
+          input.oninput = (e) => {
+            currentParams[cfg.key] = parseFloat(e.target.value);
+            if(window.rebuildTimeout) clearTimeout(window.rebuildTimeout);
+            window.rebuildTimeout = setTimeout(rebuildModel, 150);
+          };
+          group.appendChild(input);
+        } else if (def.type === 'color') {
+          const label = document.createElement('label');
+          label.className = 'heading';
+          label.textContent = def.label;
+          group.appendChild(label);
+          
+          const wrap = document.createElement('div');
+          wrap.style.display = 'flex';
+          wrap.style.gap = '16px';
+          wrap.style.alignItems = 'center';
+          wrap.style.padding = '8px 20px';
+          wrap.style.background = 'rgba(0,0,0,0.2)';
+          wrap.style.borderRadius = '16px';
+          wrap.style.border = '1px solid rgba(255,255,255,0.05)';
+          
+          const input = document.createElement('input');
+          input.type = 'color';
+          input.value = currentParams[cfg.key] ?? def.default;
+          input.style.width = '48px';
+          input.style.height = '48px';
+          input.style.border = 'none';
+          input.style.borderRadius = '12px';
+          input.style.padding = '0';
+          input.style.background = 'transparent';
+          input.style.cursor = 'pointer';
+          
+          const textInput = document.createElement('input');
+          textInput.type = 'text';
+          textInput.value = currentParams[cfg.key] ?? def.default;
+          textInput.style.flex = '1';
+          textInput.style.background = 'rgba(255,255,255,0.05)';
+          textInput.style.border = '1px solid rgba(255,255,255,0.1)';
+          textInput.style.color = '#fff';
+          textInput.style.padding = '12px 16px';
+          textInput.style.borderRadius = '12px';
+          textInput.style.fontSize = '1.05rem';
+          textInput.style.fontFamily = 'monospace';
+          textInput.style.outline = 'none';
+          
+          input.oninput = (e) => {
+            currentParams[cfg.key] = e.target.value;
+            textInput.value = e.target.value;
+            if(window.rebuildTimeout) clearTimeout(window.rebuildTimeout);
+            window.rebuildTimeout = setTimeout(rebuildModel, 150);
+          };
+          textInput.oninput = (e) => {
+            const val = e.target.value;
+            if (/^#[0-9A-F]{6}$/i.test(val)) {
+              currentParams[cfg.key] = val;
+              input.value = val;
+              if(window.rebuildTimeout) clearTimeout(window.rebuildTimeout);
+              window.rebuildTimeout = setTimeout(rebuildModel, 150);
+            }
+          };
+          
+          wrap.appendChild(input);
+          wrap.appendChild(textInput);
+          group.appendChild(wrap);
+        }
+        
+        container.appendChild(group);
+      });
+    }
+
+    function updateInfoPanel(minType) {
+      const info = catalog[minType];
+      if (!info) return;
+      document.getElementById('info-name').textContent = info.label;
+      document.getElementById('info-formula').textContent = info.formula;
+      document.getElementById('info-desc').textContent = info.describe || 'A procedural mineral specimen.';
+      document.getElementById('info-sys').textContent = info.system;
+      document.getElementById('info-hard').textContent = info.hardness;
+      
+      if (info.palette && info.palette.crystal) {
+        const color = new THREE.Color(info.palette.crystal);
+        document.getElementById('info-formula').style.color = color.getStyle();
+      }
+    }
+
+    function rebuildModel() {
+      if (currentModel) {
+        scene.remove(currentModel);
+        currentModel.traverse(child => {
+          if (child.isMesh) {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+              if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+              else child.material.dispose();
+            }
+          }
+        });
+      }
+      
+      const buildParams = { ...currentParams, mergeForProduction: true };
+      
+      try {
+        currentModel = createAsset(buildParams);
+        
+        // Frame the object
+        const box = new THREE.Box3().setFromObject(currentModel);
+        const center = box.getCenter(new THREE.Vector3());
+        controls.target.set(0, center.y, 0);
+        
+        scene.add(currentModel);
+        updateInfoPanel(currentParams.mineralType);
+        
+        if (currentParams.uvFluorescence && currentModel.userData.setUV) {
+            currentModel.userData.setUV(1.0);
+            scene.environmentIntensity = 0.15;
+        } else {
+            if (currentModel.userData.setUV) currentModel.userData.setUV(0.0);
+            scene.environmentIntensity = 1.0;
+        }
+      } catch (err) {
+        console.error("Failed to build model:", err);
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    init();
+  </script>
+</body>
+</html>
